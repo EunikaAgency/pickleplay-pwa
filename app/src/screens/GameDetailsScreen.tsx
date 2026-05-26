@@ -34,7 +34,7 @@ export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps
             </div>
 
             {/* Organizer Card */}
-            <div className="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-[16px]" style={cardShadow}>
+            <div className="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-[12px]" style={cardShadow}>
               <div className="relative">
                 <img
                   alt="Organizer"
@@ -56,7 +56,7 @@ export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps
           </section>
 
           {/* Location Card */}
-          <section className="bg-surface-container-lowest rounded-[16px] overflow-hidden" style={cardShadow}>
+          <section className="bg-surface-container-lowest rounded-[12px] overflow-hidden" style={cardShadow}>
             <div className="h-48 w-full relative">
               <img
                 className="w-full h-full object-cover"
@@ -87,14 +87,14 @@ export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps
               <p className="mt-4">Whether you're just learning the dink or you're a seasoned pro, we rotate everyone every 15 minutes so you get to play with a variety of styles. Expect good music, plenty of water breaks, and a very supportive crew!</p>
             </div>
             <div className="grid grid-cols-2 gap-4 mt-6">
-              <div className="bg-surface-container p-4 rounded-[16px] flex items-center gap-3">
+              <div className="bg-surface-container p-4 rounded-[12px] flex items-center gap-3">
                 <Icon name="calendar_today" size={24} className="text-secondary" />
                 <div>
                   <p className="font-bold text-label-sm text-on-surface-variant">Date</p>
                   <p className="text-body-md font-bold text-on-surface">Sat, Oct 14</p>
                 </div>
               </div>
-              <div className="bg-surface-container p-4 rounded-[16px] flex items-center gap-3">
+              <div className="bg-surface-container p-4 rounded-[12px] flex items-center gap-3">
                 <Icon name="schedule" size={24} className="text-secondary" />
                 <div>
                   <p className="font-bold text-label-sm text-on-surface-variant">Time</p>

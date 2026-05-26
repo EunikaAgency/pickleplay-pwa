@@ -43,19 +43,19 @@ export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
 
           {/* Quick Actions Row */}
           <div className="grid grid-cols-3 gap-3">
-            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[16px] p-4 active:scale-95 transition-transform" style={cardShadow}>
+            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Icon name="directions" size={24} />
               </div>
               <span className="font-bold text-label-sm">Directions</span>
             </button>
-            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[16px] p-4 active:scale-95 transition-transform" style={cardShadow}>
+            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Icon name="calendar_today" size={24} />
               </div>
               <span className="font-bold text-label-sm">Schedule</span>
             </button>
-            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[16px] p-4 active:scale-95 transition-transform" style={cardShadow}>
+            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Icon name="chat" size={24} />
               </div>
@@ -68,7 +68,7 @@ export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
             <h2 className="font-heading text-headline-md text-on-surface mb-3">Amenities</h2>
             <div className="grid grid-cols-2 gap-2">
               {['Restrooms', 'Pro Shop', 'Coffee Bar', 'Lighted Courts', 'Water Fountain', 'Seating'].map((amenity) => (
-                <div key={amenity} className="flex items-center gap-2 bg-surface-container-lowest rounded-[16px] p-3" style={cardShadow}>
+                <div key={amenity} className="flex items-center gap-2 bg-surface-container-lowest rounded-[12px] p-3" style={cardShadow}>
                   <Icon name="check_circle" size={18} filled className="text-secondary" />
                   <span className="text-body-md text-on-surface">{amenity}</span>
                 </div>
@@ -90,7 +90,7 @@ export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
               ].map((game) => (
                 <div
                   key={game.title}
-                  className="flex items-center justify-between bg-surface-container-lowest rounded-[16px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                  className="flex items-center justify-between bg-surface-container-lowest rounded-[12px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
                   style={cardShadow}
                   onClick={() => onNavigate('game-details', { id: '1' })}
                 >

@@ -90,12 +90,12 @@
   --font-weight-semibold: 600;
   --font-weight-normal: 400;
 
-  /* Border radii — hyper-round shape language */
-  --radius-xs: 8px;
-  --radius-sm: 12px;
-  --radius-lg: 16px;
-  --radius-card: 16px;
-  --radius-input: 16px;
+  /* Border radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-lg: 12px;
+  --radius-card: 12px;
+  --radius-input: 12px;
   --radius-full: 999px;
 
   /* Spacing */

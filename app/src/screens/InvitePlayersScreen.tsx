@@ -64,14 +64,14 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
           </div>
 
           {/* Share Link */}
-          <div className="bg-surface-container-lowest rounded-[16px] p-5 space-y-3" style={cardShadow}>
+          <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-3" style={cardShadow}>
             <h3 className="font-heading text-headline-md">Share Link</h3>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={inviteLink}
                 readOnly
-                className="flex-1 h-12 px-4 bg-surface-container border border-outline-variant rounded-[16px] text-body-md text-on-surface"
+                className="flex-1 h-12 px-4 bg-surface-container border border-outline-variant rounded-[12px] text-body-md text-on-surface"
               />
               <button className="w-12 h-12 bg-primary text-on-primary rounded-full flex items-center justify-center active:scale-90 transition-all">
                 <Icon name="content_copy" size={20} />
@@ -85,7 +85,7 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
             {suggestedPlayers.map((player) => (
               <div
                 key={player.name}
-                className="flex items-center gap-3 bg-surface-container-lowest rounded-[16px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
                 style={cardShadow}
                 onClick={() => toggleInvite(player.name)}
               >

@@ -64,7 +64,7 @@ const tagColors: Record<string, string> = {
 function GameCard({ game, onClick, cardShadow }: { game: typeof myGames[0]; onClick: () => void; cardShadow: React.CSSProperties }) {
   return (
     <div
-      className="flex gap-4 bg-surface-container-lowest rounded-[16px] overflow-hidden group cursor-pointer active:scale-[0.98] transition-transform"
+      className="flex gap-4 bg-surface-container-lowest rounded-[12px] overflow-hidden group cursor-pointer active:scale-[0.98] transition-transform"
       style={cardShadow}
       onClick={onClick}
     >

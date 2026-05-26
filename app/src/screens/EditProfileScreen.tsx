@@ -46,30 +46,30 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">FIRST NAME</label>
-                <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md" style={cardShadow} />
+                <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md" style={cardShadow} />
               </div>
               <div className="space-y-1">
                 <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">LAST NAME</label>
-                <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md" style={cardShadow} />
+                <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} required className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md" style={cardShadow} />
               </div>
             </div>
 
             <div className="space-y-1">
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">BIO</label>
-              <input type="text" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short tagline..." className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md italic" style={cardShadow} />
+              <input type="text" value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short tagline..." className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md italic" style={cardShadow} />
             </div>
 
             <div className="space-y-1">
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">LOCATION</label>
               <div className="relative">
                 <Icon name="location_on" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" />
-                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md" style={cardShadow} />
+                <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md" style={cardShadow} />
               </div>
             </div>
 
             <div className="space-y-1">
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">SKILL LEVEL</label>
-              <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none" style={cardShadow}>
+              <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none" style={cardShadow}>
                 {['1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0','5.5+'].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>

@@ -34,7 +34,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         {/* Login Card */}
         <div
-          className="w-full rounded-[24px] bg-surface-container-lowest p-8 border border-surface-variant/30"
+          className="w-full rounded-[14px] bg-surface-container-lowest p-8 border border-surface-variant/30"
           style={{ boxShadow: '0 10px 30px -10px rgba(0, 64, 224, 0.15)' }}
         >
           <div className="mb-8">
@@ -53,7 +53,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full h-12 pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className="w-full h-12 pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                 />
               </div>
             </div>
@@ -71,7 +71,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full h-12 pl-12 pr-12 bg-surface-container-low border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className="w-full h-12 pl-12 pr-12 bg-surface-container-low border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                 />
                 <button
                   type="button"

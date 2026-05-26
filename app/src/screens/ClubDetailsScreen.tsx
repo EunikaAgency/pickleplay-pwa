@@ -86,13 +86,13 @@ export function ClubDetailsScreen({ onBack }: ClubDetailsScreenProps) {
           {/* Tab Content */}
           {activeTab === 'about' && (
             <div className="space-y-4">
-              <div className="bg-surface-container-lowest rounded-[16px] p-5 space-y-3" style={cardShadow}>
+              <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-3" style={cardShadow}>
                 <h3 className="font-heading text-headline-md">About</h3>
                 <p className="text-body-md text-on-surface-variant leading-relaxed">
                   Welcome to Neon Smashers — Austin's most active pickleball community. We host weekly competitive and casual games across multiple courts in the downtown area. All skill levels welcome, from beginners to tournament players.
                 </p>
               </div>
-              <div className="bg-surface-container-lowest rounded-[16px] p-5 space-y-3" style={cardShadow}>
+              <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-3" style={cardShadow}>
                 <h3 className="font-heading text-headline-md">Rules</h3>
                 <ul className="text-body-md text-on-surface-variant space-y-2">
                   <li className="flex items-start gap-2">
@@ -115,7 +115,7 @@ export function ClubDetailsScreen({ onBack }: ClubDetailsScreenProps) {
           {activeTab === 'members' && (
             <div className="space-y-2">
               {members.map((member) => (
-                <div key={member.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[16px] p-4" style={cardShadow}>
+                <div key={member.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-4" style={cardShadow}>
                   {member.src ? (
                     <img alt={member.name} className="w-10 h-10 rounded-full object-cover" src={member.src} />
                   ) : (
@@ -140,7 +140,7 @@ export function ClubDetailsScreen({ onBack }: ClubDetailsScreenProps) {
                 { title: 'Weekly Doubles League', date: 'Tue, Oct 17 • 6:30 PM', spots: '14/16' },
                 { title: 'Beginner Clinic', date: 'Sun, Oct 22 • 2:00 PM', spots: '4/8' },
               ].map((event) => (
-                <div key={event.title} className="flex items-center justify-between bg-surface-container-lowest rounded-[16px] p-4 cursor-pointer active:scale-[0.98] transition-transform" style={cardShadow}>
+                <div key={event.title} className="flex items-center justify-between bg-surface-container-lowest rounded-[12px] p-4 cursor-pointer active:scale-[0.98] transition-transform" style={cardShadow}>
                   <div>
                     <h3 className="font-heading text-body-lg font-semibold">{event.title}</h3>
                     <p className="text-body-md text-on-surface-variant">{event.date}</p>
@@ -159,7 +159,7 @@ export function ClubDetailsScreen({ onBack }: ClubDetailsScreenProps) {
               <div className="space-y-3">
                 {chatMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-[16px] p-3 ${
+                    <div className={`max-w-[80%] rounded-[12px] p-3 ${
                       msg.isMe
                         ? 'bg-primary-container text-on-primary-container rounded-br-[4px]'
                         : 'bg-surface-container-lowest text-on-surface rounded-bl-[4px]'
@@ -177,7 +177,7 @@ export function ClubDetailsScreen({ onBack }: ClubDetailsScreenProps) {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className="flex-1 h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                   style={cardShadow}
                 />
                 <button className="w-12 h-12 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center active:scale-90 transition-all">

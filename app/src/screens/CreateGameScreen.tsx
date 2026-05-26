@@ -68,7 +68,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Saturday Morning Mix-In"
                 required
-                className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                 style={cardShadow}
               />
             </div>
@@ -84,7 +84,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Search courts..."
                   required
-                  className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                   style={cardShadow}
                 />
               </div>
@@ -99,7 +99,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                   style={cardShadow}
                 />
               </div>
@@ -110,7 +110,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   required
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                   style={cardShadow}
                 />
               </div>
@@ -123,7 +123,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                 <select
                   value={playerLimit}
                   onChange={(e) => setPlayerLimit(e.target.value)}
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
+                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
                   style={cardShadow}
                 >
                   {['2','4','6','8','12','16','24','32'].map((n) => (
@@ -136,7 +136,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                 <select
                   value={skillMin}
                   onChange={(e) => setSkillMin(e.target.value)}
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
+                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
                   style={cardShadow}
                 >
                   {['1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0'].map((s) => (
@@ -149,7 +149,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                 <select
                   value={skillMax}
                   onChange={(e) => setSkillMax(e.target.value)}
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
+                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
                   style={cardShadow}
                 >
                   {['2.0','2.5','3.0','3.5','4.0','4.5','5.0','5.5+'].map((s) => (
@@ -162,7 +162,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
             {/* Visibility Toggle */}
             <div className="space-y-1">
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">VISIBILITY</label>
-              <div className="flex rounded-[16px] bg-surface-container-high p-1" style={cardShadow}>
+              <div className="flex rounded-[12px] bg-surface-container-high p-1" style={cardShadow}>
                 <button
                   type="button"
                   onClick={() => setVisibility('public')}
@@ -192,7 +192,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Tell players what to expect..."
                 rows={3}
-                className="w-full p-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md resize-none"
+                className="w-full p-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md resize-none"
                 style={cardShadow}
               />
             </div>

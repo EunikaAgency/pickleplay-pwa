@@ -47,7 +47,7 @@ export function NotificationsScreen({ onNavigate }: NotificationsScreenProps) {
           {notifications.map((n) => (
             <div
               key={n.id}
-              className={`flex gap-3 p-4 rounded-[16px] transition-all cursor-pointer active:scale-[0.98] ${
+              className={`flex gap-3 p-4 rounded-[12px] transition-all cursor-pointer active:scale-[0.98] ${
                 n.read ? 'bg-surface-container-lowest opacity-70' : 'bg-surface-container-lowest'
               }`}
               style={cardShadow}

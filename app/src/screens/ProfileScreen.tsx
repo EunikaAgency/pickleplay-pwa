@@ -54,7 +54,7 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
           </section>
 
           {/* Win Rate Progress Section */}
-          <section className="bg-surface-container-lowest rounded-[16px] p-5 mb-8 max-w-2xl mx-auto" style={cardShadow}>
+          <section className="bg-surface-container-lowest rounded-[12px] p-5 mb-8 max-w-2xl mx-auto" style={cardShadow}>
             <div className="flex justify-between items-end mb-3">
               <div>
                 <h3 className="font-heading text-headline-md">Win Rate</h3>
@@ -72,7 +72,7 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
             {settingsItems.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[16px] hover:bg-surface-container-high transition-colors cursor-pointer group"
+                className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[12px] hover:bg-surface-container-high transition-colors cursor-pointer group"
                 style={cardShadow}
                 onClick={() => onNavigate(item.id)}
               >

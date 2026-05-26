@@ -61,7 +61,7 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search courts, games, clubs, players..."
               autoFocus
-              className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+              className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
               style={cardShadow}
             />
             {query && (
@@ -84,7 +84,7 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
                 <button
                   key={term}
                   onClick={() => setQuery(term)}
-                  className="flex items-center gap-3 w-full p-3 hover:bg-surface-container-low rounded-[16px] transition-colors active:scale-[0.98]"
+                  className="flex items-center gap-3 w-full p-3 hover:bg-surface-container-low rounded-[12px] transition-colors active:scale-[0.98]"
                 >
                   <Icon name="history" size={20} className="text-outline" />
                   <span className="text-body-md text-on-surface">{term}</span>
@@ -105,7 +105,7 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
                     {filtered.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-3 bg-surface-container-lowest rounded-[16px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                        className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
                         style={cardShadow}
                         onClick={() => {
                           if (item.type === 'court') onNavigate('court-details', { id: item.id });

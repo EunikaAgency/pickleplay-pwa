@@ -59,7 +59,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Enter your city or zip code"
-                className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                 style={cardShadow}
               />
             </div>
@@ -90,7 +90,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                   key={level}
                   type="button"
                   onClick={() => setSkillLevel(level)}
-                  className={`h-12 rounded-[16px] font-bold text-body-md transition-all active:scale-95 ${
+                  className={`h-12 rounded-[12px] font-bold text-body-md transition-all active:scale-95 ${
                     skillLevel === level
                       ? 'bg-secondary-container text-on-secondary-container'
                       : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant'

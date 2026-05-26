@@ -146,7 +146,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
 
           {/* Map View */}
           {activeTab === 'courts' && viewMode === 'map' && (
-            <div className="rounded-[24px] overflow-hidden" style={{ height: '60vh', minHeight: '400px', ...cardShadow }}>
+            <div className="rounded-[14px] overflow-hidden" style={{ height: '60vh', minHeight: '400px', ...cardShadow }}>
               <MapContainer
                 center={austinCenter}
                 zoom={13}
@@ -192,7 +192,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
               {demoCourts.map((court) => (
                 <div
                   key={court.id}
-                  className="group cursor-pointer overflow-hidden rounded-[24px] bg-surface-container-lowest transition-all active:scale-[0.98]"
+                  className="group cursor-pointer overflow-hidden rounded-[14px] bg-surface-container-lowest transition-all active:scale-[0.98]"
                   style={cardShadow}
                   onClick={() => onNavigate('court-details', { id: court.id })}
                 >
@@ -234,7 +234,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
               ))}
 
               {/* Featured CTA Card */}
-              <div className="flex flex-col items-center justify-center rounded-[24px] bg-primary p-5 text-center text-on-primary transition-all active:scale-[0.98] cursor-pointer md:col-span-2 lg:col-span-1">
+              <div className="flex flex-col items-center justify-center rounded-[14px] bg-primary p-5 text-center text-on-primary transition-all active:scale-[0.98] cursor-pointer md:col-span-2 lg:col-span-1">
                 <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-secondary-container">
                   <Icon name="add_location" size={36} className="text-on-secondary-container" />
                 </div>

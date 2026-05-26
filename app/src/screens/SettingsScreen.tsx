@@ -38,7 +38,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
                 {section.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[16px] cursor-pointer active:scale-[0.98] transition-transform group"
+                    className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[12px] cursor-pointer active:scale-[0.98] transition-transform group"
                     style={cardShadow}
                   >
                     <div className="flex items-center gap-3">

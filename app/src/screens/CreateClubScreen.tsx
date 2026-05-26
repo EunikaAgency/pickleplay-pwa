@@ -77,7 +77,7 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Neon Smashers"
                     required
-                    className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                    className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
                     style={cardShadow}
                   />
                 </div>
@@ -88,7 +88,7 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What's your club about?"
                     rows={4}
-                    className="w-full p-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md resize-none"
+                    className="w-full p-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md resize-none"
                     style={cardShadow}
                   />
                 </div>
@@ -99,7 +99,7 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
               <>
                 <div className="space-y-1">
                   <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">VISIBILITY</label>
-                  <div className="flex rounded-[16px] bg-surface-container-high p-1" style={cardShadow}>
+                  <div className="flex rounded-[12px] bg-surface-container-high p-1" style={cardShadow}>
                     <button type="button" onClick={() => setVisibility('public')} className={`flex-1 rounded-full py-2.5 text-center font-heading text-body-md font-bold transition-colors ${visibility === 'public' ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}`}>Public</button>
                     <button type="button" onClick={() => setVisibility('private')} className={`flex-1 rounded-full py-2.5 text-center font-heading text-body-md font-bold transition-colors ${visibility === 'private' ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'}`}>Private</button>
                   </div>
@@ -107,13 +107,13 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">MIN SKILL</label>
-                    <select value={skillMin} onChange={(e) => setSkillMin(e.target.value)} className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none" style={cardShadow}>
+                    <select value={skillMin} onChange={(e) => setSkillMin(e.target.value)} className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none" style={cardShadow}>
                       {['all','1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0'].map((s) => <option key={s} value={s}>{s === 'all' ? 'All Levels' : s}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">MAX SKILL</label>
-                    <select value={skillMax} onChange={(e) => setSkillMax(e.target.value)} className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none" style={cardShadow}>
+                    <select value={skillMax} onChange={(e) => setSkillMax(e.target.value)} className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none" style={cardShadow}>
                       {['all','2.0','2.5','3.0','3.5','4.0','4.5','5.0','5.5+'].map((s) => <option key={s} value={s}>{s === 'all' ? 'All Levels' : s}</option>)}
                     </select>
                   </div>
@@ -122,7 +122,7 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
             )}
 
             {step === 3 && (
-              <div className="bg-surface-container-lowest rounded-[16px] p-5 space-y-4" style={cardShadow}>
+              <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-4" style={cardShadow}>
                 <div>
                   <p className="text-label-sm text-on-surface-variant font-bold">CLUB NAME</p>
                   <p className="font-heading text-headline-md">{name || '—'}</p>

@@ -51,7 +51,7 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
               {myClubs.map((club) => (
                 <div
                   key={club.id}
-                  className="bg-surface-container-lowest rounded-[16px] p-5 flex items-center gap-4 group cursor-pointer active:scale-[0.98] transition-transform"
+                  className="bg-surface-container-lowest rounded-[12px] p-5 flex items-center gap-4 group cursor-pointer active:scale-[0.98] transition-transform"
                   style={cardShadow}
                   onClick={() => onNavigate('club-details', { id: club.id })}
                 >
@@ -80,7 +80,7 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
             </div>
 
             {/* Featured Large Card */}
-            <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-[16px] overflow-hidden mb-6 group" style={cardShadow}>
+            <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-[12px] overflow-hidden mb-6 group" style={cardShadow}>
               <img
                 className="w-full h-full object-cover"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"
@@ -102,7 +102,7 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
               {discoverClubs.map((club) => (
                 <div
                   key={club.id}
-                  className="bg-surface-container-lowest rounded-[16px] overflow-hidden group cursor-pointer"
+                  className="bg-surface-container-lowest rounded-[12px] overflow-hidden group cursor-pointer"
                   style={cardShadow}
                   onClick={() => onNavigate('club-details', { id: club.id })}
                 >
@@ -132,7 +132,7 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
           </section>
 
           {/* Start a Club CTA */}
-          <section className="bg-secondary-container rounded-[16px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+          <section className="bg-secondary-container rounded-[12px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
             <div className="absolute -right-10 -bottom-10 opacity-10">
               <Icon name="sports_tennis" size={200} filled />
             </div>

@@ -65,7 +65,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                   else if (action.id === 'create-club') onNavigate('create-club');
                   else if (action.id === 'find-courts') onNavigate('nearby');
                 }}
-                className={`flex flex-col items-center justify-center rounded-[24px] p-6 transition-transform active:scale-95 ${action.bg}`}
+                className={`flex flex-col items-center justify-center rounded-[14px] p-6 transition-transform active:scale-95 ${action.bg}`}
                 style={cardShadow}
               >
                 <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${action.iconBg}`}>
@@ -79,10 +79,10 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           {/* Upcoming Activity Card */}
           <section>
             <div
-              className="flex flex-col items-center gap-4 rounded-[24px] bg-white p-6 md:flex-row"
+              className="flex flex-col items-center gap-4 rounded-[14px] bg-white p-6 md:flex-row"
               style={cardShadow}
             >
-              <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-[24px] md:w-48">
+              <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-[14px] md:w-48">
                 <img
                   alt="Pickleball Court"
                   className="h-full w-full object-cover"
@@ -121,7 +121,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
               {demoGames.map((game) => (
                 <div
                   key={game.id}
-                  className="min-w-[280px] overflow-hidden rounded-[24px] bg-white group cursor-pointer"
+                  className="min-w-[280px] overflow-hidden rounded-[14px] bg-white group cursor-pointer"
                   style={cardShadow}
                   onClick={() => onNavigate('game-details', { id: game.id })}
                 >
@@ -150,7 +150,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           </section>
 
           {/* Stats Banner */}
-          <section className="flex flex-col items-center gap-6 rounded-[24px] bg-primary p-8 text-white md:flex-row md:justify-between">
+          <section className="flex flex-col items-center gap-6 rounded-[14px] bg-primary p-8 text-white md:flex-row md:justify-between">
             <div className="text-center md:text-left">
               <h3 className="font-heading text-headline-md">You're on a roll!</h3>
               <p className="opacity-80">You've played 4 games this week.</p>
