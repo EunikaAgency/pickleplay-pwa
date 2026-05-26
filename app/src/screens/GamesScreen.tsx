@@ -79,7 +79,9 @@ function GameCard({ game, onClick, cardShadow }: { game: typeof myGames[0]; onCl
       onClick={onClick}
     >
       <div className="relative h-28 w-28 shrink-0 overflow-hidden">
-        <img alt={game.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" src={game.img} />
+        <img alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" src={game.img} />
+        {/* Black overlay */}
+        <div className="absolute inset-0 bg-black/40" />
         <div className="absolute bottom-2 left-2">
           <span className={`rounded-full px-2 py-0.5 text-label-sm font-bold uppercase tracking-wider ${tagColors[game.tag] || 'bg-surface-container text-on-surface-variant'}`}>
             {game.tag}
@@ -113,9 +115,9 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const currentGames = activeTab === 'my-games' ? myGames : activeTab === 'upcoming' ? upcomingGames : completedGames;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-6 space-y-6">
+        <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-6">
 
           {/* Tab Switcher + Filter */}
           <div className="flex items-center gap-3">
@@ -138,7 +140,7 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
               style={cardShadow}
             >
               <Icon name="tune" size={16} />
-              Filters
+              {/* Filters */}
             </button>
           </div>
 

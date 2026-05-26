@@ -15,16 +15,16 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-8">
+        <main className="mx-auto max-w-7xl px-5 pt-8 pb-28">
 
           {/* Hero Profile Section */}
           <section className="flex flex-col items-center mb-10 text-center">
             <div className="relative mb-6">
               <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-surface-container-lowest" style={cardShadow}>
                 <img
-                  alt="Profile"
+                  alt=""
                   className="w-full h-full object-cover"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD"
                 />

@@ -21,16 +21,16 @@ export function EditProfileScreen(_props: EditProfileScreenProps) {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-6 space-y-8">
+        <main className="mx-auto max-w-xl px-5 pt-6 pb-28 space-y-8">
 
           {/* Avatar Section */}
           <div className="flex flex-col items-center gap-3">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-surface-container-lowest" style={cardShadow}>
                 <img
-                  alt="Profile"
+                  alt=""
                   className="w-full h-full object-cover"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD"
                 />

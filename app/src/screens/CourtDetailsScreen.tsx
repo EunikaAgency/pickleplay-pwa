@@ -10,12 +10,12 @@ export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
         {/* Hero Image */}
         <div className="relative h-56 md:h-72">
           <img
-            alt="Court"
+            alt=""
             className="h-full w-full object-cover"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsL986uwrjRnAFPLVZTE71SgRlgtERnWB_O-_u-mg4qaddBohUzg2f9di6EjSOELb6gOdw5hpL_oiC_o8ZrPChGext6DF4-_g10CoLCaIMBtZ1oDYsDm-Q89VmI4GCI4qum9HaYOx0PQN98F1AJfvJh0jZUfJpE5qf_wdLWBpxpdg4Q0O9J_lQlCGuXKu6RCm-me0mSj6T7miyRvXid9yuUZHJgdgUeLXoT18Lf6wzh6Z3ZM0VQGmIKAHPEmkQ69DWo8kMreU1"
           />
@@ -32,7 +32,7 @@ export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
           </button>
         </div>
 
-        <main className="mx-auto max-w-7xl px-5 pt-6 space-y-6">
+        <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-6">
           {/* Quick Info Chips */}
           <div className="flex flex-wrap gap-2">
             <span className="rounded-full bg-primary/10 text-primary px-4 py-1.5 font-bold text-label-sm">Indoor</span>

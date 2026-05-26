@@ -4,9 +4,9 @@ module.exports = {
       name: 'pickleplay-pwa',
       cwd: '/var/public/pickleplay/app',
       script: 'npm',
-      args: 'run dev -- --host 0.0.0.0 --port 9000',
+      args: 'run preview -- --host 0.0.0.0 --port 9000',
       env: {
-        NODE_ENV: 'development',
+        NODE_ENV: 'production',
       },
       watch: ['src', 'index.html', 'vite.config.ts'],
       watch_delay: 1000,

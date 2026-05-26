@@ -85,9 +85,9 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   const austinCenter: [number, number] = [30.2750, -97.7450];
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-6 space-y-6">
+        <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-6">
 
           {/* Toggle Switcher */}
           <div className="flex justify-center">
@@ -137,10 +137,11 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
             </div>
             <button
               onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
-              className="rounded-full bg-primary p-3 text-on-primary transition-all active:scale-90"
+              aria-label={viewMode === 'list' ? 'Show map view' : 'Show list view'}
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-container transition-all active:scale-90"
               style={cardShadow}
             >
-              <Icon name={viewMode === 'list' ? 'map' : 'format_list_bulleted'} size={22} />
+              <Icon name={viewMode === 'list' ? 'location_on' : 'format_list_bulleted'} size={30} className="text-on-primary-container" filled />
             </button>
           </div>
 
@@ -197,7 +198,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
                   onClick={() => onNavigate('court-details', { id: court.id })}
                 >
                   <div className="relative h-48">
-                    <img alt="Court" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={court.img} />
+                    <img alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={court.img} />
                     <div className="absolute left-3 top-3 flex gap-2">
                       <span className="rounded-full bg-secondary-container px-3 py-1 text-label-sm font-bold text-on-secondary-container">
                         {court.access}
@@ -206,7 +207,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
                         {court.courtCount} Courts
                       </span>
                     </div>
-                    <button className="absolute bottom-3 right-3 rounded-full bg-surface-container-lowest p-2 text-error shadow-md transition-all active:scale-90">
+                    <button className="absolute bottom-3 right-3 rounded-full bg-surface-container-lowest p-2 text-error shadow-md transition-all active:scale-90 flex">
                       <Icon name="favorite" size={18} filled />
                     </button>
                   </div>

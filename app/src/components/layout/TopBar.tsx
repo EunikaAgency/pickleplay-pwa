@@ -7,7 +7,7 @@ interface TopBarProps {
 
 export function TopBar({ showBack = false, onBack }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-50 w-full bg-surface shadow-sm" style={{ boxShadow: '0 1px 3px rgba(0,64,224,0.08)' }}>
+    <header className="sticky top-0 z-50 w-full bg-white py-1">
       <div className="mx-auto flex h-12 w-full max-w-7xl items-center justify-between px-5">
         <div className="flex items-center gap-2 min-w-0">
           {showBack && (

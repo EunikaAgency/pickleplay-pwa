@@ -12,8 +12,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex min-h-full flex-col bg-background">
-      <main className="flex flex-1 flex-col justify-center px-5 py-12 mx-auto w-full max-w-md">
+    <div className="flex h-full w-full min-w-0 flex-1 flex-col bg-background">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-5 py-12 text-center">
 
         {/* Step indicators */}
         <div className="flex items-center justify-center gap-2 mb-10">
@@ -23,11 +23,11 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         </div>
 
         {step === 1 && (
-          <div className="text-center space-y-6">
+          <div className="w-full space-y-6">
             <div className="mx-auto w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center mb-4">
               <Icon name="sports_tennis" size={40} filled className="text-on-secondary-container" />
             </div>
-            <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Welcome to PicklePlay</h1>
+            <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Welcome to PickleBaller</h1>
             <p className="text-body-md text-on-surface-variant max-w-xs mx-auto">
               The easiest way to find pickleball games, meet players, and organize play near you.
             </p>
@@ -44,7 +44,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         )}
 
         {step === 2 && (
-          <div className="text-center space-y-6">
+          <div className="w-full space-y-6">
             <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Icon name="location_on" size={40} className="text-primary" />
             </div>
@@ -76,7 +76,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         )}
 
         {step === 3 && (
-          <div className="text-center space-y-6">
+          <div className="w-full space-y-6">
             <div className="mx-auto w-20 h-20 rounded-full bg-tertiary-container flex items-center justify-center mb-4">
               <Icon name="star" size={40} filled className="text-on-tertiary-container" />
             </div>

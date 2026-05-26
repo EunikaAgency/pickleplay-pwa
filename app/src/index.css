@@ -122,15 +122,29 @@
     width: 100%;
   }
 
+  html, body {
+    background-color: #ffffff;
+  }
+
   body {
     font-family: var(--font-body);
     font-size: 14px;
     line-height: 21px;
-    background-color: #f8f9fc;
     color: #191c1e;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  img {
+    color: transparent;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    line-height: 24px;
   }
 
   #root {
@@ -154,4 +168,25 @@
 @utility touch-target {
   min-height: 48px;
   min-width: 48px;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+
+/* leaflet */
+.leaflet-control-attribution {
+  display: none;
 }

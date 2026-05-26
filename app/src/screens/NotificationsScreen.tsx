@@ -32,7 +32,7 @@ const initialNotifications = [
   },
 ];
 
-export function NotificationsScreen({ onNavigate }: NotificationsScreenProps) {
+export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenProps) {
   const [items, setItems] = useState(initialNotifications);
   const hasUnread = items.some((n) => !n.read);
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
@@ -42,12 +42,27 @@ export function NotificationsScreen({ onNavigate }: NotificationsScreenProps) {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+      <div
+        className="sticky top-0 z-40 bg-background px-5 pb-3"
+        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+      >
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary active:scale-95 transition-transform hover:bg-surface-container-high"
+            aria-label="Back"
+          >
+            <Icon name="arrow_back" size={24} />
+          </button>
+          <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Notifications</h1>
+        </div>
+      </div>
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-6 space-y-4">
+        <main className="mx-auto max-w-xl px-5 pt-3 pb-28 space-y-4">
 
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Notifications</h1>
+          <div className="flex items-center justify-end mb-2">
             {hasUnread && (
               <button className="text-primary font-bold text-label-sm hover:underline" onClick={markAllRead}>Mark all read</button>
             )}

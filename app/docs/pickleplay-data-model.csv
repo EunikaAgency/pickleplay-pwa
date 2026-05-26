@@ -1,0 +1,30 @@
+Entity,Field,Type,Purpose,Used By,Current Source,Production Notes
+Court,id,string,Unique court identifier.,"Nearby, Court Details, Game Details",Static demo data / interface.,Should map to backend primary key.
+Court,name,string,Public venue name.,"Court cards, detail pages, game venue references.",Static demo data / interface.,Required display field.
+Court,address,string,Physical location text.,"Nearby cards, Court Details, directions.",Static demo data / interface.,Pair with geocoded lat/lng.
+Court,"lat, lng",number,Map coordinates.,Nearby map markers and map centering.,Static Austin coordinates.,Required for location search and distance sorting.
+Court,courtCount,number,Number of available courts.,Court discovery and filter context.,Interface / static cards.,Useful for venue capacity.
+Court,"surface, indoorOutdoor",string or null,Facility characteristics.,Court filters and venue detail.,Interface / static cards.,Normalize values for filtering.
+Court,amenities,string[],"Facility features such as lights, restrooms, or pro shop.","Nearby cards, Court Details, filters.",Static arrays.,Store as normalized slugs plus display labels.
+Court,accessType,string,Public/private/membership access information.,Court discovery and filters.,Interface.,Should align with filter options.
+Court,"phone, email, website, bookingLink",string or null,Contact and booking metadata.,Future court actions.,Interface only / partial UI.,Validate external links and contact formatting.
+Court,isPartner,boolean,Flags partner venues.,Future promotion or booking priority.,Interface.,Can drive badges and placement.
+User,"id, email",string,Account identity.,Auth/profile future integration.,Interface.,Should come from auth backend.
+User,"firstName, lastName, avatarUrl",string / null,Public identity and avatar.,"Profile, players, organizer display.",Static data / interface.,Needed for player lists and chat.
+User,"skillLevel, skillSource",number/string,Player rating and rating origin.,"Onboarding, profile, game matching.",Interface and static UI.,Consider user-entered vs verified rating.
+User,"homeLat, homeLng, homeLocationName",number/string/null,User home play area.,Nearby recommendations and onboarding.,Interface.,Persist from onboarding location setup.
+User,"onboardingStep, onboardingCompleted",number/boolean,Tracks setup completion.,Login/onboarding flow.,Interface; app currently uses needsOnboarding.,Should replace local needsOnboarding.
+Game,"id, title",string,Game identity and display title.,"Game cards/details, invites, notifications.",Static demo data / interface.,Required for scheduling and sharing.
+Game,"eventType, format, playType",union strings,Categorizes game kind and structure.,Game filters and detail labels.,Interface / static tags.,Normalize to controlled enums.
+Game,"courtId, court",string / Court,Venue relationship.,"Game cards/details, court-related games.",Static relation-like objects.,Use backend relation and eager loading as needed.
+Game,"organizerId, organizer, coHostId",string/User/null,Ownership and host metadata.,Game Details organizer block.,Interface / static content.,Needed for permissions and edits.
+Game,"skillMin, skillMax",number,Skill range for participants.,"Game cards, filters, matching.",Static UI values / interface.,Validate min <= max.
+Game,"playerLimit, participantCount",number,Capacity and current attendance.,Game cards/details.,Static demo data / interface.,Needs real-time or refreshed count.
+Game,"gameDate, startTime, endTime",string,Schedule.,"Game cards, date chips, details.",Static demo data / interface.,Use timezone-aware representation.
+Game,"visibility, status, currentUserStatus",union strings,"Access, lifecycle, and current user relationship.",Game cards/details and join state.,Interface; detail uses local joined state.,Replace local join toggle with participant status.
+Club,"id, name, description",string,Club identity and summary.,"Clubs, Club Details.",Static demo data / interface.,Required for club directory.
+Club,visibility,public/private,Club discoverability.,"Create Club, Clubs.",Local form / interface.,Should control search/list exposure.
+Club,"skillMin, skillMax",number or null,Target member skill range.,Club creation and discovery.,Local form / interface.,Optional for open clubs.
+Club,"photoUrl, rulesText",string or null,Visual and policy content.,Club Details.,Interface / static content.,Add upload/media management later.
+Club,"memberCount, isMember",number/boolean,Membership state and social proof.,"Clubs, Club Details.",Static demo data / interface.,Needs join/leave mutation and count refresh.
+Message,"id, sender, body, time",string,Chat display record.,"Game Details, Club Details.",Static arrays.,"Needs conversation IDs, sender IDs, read status, and delivery timestamps."

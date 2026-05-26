@@ -19,7 +19,7 @@ const settingsSections = [
     title: 'Support',
     items: [
       { id: 'help', label: 'Help & Support', icon: 'help' },
-      { id: 'about', label: 'About PicklePlay', icon: 'info' },
+      { id: 'about', label: 'About PickleBaller', icon: 'info' },
     ],
   },
 ];
@@ -28,9 +28,9 @@ export function SettingsScreen({ onLogout, onNavigate }: SettingsScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-6 space-y-6">
+        <main className="mx-auto max-w-xl px-5 pt-6 pb-28 space-y-6">
 
           {settingsSections.map((section) => (
             <section key={section.title}>

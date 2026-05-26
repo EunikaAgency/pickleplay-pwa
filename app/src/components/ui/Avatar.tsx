@@ -22,7 +22,7 @@ export function Avatar({ src, name, size = 48, className = '' }: AvatarProps) {
     return (
       <img
         src={src}
-        alt={name || ''}
+        alt=""
         className={`rounded-full object-cover border-2 border-secondary-container/30 ${className}`}
         style={style}
       />

@@ -37,12 +37,12 @@ export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
         {/* Club Header */}
         <div className="relative h-48 md:h-56">
           <img
-            alt="Club cover"
+            alt=""
             className="h-full w-full object-cover"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"
           />
@@ -53,7 +53,7 @@ export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
           </div>
         </div>
 
-        <main className="mx-auto max-w-7xl px-5 pt-4 space-y-6">
+        <main className="mx-auto max-w-7xl px-5 pt-4 pb-28 space-y-6">
 
           {/* Club Actions */}
           <div className="flex gap-3">
@@ -117,7 +117,7 @@ export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
               {members.map((member) => (
                 <div key={member.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-4" style={cardShadow}>
                   {member.src ? (
-                    <img alt={member.name} className="w-10 h-10 rounded-full object-cover" src={member.src} />
+                    <img alt="" className="w-10 h-10 rounded-full object-cover" src={member.src} />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-label-sm">
                       {member.name.split(' ').map((n) => n[0]).join('')}

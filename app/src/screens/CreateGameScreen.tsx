@@ -19,6 +19,9 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
   const [submitted, setSubmitted] = useState(false);
 
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const inputClass = 'block h-12 w-full min-w-0 max-w-full rounded-[12px] border border-outline-variant bg-surface-container-lowest px-4 text-body-md transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
+  const selectClass = `${inputClass} appearance-none`;
+  const fieldClass = 'min-w-0 space-y-1';
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -27,22 +30,22 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
 
   if (submitted) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
+      <div className="flex w-full min-w-0 flex-1 flex-col items-center justify-center px-5 text-center">
         <div className="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center mb-6">
           <Icon name="check_circle" size={48} filled className="text-on-secondary-container" />
         </div>
         <h2 className="font-heading text-headline-lg mb-2">Game Created!</h2>
         <p className="text-body-md text-on-surface-variant mb-8 max-w-xs">Your game is live and ready for players to join.</p>
-        <div className="flex gap-3 w-full max-w-sm">
+        <div className="flex w-full max-w-sm flex-col gap-3 sm:flex-row">
           <button
             onClick={() => onNavigate('game-details', { id: 'new' })}
-            className="flex-1 bg-secondary-container text-on-secondary-container h-12 rounded-full font-bold active:scale-95 transition-all"
+            className="flex-1 bg-secondary-container text-on-secondary-container h-12 py-3 rounded-full font-bold active:scale-95 transition-all"
           >
             View Game
           </button>
           <button
             onClick={() => onNavigate('invite-players', { id: 'new' })}
-            className="flex-1 bg-primary text-on-primary h-12 rounded-full font-bold active:scale-95 transition-all"
+            className="flex-1 bg-primary text-on-primary h-12 py-3 rounded-full font-bold active:scale-95 transition-all"
           >
             Invite Players
           </button>
@@ -52,15 +55,15 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-6 space-y-6">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="scrollbar-none w-full min-w-0 overflow-y-auto flex-1">
+        <main className="mx-auto box-border w-full max-w-3xl min-w-0 px-5 pt-6 pb-10 md:px-6 lg:px-8">
 
-          <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Create a Game</h1>
+          <h1 className="mb-6 font-heading text-headline-lg-mobile md:text-headline-lg">Create a Game</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="grid w-full min-w-0 grid-cols-1 gap-5 overflow-hidden md:grid-cols-2">
             {/* Game Name */}
-            <div className="space-y-1">
+            <div className={`${fieldClass} md:col-span-2`}>
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">GAME NAME</label>
               <input
                 type="text"
@@ -68,15 +71,15 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Saturday Morning Mix-In"
                 required
-                className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                className={inputClass}
                 style={cardShadow}
               />
             </div>
 
             {/* Location */}
-            <div className="space-y-1">
+            <div className={`${fieldClass} md:col-span-2`}>
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">LOCATION</label>
-              <div className="relative">
+              <div className="relative min-w-0">
                 <Icon name="location_on" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" />
                 <input
                   type="text"
@@ -84,46 +87,44 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Search courts..."
                   required
-                  className="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
+                  className={`${inputClass} pl-12`}
                   style={cardShadow}
                 />
               </div>
             </div>
 
             {/* Date + Time Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">DATE</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
-                  style={cardShadow}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">TIME</label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  required
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
-                  style={cardShadow}
-                />
-              </div>
+            <div className={fieldClass}>
+              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">DATE</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className={inputClass}
+                style={cardShadow}
+              />
+            </div>
+            <div className={fieldClass}>
+              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">TIME</label>
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                required
+                className={inputClass}
+                style={cardShadow}
+              />
             </div>
 
             {/* Player Limit + Skill Range */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 md:col-span-2">
+              <div className={fieldClass}>
                 <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">PLAYERS</label>
                 <select
                   value={playerLimit}
                   onChange={(e) => setPlayerLimit(e.target.value)}
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
+                  className={selectClass}
                   style={cardShadow}
                 >
                   {['2','4','6','8','12','16','24','32'].map((n) => (
@@ -131,12 +132,12 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
                   ))}
                 </select>
               </div>
-              <div className="space-y-1">
+              <div className={fieldClass}>
                 <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">MIN SKILL</label>
                 <select
                   value={skillMin}
                   onChange={(e) => setSkillMin(e.target.value)}
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
+                  className={selectClass}
                   style={cardShadow}
                 >
                   {['1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0'].map((s) => (
@@ -144,12 +145,12 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
                   ))}
                 </select>
               </div>
-              <div className="space-y-1">
+              <div className={fieldClass}>
                 <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">MAX SKILL</label>
                 <select
                   value={skillMax}
                   onChange={(e) => setSkillMax(e.target.value)}
-                  className="w-full h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md appearance-none"
+                  className={selectClass}
                   style={cardShadow}
                 >
                   {['2.0','2.5','3.0','3.5','4.0','4.5','5.0','5.5+'].map((s) => (
@@ -160,9 +161,9 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
             </div>
 
             {/* Visibility Toggle */}
-            <div className="space-y-1">
+            <div className={`${fieldClass} md:col-span-2`}>
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">VISIBILITY</label>
-              <div className="flex rounded-[12px] bg-surface-container-high p-1" style={cardShadow}>
+              <div className="flex min-w-0 rounded-[12px] bg-surface-container-high p-1" style={cardShadow}>
                 <button
                   type="button"
                   onClick={() => setVisibility('public')}
@@ -185,14 +186,14 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
             </div>
 
             {/* Description */}
-            <div className="space-y-1">
+            <div className={`${fieldClass} md:col-span-2`}>
               <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">DESCRIPTION</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Tell players what to expect..."
                 rows={3}
-                className="w-full p-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md resize-none"
+                className="block w-full min-w-0 max-w-full resize-none rounded-[12px] border border-outline-variant bg-surface-container-lowest p-4 text-body-md transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 style={cardShadow}
               />
             </div>
@@ -201,7 +202,7 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
             <button
               type="submit"
               disabled={!title || !location || !date || !time}
-              className="w-full h-12 bg-secondary-container text-on-secondary-container font-heading text-body-lg font-bold rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-105 disabled:opacity-50"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-secondary-container font-heading text-body-lg font-bold text-on-secondary-container transition-all hover:brightness-105 active:scale-95 disabled:opacity-50 md:col-span-2 md:mx-auto md:max-w-sm"
               style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
             >
               Create Game

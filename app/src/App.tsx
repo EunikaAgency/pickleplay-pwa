@@ -21,6 +21,7 @@ import { GameFiltersScreen } from './screens/GameFiltersScreen';
 import { Icon } from './components/ui/Icon';
 import { TabBar } from './components/layout/TabBar';
 import { FAB } from './components/layout/FAB';
+import { InstallPrompt } from './components/ui/InstallPrompt';
 
 type Screen =
   | { id: 'login' }
@@ -168,17 +169,23 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-background">
       {/* Top Bar */}
       {isLoggedIn && !hideChrome && (
-        <header className="sticky top-0 z-40 w-full bg-surface shadow-sm" style={{ boxShadow: '0 1px 8px rgba(0,64,224,0.05)' }}>
+        <header
+          className="sticky top-0 z-40 w-full bg-white"
+          style={{
+            paddingTop: 'calc(0.25rem + env(safe-area-inset-top))',
+            paddingBottom: '0.25rem',
+          }}
+        >
           <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-5">
             {showBack ? (
               <button onClick={goBack} className="flex items-center active:scale-95 transition-transform hover:opacity-80">
                 <Icon name="arrow_back" size={24} className="text-primary" />
               </button>
             ) : (
-              <h1 className="font-heading text-headline-md font-bold text-primary">PicklePlay</h1>
+              <h1 className="font-heading text-headline-md font-bold text-primary">PickleBaller</h1>
             )}
             <div className="flex gap-4">
               <button onClick={() => navigate('search')} className="active:scale-95 transition-transform hover:opacity-80">
@@ -193,7 +200,7 @@ export default function App() {
       )}
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex w-full min-w-0 flex-1 overflow-hidden">
         {renderScreen()}
       </div>
 
@@ -202,6 +209,9 @@ export default function App() {
 
       {/* Tab Bar */}
       {showTabBar && <TabBar activeTab={activeTab} onTabPress={handleTabPress} />}
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt hasBottomChrome={showTabBar || showFab} />
     </div>
   );
 }

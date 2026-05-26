@@ -49,9 +49,12 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
   const hasResults = query.length > 0;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-background">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
       {/* Search Bar */}
-      <div className="sticky top-0 z-40 bg-background px-5 pt-3 pb-4">
+      <div
+        className="sticky top-0 z-40 bg-background px-5 pb-4"
+        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+      >
         <div className="flex items-center gap-3">
           <div className="flex-1 relative">
             <Icon name="search" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" />

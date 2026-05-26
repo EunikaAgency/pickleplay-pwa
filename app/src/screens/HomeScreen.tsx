@@ -6,7 +6,7 @@ interface HomeScreenProps {
 }
 
 const quickActions = [
-  { id: 'create-game', label: 'Create Game', icon: 'add_circle', bg: 'bg-secondary-container text-on-secondary-container', iconBg: 'bg-white/40' },
+  { id: 'create-game', label: 'Create Game', icon: 'sports_tennis', bg: 'bg-secondary-container text-on-secondary-container', iconBg: 'bg-white/40' },
   { id: 'find-games', label: 'Find Games', icon: 'search', bg: 'bg-primary-container text-on-primary-container', iconBg: 'bg-white/20' },
   { id: 'create-club', label: 'Create Club', icon: 'group_add', bg: 'bg-surface-container-high text-on-surface-variant', iconBg: 'bg-primary/10' },
   { id: 'find-courts', label: 'Find Courts', icon: 'map', bg: 'bg-surface-container-high text-on-surface-variant', iconBg: 'bg-primary/10' },
@@ -44,9 +44,9 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const cardShadow = { boxShadow: '0 10px 30px -5px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-6 space-y-8">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="scrollbar-none w-full min-w-0 overflow-y-auto flex-1">
+        <main className="mx-auto w-full max-w-7xl px-5 pt-6 pb-28 space-y-8">
 
           {/* Greeting */}
           <section className="space-y-1">
@@ -55,7 +55,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           </section>
 
           {/* Quick Action Tiles */}
-          <section className="grid grid-cols-2 gap-3">
+          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {quickActions.map((action) => (
               <button
                 key={action.id}
@@ -79,35 +79,64 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
           {/* Upcoming Activity Card */}
           <section>
             <div
-              className="flex flex-col items-center gap-4 rounded-[14px] bg-white p-6 md:flex-row"
+              className="flex flex-col sm:flex-row sm:items-center overflow-hidden rounded-2xl bg-white"
               style={cardShadow}
             >
-              <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-[14px] md:w-48">
+              {/* Image */}
+              <div className="relative w-full h-52 sm:h-64 sm:h-auto sm:w-72 shrink-0">
                 <img
-                  alt="Pickleball Court"
-                  className="h-full w-full object-cover"
+                  alt=""
+                  className="w-full h-full object-cover"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuB74wZImg86YqASBE9mTA8ilIQtez1ABlecRRJ-hbZ_Mm2dN-gFFIH8flXECbNEFThD4jo9iJeyUIYqVODn1Y3CYEirLVSLw4XO2ZLxXnoeDNspU0-9Rtr3Le2uwzxR9AVThARneifahVE8WcplIL-u1EhxHgyHw7lNm6L7uzN_TZ7LyuQWkyXcUOowoIEodYrAU5mnPLacJP7sSYjdWW0-55C_qZ5LEcTSTk0ZaL2M8ZmIFyZRdlsKLj3tLtoWyzQDw5XJavcD"
                 />
-                <div className="absolute left-2 top-2 rounded-full bg-secondary-container px-3 py-1 text-label-sm font-bold text-on-secondary-container">
+
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-black/35" />
+
+                {/* Badge */}
+                <div className="absolute left-3 top-3 rounded-full bg-secondary-container px-3 py-1 text-xs font-bold text-on-secondary-container">
                   Tomorrow
                 </div>
               </div>
-              <div className="flex-1 space-y-1 text-center md:text-left">
-                <h2 className="font-heading text-headline-md">Morning Doubles Mixer</h2>
-                <p className="text-body-md text-on-surface-variant">Tomorrow at 9:00 AM &middot; Sunset Park Courts</p>
-                <div className="flex items-center justify-center md:justify-start -space-x-2 pt-2">
+
+              {/* Content */}
+              <div className="flex flex-1 flex-col justify-center sm:justify-start p-5 sm:p-6 text-center sm:text-left">
+                <h2 className="font-heading text-2xl sm:text-3xl mb-2">
+                  Morning Doubles Mixer
+                </h2>
+
+                <p className="text-sm sm:text-base text-on-surface-variant mb-4">
+                  Tomorrow at 9:00 AM &middot; Sunset Park Courts
+                </p>
+
+                {/* Avatars */}
+                <div className="flex items-center justify-center sm:justify-start -space-x-2 mb-5">
                   <Avatar name="JD" size={32} className="border-2 border-white" />
-                  <Avatar name="SK" size={32} className="border-2 border-white bg-secondary-fixed text-on-secondary-fixed" />
-                  <Avatar name="ML" size={32} className="border-2 border-white bg-tertiary-fixed text-on-tertiary-fixed" />
-                  <Avatar name="+5" size={32} className="border-2 border-white bg-surface-container-highest text-on-surface-variant" />
+                  <Avatar
+                    name="SK"
+                    size={32}
+                    className="border-2 border-white bg-secondary-fixed text-on-secondary-fixed"
+                  />
+                  <Avatar
+                    name="ML"
+                    size={32}
+                    className="border-2 border-white bg-tertiary-fixed text-on-tertiary-fixed"
+                  />
+                  <Avatar
+                    name="+5"
+                    size={32}
+                    className="border-2 border-white bg-surface-container-highest text-on-surface-variant"
+                  />
                 </div>
+
+                {/* Button */}
+                <button
+                  onClick={() => onNavigate('game-details', { id: '1' })}
+                  className="w-full sm:w-auto md:w-fit rounded-full bg-secondary-container px-6 py-3 font-bold text-on-secondary-container transition-all hover:opacity-90 active:scale-95 self-center sm:self-start"
+                >
+                  View Details
+                </button>
               </div>
-              <button
-                onClick={() => onNavigate('game-details', { id: '1' })}
-                className="w-full rounded-full bg-secondary-container px-8 py-3 font-bold text-on-secondary-container transition-all active:scale-90 hover:opacity-90 md:w-auto"
-              >
-                View Details
-              </button>
             </div>
           </section>
 
@@ -126,7 +155,10 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                   onClick={() => onNavigate('game-details', { id: game.id })}
                 >
                   <div className="relative h-40">
-                    <img alt="Game" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={game.img} />
+                    <img alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={game.img} />
+                    {/* Black overlay */}
+                    <div className="absolute inset-0 bg-black/40" />
+
                     <div className="absolute bottom-2 left-2 flex gap-2">
                       <span className="rounded-full bg-white/90 px-2 py-1 text-label-sm font-bold uppercase tracking-wider backdrop-blur">
                         {game.tag}

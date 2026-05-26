@@ -7,7 +7,7 @@ interface ClubsScreenProps {
 const myClubs = [
   {
     id: '1', name: 'Neon Smashers', icon: 'bolt', iconBg: 'bg-secondary-container text-on-secondary-container',
-    tags: ['Competitive', '3 Active Events'],
+    tags: ['Competitive', '3 Events'],
   },
   {
     id: '2', name: 'Downtown Volleys', icon: 'groups', iconBg: 'bg-primary-container text-on-primary-container',
@@ -37,9 +37,9 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-6 space-y-8">
+        <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-8">
 
           {/* My Clubs Section */}
           <section>
@@ -60,7 +60,7 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-heading text-headline-md text-on-surface">{club.name}</h3>
-                    <div className="flex gap-2 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-1">
                       {club.tags.map((tag) => (
                         <span key={tag} className="bg-primary/10 text-primary px-3 py-0.5 rounded-full text-label-sm">{tag}</span>
                       ))}
@@ -80,19 +80,48 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
             </div>
 
             {/* Featured Large Card */}
-            <div className="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-[12px] overflow-hidden mb-6 group" style={cardShadow}>
-              <img
-                className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"
-                alt="Featured club"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
-                <span className="bg-secondary-container text-on-secondary-container w-fit px-4 py-1 rounded-full font-bold text-label-sm mb-3">FEATURED CLUB</span>
-                <h3 className="font-heading text-headline-xl text-white mb-2">The Kitchen Kings</h3>
-                <p className="text-white/80 max-w-xl mb-6 text-body-lg">The city's largest community for competitive and casual play. 12 courts, pro coaches, and weekly mixers.</p>
-                <div className="flex gap-4">
-                  <button className="bg-secondary-container text-on-secondary-container px-8 h-12 rounded-full font-bold hover:opacity-90 active:scale-95 transition-all">Join Club</button>
-                  <button className="bg-white/20 backdrop-blur-md text-white border-2 border-white/40 px-8 h-12 rounded-full font-bold hover:bg-white/30 active:scale-95 transition-all">Explore</button>
+            <div
+              className="relative w-full overflow-hidden rounded-2xl mb-6 group"
+              style={cardShadow}
+            >
+              {/* Responsive image */}
+              <div className="aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9]">
+                <img
+                  className="w-full h-full object-cover"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"
+                  alt="The Kitchen Kings Club"
+                />
+              </div>
+
+
+              {/* Overlay */}
+              <div className="absolute inset-0 bg-black/40 flex flex-col justify-end p-4 sm:p-6 md:p-8">
+                
+                {/* Badge */}
+                <span className="bg-secondary-container text-on-secondary-container w-fit px-3 py-1 rounded-full font-bold text-xs sm:text-sm mb-3">
+                  FEATURED CLUB
+                </span>
+
+                {/* Title */}
+                <h3 className="font-heading text-2xl sm:text-4xl text-white mb-2 leading-tight">
+                  The Kitchen Kings
+                </h3>
+
+                {/* Description */}
+                <p className="text-white/80 text-sm sm:text-base md:text-lg max-w-xl mb-5">
+                  The city's largest community for competitive and casual play.
+                  12 courts, pro coaches, and weekly mixers.
+                </p>
+
+                {/* Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+                  <button className="bg-secondary-container text-on-secondary-container px-6 h-11 rounded-full font-bold hover:opacity-90 active:scale-95 transition-all w-full sm:w-auto">
+                    Join Club
+                  </button>
+
+                  <button className="bg-white/20 backdrop-blur-md text-white border border-white/40 px-6 h-11 rounded-full font-bold hover:bg-white/30 active:scale-95 transition-all w-full sm:w-auto">
+                    Explore
+                  </button>
                 </div>
               </div>
             </div>
@@ -107,7 +136,7 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
                   onClick={() => onNavigate('club-details', { id: club.id })}
                 >
                   <div className="h-40 overflow-hidden relative">
-                    <img alt={club.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={club.img} />
+                    <img alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={club.img} />
                     <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
                       <Icon name="star" size={14} filled className="text-tertiary" />
                       <span className="text-label-sm font-bold">{club.rating}</span>

@@ -21,9 +21,9 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-32">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="max-w-xl mx-auto px-5 pt-6 space-y-6">
+        <main className="max-w-xl mx-auto px-5 pt-6 pb-40 space-y-6">
 
           {/* Hero Section */}
           <section className="space-y-4">
@@ -54,11 +54,11 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
             <div className="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-[12px]" style={cardShadow}>
               <div className="relative">
                 <img
-                  alt="Organizer"
+                  alt=""
                   className="w-14 h-14 rounded-full object-cover border-2 border-secondary-container"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg"
                 />
-                <div className="absolute -bottom-1 -right-1 bg-primary text-white p-0.5 rounded-full border-2 border-white">
+                <div className="absolute -bottom-1 -right-1 bg-primary text-white p-0.5 rounded-full border-2 border-white flex">
                   <Icon name="verified" size={14} filled />
                 </div>
               </div>
@@ -77,7 +77,7 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
             <div className="h-48 w-full relative">
               <img
                 className="w-full h-full object-cover"
-                alt="Map location"
+                alt=""
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuCChxs_Ha_J-LXMi4XCQ_MOHPsTAP5ZjyQxCUKRzWuKcG2mkY_6TfaKUIUQgIa1dkqtSmhqJxDL9wzo3Lu2-01dUQUs-qOlNKQMKROuzPb-CEBnX1Jlr7B-F1HoSkvLpgNQumifF8tgOgC09jBT9MZ7DdYnOk9uKosrqKILjo7IqZZwl1UCbMJe5hYWd7rvb6ovMrYTRut0xbPwkuGRt5TcVdrZsyirbLQUpL1TX5wKLy4kH6aaV4Wj9TTLhYeMTCWUkKqNeK5z"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
@@ -140,7 +140,7 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
               ].map((player) => (
                 <div key={player.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-3" style={cardShadow}>
                   {player.avatar ? (
-                    <img alt={player.name} className="w-10 h-10 rounded-full object-cover" src={player.avatar} />
+                    <img alt="" className="w-10 h-10 rounded-full object-cover" src={player.avatar} />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-heading font-bold text-body-md">
                       {player.initial}

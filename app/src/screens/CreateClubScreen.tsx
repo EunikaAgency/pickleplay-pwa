@@ -52,9 +52,9 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden pb-24">
+    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-6 space-y-6">
+        <main className="mx-auto max-w-xl px-5 pt-6 pb-28 space-y-6">
 
           {/* Step Indicators */}
           <div className="flex items-center justify-center gap-2 mb-2">
