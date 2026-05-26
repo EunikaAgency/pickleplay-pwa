@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { BottomSheet } from '../ui/BottomSheet';
-import { Button } from '../ui/Button';
 import { Chip } from '../ui/Chip';
 
 interface NearbyFilterSheetProps {
@@ -8,34 +7,15 @@ interface NearbyFilterSheetProps {
   onClose: () => void;
 }
 
-const SINGLE_SELECT = [
-  { id: 'type', title: 'Court type', options: ['All', 'Indoor', 'Outdoor'] },
-  { id: 'access', title: 'Access', options: ['Any', 'Public', 'Membership', 'Fee Required'] },
-  { id: 'count', title: 'Number of courts', options: ['Any', '1–2', '3–6', '7–12', '12+'] },
-  { id: 'surface', title: 'Surface', options: ['Any', 'Concrete', 'Asphalt', 'Acrylic', 'Wood'] },
-] as const;
-
-type SingleId = (typeof SINGLE_SELECT)[number]['id'];
-
-const AMENITIES = ['Restrooms', 'Lighted', 'Pro Shop', 'Water Fountain', 'Seating', 'Parking'];
-
-const initialSingles: Record<SingleId, string> = {
-  type: 'All',
-  access: 'Any',
-  count: 'Any',
-  surface: 'Any',
-};
+const AMENITIES = ['Restrooms', 'Lighted', 'Pro Shop', 'Water', 'Seating', 'Parking'];
 
 export function NearbyFilterSheet({ open, onClose }: NearbyFilterSheetProps) {
-  const [singles, setSingles] = useState<Record<SingleId, string>>(initialSingles);
+  const [courtType, setCourtType] = useState('All');
+  const [access, setAccess] = useState('Any');
+  const [distance, setDistance] = useState(5);
   const [amenities, setAmenities] = useState<Set<string>>(new Set());
 
-  const reset = () => {
-    setSingles(initialSingles);
-    setAmenities(new Set());
-  };
-
-  const toggleAmenity = (a: string) => {
+  const toggle = (a: string) => {
     setAmenities((prev) => {
       const next = new Set(prev);
       if (next.has(a)) next.delete(a);
@@ -44,49 +24,72 @@ export function NearbyFilterSheet({ open, onClose }: NearbyFilterSheetProps) {
     });
   };
 
+  const reset = () => {
+    setCourtType('All');
+    setAccess('Any');
+    setDistance(5);
+    setAmenities(new Set());
+  };
+
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
       title="Filter courts"
       subtitle="Pick your kind of court."
+      height="74dvh"
       footer={
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="md" onClick={reset}>Reset</Button>
-          <Button variant="primary" size="md" fullWidth onClick={onClose}>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-primary outline" style={{ margin: 0, width: '100%', flex: 1 }} onClick={reset}>
+            Reset
+          </button>
+          <button className="btn-primary dark" style={{ margin: 0, width: '100%', flex: 2 }} onClick={onClose}>
             Show results
-          </Button>
+          </button>
         </div>
       }
     >
-      <div className="space-y-6">
-        {SINGLE_SELECT.map((section) => (
-          <section key={section.id} className="space-y-3">
-            <h3 className="font-heading text-body-lg font-bold text-on-surface">{section.title}</h3>
-            <div className="flex flex-wrap gap-2">
-              {section.options.map((option) => (
-                <Chip
-                  key={option}
-                  selected={singles[section.id] === option}
-                  onClick={() => setSingles((prev) => ({ ...prev, [section.id]: option }))}
-                >
-                  {option}
-                </Chip>
-              ))}
-            </div>
-          </section>
-        ))}
+      <div className="field">
+        <div className="lbl">Court type</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['All', 'Indoor', 'Outdoor'].map((o) => (
+            <Chip key={o} selected={courtType === o} onClick={() => setCourtType(o)}>{o}</Chip>
+          ))}
+        </div>
+      </div>
 
-        <section className="space-y-3">
-          <h3 className="font-heading text-body-lg font-bold text-on-surface">Amenities</h3>
-          <div className="flex flex-wrap gap-2">
-            {AMENITIES.map((a) => (
-              <Chip key={a} selected={amenities.has(a)} onClick={() => toggleAmenity(a)}>
-                {a}
-              </Chip>
-            ))}
-          </div>
-        </section>
+      <div className="field">
+        <div className="lbl">Access</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['Any', 'Public', 'Membership', 'Fee Required'].map((o) => (
+            <Chip key={o} selected={access === o} onClick={() => setAccess(o)}>{o}</Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="lbl">Max distance · {distance} mi</div>
+        <input
+          type="range"
+          min="1"
+          max="25"
+          value={distance}
+          onChange={(e) => setDistance(+e.target.value)}
+          style={{ width: '100%', accentColor: 'var(--primary)' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>
+          <span>1 mi</span>
+          <span>25 mi</span>
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="lbl">Amenities</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {AMENITIES.map((a) => (
+            <Chip key={a} selected={amenities.has(a)} onClick={() => toggle(a)}>{a}</Chip>
+          ))}
+        </div>
       </div>
     </BottomSheet>
   );

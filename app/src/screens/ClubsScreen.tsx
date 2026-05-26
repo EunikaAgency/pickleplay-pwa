@@ -2,220 +2,232 @@ import { Icon } from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { PeopleIllustration } from '../components/ui/CourtIllustration';
 import { useDemoState } from '../lib/demoState';
 
 interface ClubsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
+  onBack?: () => void;
 }
 
-const myClubs = [
-  {
-    id: '1', name: 'Neon Smashers', icon: 'bolt', iconBg: 'bg-secondary-container text-on-secondary-container',
-    tags: ['Competitive', '3 Events'],
-  },
-  {
-    id: '2', name: 'Downtown Volleys', icon: 'groups', iconBg: 'bg-primary-container text-on-primary-container',
-    tags: ['Social', 'Friendly'],
-  },
-];
+const MY = [
+  { id: '1', name: 'Neon Smashers',    icon: 'bolt',    bg: 'lime', meta: '24 members · 3 events this week' },
+  { id: '2', name: 'Downtown Volleys', icon: 'groups',  bg: 'blue', meta: '42 members · social club' },
+] as const;
 
-const discoverClubs = [
-  {
-    id: '3', name: 'Paddle Pirates', rating: 4.9, distance: '1.2 miles away',
-    tags: ['Morning Play', 'Beginner Friendly'],
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCuuT43qFNYevw9MppmlcHg-Tv8RxCbdKUNu_a4-wYrCGXNUyns5FZyPhcNyUxpdcMjjSc0FOr4OSQdBOLrNJM32uIQFCAXRS2IsaSXMHli_V6c5ZAGlBdTspl6f1bA9QxukVvhiBsdAd3J87CTZRVCzj0n3yA6POpIRW_a2hAqS2iHuZPHQJ3zf1HCa7wjlkTLqydFsjHFKMP8QcC_RfTOpP4dYleCeep9SEhCwQMj9ZvGyPbQi-ATkQkDjix8v6Ob3SesuScj',
-  },
-  {
-    id: '4', name: 'The Dink Den', rating: 4.7, distance: '0.5 miles away',
-    tags: ['Indoor Courts', 'All Levels'],
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpfByT3q1YIF8lrRviwwRuL72MUO9nxSSrm_zzAA-UMCRtNWmMPJvsXtOm-gjNjoU9mULcsmHPtZJFw-bmPf4iT6HFrBvkN8jkcCapuLNdW-wyz2PUJ4c2K51n1bLqJcdgRc9R0c_gODV0tFxy-zXj0ondBthKQ6F42osmjp9z-atPbsTNGNniFjchTaJrVzK5ifLMQdJKlYD9B4QecTiuYPvCLgWiTPDwSI9RiW97N4sFK0l63Ojd3A6oCowgt_Ad7aWEJKsu',
-  },
-  {
-    id: '5', name: 'Ace Alliance', rating: 5.0, distance: '2.4 miles away',
-    tags: ['Night Play', 'Intermediate'],
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDH2BwrS1NRnoklgmWDysHFOLQLpjx4qbkqaUyjf30Xl3H0np4zVDJEhp9rM_mryyU9_jYmZb-f717tI-7RA2ZqglT36CPUyY5GFT9mOO6vhEnd802aMNwTDcj80N6-Pb-_viRilU1U4EkujEI7np02h_XbB-DvH82fHB9uVjB57j8AU5WvUYzktS67KEF6RNlh5WO1l5-1pWs6LlFC4cxFD2lyKL7X7nUHeMdNXXN9QuONxAF9syiitCxdQ88nziNVJ58Eq7XK',
-  },
-];
+const DISCOVER = [
+  { id: '3', name: 'Paddle Pirates', rating: 4.9, dist: '1.2 mi', tags: ['Morning Play', 'Beginner'], img: 'linear-gradient(135deg, #cf3000, #ff7355)' },
+  { id: '4', name: 'The Dink Den',    rating: 4.7, dist: '0.5 mi', tags: ['Indoor', 'All Levels'],    img: 'linear-gradient(135deg, #c1f100, #abd600)' },
+  { id: '5', name: 'Ace Alliance',    rating: 5.0, dist: '2.4 mi', tags: ['Night Play'],              img: 'linear-gradient(135deg, #1a1d24, #404756)' },
+] as const;
 
 export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
   const { state: demoState } = useDemoState();
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-8">
+    <div className="scroll safe-top safe-bottom">
+      <div className="app-header">
+        <div>
+          <div className="greet-name">Clubs</div>
+          <div className="greet-sub">Find your people</div>
+        </div>
+        <button
+          onClick={() => onNavigate('create-club')}
+          style={{
+            height: 40,
+            padding: '0 14px',
+            borderRadius: 12,
+            background: 'var(--ink)',
+            color: 'white',
+            fontSize: 13,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <Icon name="plus" size={14} /> New
+        </button>
+      </div>
 
-          {demoState === 'loading' ? (
-            <>
-              <section className="space-y-3">
-                <div className="h-6 w-32 rounded bg-surface-container-high animate-pulse" />
-                <LoadingSkeleton variant="list-row" count={2} />
-              </section>
-              <section className="space-y-3">
-                <div className="h-6 w-40 rounded bg-surface-container-high animate-pulse" />
-                <LoadingSkeleton variant="block" count={1} />
-                <LoadingSkeleton variant="card" count={3} />
-              </section>
-            </>
-          ) : demoState === 'error' ? (
-            <ErrorState
-              title="Couldn't load clubs"
-              message="We couldn't reach the clubs directory. Pull down to retry or check back shortly."
-              onRetry={() => { /* no-op */ }}
-            />
-          ) : demoState === 'empty' ? (
-            <EmptyState
-              icon="groups"
-              title="No clubs in your city yet"
-              description="Be the first to start a community — PickleBallers grows when locals organize regular play."
-              action={{ label: 'Start a club', onPress: () => onNavigate('create-club') }}
-            />
-          ) : (
-          <>
+      <div className="searchbar">
+        <Icon name="search" size={16} />
+        <input placeholder="Search clubs by name or tag…" />
+      </div>
 
-          {/* My Clubs Section */}
-          <section>
-            <div className="flex justify-between items-end mb-4">
-              <h2 className="font-heading text-headline-md text-primary">My Clubs</h2>
-              <button className="text-primary font-bold text-label-sm uppercase tracking-wider hover:underline">View All</button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {myClubs.map((club) => (
-                <div
-                  key={club.id}
-                  className="bg-surface-container-lowest rounded-[12px] p-5 flex items-center gap-4 group cursor-pointer active:scale-[0.98] transition-transform"
-                  style={cardShadow}
-                  onClick={() => onNavigate('club-details', { id: club.id })}
-                >
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center ${club.iconBg}`}>
-                    <Icon name={club.icon} size={28} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-heading text-headline-md text-on-surface">{club.name}</h3>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {club.tags.map((tag) => (
-                        <span key={tag} className="bg-primary/10 text-primary px-3 py-0.5 rounded-full text-label-sm">{tag}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <Icon name="chevron_right" size={24} className="text-outline group-hover:text-primary transition-colors" />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Discover Nearby Section */}
-          <section>
-            <div className="flex items-center gap-2 mb-6">
-              <Icon name="explore" size={24} className="text-tertiary" />
-              <h2 className="font-heading text-headline-md text-on-surface">Discover Nearby</h2>
-            </div>
-
-            {/* Featured Large Card */}
-            <div
-              className="relative w-full overflow-hidden rounded-2xl mb-6 group"
-              style={cardShadow}
-            >
-              {/* Responsive image */}
-              <div className="aspect-[4/5] sm:aspect-[16/9] md:aspect-[21/9]">
-                <img
-                  className="w-full h-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"
-                  alt="The Kitchen Kings Club"
-                />
-              </div>
-
-
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-black/40 flex flex-col justify-end p-4 sm:p-6 md:p-8">
-                
-                {/* Badge */}
-                <span className="bg-secondary-container text-on-secondary-container w-fit px-3 py-1 rounded-full font-bold text-xs sm:text-sm mb-3">
-                  FEATURED CLUB
-                </span>
-
-                {/* Title */}
-                <h3 className="font-heading text-2xl sm:text-4xl text-white mb-2 leading-tight">
-                  The Kitchen Kings
-                </h3>
-
-                {/* Description */}
-                <p className="text-white/80 text-sm sm:text-base md:text-lg max-w-xl mb-5">
-                  The city's largest community for competitive and casual play.
-                  12 courts, pro coaches, and weekly mixers.
-                </p>
-
-                {/* Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
-                  <button className="bg-secondary-container text-on-secondary-container px-6 h-11 rounded-full font-bold hover:opacity-90 active:scale-95 transition-all w-full sm:w-auto">
-                    Join Club
-                  </button>
-
-                  <button className="bg-white/20 backdrop-blur-md text-white border border-white/40 px-6 h-11 rounded-full font-bold hover:bg-white/30 active:scale-95 transition-all w-full sm:w-auto">
-                    Explore
-                  </button>
+      {demoState === 'loading' ? (
+        <div className="section" style={{ marginTop: 16 }}>
+          <LoadingSkeleton variant="card" count={4} />
+        </div>
+      ) : demoState === 'error' ? (
+        <ErrorState
+          title="Couldn't load clubs"
+          message="We couldn't reach the clubs directory. Pull down to retry."
+          onRetry={() => {}}
+        />
+      ) : demoState === 'empty' ? (
+        <EmptyState
+          icon="groups"
+          title="No clubs in your city yet"
+          description="Be the first to start a community — PickleBallers grows when locals organize regular play."
+          action={{ label: 'Start a club', onPress: () => onNavigate('create-club') }}
+        />
+      ) : (
+        <>
+          {/* My clubs */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="t-eyebrow">My clubs</div>
+                <div className="hd-2" style={{ marginTop: 4 }}>
+                  You're a member of 2
                 </div>
               </div>
+              <button className="more">All</button>
             </div>
-
-            {/* Grid of Club Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {discoverClubs.map((club) => (
-                <div
-                  key={club.id}
-                  className="bg-surface-container-lowest rounded-[12px] overflow-hidden group cursor-pointer"
-                  style={cardShadow}
-                  onClick={() => onNavigate('club-details', { id: club.id })}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {MY.map((c) => (
+                <button
+                  key={c.id}
+                  className="club-card"
+                  onClick={() => onNavigate('club-details', { id: c.id })}
                 >
-                  <div className="h-40 overflow-hidden relative">
-                    <img alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src={club.img} />
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
-                      <Icon name="star" size={14} filled className="text-tertiary" />
-                      <span className="text-label-sm font-bold">{club.rating}</span>
+                  <div className={`icon-circle ${c.bg}`}>
+                    <Icon name={c.icon} size={22} />
+                  </div>
+                  <div className="body">
+                    <div className="name">{c.name}</div>
+                    <div className="meta">
+                      <Icon name="groups" size={12} />
+                      {c.meta}
                     </div>
                   </div>
-                  <div className="p-5">
-                    <h4 className="font-heading text-headline-md text-on-surface mb-1">{club.name}</h4>
-                    <p className="text-on-surface-variant text-body-md mb-4 flex items-center gap-1">
-                      <Icon name="location_on" size={16} />
-                      {club.distance}
-                    </p>
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {club.tags.map((tag) => (
-                        <span key={tag} className="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">{tag}</span>
-                      ))}
-                    </div>
-                    <button className="w-full bg-primary text-white h-12 rounded-full font-bold hover:bg-primary-container transition-colors">Join Club</button>
-                  </div>
-                </div>
+                  <Icon name="chevron" size={18} style={{ color: 'var(--surface-3)' }} />
+                </button>
               ))}
             </div>
-          </section>
+          </div>
 
-          {/* Start a Club CTA */}
-          <section className="bg-secondary-container rounded-[12px] p-8 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
-            <div className="absolute -right-10 -bottom-10 opacity-10">
-              <Icon name="sports_tennis" size={200} filled />
-            </div>
-            <div className="relative z-10 text-center md:text-left">
-              <h2 className="font-heading text-headline-lg text-on-secondary-container mb-2">Can't find the perfect club?</h2>
-              <p className="text-on-secondary-fixed-variant text-body-lg max-w-md">Start your own community and invite your friends to play together!</p>
+          {/* Featured */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="t-eyebrow">Featured</div>
+                <div className="hd-2" style={{ marginTop: 4 }}>
+                  Largest community in town
+                </div>
+              </div>
             </div>
             <button
-              className="relative z-10 bg-on-secondary-container text-secondary-fixed px-10 h-12 rounded-full font-bold text-headline-md active:scale-95 transition-all"
-              style={cardShadow}
-              onClick={() => onNavigate('create-club')}
+              className="featured-club"
+              onClick={() => onNavigate('club-details', { id: 'kk' })}
+              style={{ border: 'none', cursor: 'pointer' }}
             >
-              Start a Club
+              <div className="glyph">K</div>
+              <div style={{ position: 'absolute', right: -20, top: 10 }}>
+                <PeopleIllustration width={150} opacity={0.55} />
+              </div>
+              <span className="eyebrow">FEATURED · 312 MEMBERS</span>
+              <h3>The Kitchen Kings</h3>
+              <p>Competitive & casual play, 12 courts, pro coaches and weekly mixers.</p>
+              <div className="stats">
+                <div className="s">
+                  <div className="n">12</div>
+                  <div className="l">Courts</div>
+                </div>
+                <div className="s">
+                  <div className="n">8</div>
+                  <div className="l">Events/wk</div>
+                </div>
+                <div className="s">
+                  <div className="n">4.9</div>
+                  <div className="l">Rating</div>
+                </div>
+              </div>
             </button>
-          </section>
+          </div>
 
-          </>
-          )}
+          {/* Discover */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="t-eyebrow">Discover</div>
+                <div className="hd-2" style={{ marginTop: 4 }}>
+                  Clubs near you
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {DISCOVER.map((c) => (
+                <button key={c.id} className="game-row" onClick={() => onNavigate('club-details', { id: c.id })}>
+                  <div
+                    className="thumb"
+                    style={{ background: c.img, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="groups" size={28} />
+                  </div>
+                  <div className="body">
+                    <div className="title">{c.name}</div>
+                    <div className="meta">
+                      <span className="m">
+                        <Icon name="star" size={11} style={{ color: '#c89000' }} />
+                        {c.rating}
+                      </span>
+                      <span className="m">
+                        <Icon name="location" size={11} />
+                        {c.dist}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
+                      {c.tags.map((t) => (
+                        <span
+                          key={t}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 6,
+                            background: 'var(--surface-2)',
+                            color: 'var(--ink-2)',
+                          }}
+                        >
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div
+                    className="rsvp"
+                    style={{ background: 'var(--primary-tint)', color: 'var(--primary)', boxShadow: 'none' }}
+                  >
+                    <Icon name="plus" size={16} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
-        </main>
-      </div>
+          {/* Start a club CTA */}
+          <div className="section">
+            <button
+              className="featured-club"
+              onClick={() => onNavigate('create-club')}
+              style={{
+                background: 'linear-gradient(135deg, var(--lime-soft), var(--lime))',
+                color: 'var(--lime-ink)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <span className="eyebrow" style={{ background: 'var(--ink)', color: 'white' }}>
+                START YOUR OWN
+              </span>
+              <h3 style={{ color: 'var(--lime-ink)' }}>Can't find your crew?</h3>
+              <p style={{ color: 'rgba(42,55,0,0.7)' }}>Start a club, invite friends, and own your weekly mixer.</p>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

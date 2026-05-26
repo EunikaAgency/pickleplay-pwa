@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { BottomSheet } from '../ui/BottomSheet';
-import { Button } from '../ui/Button';
 import { Chip } from '../ui/Chip';
 
 interface GameFilterSheetProps {
@@ -8,61 +7,93 @@ interface GameFilterSheetProps {
   onClose: () => void;
 }
 
-const SECTIONS = [
-  { id: 'skill', title: 'Skill level', options: ['All', 'Beginner', 'Intermediate', 'Advanced'] },
-  { id: 'type', title: 'Game type', options: ['All', 'Singles', 'Doubles', 'Open Play'] },
-  { id: 'day', title: 'Day', options: ['Any', 'Today', 'Tomorrow', 'This Week', 'This Weekend'] },
-  { id: 'time', title: 'Time of day', options: ['Any', 'Morning', 'Afternoon', 'Evening'] },
-  { id: 'distance', title: 'Distance', options: ['Any', 'Under 1 mi', 'Under 5 mi', 'Under 10 mi', 'Under 25 mi'] },
-] as const;
-
-type SectionId = (typeof SECTIONS)[number]['id'];
-
-const initialSelections: Record<SectionId, string> = {
-  skill: 'All',
-  type: 'All',
-  day: 'Any',
-  time: 'Any',
-  distance: 'Any',
-};
-
 export function GameFilterSheet({ open, onClose }: GameFilterSheetProps) {
-  const [selected, setSelected] = useState<Record<SectionId, string>>(initialSelections);
+  const [skill, setSkill] = useState('3.0–3.5');
+  const [distance, setDistance] = useState(5);
+  const [when, setWhen] = useState('any');
+  const [gameType, setGameType] = useState('Doubles');
 
-  const reset = () => setSelected(initialSelections);
+  const reset = () => {
+    setSkill('Any');
+    setDistance(5);
+    setWhen('any');
+    setGameType('Doubles');
+  };
 
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
       title="Filter games"
-      subtitle="Refine by skill, time, or distance."
+      subtitle="Find your perfect match"
+      height="74dvh"
       footer={
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="md" onClick={reset}>Reset</Button>
-          <Button variant="primary" size="md" fullWidth onClick={onClose}>
-            Apply filters
-          </Button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-primary outline" style={{ margin: 0, width: '100%', flex: 1 }} onClick={reset}>
+            Reset
+          </button>
+          <button className="btn-primary dark" style={{ margin: 0, width: '100%', flex: 2 }} onClick={onClose}>
+            Show 24 games
+          </button>
         </div>
       }
     >
-      <div className="space-y-6">
-        {SECTIONS.map((section) => (
-          <section key={section.id} className="space-y-3">
-            <h3 className="font-heading text-body-lg font-bold text-on-surface">{section.title}</h3>
-            <div className="flex flex-wrap gap-2">
-              {section.options.map((option) => (
-                <Chip
-                  key={option}
-                  selected={selected[section.id] === option}
-                  onClick={() => setSelected((prev) => ({ ...prev, [section.id]: option }))}
-                >
-                  {option}
-                </Chip>
-              ))}
-            </div>
-          </section>
+      <div className="field">
+        <div className="lbl">When</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['any', 'tonight', 'tomorrow', 'weekend', 'next-week'].map((o) => (
+            <Chip key={o} selected={when === o} onClick={() => setWhen(o)}>
+              {o[0].toUpperCase() + o.slice(1).replace('-', ' ')}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="lbl">Your skill level</div>
+      </div>
+      <div className="time-grid">
+        {['Any', 'Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+'].map((s) => (
+          <button key={s} className={`time-pick ${skill === s ? 'active' : ''}`} onClick={() => setSkill(s)}>
+            {s}
+          </button>
         ))}
+      </div>
+
+      <div className="field" style={{ marginTop: 18 }}>
+        <div className="lbl">Max distance · {distance} mi</div>
+        <input
+          type="range"
+          min="1"
+          max="25"
+          value={distance}
+          onChange={(e) => setDistance(+e.target.value)}
+          style={{ width: '100%', accentColor: 'var(--primary)' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>
+          <span>1 mi</span>
+          <span>25 mi</span>
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="lbl">Game type</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {['Doubles', 'Singles', 'Open Play'].map((t) => (
+            <Chip key={t} selected={gameType === t} onClick={() => setGameType(t)}>
+              {t}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="lbl">Features</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {['Beginner friendly', 'Indoor', 'Has openings', 'Verified host', 'Free'].map((t) => (
+            <Chip key={t}>{t}</Chip>
+          ))}
+        </div>
       </div>
     </BottomSheet>
   );

@@ -4,63 +4,104 @@ import { useDemoState, type DemoState } from '../../lib/demoState';
 
 export function DemoStateControl() {
   const states: { id: DemoState; label: string; icon: string }[] = [
-    { id: 'normal', label: 'Normal', icon: 'check_circle' },
-    { id: 'loading', label: 'Loading', icon: 'sync' },
-    { id: 'empty', label: 'Empty', icon: 'inbox' },
-    { id: 'error', label: 'Error', icon: 'error' },
-    { id: 'offline', label: 'Offline', icon: 'cloud_off' },
+    { id: 'normal', label: 'Normal', icon: 'check' },
+    { id: 'loading', label: 'Loading', icon: 'spinner' },
+    { id: 'empty', label: 'Empty', icon: 'paddle' },
+    { id: 'error', label: 'Error', icon: 'close' },
+    { id: 'offline', label: 'Offline', icon: 'wifi_off' },
   ];
   const { state, setState, enabled } = useDemoState();
   const [open, setOpen] = useState(false);
   if (!enabled) return null;
 
   return (
-    <div className="fixed bottom-24 right-4 z-[10001] md:bottom-4">
+    <div
+      style={{
+        position: 'fixed',
+        right: 16,
+        bottom: 'calc(96px + env(safe-area-inset-bottom))',
+        zIndex: 1001,
+      }}
+    >
       {open ? (
         <div
-          className="rounded-[14px] bg-surface-container-lowest p-3 border border-outline-variant/40"
-          style={{ boxShadow: 'var(--shadow-modal)' }}
+          style={{
+            background: 'var(--surface)',
+            border: '0.5px solid var(--hairline)',
+            borderRadius: 16,
+            padding: 10,
+            boxShadow: 'var(--shadow-pop)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            minWidth: 160,
+          }}
         >
-          <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <span className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">Demo state</span>
+          <div
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px' }}
+          >
+            <span className="t-eyebrow">Demo state</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Collapse demo control"
-              className="-mr-1 flex h-7 w-7 items-center justify-center rounded-full hover:bg-surface-container-high"
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--muted)',
+              }}
             >
-              <Icon name="close" size={16} />
+              <Icon name="close" size={14} />
             </button>
           </div>
-          <div className="flex flex-col gap-1">
-            {states.map((s) => {
-              const isActive = state === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setState(s.id)}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-body-md font-bold transition active:scale-[0.98] ${
-                    isActive
-                      ? 'bg-secondary-container text-on-secondary-container'
-                      : 'text-on-surface-variant hover:bg-surface-container-high'
-                  }`}
-                >
-                  <Icon name={s.icon} size={18} filled={isActive} />
-                  <span>{s.label}</span>
-                </button>
-              );
-            })}
-          </div>
+          {states.map((s) => {
+            const isActive = state === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setState(s.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  background: isActive ? 'var(--lime-soft)' : 'transparent',
+                  color: isActive ? 'var(--lime-ink)' : 'var(--ink-2)',
+                  fontWeight: 700,
+                  fontSize: 13,
+                }}
+              >
+                <Icon name={s.icon} size={14} />
+                {s.label}
+              </button>
+            );
+          })}
         </div>
       ) : (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-2 rounded-full bg-tertiary-container px-4 py-2 font-heading text-body-md font-bold text-on-tertiary-container transition active:scale-95 hover:brightness-105"
-          style={{ boxShadow: '0 8px 24px -8px rgba(207, 48, 0, 0.4)' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 12px',
+            borderRadius: 999,
+            background: 'var(--coral-soft)',
+            color: 'var(--coral)',
+            fontFamily: 'var(--font-heading)',
+            fontWeight: 600,
+            fontSize: 12,
+            boxShadow: '0 8px 24px -8px rgba(207, 48, 0, 0.4)',
+          }}
         >
-          <Icon name="science" size={18} />
+          <Icon name="bolt" size={14} />
           Demo: {state}
         </button>
       )}

@@ -7,111 +7,214 @@ interface ProfileScreenProps {
   onLogout: () => void;
 }
 
-const settingsItems = [
-  { id: 'edit-profile', icon: 'account_circle', title: 'Account Settings', description: 'Manage your profile & info' },
-  { id: 'settings', icon: 'security', title: 'Privacy & Security', description: 'Control your court visibility' },
-  { id: 'settings', icon: 'help', title: 'Help & Support', description: 'Rules and platform guides' },
-];
+const ACHIEVEMENTS = [
+  { ic: 'trophy', label: 'First win',  color: '#c89000',         bg: 'rgba(200,144,0,0.15)' },
+  { ic: 'fire',   label: '5-streak',   color: 'var(--coral)',    bg: 'var(--coral-soft)' },
+  { ic: 'star',   label: 'Top 5 club', color: 'var(--primary)',  bg: 'var(--primary-tint)' },
+  { ic: 'paddle', label: '100 games',  color: 'var(--lime-ink)', bg: 'var(--lime-soft)' },
+] as const;
 
 export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
-  const [duprSheetOpen, setDuprSheetOpen] = useState(false);
+  const [duprOpen, setDuprOpen] = useState(false);
+
+  const pct = 66;
+  const r = 36;
+  const c = 2 * Math.PI * r;
+  const dash = (pct / 100) * c;
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-8 pb-28">
-
-          {/* Hero Profile Section */}
-          <section className="flex flex-col items-center mb-10 text-center">
-            <div className="relative mb-6">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-surface-container-lowest" style={cardShadow}>
-                <img
-                  alt=""
-                  className="w-full h-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setDuprSheetOpen(true)}
-                aria-label="What is DUPR?"
-                className="absolute bottom-0 right-0 flex items-center gap-1 bg-secondary-container text-on-secondary-container pl-4 pr-3 py-1 rounded-full font-bold text-label-sm shadow-sm transition active:scale-95 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                3.5 DUPR
-                <Icon name="help" size={14} />
-              </button>
-            </div>
-            <h2 className="font-heading text-headline-lg-mobile md:text-headline-lg mb-1">Riley Pickler</h2>
-            <p className="text-label-sm font-bold uppercase tracking-wider text-primary mb-1">Solid · DUPR 3.0 – 3.5</p>
-            <p className="text-on-surface-variant text-body-md italic mb-4">"The dink master."</p>
-
-            {/* Stats Row */}
-            <div className="grid grid-cols-3 gap-3 w-full max-w-md">
-              <div className="bg-surface-container-lowest rounded-[8px] p-4 flex flex-col items-center" style={cardShadow}>
-                <span className="text-on-surface-variant font-bold text-label-sm uppercase tracking-wider mb-1">Games</span>
-                <span className="font-heading text-headline-md text-primary">124</span>
-              </div>
-              <div className="bg-surface-container-lowest rounded-[8px] p-4 flex flex-col items-center" style={cardShadow}>
-                <span className="text-on-surface-variant font-bold text-label-sm uppercase tracking-wider mb-1">Wins</span>
-                <span className="font-heading text-headline-md text-secondary">82</span>
-              </div>
-              <div className="bg-surface-container-lowest rounded-[8px] p-4 flex flex-col items-center" style={cardShadow}>
-                <span className="text-on-surface-variant font-bold text-label-sm uppercase tracking-wider mb-1">Losses</span>
-                <span className="font-heading text-headline-md text-tertiary">42</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Win Rate Progress Section */}
-          <section className="bg-surface-container-lowest rounded-[12px] p-5 mb-8 max-w-2xl mx-auto" style={cardShadow}>
-            <div className="flex justify-between items-end mb-3">
-              <div>
-                <h3 className="font-heading text-headline-md">Win Rate</h3>
-                <p className="text-on-surface-variant text-body-md">You're crushing the courts!</p>
-              </div>
-              <span className="font-heading text-headline-lg-mobile text-secondary">66%</span>
-            </div>
-            <div className="w-full h-4 bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full bg-secondary-fixed rounded-full transition-all duration-1000 ease-out" style={{ width: '66%' }} />
-            </div>
-          </section>
-
-          {/* Settings List */}
-          <section className="max-w-2xl mx-auto space-y-3">
-            {settingsItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[12px] hover:bg-surface-container-high transition-colors cursor-pointer group"
-                style={cardShadow}
-                onClick={() => onNavigate(item.id)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary">
-                    <Icon name={item.icon} size={28} />
-                  </div>
-                  <div>
-                    <h4 className="text-body-lg font-bold">{item.title}</h4>
-                    <p className="font-bold text-label-sm text-on-surface-variant">{item.description}</p>
-                  </div>
-                </div>
-                <Icon name="chevron_right" size={24} className="text-on-surface-variant group-hover:translate-x-1 transition-transform" />
-              </div>
-            ))}
-
-            {/* Sign Out */}
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center justify-center gap-2 p-4 mt-6 text-error font-bold hover:opacity-80 transition-opacity active:scale-95 transition-transform"
-            >
-              <Icon name="logout" size={24} />
-              <span className="text-body-lg font-bold">Sign Out</span>
-            </button>
-          </section>
-
-        </main>
+    <div className="scroll safe-top safe-bottom">
+      <div className="app-header">
+        <div className="greet-name">Profile</div>
+        <button
+          onClick={() => onNavigate('settings')}
+          aria-label="Open settings"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: 'var(--surface)',
+            color: 'var(--ink-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'var(--shadow-card)',
+            border: '0.5px solid var(--hairline)',
+          }}
+        >
+          <Icon name="settings" size={18} />
+        </button>
       </div>
-      <DuprExplainerSheet open={duprSheetOpen} onClose={() => setDuprSheetOpen(false)} />
+
+      <div className="profile-hero">
+        <div className="avatar-xl" style={{ width: 112, height: 112 }}>
+          <div style={{ fontSize: 42 }}>RP</div>
+          <button
+            type="button"
+            onClick={() => setDuprOpen(true)}
+            className="dupr-pill"
+            style={{
+              bottom: -10,
+              right: 'auto',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
+            aria-label="What is DUPR?"
+          >
+            <Icon name="bolt" size={11} /> 3.5 DUPR
+          </button>
+        </div>
+        <h2 style={{ marginTop: 22 }}>Riley Pickler</h2>
+        <div className="tier">SOLID PLAYER · 3.0–3.5 RANGE</div>
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>
+          "The dink master 🥒"
+        </div>
+      </div>
+
+      {/* Win-rate ring + stats */}
+      <div className="ring-card">
+        <div className="win-rate-ring">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="8" />
+            <circle
+              cx="48"
+              cy="48"
+              r={r}
+              fill="none"
+              stroke="var(--lime)"
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${c}`}
+              transform="rotate(-90 48 48)"
+            />
+          </svg>
+          <div className="center">
+            <div className="pct">{pct}%</div>
+            <div className="lbl">Win rate</div>
+          </div>
+        </div>
+        <div className="stats">
+          <div className="row">
+            <span className="l">Games played</span>
+            <span className="v">124</span>
+          </div>
+          <div className="row">
+            <span className="l">Wins</span>
+            <span className="v" style={{ color: '#5b7400' }}>82</span>
+          </div>
+          <div className="row">
+            <span className="l">Losses</span>
+            <span className="v" style={{ color: 'var(--coral)' }}>42</span>
+          </div>
+          <div className="row">
+            <span className="l">Current streak</span>
+            <span className="v">4 wins 🔥</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick actions */}
+      <div className="qa-row">
+        {[
+          { ic: 'calendar', label: 'Games',  color: 'var(--primary)', nav: 'games' },
+          { ic: 'heart',    label: 'Saved',  color: 'var(--coral)' },
+          { ic: 'shield',   label: 'Verify', color: '#5b7400' },
+          { ic: 'help',     label: 'Help',   color: 'var(--ink-2)' },
+        ].map((q) => (
+          <button key={q.label} className="qa" onClick={() => q.nav && onNavigate(q.nav)}>
+            <div
+              className="ic"
+              style={{
+                color: q.color,
+                background:
+                  q.color === 'var(--ink-2)' ? 'var(--surface-2)' : `color-mix(in oklab, ${q.color} 12%, transparent)`,
+              }}
+            >
+              <Icon name={q.ic} size={18} />
+            </div>
+            <div className="label">{q.label}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Achievements rail */}
+      <div className="section">
+        <div className="section-head">
+          <div className="hd-2">Recent achievements</div>
+          <button className="more">All</button>
+        </div>
+        <div className="rail">
+          {ACHIEVEMENTS.map((a) => (
+            <div
+              key={a.label}
+              style={{
+                width: 110,
+                padding: '14px 10px',
+                background: 'var(--surface)',
+                borderRadius: 16,
+                border: '0.5px solid var(--hairline)',
+                boxShadow: 'var(--shadow-card)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: a.bg,
+                  color: a.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name={a.ic} size={22} />
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', textAlign: 'center' }}>
+                {a.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Settings list */}
+      <div className="section">
+        <div className="set-list">
+          {[
+            { ic: 'user',   name: 'Account',        desc: 'Profile, email, password', color: 'var(--primary)', nav: 'edit-profile' },
+            { ic: 'shield', name: 'Privacy',        desc: 'Visibility & permissions', color: '#5b7400',         nav: 'settings' },
+            { ic: 'bell',   name: 'Notifications',  desc: 'Push, email, in-app',      color: 'var(--coral)',    nav: 'notifications' },
+            { ic: 'help',   name: 'Help & Support', desc: 'Rules, FAQ, contact us',   color: 'var(--ink-2)',    nav: 'settings' },
+          ].map((s) => (
+            <button key={s.name} className="row" onClick={() => s.nav && onNavigate(s.nav)}>
+              <div className="ic" style={{ background: s.color }}>
+                <Icon name={s.ic} size={16} />
+              </div>
+              <div className="body">
+                <div className="name">{s.name}</div>
+                <div className="desc">{s.desc}</div>
+              </div>
+              <Icon name="chevron" size={16} className="chev" />
+            </button>
+          ))}
+          <button className="row" onClick={onLogout}>
+            <div className="ic" style={{ background: 'var(--coral)' }}>
+              <Icon name="logout" size={16} />
+            </div>
+            <div className="body">
+              <div className="name" style={{ color: 'var(--coral)' }}>Sign out</div>
+            </div>
+            <Icon name="chevron" size={16} className="chev" />
+          </button>
+        </div>
+      </div>
+
+      <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
     </div>
   );
 }

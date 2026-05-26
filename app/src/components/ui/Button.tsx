@@ -1,36 +1,29 @@
 import { type ButtonHTMLAttributes } from 'react';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dark' | 'destructive';
-type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonVariant = 'primary' | 'dark' | 'outline' | 'ghost' | 'destructive';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
-  size?: ButtonSize;
   fullWidth?: boolean;
 }
 
+const baseClass =
+  'inline-flex items-center justify-center gap-2 font-heading font-semibold rounded-[14px] transition-transform active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)]/40';
+
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-secondary-container text-on-secondary-container hover:brightness-105 shadow-button',
-  secondary:
-    'bg-primary text-on-primary hover:brightness-110 shadow-button',
-  ghost:
-    'bg-transparent text-primary border border-outline-variant hover:bg-surface-container-low',
+    'h-12 px-6 text-[15px] bg-[color:var(--lime)] text-[color:var(--lime-ink)] shadow-[0_8px_22px_-6px_rgba(193,241,0,0.5)]',
   dark:
-    'bg-inverse-surface text-inverse-on-surface hover:opacity-90',
+    'h-12 px-6 text-[15px] bg-[color:var(--ink)] text-white shadow-[0_8px_22px_-6px_rgba(0,0,0,0.35)]',
+  outline:
+    'h-12 px-6 text-[15px] bg-[color:var(--surface)] text-[color:var(--ink-2)] border border-[color:var(--hairline)]',
+  ghost: 'h-11 px-5 text-[14px] bg-transparent text-[color:var(--ink-2)]',
   destructive:
-    'bg-error-container text-on-error-container hover:brightness-105',
-};
-
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-9 px-4 text-body-md',
-  md: 'h-11 px-5 text-body-md',
-  lg: 'h-12 px-6 text-body-lg',
+    'h-12 px-6 text-[15px] bg-[color:var(--coral-soft)] text-[color:var(--coral)]',
 };
 
 export function Button({
   variant = 'primary',
-  size = 'lg',
   fullWidth = false,
   disabled,
   className = '',
@@ -41,13 +34,9 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 rounded-full font-heading font-bold transition-all active:scale-95
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
-        ${variantClasses[variant]}
-        ${sizeClasses[size]}
-        ${fullWidth ? 'w-full' : ''}
-        ${disabled ? 'opacity-50 pointer-events-none' : ''}
-        ${className}`}
+      className={`${baseClass} ${variantClasses[variant]} ${fullWidth ? 'w-full' : ''} ${
+        disabled ? 'opacity-60 pointer-events-none' : ''
+      } ${className}`}
       disabled={disabled}
       {...props}
     >

@@ -3,251 +3,400 @@ import { Avatar } from '../components/ui/Avatar';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { GameRow } from '../components/ui/GameRow';
+import { CourtIllustration } from '../components/ui/CourtIllustration';
 import { useDemoState } from '../lib/demoState';
 
 interface HomeScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
 }
 
-const quickActions = [
-  { id: 'create-game', label: 'Create Game', icon: 'sports_tennis', bg: 'bg-secondary-container text-on-secondary-container', iconBg: 'bg-white/40' },
-  { id: 'find-games', label: 'Find Games', icon: 'search', bg: 'bg-primary-container text-on-primary-container', iconBg: 'bg-white/20' },
-  { id: 'create-club', label: 'Create Club', icon: 'group_add', bg: 'bg-surface-container-high text-on-surface-variant', iconBg: 'bg-primary/10' },
-  { id: 'find-courts', label: 'Find Courts', icon: 'map', bg: 'bg-surface-container-high text-on-surface-variant', iconBg: 'bg-primary/10' },
+const TONIGHT = [
+  {
+    id: 'g1',
+    title: 'Friday Night Dinks',
+    time: '6:30 PM',
+    court: 'Riverside · 1.2 mi',
+    tag: '3.0–3.5',
+    img: 'linear-gradient(135deg, #0040e0 0%, #6c83ff 100%)',
+    tagBg: 'rgba(255,255,255,0.92)',
+    tagColor: '#0040e0',
+  },
+  {
+    id: 'g2',
+    title: 'Beginner Open Play',
+    time: '7:00 PM',
+    court: 'Central Hub · 0.8 mi',
+    tag: 'Beginner',
+    img: 'linear-gradient(135deg, #c1f100 0%, #a5d100 100%)',
+    tagBg: '#001356',
+    tagColor: '#fff',
+  },
+  {
+    id: 'g3',
+    title: 'Round Robin Mixer',
+    time: '8:00 PM',
+    court: 'Sky Courts · 2.4 mi',
+    tag: 'Social',
+    img: 'linear-gradient(135deg, #cf3000 0%, #ff7355 100%)',
+    tagBg: 'rgba(255,255,255,0.92)',
+    tagColor: '#cf3000',
+  },
+  {
+    id: 'g4',
+    title: 'Competitive 4.0+',
+    time: '9:00 PM',
+    court: 'The Kitchen · 3.5 mi',
+    tag: '4.0+',
+    img: 'linear-gradient(135deg, #1a1d24 0%, #404756 100%)',
+    tagBg: '#c1f100',
+    tagColor: '#001356',
+  },
 ];
 
-const demoGames = [
-  {
-    id: '1',
-    title: 'Rookie Rally Round',
-    date: 'Today, 5:30 PM',
-    location: 'Central Hub • 1.2 mi',
-    tag: 'Beginner',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQeWJn-7Kk1HCR-1MhQ2a4JKM3hst4f2Go13gZorz6vGn8cKEUeXpeE3gDY6v6tBlYjWFTQLGTbHGRdv10L15u0FFVQC95N5dBLo0AcLAElZTzhP_oITmJh1BoD87sRmvOYdCL5Tl_YkEJwm8DgDULjJE3S0rp_uvrsn2lH7dTUfXyr1XiZAGc5jwCgKaiuxzTtkadzvjIwWFZNW0THmQVTRB1OtQV929zAPnNs-HFJuZKa_6n7mIrR33C5eCZFcXbW-BtyYd2',
-  },
-  {
-    id: '2',
-    title: 'Competitive Singles',
-    date: 'Sat, 10:00 AM',
-    location: 'The Kitchen • 3.5 mi',
-    tag: 'Advanced',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByMwXrWnGLq1pjWr5EGIag1wSi3z-p4GQoRUYJv2WhqBU2vdxY0RD1VzOA5nJ4uLEuUPzDdOD-Tdkl_VBMRYPg1bGQ-buq9ulGnLkArv60HQOgh6IZmShrX6KsY_FSazVPyhayDM4qTTJ10rsLpGA2kpA3PUrVSW-xpILKCC--RXHWMf0z_iHdX2OilDEMAzH69rUL53KTk5lGpJUN_xzr_-cU0NIuVDBQRdURMjAjfcJUelBEO0EP7TvyKgouywscNgA72xI-',
-  },
-  {
-    id: '3',
-    title: 'Social Mixer & Drinks',
-    date: 'Sun, 4:00 PM',
-    location: 'Sky Courts • 0.8 mi',
-    tag: 'Mixed Level',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpfByT3q1YIF8lrRviwwRuL72MUO9nxSSrm_zzAA-UMCRtNWmMPJvsXtOm-gjNjoU9mULcsmHPtZJFw-bmPf4iT6HFrBvkN8jkcCapuLNdW-wyz2PUJ4c2K51n1bLqJcdgRc9R0c_gODV0tFxy-zXj0ondBthKQ6F42osmjp9z-atPbsTNGNniFjchTaJrVzK5ifLMQdJKlYD9B4QecTiuYPvCLgWiTPDwSI9RiW97N4sFK0l63Ojd3A6oCowgt_Ad7aWEJKsu',
-  },
-];
+const CALENDAR = (() => {
+  const today = new Date();
+  const wdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  return Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return {
+      wd: i === 0 ? 'TODAY' : wdays[d.getDay()],
+      dn: d.getDate(),
+      has: [0, 1, 3, 6, 8, 10].includes(i),
+      key: i,
+    };
+  });
+})();
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
-  const firstName = 'Alex';
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
   const { state: demoState } = useDemoState();
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none w-full min-w-0 overflow-y-auto flex-1">
-        <main className="mx-auto w-full max-w-7xl px-5 pt-6 pb-28 space-y-8">
+    <div className="scroll safe-top safe-bottom">
+      {/* Header */}
+      <div className="app-header">
+        <div>
+          <div className="greet-name">Hey Riley 👋</div>
+          <div className="greet-sub">12 open games near you tonight</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => onNavigate('notifications')}
+            aria-label="Notifications"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              background: 'var(--surface)',
+              color: 'var(--ink-2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--shadow-card)',
+              border: '0.5px solid var(--hairline)',
+              position: 'relative',
+            }}
+          >
+            <Icon name="bell" size={18} />
+            <span
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                background: 'var(--coral)',
+                border: '2px solid var(--surface)',
+              }}
+            />
+          </button>
+          <button onClick={() => onNavigate('profile')} aria-label="Open profile" style={{ position: 'relative' }}>
+            <Avatar name="Riley Pickler" size={40} />
+          </button>
+        </div>
+      </div>
 
-          {/* Greeting */}
-          <section className="space-y-1">
-            <h1 className="font-heading text-headline-xl text-on-surface">Ready to play, {firstName}?</h1>
-            <p className="text-body-lg text-on-surface-variant">There are 12 open games near you today!</p>
-          </section>
+      {demoState === 'loading' && (
+        <div className="section" style={{ marginTop: 16 }}>
+          <LoadingSkeleton variant="block" count={1} />
+          <div style={{ marginTop: 12 }}>
+            <LoadingSkeleton variant="card" count={3} />
+          </div>
+        </div>
+      )}
 
-          {/* Quick Action Tiles */}
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {quickActions.map((action) => (
-              <button
-                key={action.id}
-                onClick={() => {
-                  if (action.id === 'create-game') onNavigate('create-game');
-                  else if (action.id === 'find-games') onNavigate('games');
-                  else if (action.id === 'create-club') onNavigate('create-club');
-                  else if (action.id === 'find-courts') onNavigate('nearby');
+      {demoState === 'error' && (
+        <ErrorState
+          title="Couldn't load games"
+          message="We couldn't reach the courts feed. Pull down to retry or check back in a moment."
+          onRetry={() => {}}
+        />
+      )}
+
+      {demoState === 'empty' && (
+        <EmptyState
+          icon="paddle"
+          title="No open games tonight"
+          description="Be the first to post one — your neighbors are looking for partners."
+          action={{ label: 'Create a game', onPress: () => onNavigate('create-game') }}
+        />
+      )}
+
+      {(demoState === 'normal' || demoState === 'offline') && (
+        <>
+          {/* Now-card (next game) */}
+          <div className="section" style={{ marginTop: 16, padding: 0 }}>
+            <button className="now-card" onClick={() => onNavigate('game-details', { id: 'g1' })}>
+              <div className="deco" />
+              <div
+                style={{
+                  position: 'absolute',
+                  right: -10,
+                  bottom: -20,
+                  transform: 'rotate(-8deg)',
+                  opacity: 0.95,
+                  pointerEvents: 'none',
                 }}
-                className={`flex flex-col items-center justify-center rounded-[14px] p-6 transition-transform active:scale-95 ${action.bg}`}
-                style={cardShadow}
               >
-                <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${action.iconBg}`}>
-                  <Icon name={action.icon} size={24} weight={600} />
-                </div>
-                <span className="font-heading text-body-lg font-bold">{action.label}</span>
-              </button>
-            ))}
-          </section>
-
-          {/* Greeting subhead with state-aware count */}
-          {demoState === 'empty' ? (
-            <section>
-              <EmptyState
-                icon="event_busy"
-                title="No open games near you tonight"
-                description="Be the first to post one — your neighbors are looking for partners."
-                action={{ label: 'Create a game', onPress: () => onNavigate('create-game') }}
-              />
-            </section>
-          ) : demoState === 'error' ? (
-            <section>
-              <ErrorState
-                title="Couldn't load games"
-                message="We couldn't reach the courts feed right now. Pull down to retry or check back in a moment."
-                onRetry={() => { /* no-op in prototype */ }}
-              />
-            </section>
-          ) : demoState === 'loading' ? (
-            <>
-              <section>
-                <LoadingSkeleton variant="block" count={1} />
-              </section>
-              <section className="space-y-4">
-                <div className="flex items-end justify-between">
-                  <h2 className="font-heading text-headline-lg text-on-surface">Discover Games</h2>
-                </div>
-                <LoadingSkeleton variant="card" count={3} />
-              </section>
-            </>
-          ) : (
-          <>
-
-          {/* Upcoming Activity Card */}
-          <section>
-            <div
-              className="flex flex-col sm:flex-row sm:items-center overflow-hidden rounded-2xl bg-surface-container-lowest"
-              style={cardShadow}
-            >
-              {/* Image */}
-              <div className="relative w-full h-52 sm:h-64 sm:h-auto sm:w-72 shrink-0">
-                <img
-                  alt=""
-                  className="w-full h-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuB74wZImg86YqASBE9mTA8ilIQtez1ABlecRRJ-hbZ_Mm2dN-gFFIH8flXECbNEFThD4jo9iJeyUIYqVODn1Y3CYEirLVSLw4XO2ZLxXnoeDNspU0-9Rtr3Le2uwzxR9AVThARneifahVE8WcplIL-u1EhxHgyHw7lNm6L7uzN_TZ7LyuQWkyXcUOowoIEodYrAU5mnPLacJP7sSYjdWW0-55C_qZ5LEcTSTk0ZaL2M8ZmIFyZRdlsKLj3tLtoWyzQDw5XJavcD"
-                />
-
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/35" />
-
-                {/* Badge */}
-                <div className="absolute left-3 top-3 rounded-full bg-secondary-container px-3 py-1 text-xs font-bold text-on-secondary-container">
-                  Tomorrow
-                </div>
+                <CourtIllustration width={170} />
               </div>
-
-              {/* Content */}
-              <div className="flex flex-1 flex-col justify-center sm:justify-start p-5 sm:p-6 text-center sm:text-left">
-                <h2 className="font-heading text-2xl sm:text-3xl mb-2">
-                  Morning Doubles Mixer
-                </h2>
-
-                <p className="text-sm sm:text-base text-on-surface-variant mb-4">
-                  Tomorrow at 9:00 AM &middot; Sunset Park Courts
-                </p>
-
-                {/* Avatars */}
-                <div className="flex items-center justify-center sm:justify-start -space-x-2 mb-5">
-                  <Avatar name="JD" size={32} className="border-2 border-white" />
-                  <Avatar
-                    name="SK"
-                    size={32}
-                    className="border-2 border-white bg-secondary-fixed text-on-secondary-fixed"
-                  />
-                  <Avatar
-                    name="ML"
-                    size={32}
-                    className="border-2 border-white bg-tertiary-fixed text-on-tertiary-fixed"
-                  />
-                  <Avatar
-                    name="+5"
-                    size={32}
-                    className="border-2 border-white bg-surface-container-highest text-on-surface-variant"
-                  />
-                </div>
-
-                {/* Button */}
-                <button
-                  onClick={() => onNavigate('game-details', { id: '1' })}
-                  className="w-full sm:w-auto md:w-fit rounded-full bg-secondary-container px-6 py-3 font-bold text-on-secondary-container transition-all hover:opacity-90 active:scale-95 self-center sm:self-start"
-                >
-                  View Details
-                </button>
+              <div className="top-row" style={{ position: 'relative', zIndex: 2 }}>
+                <span className="pill">NEXT GAME · IN 4H</span>
+                <span className="live-dot" />
               </div>
-            </div>
-          </section>
-
-          {/* Discover Games */}
-          <section className="space-y-4">
-            <div className="flex items-end justify-between">
-              <h2 className="font-heading text-headline-lg text-on-surface">Discover Games</h2>
-              <button className="font-bold text-primary hover:underline text-body-md" onClick={() => onNavigate('games')}>See All</button>
-            </div>
-            <div className="scrollbar-none -mx-5 flex gap-3 overflow-x-auto px-5 pb-4">
-              {demoGames.map((game) => (
+              <div style={{ position: 'relative', zIndex: 2, maxWidth: '70%' }}>
                 <div
-                  key={game.id}
-                  className="min-w-[280px] overflow-hidden rounded-[14px] bg-surface-container-lowest group cursor-pointer"
-                  style={cardShadow}
-                  onClick={() => onNavigate('game-details', { id: game.id })}
+                  style={{
+                    fontFamily: 'var(--font-heading)',
+                    fontSize: 26,
+                    fontWeight: 600,
+                    lineHeight: 1.1,
+                    letterSpacing: '-0.01em',
+                  }}
                 >
-                  <div className="relative h-40">
-                    <img alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" src={game.img} />
-                    {/* Black overlay */}
-                    <div className="absolute inset-0 bg-black/40" />
-
-                    <div className="absolute bottom-2 left-2 flex gap-2">
-                      <span className="rounded-full bg-white/90 px-2 py-1 text-label-sm font-bold uppercase tracking-wider backdrop-blur">
-                        {game.tag}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-1 p-4">
-                    <h3 className="font-heading text-body-lg font-semibold">{game.title}</h3>
-                    <div className="flex items-center text-label-sm text-on-surface-variant">
-                      <Icon name="schedule" size={16} className="mr-1" />
-                      {game.date}
-                    </div>
-                    <div className="flex items-center text-label-sm text-on-surface-variant">
-                      <Icon name="location_on" size={16} className="mr-1" />
-                      {game.location}
-                    </div>
-                  </div>
+                  Saturday<br />
+                  Morning Mix-In
                 </div>
+                <div
+                  style={{
+                    marginTop: 12,
+                    fontSize: 13,
+                    opacity: 0.9,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Icon name="clock" size={14} /> 9:00 AM
+                  <span style={{ opacity: 0.5 }}>·</span>
+                  <Icon name="location" size={14} /> Riverside
+                </div>
+                <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex' }}>
+                    {(['Coach Mike', 'Sarah K', 'Alex T'] as const).map((n, i) => (
+                      <div key={n} style={{ marginLeft: i === 0 ? 0 : -10 }}>
+                        <Avatar
+                          name={n}
+                          variant={(['blue', 'lime', 'coral'] as const)[i]}
+                          size={28}
+                          style={{ border: '2px solid white' }}
+                        />
+                      </div>
+                    ))}
+                    <div
+                      style={{
+                        marginLeft: -10,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 14,
+                        background: 'rgba(255,255,255,0.25)',
+                        border: '2px solid white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: 'white',
+                      }}
+                    >
+                      +5
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.9 }}>8/12 · 4 spots open</div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Activity ticker */}
+          <div className="activity" style={{ marginTop: 14 }}>
+            <span className="live" />
+            <div className="text">
+              <strong>5 players</strong> just checked in at <strong>Riverside Courts</strong>
+            </div>
+            <Icon name="chevron" size={16} style={{ color: 'var(--lime-ink)', opacity: 0.6 }} />
+          </div>
+
+          {/* Calendar strip */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="t-eyebrow">Your week</div>
+                <div className="hd-2" style={{ marginTop: 4 }}>
+                  Plan your play
+                </div>
+              </div>
+              <button className="more" onClick={() => onNavigate('games')}>
+                See schedule →
+              </button>
+            </div>
+            <div className="cal-strip">
+              {CALENDAR.map((d, i) => (
+                <button key={d.key} className={`day ${i === 0 ? 'active' : ''} ${d.has ? 'has' : ''}`}>
+                  <span className="wd">{d.wd}</span>
+                  <span className="dn">{d.dn}</span>
+                </button>
               ))}
             </div>
-          </section>
+          </div>
 
-          {/* Stats Banner */}
-          <section className="flex flex-col items-center gap-6 rounded-[14px] bg-primary p-8 text-white md:flex-row md:justify-between">
-            <div className="text-center md:text-left">
-              <h3 className="font-heading text-headline-md">You're on a roll!</h3>
-              <p className="opacity-80">You've played 4 games this week.</p>
+          {/* Tonight rail */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="t-eyebrow">Tonight</div>
+                <div className="hd-2" style={{ marginTop: 4 }}>
+                  Hot near you
+                </div>
+              </div>
+              <button className="more" onClick={() => onNavigate('games')}>
+                All
+              </button>
             </div>
-            <div className="flex gap-4">
-              <div className="text-center">
-                <div className="font-heading text-2xl text-secondary-fixed">12</div>
-                <div className="text-label-sm font-bold uppercase tracking-widest opacity-60">Wins</div>
+            <div className="rail">
+              {TONIGHT.map((g) => (
+                <button
+                  key={g.id}
+                  className="tonight-card"
+                  onClick={() => onNavigate('game-details', { id: g.id })}
+                >
+                  <div className="img" style={{ background: g.img }}>
+                    <div className="overlay" />
+                    <span className="badge" style={{ background: g.tagBg, color: g.tagColor }}>
+                      {g.tag}
+                    </span>
+                    <span className="time">{g.time}</span>
+                  </div>
+                  <div className="body">
+                    <div className="title">{g.title}</div>
+                    <div className="meta">
+                      <Icon name="location" size={11} />
+                      {g.court}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* From your clubs */}
+          <div className="section">
+            <div className="section-head">
+              <div>
+                <div className="t-eyebrow">From your clubs</div>
+                <div className="hd-2" style={{ marginTop: 4 }}>
+                  Don't miss out
+                </div>
               </div>
-              <div className="h-12 w-px bg-white/20" />
-              <div className="text-center">
-                <div className="font-heading text-2xl text-white">4.2</div>
-                <div className="text-label-sm font-bold uppercase tracking-widest opacity-60">Rating</div>
+              <button className="more" onClick={() => onNavigate('clubs')}>
+                Clubs
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <GameRow
+                day="SAT"
+                num="14"
+                thumb="lime"
+                title="Neon Smashers · Weekly Doubles"
+                time="6:30 PM"
+                loc="Central Hub · 0.8 mi"
+                onTap={() => onNavigate('game-details', { id: 'g5' })}
+              />
+              <GameRow
+                day="SUN"
+                num="15"
+                thumb="blue"
+                title="Downtown Volleys · Social Mixer"
+                time="4:00 PM"
+                loc="Sky Courts · 2.4 mi"
+                onTap={() => onNavigate('game-details', { id: 'g6' })}
+              />
+            </div>
+          </div>
+
+          {/* Streak card */}
+          <div className="section">
+            <div
+              style={{
+                background: 'var(--ink)',
+                color: 'white',
+                borderRadius: 22,
+                padding: 18,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              <div style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.1 }}>
+                <Icon name="trophy" size={140} />
               </div>
-              <div className="h-12 w-px bg-white/20" />
-              <div className="text-center">
-                <div className="font-heading text-2xl text-white">158</div>
-                <div className="text-label-sm font-bold uppercase tracking-widest opacity-60">Rank</div>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 18,
+                  background: 'var(--lime)',
+                  color: 'var(--lime-ink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="fire" size={28} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    opacity: 0.6,
+                  }}
+                >
+                  This week
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-heading)',
+                    fontWeight: 600,
+                    fontSize: 19,
+                    marginTop: 2,
+                  }}
+                >
+                  You're on a 4-game streak 🔥
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>Win rate up 8% vs last week</div>
               </div>
             </div>
-          </section>
-
-          </>
-          )}
-
-        </main>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

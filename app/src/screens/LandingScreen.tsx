@@ -1,262 +1,251 @@
 import { Icon } from '../components/ui/Icon';
+import { CourtIllustration } from '../components/ui/CourtIllustration';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
   onSignIn: () => void;
 }
 
-const features = [
+const FEATURES = [
   {
-    icon: 'sports_tennis',
+    icon: 'paddle',
     title: 'Skill-matched games',
-    body: 'Filter by DUPR range so the rally lasts longer than the warm-up. From "still learning to keep score" to competitive 4.0+ play.',
+    body: 'Filter by DUPR range so the rally lasts longer than the warm-up — beginner to 4.0+.',
   },
   {
-    icon: 'group',
+    icon: 'groups',
     title: 'Friendly local players',
-    body: 'Verified organizers, player profiles, and a community-first tone — built for people who just want a good game.',
+    body: 'Verified organizers, player profiles, and a community-first vibe.',
   },
   {
-    icon: 'location_on',
+    icon: 'location',
     title: 'Courts in your pocket',
-    body: 'Every public court near you, with amenities, photos, ratings, and walking distance — right on the map.',
+    body: 'Every court near you with amenities, photos, ratings, and walking distance.',
   },
 ];
 
-const steps = [
-  { number: '1', title: 'Tell us where you play', body: 'Set your home court and skill level — 30 seconds, no commitment.' },
-  { number: '2', title: 'Browse tonight’s games', body: 'Open games within 10 miles, filtered by date, level, and format.' },
-  { number: '3', title: 'Tap to join', body: 'Reserve a spot, message the organizer, and show up ready to play.' },
+const STEPS = [
+  { number: '1', title: 'Tell us where you play', body: 'Set your home court and skill level. 30 seconds.' },
+  { number: '2', title: "Browse tonight's games", body: 'Open games within 10 miles, filtered by date and level.' },
+  { number: '3', title: 'Tap to join', body: 'Reserve a spot, message the organizer, show up ready.' },
 ];
 
 export function LandingScreen({ onGetStarted, onSignIn }: LandingScreenProps) {
   return (
-    <div className="w-full min-w-0 overflow-y-auto bg-background">
-      <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-col">
-        {/* Header */}
-        <header
-          className="sticky top-0 z-20 flex items-center justify-between bg-background/90 px-5 py-3 backdrop-blur md:px-10 md:py-5"
-          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+    <div
+      className="scroll"
+      style={{
+        background:
+          'radial-gradient(900px 500px at 10% -10%, rgba(0,64,224,0.18), transparent 60%), radial-gradient(700px 400px at 100% 100%, rgba(193,241,0,0.25), transparent 60%), var(--bg)',
+      }}
+    >
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: 'calc(16px + env(safe-area-inset-top)) 20px 12px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          background: 'rgba(246,247,251,0.85)',
+          backdropFilter: 'blur(16px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: 'var(--lime)',
+              color: 'var(--lime-ink)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="paddle" size={18} />
+          </span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 17, color: 'var(--ink)' }}>
+            PickleBallers
+          </span>
+        </div>
+        <button onClick={onSignIn} style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+          Sign in
+        </button>
+      </header>
+
+      <section style={{ padding: '20px 20px 8px' }}>
+        <span
+          style={{
+            display: 'inline-block',
+            padding: '4px 10px',
+            borderRadius: 999,
+            background: 'var(--lime-soft)',
+            color: 'var(--lime-ink)',
+            fontFamily: 'var(--font-heading)',
+            fontWeight: 600,
+            fontSize: 11,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+          }}
         >
-          <div className="flex items-center gap-2">
-            <Icon name="sports_tennis" size={28} filled className="text-primary" />
-            <span className="font-heading text-headline-md font-bold text-primary">PickleBallers</span>
-          </div>
-          <button
-            onClick={onSignIn}
-            className="text-body-md font-bold text-primary hover:underline active:scale-95 transition"
-          >
-            Sign in
+          For recreational players
+        </span>
+        <h1 className="hd-display" style={{ marginTop: 12, fontSize: 32, lineHeight: 1.1 }}>
+          Find your next pickleball game in two taps.
+        </h1>
+        <p className="t-body" style={{ marginTop: 12 }}>
+          Discover open games near you, meet players at your skill level, and turn your local courts into a community.
+        </p>
+
+        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button className="btn-primary" style={{ margin: 0, width: '100%' }} onClick={onGetStarted}>
+            Get started — it's free <Icon name="forward" size={16} />
           </button>
-        </header>
+          <button className="btn-primary outline" style={{ margin: 0, width: '100%' }} onClick={onSignIn}>
+            I have an account
+          </button>
+        </div>
+        <p className="t-sm" style={{ marginTop: 10 }}>No credit card. Works on iOS, Android, and the web.</p>
+      </section>
 
-        {/* Hero */}
-        <section className="px-5 py-8 md:flex md:items-center md:gap-12 md:px-10 md:py-16">
-          <div className="md:flex-1 md:max-w-xl">
-            <span className="inline-block rounded-full bg-secondary-container/50 px-3 py-1 text-label-sm font-bold tracking-wider uppercase text-on-secondary-container">
-              For recreational players
+      {/* Hero visual */}
+      <section style={{ position: 'relative', margin: '24px 16px 0', borderRadius: 28, overflow: 'hidden', minHeight: 220, background: 'linear-gradient(135deg, var(--primary) 0%, #6c83ff 100%)', boxShadow: 'var(--shadow-pop)' }}>
+        <div style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.95 }}>
+          <CourtIllustration width={200} />
+        </div>
+        <div style={{ position: 'relative', padding: 20, color: 'white' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ display: 'inline-flex', width: 8, height: 8, borderRadius: 999, background: '#ff5a4d', boxShadow: '0 0 0 4px rgba(255,90,77,0.25)' }} />
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', opacity: 0.9 }}>
+              Live in 12 cities
             </span>
-            <h1 className="mt-4 font-heading text-[28px] leading-[1.15] font-bold text-on-surface sm:text-[32px] md:text-[44px] md:leading-[1.1]">
-              Find your next pickleball game in two taps.
-            </h1>
-            <p className="mt-4 text-body-lg text-on-surface-variant">
-              Discover open games near you, meet players at your skill level, and turn your local courts into a community — all in one mobile-first app.
-            </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={onGetStarted}
-                className="h-12 rounded-full bg-secondary-container px-6 font-heading text-body-lg font-bold text-on-secondary-container active:scale-95 transition hover:brightness-105"
-                style={{ boxShadow: 'var(--shadow-cta)' }}
-              >
-                Get started — it's free
-              </button>
-              <button
-                onClick={onSignIn}
-                className="h-12 rounded-full border border-outline-variant bg-surface-container-lowest px-6 font-heading text-body-lg font-bold text-primary active:scale-95 transition hover:bg-surface-container-low"
-              >
-                I have an account
-              </button>
-            </div>
-            <p className="mt-3 text-label-sm text-on-surface-variant">
-              No credit card. Works on iOS, Android, and the web.
-            </p>
-
-            {/* Trust strip */}
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 opacity-70">
-              <div className="flex items-center gap-1.5">
-                <Icon name="groups" size={16} />
-                <span className="text-label-sm font-bold tracking-wider uppercase">10K+ players</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Icon name="verified" size={16} />
-                <span className="text-label-sm font-bold tracking-wider uppercase">Verified organizers</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Icon name="install_mobile" size={16} />
-                <span className="text-label-sm font-bold tracking-wider uppercase">Installable PWA</span>
-              </div>
-            </div>
           </div>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 24, marginTop: 10, maxWidth: '70%' }}>
+            Tonight: 12 open games near you
+          </h2>
+          <p style={{ marginTop: 8, fontSize: 13, opacity: 0.9, maxWidth: '70%' }}>
+            From beginner mix-ins to competitive doubles.
+          </p>
+        </div>
+      </section>
 
-          {/* Hero visual — stacked game cards on a gradient panel */}
-          <div className="relative mt-10 mx-auto aspect-[4/5] w-full max-w-md md:mt-0 md:mx-0 md:flex-1 md:aspect-square">
-            <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-primary via-primary-container to-primary/80" />
-            <div className="absolute inset-0 rounded-[28px] opacity-10">
-              <div className="absolute top-10 left-10 h-40 w-40 rounded-full bg-white" />
-              <div className="absolute -bottom-8 -right-8 h-56 w-56 rounded-full bg-white" />
+      {/* Features */}
+      <section style={{ padding: '32px 16px 0' }}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <span className="t-eyebrow">Why PickleBallers</span>
+          <h2 className="hd-1" style={{ marginTop: 6 }}>Everything you need to play more.</h2>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              style={{
+                background: 'var(--surface)',
+                border: '0.5px solid var(--hairline)',
+                borderRadius: 18,
+                padding: 16,
+                boxShadow: 'var(--shadow-card)',
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: 'var(--lime-soft)',
+                  color: 'var(--lime-ink)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name={f.icon} size={20} />
+              </div>
+              <h3 className="hd-3" style={{ marginTop: 10 }}>{f.title}</h3>
+              <p className="t-sm" style={{ marginTop: 4 }}>{f.body}</p>
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Floating game cards */}
-            <div className="absolute inset-6 flex flex-col gap-3">
+      {/* How it works */}
+      <section style={{ padding: '32px 16px 0' }}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <span className="t-eyebrow">How it works</span>
+          <h2 className="hd-1" style={{ marginTop: 6 }}>Get into a game tonight.</h2>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {STEPS.map((s) => (
+            <div
+              key={s.number}
+              style={{
+                background: 'var(--surface)',
+                border: '0.5px solid var(--hairline)',
+                borderRadius: 18,
+                padding: 16,
+                display: 'flex',
+                gap: 14,
+              }}
+            >
               <div
-                className="rounded-[16px] bg-surface-container-lowest p-4 rotate-[-2deg]"
-                style={{ boxShadow: '0 20px 40px -10px rgba(0,0,0,0.25)' }}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 12,
+                  background: 'var(--ink)',
+                  color: 'white',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'var(--font-heading)',
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
               >
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-secondary-container px-2 py-0.5 text-label-sm font-bold text-on-secondary-container">3.0 – 3.5</span>
-                  <span className="text-label-sm font-bold text-on-surface-variant">TONIGHT · 6:30 PM</span>
-                </div>
-                <h3 className="mt-2 font-heading text-body-lg font-bold text-on-surface">Friday Night Dinks</h3>
-                <div className="mt-1 flex items-center gap-1 text-label-sm text-on-surface-variant">
-                  <Icon name="location_on" size={14} />
-                  <span>Riverside Courts · 1.2 mi</span>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex -space-x-2">
-                    <div className="h-7 w-7 rounded-full border-2 border-white bg-primary-container" />
-                    <div className="h-7 w-7 rounded-full border-2 border-white bg-secondary-container" />
-                    <div className="h-7 w-7 rounded-full border-2 border-white bg-tertiary-container" />
-                    <div className="h-7 w-7 rounded-full border-2 border-white bg-surface-container-high flex items-center justify-center text-label-sm font-bold text-on-surface">+2</div>
-                  </div>
-                  <span className="text-label-sm font-bold text-primary">5 / 8 spots</span>
-                </div>
+                {s.number}
               </div>
-
-              <div
-                className="rounded-[16px] bg-surface-container-lowest p-4 rotate-[1.5deg] ml-6"
-                style={{ boxShadow: '0 20px 40px -10px rgba(0,0,0,0.25)' }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-tertiary-container px-2 py-0.5 text-label-sm font-bold text-on-tertiary-container">BEGINNERS</span>
-                  <span className="text-label-sm font-bold text-on-surface-variant">SAT · 9:00 AM</span>
-                </div>
-                <h3 className="mt-2 font-heading text-body-lg font-bold text-on-surface">Saturday Sunrise Social</h3>
-                <div className="mt-1 flex items-center gap-1 text-label-sm text-on-surface-variant">
-                  <Icon name="location_on" size={14} />
-                  <span>Westside Community Park · 2.4 mi</span>
-                </div>
-              </div>
-
-              <div
-                className="rounded-[16px] bg-surface-container-lowest p-4 rotate-[-1deg] mr-4"
-                style={{ boxShadow: '0 20px 40px -10px rgba(0,0,0,0.25)' }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-primary-container px-2 py-0.5 text-label-sm font-bold text-on-primary-container">4.0+</span>
-                  <span className="text-label-sm font-bold text-on-surface-variant">SUN · 5:00 PM</span>
-                </div>
-                <h3 className="mt-2 font-heading text-body-lg font-bold text-on-surface">Competitive Ladder Match</h3>
-                <div className="mt-1 flex items-center gap-1 text-label-sm text-on-surface-variant">
-                  <Icon name="location_on" size={14} />
-                  <span>Eastside Indoor Club · 3.1 mi</span>
-                </div>
+              <div>
+                <h3 className="hd-3">{s.title}</h3>
+                <p className="t-sm" style={{ marginTop: 4 }}>{s.body}</p>
               </div>
             </div>
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        {/* Features */}
-        <section className="px-5 py-12 md:px-10 md:py-20">
-          <div className="text-center max-w-2xl mx-auto">
-            <span className="text-label-sm font-bold uppercase tracking-wider text-primary">Why PickleBallers</span>
-            <h2 className="mt-2 font-heading text-[24px] leading-[1.2] font-bold text-on-surface sm:text-[28px] md:text-headline-xl">
-              Everything you need to play more pickleball.
-            </h2>
-          </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3 md:gap-6">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-[16px] bg-surface-container-lowest p-6 border border-outline-variant/30"
-                style={{ boxShadow: 'var(--shadow-card)' }}
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container/60">
-                  <Icon name={f.icon} size={24} filled className="text-on-secondary-container" />
-                </div>
-                <h3 className="mt-4 font-heading text-headline-md font-bold text-on-surface">{f.title}</h3>
-                <p className="mt-2 text-body-md text-on-surface-variant">{f.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="bg-surface-container-low/60 px-5 py-12 md:px-10 md:py-20">
-          <div className="text-center max-w-2xl mx-auto">
-            <span className="text-label-sm font-bold uppercase tracking-wider text-primary">How it works</span>
-            <h2 className="mt-2 font-heading text-[24px] leading-[1.2] font-bold text-on-surface sm:text-[28px] md:text-headline-xl">
-              Get into a game tonight.
-            </h2>
-          </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {steps.map((s) => (
-              <div key={s.number} className="flex flex-col items-center text-center px-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary font-heading text-headline-md font-bold text-on-primary">
-                  {s.number}
-                </div>
-                <h3 className="mt-4 font-heading text-headline-md font-bold text-on-surface">{s.title}</h3>
-                <p className="mt-2 text-body-md text-on-surface-variant">{s.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="px-5 py-12 md:px-10 md:py-20">
-          <div
-            className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-primary via-primary-container to-primary p-8 text-center md:p-16"
-            style={{ boxShadow: 'var(--shadow-cta)' }}
+      {/* Final CTA */}
+      <section style={{ padding: '36px 16px 24px' }}>
+        <div
+          style={{
+            position: 'relative',
+            overflow: 'hidden',
+            borderRadius: 24,
+            background: 'linear-gradient(135deg, var(--primary) 0%, #6c83ff 90%)',
+            color: 'white',
+            padding: '24px 20px',
+            textAlign: 'center',
+            boxShadow: 'var(--shadow-pop)',
+          }}
+        >
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 22 }}>Ready to hit the courts?</h2>
+          <p style={{ marginTop: 8, fontSize: 13, opacity: 0.9 }}>Beginners welcome — no commitment.</p>
+          <button
+            className="btn-primary"
+            style={{ margin: '14px auto 0', width: 'auto', padding: '0 24px' }}
+            onClick={onGetStarted}
           >
-            <div className="absolute inset-0 opacity-[0.07] pointer-events-none">
-              <div className="absolute -top-10 -left-10 h-72 w-72 rounded-full bg-white" />
-              <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-white" />
-            </div>
-            <div className="relative">
-              <h2 className="font-heading text-[26px] leading-[1.15] font-bold text-on-primary sm:text-[30px] md:text-headline-xl">
-                Ready to hit the courts?
-              </h2>
-              <p className="mt-3 text-body-lg text-on-primary/90 max-w-lg mx-auto">
-                Join the players already using PickleBallers to find their next game — beginners welcome, no commitment.
-              </p>
-              <button
-                onClick={onGetStarted}
-                className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-secondary-container px-8 font-heading text-body-lg font-bold text-on-secondary-container active:scale-95 transition hover:brightness-105"
-                style={{ boxShadow: '0 10px 30px -10px rgba(0,0,0,0.3)' }}
-              >
-                Get started
-                <Icon name="arrow_forward" size={20} />
-              </button>
-            </div>
-          </div>
-        </section>
+            Get started <Icon name="forward" size={16} />
+          </button>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer className="border-t border-outline-variant/50 px-5 py-8 md:px-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Icon name="sports_tennis" size={20} filled className="text-primary" />
-              <span className="font-heading text-body-md font-bold text-primary">PickleBallers</span>
-              <span className="text-label-sm text-on-surface-variant">· Find games. Meet players. Play pickleball.</span>
-            </div>
-            <div className="flex flex-wrap gap-4 text-label-sm font-bold text-on-surface-variant">
-              <a href="#" className="hover:text-primary">Privacy</a>
-              <a href="#" className="hover:text-primary">Terms</a>
-              <a href="#" className="hover:text-primary">Community guidelines</a>
-              <a href="#" className="hover:text-primary">Contact</a>
-            </div>
-          </div>
-        </footer>
-      </div>
+      <footer style={{ padding: '8px 20px 32px', textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>
+        <p style={{ fontWeight: 700, letterSpacing: 0.4 }}>FIND GAMES · MEET PLAYERS · PLAY PICKLEBALL</p>
+      </footer>
     </div>
   );
 }

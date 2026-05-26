@@ -3,46 +3,49 @@ import { Icon } from '../ui/Icon';
 interface TabBarProps {
   activeTab: string;
   onTabPress: (tab: string) => void;
+  onCreate: () => void;
 }
 
-const tabs = [
-  { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'nearby', label: 'Nearby', icon: 'location_on' },
-  { id: 'games', label: 'Games', icon: 'sports_tennis' },
-  { id: 'clubs', label: 'Clubs', icon: 'group' },
-  { id: 'profile', label: 'Profile', icon: 'person' },
+interface Tab {
+  id: string;
+  label: string;
+  icon: string;
+  iconFill?: string;
+  isFab?: boolean;
+}
+
+const tabs: Tab[] = [
+  { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
+  { id: 'games',   label: 'Games',  icon: 'calendar', iconFill: 'calendar_fill' },
+  { id: 'fab',     label: '',       icon: 'plus',     isFab: true },
+  { id: 'nearby',  label: 'Courts', icon: 'map_pin',  iconFill: 'map_pin_fill' },
+  { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function TabBar({ activeTab, onTabPress }: TabBarProps) {
+export function TabBar({ activeTab, onTabPress, onCreate }: TabBarProps) {
   return (
-    <nav
-      className="fixed bottom-0 left-0 z-[9999] w-full bg-surface-container-lowest px-2 py-2 rounded-t-[24px] md:hidden"
-      style={{
-        bottom: 'calc(env(safe-area-inset-bottom) * -1)',
-        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))',
-        boxShadow: 'var(--shadow-nav)',
-      }}
-    >
-      <div className="flex w-full items-center justify-around">
-        {tabs.map(({ id, label, icon }) => {
-          const isActive = activeTab === id;
+    <nav className="tabbar" aria-label="Primary navigation">
+      {tabs.map((t) => {
+        if (t.isFab) {
           return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onTabPress(id)}
-              className={`flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-all duration-200 active:scale-90
-                ${isActive
-                  ? 'bg-secondary-container text-on-secondary-container'
-                  : 'text-on-surface-variant hover:bg-surface-container-high'
-                }`}
-            >
-              <Icon name={icon} size={22} filled={isActive} weight={isActive ? 600 : 400} />
-              <span className="text-label-sm mt-0.5">{label}</span>
+            <button key="fab" className="fab" onClick={onCreate} aria-label="Create game">
+              <Icon name="plus" size={22} />
             </button>
           );
-        })}
-      </div>
+        }
+        const isActive = activeTab === t.id;
+        return (
+          <button
+            key={t.id}
+            className={`tab ${isActive ? 'active' : ''}`}
+            onClick={() => onTabPress(t.id)}
+            aria-current={isActive ? 'page' : undefined}
+          >
+            <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={22} />
+            {t.label && <span className="label">{t.label}</span>}
+          </button>
+        );
+      })}
     </nav>
   );
 }

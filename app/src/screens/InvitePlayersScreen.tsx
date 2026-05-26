@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { Avatar } from '../components/ui/Avatar';
+import { Toast } from '../components/ui/Toast';
 import { DuprExplainerSheet } from '../components/ui/DuprExplainerSheet';
 import { tierForDupr } from '../lib/skillTiers';
 
@@ -9,168 +11,215 @@ interface InvitePlayersScreenProps {
   gameId?: string;
 }
 
-const suggestedPlayers = [
-  { name: 'Sarah K.', skill: '3.0', src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD' },
-  { name: 'Mike R.', skill: '4.5', src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg' },
-  { name: 'Alex T.', skill: '2.5', src: null },
-  { name: 'Jordan P.', skill: '4.0', src: null },
-  { name: 'Casey W.', skill: '3.5', src: null },
+const SUGGESTED = [
+  { name: 'Sarah K.',   skill: '3.0', v: 'blue'  as const },
+  { name: 'Mike R.',    skill: '4.5', v: 'lime'  as const },
+  { name: 'Alex T.',    skill: '2.5', v: 'coral' as const },
+  { name: 'Jordan P.',  skill: '4.0', v: 'lime'  as const },
+  { name: 'Casey W.',   skill: '3.5', v: 'blue'  as const },
 ];
 
 export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenProps) {
   const [invited, setInvited] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState(false);
-  const [inviteLink] = useState('pickleplay.app/game/7xk9m2');
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
-  const [showToast, setShowToast] = useState(false);
-  const [duprSheetOpen, setDuprSheetOpen] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '' });
+  const [duprOpen, setDuprOpen] = useState(false);
+  const link = 'pickleballers.app/game/7xk9m2';
 
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-
-      setShowToast(true);
-
-      setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
-
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
-  const toggleInvite = (name: string) => {
+  const toggle = (name: string) => {
     setInvited((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
   };
 
-  const handleSend = () => {
-    setSent(true);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+    } catch {
+      /* ignore */
+    }
+    setToast({ show: true, message: 'Share link copied' });
+    setTimeout(() => setToast({ show: false, message: '' }), 2000);
   };
 
   if (sent) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
-        <div className="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center mb-6">
-          <Icon name="send" size={40} className="text-on-secondary-container" />
-        </div>
-        <h2 className="font-heading text-headline-lg mb-2">Invites Sent!</h2>
-        <p className="text-body-md text-on-surface-variant mb-2">{invited.size} player{invited.size !== 1 ? 's' : ''} invited</p>
-        <p className="text-body-md text-on-surface-variant mb-8">They'll get a notification and can RSVP.</p>
-        <button
-          onClick={() => onNavigate('game-details', { id: 'new' })}
-          className="w-full max-w-sm bg-secondary-container text-on-secondary-container h-12 rounded-full font-heading text-body-lg font-bold active:scale-95 transition-all"
-          style={{ boxShadow: 'var(--shadow-button)' }}
+      <div
+        className="scroll safe-top safe-bottom"
+        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 24px' }}
+      >
+        <div
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 999,
+            background: 'var(--lime)',
+            color: 'var(--lime-ink)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 18,
+            boxShadow: 'var(--shadow-fab)',
+          }}
         >
-          View Game
+          <Icon name="send" size={36} />
+        </div>
+        <h2 className="hd-1" style={{ marginBottom: 6 }}>Invites sent!</h2>
+        <p className="t-sm" style={{ maxWidth: 320 }}>
+          {invited.size} player{invited.size !== 1 ? 's' : ''} invited. They'll get a notification.
+        </p>
+        <button
+          className="btn-primary"
+          style={{ marginTop: 22, width: '100%', maxWidth: 360 }}
+          onClick={() => onNavigate('game-details', { id: 'new' })}
+        >
+          View game
         </button>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="scrollbar-none overflow-y-auto flex-1">
-          <main className="mx-auto max-w-xl px-5 pt-6 pb-28 space-y-6">
-
-            <div>
-              <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Invite Players</h1>
-              <p className="text-body-md text-on-surface-variant mt-1">Saturday Morning Mix-In</p>
-            </div>
-
-            {/* Share Link */}
-            <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-3" style={cardShadow}>
-              <h3 className="font-heading text-headline-md">Share Link</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={inviteLink}
-                  readOnly
-                  className="flex-1 h-12 px-4 bg-surface-container border border-outline-variant rounded-[12px] text-body-md text-on-surface"
-                />
-                <button
-                  onClick={handleCopyLink}
-                  className="w-12 h-12 bg-primary text-on-primary rounded-full flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <Icon name="content_copy" size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Suggested Players */}
-            <section className="space-y-3">
-              <h3 className="font-heading text-headline-md">Suggested Players</h3>
-              {suggestedPlayers.map((player) => (
-                <div
-                  key={player.name}
-                  className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-4 cursor-pointer active:scale-[0.98] transition-transform"
-                  style={cardShadow}
-                  onClick={() => toggleInvite(player.name)}
-                >
-                  {player.src ? (
-                    <img alt="" className="w-10 h-10 rounded-full object-cover" src={player.src} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-label-sm">
-                      {player.name.split(' ').map((n) => n[0]).join('')}
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="font-heading text-body-lg font-semibold">{player.name}</p>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setDuprSheetOpen(true); }}
-                      className="inline-flex items-center gap-1 text-label-sm text-on-surface-variant hover:text-primary transition"
-                    >
-                      <span>{tierForDupr(Number(player.skill)).name}</span>
-                      <span className="text-outline">·</span>
-                      <span>DUPR {player.skill}</span>
-                      <Icon name="help" size={12} />
-                    </button>
-                  </div>
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                    invited.has(player.name) ? 'bg-secondary-container text-on-secondary-container' : 'border-2 border-outline-variant'
-                  }`}>
-                    {invited.has(player.name) && <Icon name="check" size={16} weight={600} />}
-                  </div>
-                </div>
-              ))}
-            </section>
-
-          </main>
+    <div className="scroll" style={{ paddingBottom: 100, paddingTop: 'calc(20px + env(safe-area-inset-top))' }}>
+      <div style={{ padding: '4px 20px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'var(--surface-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="back" size={16} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div className="t-eyebrow">Invite players</div>
+          <div className="hd-2" style={{ marginTop: 2 }}>Saturday Morning Mix-In</div>
         </div>
+      </div>
 
-        {/* Fixed Bottom Bar */}
-        <div className="fixed bottom-0 left-0 w-full bg-surface-container-lowest/80 backdrop-blur-md px-5 py-6 z-50 flex items-center gap-3 border-t border-surface-container-high" style={cardShadow}>
-          <button onClick={onBack} className="flex-1 h-12 rounded-full bg-surface-container-high text-on-surface-variant font-bold active:scale-95 transition-all">
-            Skip
-          </button>
+      <div className="section" style={{ marginTop: 4 }}>
+        <div className="section-head">
+          <div className="hd-3">Share link</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={link}
+            readOnly
+            style={{
+              flex: 1,
+              height: 44,
+              padding: '0 14px',
+              background: 'var(--surface)',
+              border: '0.5px solid var(--hairline)',
+              borderRadius: 14,
+              color: 'var(--ink)',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
           <button
-            onClick={handleSend}
-            disabled={invited.size === 0}
-            className="flex-1 h-12 rounded-full bg-secondary-container text-on-secondary-container font-bold active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ boxShadow: 'var(--shadow-button)' }}
+            onClick={copy}
+            aria-label="Copy link"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              background: 'var(--ink)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            Send {invited.size > 0 && `(${invited.size})`}
-            <Icon name="send" size={18} />
+            <Icon name="share" size={16} />
           </button>
         </div>
       </div>
 
-
-    {/* Toast */}
-    {showToast && (
-      <div className="fixed bottom-28 left-1/2 z-[100] -translate-x-1/2 rounded-full bg-on-surface px-4 py-2 text-white shadow-lg animate-in fade-in zoom-in duration-200">
-        Share link copied
+      <div className="section">
+        <div className="section-head">
+          <div className="hd-2">Suggested players</div>
+          <button className="more" onClick={() => setDuprOpen(true)}>
+            About DUPR
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {SUGGESTED.map((p) => {
+            const sel = invited.has(p.name);
+            return (
+              <button
+                key={p.name}
+                className="organizer"
+                style={{ margin: 0 }}
+                onClick={() => toggle(p.name)}
+              >
+                <Avatar name={p.name} size={40} variant={p.v} />
+                <div className="meta">
+                  <div className="role">DUPR {p.skill}</div>
+                  <div className="name">{p.name}</div>
+                  <div className="t-sm" style={{ marginTop: 2 }}>{tierForDupr(Number(p.skill)).name}</div>
+                </div>
+                <span
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 8,
+                    border: sel ? 'none' : '2px solid var(--surface-3)',
+                    background: sel ? 'var(--lime)' : 'transparent',
+                    color: 'var(--lime-ink)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {sel && <Icon name="check" size={14} />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-    )}
 
-    <DuprExplainerSheet open={duprSheetOpen} onClose={() => setDuprSheetOpen(false)} />
-  </>
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: '12px 20px calc(20px + env(safe-area-inset-bottom))',
+          background: 'var(--bg)',
+          borderTop: '0.5px solid var(--hairline)',
+          maxWidth: 480,
+          margin: '0 auto',
+          display: 'flex',
+          gap: 10,
+        }}
+      >
+        <button className="btn-primary outline" style={{ margin: 0, width: '100%', flex: 1 }} onClick={onBack}>
+          Skip
+        </button>
+        <button
+          className="btn-primary"
+          style={{ margin: 0, width: '100%', flex: 2 }}
+          onClick={() => setSent(true)}
+          disabled={invited.size === 0}
+        >
+          Send {invited.size > 0 && `(${invited.size})`} <Icon name="send" size={16} />
+        </button>
+      </div>
 
+      <Toast message={toast.message} show={toast.show} />
+      <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
+    </div>
   );
 }

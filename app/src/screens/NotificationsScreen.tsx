@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { Chip } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
@@ -10,112 +11,154 @@ interface NotificationsScreenProps {
   onBack: () => void;
 }
 
-const initialNotifications = [
+type IconBg = 'lime' | 'blue' | 'coral';
+
+interface NotifItem {
+  id: string;
+  icon: string;
+  bg: IconBg;
+  unread: boolean;
+  text: ReactNode;
+  time: string;
+  action?: { screen: string; params?: Record<string, string> };
+}
+
+const INITIAL: NotifItem[] = [
   {
-    id: '1', type: 'game_invite', title: 'Game Invite', body: 'Coach Mike invited you to Saturday Morning Mix-In',
-    time: '5 min ago', read: false, icon: 'sports_tennis', iconBg: 'bg-primary/10 text-primary',
-    action: { label: 'View', screen: 'game-details', params: { id: '1' } },
+    id: '1',
+    icon: 'check',
+    bg: 'lime',
+    unread: true,
+    text: <><strong>Sarah K</strong> joined your <strong>Saturday Mix-In</strong></>,
+    time: '2m ago',
+    action: { screen: 'game-details', params: { id: '1' } },
   },
   {
-    id: '2', type: 'club_join', title: 'New Member', body: 'Sarah K. joined Neon Smashers',
-    time: '1 hour ago', read: false, icon: 'group_add', iconBg: 'bg-secondary-container/30 text-on-secondary-container',
+    id: '2',
+    icon: 'message',
+    bg: 'blue',
+    unread: true,
+    text: <><strong>Coach Mike</strong> sent a message in <strong>Game chat</strong></>,
+    time: '12m ago',
+    action: { screen: 'game-details', params: { id: '1' } },
   },
   {
-    id: '3', type: 'game_reminder', title: 'Game Tomorrow', body: 'Weekly Doubles League starts at 6:30 PM',
-    time: '3 hours ago', read: true, icon: 'schedule', iconBg: 'bg-surface-container-high text-on-surface-variant',
-    action: { label: 'View', screen: 'game-details', params: { id: '2' } },
+    id: '3',
+    icon: 'paddle',
+    bg: 'lime',
+    unread: true,
+    text: <>New game at <strong>Riverside</strong> matches your skill</>,
+    time: '34m ago',
+    action: { screen: 'games' },
   },
   {
-    id: '4', type: 'club_announcement', title: 'New Announcement', body: 'The Kitchen Kings posted: "Sunday social this weekend!"',
-    time: 'Yesterday', read: true, icon: 'campaign', iconBg: 'bg-tertiary-container/30 text-tertiary',
-    action: { label: 'View', screen: 'club-details', params: { id: '1' } },
+    id: '4',
+    icon: 'fire',
+    bg: 'coral',
+    unread: false,
+    text: <>You're on a <strong>4-game win streak!</strong></>,
+    time: '2h ago',
   },
   {
-    id: '5', type: 'friend_request', title: 'Friend Request', body: 'Alex T. wants to add you as a favorite player',
-    time: '2 days ago', read: true, icon: 'person_add', iconBg: 'bg-surface-container-high text-on-surface-variant',
+    id: '5',
+    icon: 'star',
+    bg: 'blue',
+    unread: false,
+    text: <><strong>Alex T</strong> rated your game 5 stars</>,
+    time: 'Yesterday',
+  },
+  {
+    id: '6',
+    icon: 'groups',
+    bg: 'lime',
+    unread: false,
+    text: <><strong>Neon Smashers</strong> posted a new weekly event</>,
+    time: '2 days ago',
+    action: { screen: 'club-details', params: { id: '1' } },
   },
 ];
 
-export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenProps) {
-  const [items, setItems] = useState(initialNotifications);
-  const hasUnread = items.some((n) => !n.read);
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
-  const { state: demoState } = useDemoState();
+const FILTERS = ['All', 'Mentions', 'Games', 'Clubs'];
 
-  const markAllRead = () => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
+export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenProps) {
+  const [items, setItems] = useState(INITIAL);
+  const [filter, setFilter] = useState('All');
+  const { state: demoState } = useDemoState();
+  const unread = items.filter((n) => n.unread).length;
+
+  const markAll = () => setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div
-        className="sticky top-0 z-40 bg-background px-5 pb-3"
-        style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
-      >
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary active:scale-95 transition-transform hover:bg-surface-container-high"
-            aria-label="Back"
-          >
-            <Icon name="arrow_back" size={24} />
-          </button>
-          <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Notifications</h1>
+    <div className="scroll" style={{ paddingBottom: 40, paddingTop: 'calc(20px + env(safe-area-inset-top))' }}>
+      <div style={{ padding: '4px 20px 12px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'var(--surface-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="back" size={16} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div className="hd-2">Notifications</div>
+          <div className="t-sm">{unread} unread</div>
         </div>
+        {unread > 0 && (
+          <button onClick={markAll} className="more">
+            Mark read
+          </button>
+        )}
       </div>
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-3 pb-28 space-y-4">
 
-          <div className="flex items-center justify-end mb-2">
-            {hasUnread && demoState === 'normal' && (
-              <button className="text-primary font-bold text-label-sm hover:underline" onClick={markAllRead}>Mark all read</button>
-            )}
-          </div>
+      <div className="scroll-x" style={{ padding: '4px 20px 8px', display: 'flex', gap: 8 }}>
+        {FILTERS.map((c) => (
+          <Chip key={c} selected={filter === c} onClick={() => setFilter(c)}>
+            {c}
+          </Chip>
+        ))}
+      </div>
 
-          {demoState === 'loading' ? (
-            <LoadingSkeleton variant="list-row" count={5} />
-          ) : demoState === 'error' ? (
-            <ErrorState
-              title="Couldn't load notifications"
-              message="We couldn't reach your inbox right now. Pull down to retry or check back in a moment."
-              onRetry={() => { /* no-op */ }}
-            />
-          ) : demoState === 'empty' ? (
-            <EmptyState
-              icon="notifications_none"
-              title="You're all caught up"
-              description="No new notifications. We'll let you know when a game invite, message, or club update arrives."
-            />
-          ) : (
-          items.map((n) => (
-            <div
-              key={n.id}
-              className={`flex gap-3 p-4 rounded-[12px] transition-all cursor-pointer active:scale-[0.98] ${
-                n.read ? 'bg-surface-container-lowest opacity-70' : 'bg-surface-container-lowest'
-              }`}
-              style={cardShadow}
-              onClick={() => {
-                if (n.action) onNavigate(n.action.screen, n.action.params);
-              }}
-            >
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${n.iconBg}`}>
-                <Icon name={n.icon} size={20} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-heading text-body-lg font-semibold text-on-surface">{n.title}</h3>
-                  {!n.read && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5" />}
-                </div>
-                <p className="text-body-md text-on-surface-variant mt-0.5">{n.body}</p>
-                <p className="text-label-sm text-outline mt-1">{n.time}</p>
-              </div>
+      {demoState === 'loading' ? (
+        <div style={{ padding: '0 20px' }}>
+          <LoadingSkeleton variant="list-row" count={5} />
+        </div>
+      ) : demoState === 'error' ? (
+        <ErrorState
+          title="Couldn't load notifications"
+          message="We couldn't reach your inbox. Try again in a moment."
+          onRetry={() => {}}
+        />
+      ) : demoState === 'empty' ? (
+        <EmptyState
+          icon="bell"
+          title="You're all caught up"
+          description="No new notifications. We'll ping you when something happens."
+        />
+      ) : (
+        items.map((n) => (
+          <button
+            key={n.id}
+            className={`notif ${n.unread ? 'unread' : ''}`}
+            style={{ background: 'transparent', width: '100%', textAlign: 'left', cursor: n.action ? 'pointer' : 'default' }}
+            onClick={() => n.action && onNavigate(n.action.screen, n.action.params)}
+          >
+            <div className={`ic ${n.bg}`}>
+              <Icon name={n.icon} size={18} />
             </div>
-          ))
-          )}
-
-        </main>
-      </div>
+            <div className="body">
+              <div className="head">{n.text}</div>
+              <div className="time">{n.time}</div>
+            </div>
+          </button>
+        ))
+      )}
     </div>
   );
 }

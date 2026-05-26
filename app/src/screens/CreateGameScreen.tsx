@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
 
 interface CreateGameScreenProps {
@@ -6,48 +6,65 @@ interface CreateGameScreenProps {
   onBack: () => void;
 }
 
-export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
-  const [title, setTitle] = useState('');
-  const [location, setLocation] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [playerLimit, setPlayerLimit] = useState('8');
-  const [skillMin, setSkillMin] = useState('2.0');
-  const [skillMax, setSkillMax] = useState('4.5');
-  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
-  const [description, setDescription] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+const TYPES = [
+  { v: 'singles', label: 'Singles', sub: '1 vs 1' },
+  { v: 'doubles', label: 'Doubles', sub: '2 vs 2' },
+  { v: 'open',    label: 'Open',    sub: 'Mix-in' },
+] as const;
 
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
-  const inputClass = 'block h-12 w-full min-w-0 max-w-full rounded-[12px] border border-outline-variant bg-surface-container-lowest px-4 text-body-md transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
-  const selectClass = `${inputClass} appearance-none`;
-  const fieldClass = 'min-w-0 space-y-1';
+const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
+const WHEN   = ['Tonight', 'Tomorrow', 'This weekend', 'Next week', 'Custom', 'Recurring'];
+const TIMES  = ['5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM'];
+const COURTS = [
+  { name: 'Riverside Courts', meta: '1.2 mi · Public' },
+  { name: 'Central Hub',      meta: '0.8 mi · Indoor' },
+  { name: 'The Pickle Lodge', meta: '4.1 mi · Club' },
+];
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-  };
+const TITLE_BY_STEP = ['What kind of game?', 'When are you playing?', 'Where & who?'];
 
-  if (submitted) {
+export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) {
+  const [step, setStep] = useState(0);
+  const [done, setDone] = useState(false);
+  const [type, setType] = useState<typeof TYPES[number]['v']>('doubles');
+  const [skill, setSkill] = useState('3.0–3.5');
+  const [when, setWhen] = useState('Tonight');
+  const [time, setTime] = useState('6:30 PM');
+  const [court, setCourt] = useState(COURTS[0].name);
+  const [spots, setSpots] = useState(4);
+  const [vis, setVis] = useState<'public' | 'invite'>('public');
+
+  const totalSteps = 3;
+  const back = () => (step > 0 ? setStep((s) => s - 1) : onBack());
+  const next = () => (step < totalSteps - 1 ? setStep((s) => s + 1) : setDone(true));
+
+  if (done) {
     return (
-      <div className="flex w-full min-w-0 flex-1 flex-col items-center justify-center px-5 text-center">
-        <div className="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center mb-6">
-          <Icon name="check_circle" size={48} filled className="text-on-secondary-container" />
+      <div className="scroll safe-top safe-bottom" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 24px' }}>
+        <div
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 999,
+            background: 'var(--lime)',
+            color: 'var(--lime-ink)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 18,
+            boxShadow: 'var(--shadow-fab)',
+          }}
+        >
+          <Icon name="check" size={42} />
         </div>
-        <h2 className="font-heading text-headline-lg mb-2">Game Created!</h2>
-        <p className="text-body-md text-on-surface-variant mb-8 max-w-xs">Your game is live and ready for players to join.</p>
-        <div className="flex w-full max-w-sm flex-col gap-3 sm:flex-row">
-          <button
-            onClick={() => onNavigate('game-details', { id: 'new' })}
-            className="flex-1 bg-secondary-container text-on-secondary-container h-12 py-3 rounded-full font-bold active:scale-95 transition-all"
-          >
-            View Game
+        <h2 className="hd-1" style={{ marginBottom: 6 }}>Game posted!</h2>
+        <p className="t-sm" style={{ maxWidth: 320 }}>Your game is live — players can now join.</p>
+        <div style={{ display: 'flex', gap: 10, marginTop: 22, width: '100%', maxWidth: 360 }}>
+          <button className="btn-primary outline" style={{ margin: 0, width: '100%', flex: 1 }} onClick={() => onNavigate('game-details', { id: 'new' })}>
+            View game
           </button>
-          <button
-            onClick={() => onNavigate('invite-players', { id: 'new' })}
-            className="flex-1 bg-primary text-on-primary h-12 py-3 rounded-full font-bold active:scale-95 transition-all"
-          >
-            Invite Players
+          <button className="btn-primary dark" style={{ margin: 0, width: '100%', flex: 1 }} onClick={() => onNavigate('invite-players', { id: 'new' })}>
+            Invite players
           </button>
         </div>
       </div>
@@ -55,162 +72,234 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none w-full min-w-0 overflow-y-auto flex-1">
-        <main className="mx-auto box-border w-full max-w-3xl min-w-0 px-5 pt-6 pb-10 md:px-6 lg:px-8">
+    <div className="scroll" style={{ paddingBottom: 100, paddingTop: 'calc(20px + env(safe-area-inset-top))' }}>
+      {/* Header */}
+      <div style={{ padding: '4px 20px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button
+          onClick={back}
+          aria-label={step === 0 ? 'Close' : 'Back'}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'var(--surface-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name={step === 0 ? 'close' : 'back'} size={16} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div className="t-eyebrow">Step {step + 1} of {totalSteps}</div>
+          <div className="hd-2" style={{ marginTop: 2 }}>{TITLE_BY_STEP[step]}</div>
+        </div>
+      </div>
 
-          <h1 className="mb-6 font-heading text-headline-lg-mobile md:text-headline-lg">Create a Game</h1>
+      {/* Progress */}
+      <div style={{ padding: '0 20px 16px' }}>
+        <div style={{ height: 4, borderRadius: 2, background: 'var(--surface-2)', overflow: 'hidden' }}>
+          <div
+            style={{
+              height: '100%',
+              width: `${((step + 1) / totalSteps) * 100}%`,
+              background: 'var(--lime)',
+              transition: 'width .3s ease',
+              borderRadius: 2,
+            }}
+          />
+        </div>
+      </div>
 
-          <form onSubmit={handleSubmit} className="grid w-full min-w-0 grid-cols-1 gap-5 overflow-hidden md:grid-cols-2">
-            {/* Game Name */}
-            <div className={`${fieldClass} md:col-span-2`}>
-              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">GAME NAME</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Saturday Morning Mix-In"
-                required
-                className={inputClass}
-                style={cardShadow}
-              />
-            </div>
-
-            {/* Location */}
-            <div className={`${fieldClass} md:col-span-2`}>
-              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">LOCATION</label>
-              <div className="relative min-w-0">
-                <Icon name="location_on" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline" />
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Search courts..."
-                  required
-                  className={`${inputClass} pl-12`}
-                  style={cardShadow}
-                />
-              </div>
-            </div>
-
-            {/* Date + Time Row */}
-            <div className={fieldClass}>
-              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">DATE</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className={inputClass}
-                style={cardShadow}
-              />
-            </div>
-            <div className={fieldClass}>
-              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">TIME</label>
-              <input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                required
-                className={inputClass}
-                style={cardShadow}
-              />
-            </div>
-
-            {/* Player Limit + Skill Range */}
-            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 md:col-span-2">
-              <div className={fieldClass}>
-                <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">PLAYERS</label>
-                <select
-                  value={playerLimit}
-                  onChange={(e) => setPlayerLimit(e.target.value)}
-                  className={selectClass}
-                  style={cardShadow}
-                >
-                  {['2','4','6','8','12','16','24','32'].map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-              </div>
-              <div className={fieldClass}>
-                <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">MIN SKILL</label>
-                <select
-                  value={skillMin}
-                  onChange={(e) => setSkillMin(e.target.value)}
-                  className={selectClass}
-                  style={cardShadow}
-                >
-                  {['1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div className={fieldClass}>
-                <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">MAX SKILL</label>
-                <select
-                  value={skillMax}
-                  onChange={(e) => setSkillMax(e.target.value)}
-                  className={selectClass}
-                  style={cardShadow}
-                >
-                  {['2.0','2.5','3.0','3.5','4.0','4.5','5.0','5.5+'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Visibility Toggle */}
-            <div className={`${fieldClass} md:col-span-2`}>
-              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">VISIBILITY</label>
-              <div className="flex min-w-0 rounded-[12px] bg-surface-container-high p-1" style={cardShadow}>
+      {step === 0 && (
+        <>
+          <div className="field">
+            <div className="lbl">Game type</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {TYPES.map((o) => (
                 <button
-                  type="button"
-                  onClick={() => setVisibility('public')}
-                  className={`flex-1 rounded-full py-2.5 text-center font-heading text-body-md font-bold transition-colors ${
-                    visibility === 'public' ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'
-                  }`}
+                  key={o.v}
+                  className={`time-pick ${type === o.v ? 'active' : ''}`}
+                  onClick={() => setType(o.v)}
+                  style={{ flexDirection: 'column', padding: 14, display: 'flex', alignItems: 'center', gap: 4 }}
                 >
-                  Public
+                  <div>{o.label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7 }}>{o.sub}</div>
                 </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <div className="lbl">Skill level (DUPR)</div>
+          </div>
+          <div className="time-grid">
+            {SKILLS.map((s) => (
+              <button key={s} className={`time-pick ${skill === s ? 'active' : ''}`} onClick={() => setSkill(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <div className="field" style={{ marginTop: 16 }}>
+            <div className="lbl">Game name (optional)</div>
+            <input className="control" placeholder="e.g. Friday Night Dinks" />
+          </div>
+        </>
+      )}
+
+      {step === 1 && (
+        <>
+          <div className="field">
+            <div className="lbl">When</div>
+          </div>
+          <div className="time-grid">
+            {WHEN.map((s) => (
+              <button key={s} className={`time-pick ${when === s ? 'active' : ''}`} onClick={() => setWhen(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+
+          <div className="field" style={{ marginTop: 16 }}>
+            <div className="lbl">Start time</div>
+          </div>
+          <div className="time-grid">
+            {TIMES.map((t) => (
+              <button key={t} className={`time-pick ${time === t ? 'active' : ''}`} onClick={() => setTime(t)}>
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div className="field" style={{ marginTop: 16 }}>
+            <div className="lbl">Duration</div>
+          </div>
+          <div className="time-grid">
+            {['1 hr', '1.5 hr', '2 hr', '3 hr'].map((d) => (
+              <button key={d} className={`time-pick ${d === '2 hr' ? 'active' : ''}`}>{d}</button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <div className="field">
+            <div className="lbl">Court</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {COURTS.map((c) => (
                 <button
-                  type="button"
-                  onClick={() => setVisibility('private')}
-                  className={`flex-1 rounded-full py-2.5 text-center font-heading text-body-md font-bold transition-colors ${
-                    visibility === 'private' ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'
-                  }`}
+                  key={c.name}
+                  onClick={() => setCourt(c.name)}
+                  className="time-pick"
+                  style={{
+                    textAlign: 'left',
+                    background: court === c.name ? 'var(--ink)' : 'var(--surface)',
+                    color: court === c.name ? 'white' : 'var(--ink)',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}
                 >
-                  Private
+                  <Icon name="location" size={18} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                    <div style={{ fontSize: 11, opacity: 0.7, fontWeight: 600 }}>{c.meta}</div>
+                  </div>
+                  {court === c.name && <Icon name="check" size={16} />}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <div className="lbl">Spots available · {spots}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={() => setSpots((s) => Math.max(2, s - 1))}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'var(--surface)',
+                  border: '0.5px solid var(--hairline)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="minus" size={16} />
+              </button>
+              <div
+                style={{
+                  flex: 1,
+                  textAlign: 'center',
+                  fontFamily: 'var(--font-heading)',
+                  fontWeight: 600,
+                  fontSize: 28,
+                  color: 'var(--ink)',
+                }}
+              >
+                {spots}
               </div>
+              <button
+                onClick={() => setSpots((s) => Math.min(16, s + 1))}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: 'var(--ink)',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="plus" size={16} />
+              </button>
             </div>
+          </div>
 
-            {/* Description */}
-            <div className={`${fieldClass} md:col-span-2`}>
-              <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">DESCRIPTION</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Tell players what to expect..."
-                rows={3}
-                className="block w-full min-w-0 max-w-full resize-none rounded-[12px] border border-outline-variant bg-surface-container-lowest p-4 text-body-md transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                style={cardShadow}
-              />
+          <div className="field">
+            <div className="lbl">Visibility</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <button className={`time-pick ${vis === 'public' ? 'active' : ''}`} onClick={() => setVis('public')}>🌍 Public</button>
+              <button className={`time-pick ${vis === 'invite' ? 'active' : ''}`} onClick={() => setVis('invite')}>🔒 Invite only</button>
             </div>
+          </div>
+        </>
+      )}
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={!title || !location || !date || !time}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-secondary-container font-heading text-body-lg font-bold text-on-secondary-container transition-all hover:brightness-105 active:scale-95 disabled:opacity-50 md:col-span-2 md:mx-auto md:max-w-sm"
-              style={{ boxShadow: 'var(--shadow-button)' }}
-            >
-              Create Game
-              <Icon name="bolt" size={20} />
-            </button>
-          </form>
-
-        </main>
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          padding: '12px 20px calc(20px + env(safe-area-inset-bottom))',
+          background: 'var(--bg)',
+          borderTop: '0.5px solid var(--hairline)',
+          maxWidth: 480,
+          margin: '0 auto',
+        }}
+      >
+        <button
+          onClick={next}
+          className="btn-primary"
+          style={{ margin: 0, width: '100%' }}
+        >
+          {step === totalSteps - 1 ? (
+            <>
+              <Icon name="bolt" size={18} /> Post game
+            </>
+          ) : (
+            <>
+              Continue <Icon name="forward" size={16} />
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

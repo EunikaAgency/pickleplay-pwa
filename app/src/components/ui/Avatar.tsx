@@ -1,5 +1,7 @@
+import type { CSSProperties } from 'react';
+
 function getInitials(name?: string): string {
-  if (!name) return '?';
+  if (!name) return '';
   return name
     .split(' ')
     .map((n) => n[0])
@@ -8,33 +10,28 @@ function getInitials(name?: string): string {
     .slice(0, 2);
 }
 
+type AvatarVariant = 'blue' | 'lime' | 'coral';
+
 interface AvatarProps {
   src?: string | null;
   name?: string;
   size?: number;
+  variant?: AvatarVariant;
   className?: string;
+  style?: CSSProperties;
 }
 
-export function Avatar({ src, name, size = 48, className = '' }: AvatarProps) {
-  const style = { width: size, height: size, minWidth: size };
-
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt=""
-        className={`rounded-full object-cover border-2 border-secondary-container/30 ${className}`}
-        style={style}
-      />
-    );
-  }
+export function Avatar({ src, name, size = 40, variant = 'blue', className = '', style }: AvatarProps) {
+  const merged: CSSProperties = {
+    width: size,
+    height: size,
+    fontSize: Math.max(11, Math.round(size * 0.4)),
+    ...style,
+  };
 
   return (
-    <div
-      className={`rounded-full bg-primary-fixed text-on-primary-fixed font-bold flex items-center justify-center ${className}`}
-      style={{ ...style, fontSize: size * 0.35 }}
-    >
-      {getInitials(name)}
-    </div>
+    <span className={`avatar ${variant} ${className}`} style={merged}>
+      {src ? <img src={src} alt="" /> : getInitials(name)}
+    </span>
   );
 }

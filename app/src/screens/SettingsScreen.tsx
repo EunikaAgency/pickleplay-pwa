@@ -8,101 +8,135 @@ interface SettingsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
 }
 
-const settingsSections = [
+const SECTIONS = [
   {
     title: 'Account',
     items: [
-      { id: 'edit-profile', label: 'Edit Profile', icon: 'account_circle' },
-      { id: 'notifications', label: 'Notification Preferences', icon: 'notifications' },
-      { id: 'privacy', label: 'Privacy & Security', icon: 'security' },
+      { id: 'edit-profile',   ic: 'user',   name: 'Edit profile',        desc: 'Name, photo, bio', color: 'var(--primary)' },
+      { id: 'notifications',  ic: 'bell',   name: 'Notifications',       desc: 'Push, email, in-app', color: 'var(--coral)' },
+      { id: 'settings',       ic: 'shield', name: 'Privacy & security',  desc: 'Visibility, blocking', color: '#5b7400' },
     ],
   },
   {
     title: 'Support',
     items: [
-      { id: 'help', label: 'Help & Support', icon: 'help' },
-      { id: 'about', label: 'About PickleBallers', icon: 'info' },
+      { id: 'settings', ic: 'help', name: 'Help & FAQ',          desc: 'Get answers and contact us', color: 'var(--ink-2)' },
+      { id: 'settings', ic: 'bolt', name: 'About PickleBallers', desc: 'Version, terms, credits',    color: 'var(--primary)' },
     ],
   },
 ];
 
-const themeOptions: { id: ThemePreference; label: string; icon: string }[] = [
-  { id: 'light', label: 'Light', icon: 'light_mode' },
-  { id: 'dark', label: 'Dark', icon: 'dark_mode' },
-  { id: 'system', label: 'System', icon: 'brightness_auto' },
+const THEMES: { id: ThemePreference; label: string }[] = [
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'system', label: 'System' },
 ];
 
-export function SettingsScreen({ onLogout, onNavigate }: SettingsScreenProps) {
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+export function SettingsScreen({ onLogout, onNavigate, onBack }: SettingsScreenProps) {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-xl px-5 pt-6 pb-28 space-y-6">
+    <div className="scroll" style={{ paddingBottom: 60, paddingTop: 'calc(20px + env(safe-area-inset-top))' }}>
+      <div style={{ padding: '4px 20px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button
+          onClick={onBack}
+          aria-label="Back"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 999,
+            background: 'var(--surface-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="back" size={16} />
+        </button>
+        <div style={{ flex: 1 }}>
+          <div className="hd-2">Settings</div>
+          <div className="t-sm">Tweak your experience</div>
+        </div>
+      </div>
 
-          {/* Appearance */}
-          <section>
-            <h2 className="font-heading text-headline-md text-on-surface mb-2">Appearance</h2>
+      <div className="section" style={{ marginTop: 0 }}>
+        <div className="section-head">
+          <div className="hd-2">Appearance</div>
+        </div>
+        <div className="card" style={{ padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <div
-              className="rounded-[12px] bg-surface-container-lowest p-4 space-y-3"
-              style={cardShadow}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: 'var(--primary-tint)',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Icon name="palette" size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-body-md font-semibold text-on-surface">Theme</div>
-                  <div className="text-label-sm text-on-surface-variant">
-                    Light, dark, or match your device.
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {themeOptions.map((opt) => (
-                  <Chip key={opt.id} selected={theme === opt.id} onClick={() => setTheme(opt.id)}>
-                    <Icon name={opt.icon} size={16} />
-                    {opt.label}
-                  </Chip>
-                ))}
-              </div>
+              <Icon name="bolt" size={18} />
             </div>
-          </section>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>Theme</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>Light, dark, or system.</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {THEMES.map((opt) => (
+              <Chip key={opt.id} selected={theme === opt.id} onClick={() => setTheme(opt.id)}>
+                {opt.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      </div>
 
-          {settingsSections.map((section) => (
-            <section key={section.title}>
-              <h2 className="font-heading text-headline-md text-on-surface mb-2">{section.title}</h2>
-              <div className="space-y-2">
-                {section.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[12px] cursor-pointer active:scale-[0.98] transition-transform group"
-                    style={cardShadow}
-                    onClick={() => onNavigate(item.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                        <Icon name={item.icon} size={20} />
-                      </div>
-                      <span className="text-body-md font-semibold">{item.label}</span>
-                    </div>
-                    <Icon name="chevron_right" size={20} className="text-outline group-hover:translate-x-1 transition-transform" />
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+      {SECTIONS.map((section) => (
+        <div key={section.title} className="section">
+          <div className="section-head">
+            <div className="hd-2">{section.title}</div>
+          </div>
+          <div className="set-list">
+            {section.items.map((s) => (
+              <button key={s.name} className="row" onClick={() => onNavigate(s.id)}>
+                <div className="ic" style={{ background: s.color }}>
+                  <Icon name={s.ic} size={16} />
+                </div>
+                <div className="body">
+                  <div className="name">{s.name}</div>
+                  <div className="desc">{s.desc}</div>
+                </div>
+                <Icon name="chevron" size={16} className="chev" />
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
 
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 p-4 mt-6 text-error font-bold hover:opacity-80 transition-opacity active:scale-95"
-          >
-            <Icon name="logout" size={24} />
-            <span className="text-body-lg font-bold">Sign Out</span>
-          </button>
-
-        </main>
+      <div className="section">
+        <button
+          onClick={onLogout}
+          style={{
+            width: '100%',
+            height: 52,
+            background: 'var(--coral-soft)',
+            color: 'var(--coral)',
+            borderRadius: 16,
+            fontFamily: 'var(--font-heading)',
+            fontWeight: 600,
+            fontSize: 15,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <Icon name="logout" size={18} />
+          Sign out
+        </button>
       </div>
     </div>
   );

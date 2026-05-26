@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 
 interface OfflineBannerProps {
-  /** When true, render even if the browser reports online (for demo / preview). */
   forceShow?: boolean;
 }
 
@@ -25,9 +24,19 @@ export function OfflineBanner({ forceShow = false }: OfflineBannerProps) {
   return (
     <div
       role="status"
-      className="flex w-full items-center justify-center gap-2 bg-tertiary-container/70 px-4 py-1.5 text-body-md font-bold text-on-tertiary-container"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        background: 'var(--coral-soft)',
+        color: 'var(--coral)',
+        padding: '6px 16px',
+        fontSize: 12,
+        fontWeight: 700,
+      }}
     >
-      <Icon name="cloud_off" size={16} />
+      <Icon name="wifi_off" size={14} />
       <span>You're offline — showing your last view.</span>
     </div>
   );

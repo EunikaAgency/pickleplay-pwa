@@ -3,7 +3,8 @@ import { Icon } from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
-import { Chip } from '../components/ui/Chip';
+import { GameRow } from '../components/ui/GameRow';
+import { Segmented } from '../components/ui/Segmented';
 import { GameFilterSheet } from '../components/filters/GameFilterSheet';
 import { useDemoState } from '../lib/demoState';
 
@@ -11,235 +12,190 @@ interface GamesScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
 }
 
-type GameTab = 'my-games' | 'upcoming' | 'completed';
+type GamesView = 'browse' | 'mine';
 
-const dateChips = [
-  { label: 'Today', date: 'May 26' },
-  { label: 'Tomorrow', date: 'May 27' },
-  { label: 'Sat', date: 'May 30' },
-  { label: 'Sun', date: 'May 31' },
-  { label: 'Mon', date: 'Jun 1' },
-  { label: 'Tue', date: 'Jun 2' },
-  { label: 'Wed', date: 'Jun 3' },
-];
+const CALENDAR = (() => {
+  const today = new Date();
+  const wdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  return Array.from({ length: 10 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return {
+      wd: i === 0 ? 'TODAY' : i === 1 ? 'TOM' : wdays[d.getDay()],
+      dn: d.getDate(),
+      has: [0, 1, 3, 6].includes(i),
+      key: i,
+    };
+  });
+})();
 
-const myGames = [
-  {
-    id: '1', title: 'Saturday Morning Mix-In', date: 'Sat, Oct 14 • 9:00 AM',
-    location: 'Riverside Courts • 2.1 mi', players: '8/12', tag: 'Open Play',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQeWJn-7Kk1HCR-1MhQ2a4JKM3hst4f2Go13gZorz6vGn8cKEUeXpeE3gDY6v6tBlYjWFTQLGTbHGRdv10L15u0FFVQC95N5dBLo0AcLAElZTzhP_oITmJh1BoD87sRmvOYdCL5Tl_YkEJwm8DgDULjJE3S0rp_uvrsn2lH7dTUfXyr1XiZAGc5jwCgKaiuxzTtkadzvjIwWFZNW0THmQVTRB1OtQV929zAPnNs-HFJuZKa_6n7mIrR33C5eCZFcXbW-BtyYd2',
-  },
-  {
-    id: '2', title: 'Weekly Doubles League', date: 'Tue, Oct 17 • 6:30 PM',
-    location: 'Central Hub • 0.8 mi', players: '14/16', tag: 'Competitive',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByMwXrWnGLq1pjWr5EGIag1wSi3z-p4GQoRUYJv2WhqBU2vdxY0RD1VzOA5nJ4uLEuUPzDdOD-Tdkl_VBMRYPg1bGQ-buq9ulGnLkArv60HQOgh6IZmShrX6KsY_FSazVPyhayDM4qTTJ10rsLpGA2kpA3PUrVSW-xpILKCC--RXHWMf0z_iHdX2OilDEMAzH69rUL53KTk5lGpJUN_xzr_-cU0NIuVDBQRdURMjAjfcJUelBEO0EP7TvyKgouywscNgA72xI-',
-  },
-];
+const QUICK_CHIPS = ['Tonight', 'Beginner', '3.0–3.5', 'Within 5 mi', 'Doubles'];
 
-const upcomingGames = [
-  {
-    id: '3', title: 'Rookie Rally Round', date: 'Today, 5:30 PM',
-    location: 'Central Hub • 1.2 mi', players: '4/8', tag: 'Beginner',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQeWJn-7Kk1HCR-1MhQ2a4JKM3hst4f2Go13gZorz6vGn8cKEUeXpeE3gDY6v6tBlYjWFTQLGTbHGRdv10L15u0FFVQC95N5dBLo0AcLAElZTzhP_oITmJh1BoD87sRmvOYdCL5Tl_YkEJwm8DgDULjJE3S0rp_uvrsn2lH7dTUfXyr1XiZAGc5jwCgKaiuxzTtkadzvjIwWFZNW0THmQVTRB1OtQV929zAPnNs-HFJuZKa_6n7mIrR33C5eCZFcXbW-BtyYd2',
-  },
-  {
-    id: '4', title: 'Competitive Singles', date: 'Sat, Oct 21 • 10:00 AM',
-    location: 'The Kitchen • 3.5 mi', players: '2/4', tag: 'Advanced',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByMwXrWnGLq1pjWr5EGIag1wSi3z-p4GQoRUYJv2WhqBU2vdxY0RD1VzOA5nJ4uLEuUPzDdOD-Tdkl_VBMRYPg1bGQ-buq9ulGnLkArv60HQOgh6IZmShrX6KsY_FSazVPyhayDM4qTTJ10rsLpGA2kpA3PUrVSW-xpILKCC--RXHWMf0z_iHdX2OilDEMAzH69rUL53KTk5lGpJUN_xzr_-cU0NIuVDBQRdURMjAjfcJUelBEO0EP7TvyKgouywscNgA72xI-',
-  },
-  {
-    id: '5', title: 'Social Mixer & Drinks', date: 'Sun, Oct 22 • 4:00 PM',
-    location: 'Sky Courts • 0.8 mi', players: '10/16', tag: 'Mixed Level',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDpfByT3q1YIF8lrRviwwRuL72MUO9nxSSrm_zzAA-UMCRtNWmMPJvsXtOm-gjNjoU9mULcsmHPtZJFw-bmPf4iT6HFrBvkN8jkcCapuLNdW-wyz2PUJ4c2K51n1bLqJcdgRc9R0c_gODV0tFxy-zXj0ondBthKQ6F42osmjp9z-atPbsTNGNniFjchTaJrVzK5ifLMQdJKlYD9B4QecTiuYPvCLgWiTPDwSI9RiW97N4sFK0l63Ojd3A6oCowgt_Ad7aWEJKsu',
-  },
-];
+const BROWSE_GAMES = [
+  { day: 'TODAY', num: '26', thumb: 'lime',  title: 'Rookie Rally Round',    time: '5:30 PM',  loc: 'Central Hub · 1.2 mi' },
+  { day: 'TODAY', num: '26', thumb: 'coral', title: 'Friday Night Dinks',    time: '6:30 PM',  loc: 'Riverside · 1.2 mi' },
+  { day: 'TODAY', num: '26', thumb: 'blue',  title: 'Beginner Open Play',    time: '7:00 PM',  loc: 'Central Hub · 0.8 mi' },
+  { day: 'TOM',   num: '27', thumb: 'lime',  title: 'Saturday Morning Mix',  time: '9:00 AM',  loc: 'Riverside · 1.2 mi' },
+  { day: 'SAT',   num: '28', thumb: 'coral', title: 'Competitive Singles',   time: '10:00 AM', loc: 'The Kitchen · 3.5 mi' },
+  { day: 'SUN',   num: '29', thumb: 'blue',  title: 'Social Mixer & Drinks', time: '4:00 PM',  loc: 'Sky Courts · 0.8 mi' },
+] as const;
 
-const completedGames = [
-  {
-    id: '6', title: 'Friday Night Lights', date: 'Fri, Oct 13 • 7:00 PM',
-    location: 'Austin Smash Center • 0.8 mi', players: '12/12', tag: 'Intermediate',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsL986uwrjRnAFPLVZTE71SgRlgtERnWB_O-_u-mg4qaddBohUzg2f9di6EjSOELb6gOdw5hpL_oiC_o8ZrPChGext6DF4-_g10CoLCaIMBtZ1oDYsDm-Q89VmI4GCI4qum9HaYOx0PQN98F1AJfvJh0jZUfJpE5qf_wdLWBpxpdg4Q0O9J_lQlCGuXKu6RCm-me0mSj6T7miyRvXid9yuUZHJgdgUeLXoT18Lf6wzh6Z3ZM0VQGmIKAHPEmkQ69DWo8kMreU1',
-  },
-];
-
-const tabs: { id: GameTab; label: string }[] = [
-  { id: 'my-games', label: 'My Games' },
-  { id: 'upcoming', label: 'Upcoming' },
-  { id: 'completed', label: 'Completed' },
-];
-
-const tagColors: Record<string, string> = {
-  Beginner: 'bg-secondary-container text-on-secondary-container',
-  Advanced: 'bg-tertiary-container text-on-tertiary-container',
-  'Mixed Level': 'bg-primary-container text-on-primary-container',
-  Competitive: 'bg-tertiary-container text-on-tertiary-container',
-  'Open Play': 'bg-secondary-container text-on-secondary-container',
-  Intermediate: 'bg-primary-container text-on-primary-container',
-};
-
-function GameCard({ game, onClick, cardShadow }: { game: typeof myGames[0]; onClick: () => void; cardShadow: React.CSSProperties }) {
-  return (
-    <div
-      className="flex gap-4 bg-surface-container-lowest rounded-[12px] overflow-hidden group cursor-pointer active:scale-[0.98] transition-transform"
-      style={cardShadow}
-      onClick={onClick}
-    >
-      <div className="relative h-28 w-28 shrink-0 overflow-hidden">
-        <img alt="" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" src={game.img} />
-        {/* Black overlay */}
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="absolute bottom-2 left-2">
-          <span className={`rounded-full px-2 py-0.5 text-label-sm font-bold uppercase tracking-wider ${tagColors[game.tag] || 'bg-surface-container text-on-surface-variant'}`}>
-            {game.tag}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col justify-center py-3 pr-4">
-        <h3 className="font-heading text-body-lg font-semibold text-on-surface">{game.title}</h3>
-        <div className="flex items-center text-label-sm text-on-surface-variant mt-1">
-          <Icon name="schedule" size={14} className="mr-1" />
-          {game.date}
-        </div>
-        <div className="flex items-center text-label-sm text-on-surface-variant mt-0.5">
-          <Icon name="location_on" size={14} className="mr-1" />
-          {game.location}
-        </div>
-        <div className="flex items-center text-label-sm text-on-surface-variant mt-0.5">
-          <Icon name="group" size={14} className="mr-1" />
-          {game.players} players
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const QUICK_FILTERS = ['Tonight', 'Tomorrow', 'This weekend', 'Beginner', '3.0–3.5', 'Within 5 mi'];
+const MINE_GAMES = [
+  { day: 'SAT', num: '14', thumb: 'lime', title: 'Saturday Morning Mix-In', time: '9:00 AM', loc: 'Riverside · 1.2 mi', joined: true },
+  { day: 'TUE', num: '17', thumb: 'blue', title: 'Weekly Doubles League',   time: '6:30 PM', loc: 'Central Hub · 0.8 mi', joined: true },
+] as const;
 
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
-  const [activeTab, setActiveTab] = useState<GameTab>('my-games');
-  const [selectedDate, setSelectedDate] = useState(0);
-  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<string>>(new Set());
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const [view, setView] = useState<GamesView>('browse');
+  const [activeDay, setActiveDay] = useState(0);
+  const [activeChips, setActiveChips] = useState<Set<string>>(new Set(['Tonight']));
+  const [filterOpen, setFilterOpen] = useState(false);
   const { state: demoState } = useDemoState();
 
-  const toggleQuickFilter = (label: string) => {
-    setActiveQuickFilters((prev) => {
+  const toggle = (c: string) => {
+    setActiveChips((prev) => {
       const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
+      if (next.has(c)) next.delete(c);
+      else next.add(c);
       return next;
     });
   };
 
-  const currentGames = activeTab === 'my-games' ? myGames : activeTab === 'upcoming' ? upcomingGames : completedGames;
-  const showEmpty = demoState === 'empty' || (activeTab === 'completed' && completedGames.length === 0);
-
-  const emptyForTab = {
-    'my-games': { title: "You haven't joined any games yet", description: 'Browse upcoming games near you to get on the courts this week.' },
-    'upcoming': { title: 'No upcoming games match this date', description: 'Try a different date or remove your filters.' },
-    'completed': { title: 'No completed games yet', description: 'Your finished games will show up here once you play your first.' },
-  }[activeTab];
+  const games: ReadonlyArray<typeof BROWSE_GAMES[number] | typeof MINE_GAMES[number]> =
+    view === 'mine' ? MINE_GAMES : BROWSE_GAMES;
+  const showEmpty = demoState === 'empty' || games.length === 0;
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-6">
-
-          {/* Tab Switcher + Filter */}
-          <div className="flex items-center gap-3">
-            <div className="relative flex flex-1 rounded-full bg-surface-container-high p-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 rounded-full py-2 text-center font-heading text-body-md font-bold transition-colors z-10 ${
-                    activeTab === tab.id ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setFilterSheetOpen(true)}
-              aria-label="Open filters"
-              className="flex items-center gap-1.5 rounded-full bg-surface-container-lowest px-4 py-2.5 text-label-sm font-bold text-on-surface-variant border border-outline-variant active:scale-95 transition-all"
-              style={cardShadow}
-            >
-              <Icon name="tune" size={16} />
-            </button>
+    <div className="scroll safe-top safe-bottom">
+      <div className="app-header">
+        <div>
+          <div className="greet-name">Games</div>
+          <div className="greet-sub">
+            {games.length} games {view === 'mine' ? 'you joined' : 'this week'}
           </div>
+        </div>
+        <button
+          onClick={() => setFilterOpen(true)}
+          aria-label="Open filters"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: 'var(--surface)',
+            color: 'var(--ink-2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: 'var(--shadow-card)',
+            border: '0.5px solid var(--hairline)',
+            position: 'relative',
+          }}
+        >
+          <Icon name="sliders" size={18} />
+          <span
+            style={{
+              position: 'absolute',
+              top: 4,
+              right: 4,
+              background: 'var(--coral)',
+              color: 'white',
+              fontSize: 9,
+              fontWeight: 800,
+              minWidth: 14,
+              height: 14,
+              borderRadius: 7,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              border: '2px solid var(--surface)',
+            }}
+          >
+            2
+          </span>
+        </button>
+      </div>
 
-          {/* Quick chip filters */}
-          <div className="scrollbar-none flex gap-2 overflow-x-auto pb-1">
-            {QUICK_FILTERS.map((label) => (
-              <Chip
-                key={label}
-                size="md"
-                selected={activeQuickFilters.has(label)}
-                onClick={() => toggleQuickFilter(label)}
-              >
-                {label}
-              </Chip>
+      <div className="searchbar">
+        <Icon name="search" size={16} />
+        <input placeholder="Search games, courts, players…" />
+        <button style={{ color: 'var(--primary)' }} aria-label="Voice search">
+          <Icon name="mic" size={16} />
+        </button>
+      </div>
+
+      <div style={{ padding: '14px 16px 0' }}>
+        <Segmented
+          value={view}
+          onChange={setView}
+          options={[
+            { value: 'browse', label: 'Browse' },
+            { value: 'mine', label: 'My Games' },
+          ]}
+        />
+      </div>
+
+      <div className="section" style={{ marginTop: 16 }}>
+        <div className="cal-strip">
+          {CALENDAR.map((d, i) => (
+            <button
+              key={d.key}
+              className={`day ${activeDay === i ? 'active' : ''} ${d.has ? 'has' : ''}`}
+              onClick={() => setActiveDay(i)}
+            >
+              <span className="wd">{d.wd}</span>
+              <span className="dn">{d.dn}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="section" style={{ marginTop: 14 }}>
+        <div className="scroll-x" style={{ display: 'flex', gap: 8, padding: '0 0 4px' }}>
+          {QUICK_CHIPS.map((c) => (
+            <button key={c} className={`chip ${activeChips.has(c) ? 'lime' : ''}`} onClick={() => toggle(c)}>
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="section" style={{ marginTop: 12 }}>
+        {demoState === 'loading' ? (
+          <LoadingSkeleton variant="card" count={4} />
+        ) : demoState === 'error' ? (
+          <ErrorState
+            title="Couldn't load games"
+            message="We couldn't reach the games feed. Pull down to retry."
+            onRetry={() => {}}
+          />
+        ) : showEmpty ? (
+          <EmptyState
+            icon="paddle"
+            title={view === 'mine' ? "You haven't joined any games yet" : 'No games found'}
+            description={view === 'mine' ? 'Browse upcoming games near you to get on the courts.' : 'Try a different date or remove some filters.'}
+            action={view === 'mine' ? { label: 'Browse games', onPress: () => setView('browse') } : undefined}
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {games.map((g, i) => (
+              <GameRow
+                key={i}
+                day={g.day}
+                num={g.num}
+                thumb={g.thumb}
+                title={g.title}
+                time={g.time}
+                loc={g.loc}
+                joined={'joined' in g ? g.joined : false}
+                onTap={() => onNavigate('game-details', { id: `g${i + 1}` })}
+              />
             ))}
           </div>
-
-          {/* Date Chips */}
-          {(activeTab === 'upcoming' || activeTab === 'my-games') && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
-              {dateChips.map((chip, i) => (
-                <button
-                  key={chip.date}
-                  onClick={() => setSelectedDate(i)}
-                  className={`flex flex-col items-center shrink-0 px-4 py-2 rounded-[12px] transition-all active:scale-95 ${
-                    selectedDate === i
-                      ? 'bg-secondary-container text-on-secondary-container'
-                      : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant'
-                  }`}
-                  style={selectedDate === i ? cardShadow : undefined}
-                >
-                  <span className="font-heading text-body-md font-bold">{chip.label}</span>
-                  <span className="text-label-sm opacity-70">{chip.date}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Games List with state handling */}
-          {demoState === 'loading' ? (
-            <LoadingSkeleton variant="card" count={4} />
-          ) : demoState === 'error' ? (
-            <ErrorState
-              title="Couldn't load games"
-              message="We couldn't reach the games feed. Pull down to retry or check again in a moment."
-              onRetry={() => { /* no-op */ }}
-            />
-          ) : showEmpty ? (
-            <EmptyState
-              icon="sports_tennis"
-              title={emptyForTab.title}
-              description={emptyForTab.description}
-              action={activeTab === 'my-games' || activeTab === 'upcoming'
-                ? { label: 'Browse games', onPress: () => setActiveTab('upcoming') }
-                : undefined}
-            />
-          ) : (
-            <div className="space-y-3">
-              {currentGames.map((game) => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  cardShadow={cardShadow}
-                  onClick={() => onNavigate('game-details', { id: game.id })}
-                />
-              ))}
-            </div>
-          )}
-
-        </main>
+        )}
       </div>
-      <GameFilterSheet open={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} />
+
+      <GameFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} />
     </div>
   );
 }

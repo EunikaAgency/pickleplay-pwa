@@ -10,13 +10,9 @@ interface FormTierPickerProps {
 
 export function FormTierPicker({ label, value, onChange, error }: FormTierPickerProps) {
   return (
-    <div className="space-y-2">
-      {label && (
-        <span className="block text-label-sm font-bold uppercase tracking-wider text-on-surface-variant ml-1">
-          {label}
-        </span>
-      )}
-      <div className="space-y-2.5">
+    <div className="field" style={{ padding: 0 }}>
+      {label && <div className="lbl">{label}</div>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {skillTiers.map((tier) => {
           const isActive = value === tier.id;
           return (
@@ -25,33 +21,53 @@ export function FormTierPicker({ label, value, onChange, error }: FormTierPicker
               type="button"
               onClick={() => onChange(tier.id)}
               aria-pressed={isActive}
-              className={`w-full flex items-start gap-3 rounded-[14px] p-4 text-left transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                isActive
-                  ? 'border-2 border-primary bg-primary/5 shadow-card'
-                  : 'border border-outline-variant bg-surface-container-lowest hover:border-primary/40'
-              }`}
+              style={{
+                width: '100%',
+                display: 'flex',
+                gap: 12,
+                padding: 14,
+                borderRadius: 14,
+                background: isActive ? 'var(--primary-tint)' : 'var(--surface)',
+                border: isActive ? '1.5px solid var(--primary)' : '0.5px solid var(--hairline)',
+                textAlign: 'left',
+                transition: 'transform .12s ease',
+              }}
             >
-              <div
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                  isActive ? 'border-primary bg-primary' : 'border-outline-variant'
-                }`}
+              <span
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  flexShrink: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: isActive ? '2px solid var(--primary)' : '2px solid var(--surface-3)',
+                  background: isActive ? 'var(--primary)' : 'transparent',
+                  color: 'white',
+                  marginTop: 2,
+                }}
               >
-                {isActive && <Icon name="check" size={14} className="text-on-primary" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-heading text-body-lg font-bold text-on-surface">{tier.name}</span>
-                  <span className="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                {isActive && <Icon name="check" size={12} />}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 15, color: 'var(--ink)' }}>
+                    {tier.name}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--muted)', letterSpacing: 0.4, textTransform: 'uppercase' }}>
                     {tier.dupr}
                   </span>
                 </div>
-                <p className="text-body-md text-on-surface-variant">{tier.blurb}</p>
+                <p style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 4 }}>{tier.blurb}</p>
               </div>
             </button>
           );
         })}
       </div>
-      {error && <p className="text-label-sm font-bold text-error ml-1">{error}</p>}
+      {error && (
+        <p style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--coral)' }}>{error}</p>
+      )}
     </div>
   );
 }

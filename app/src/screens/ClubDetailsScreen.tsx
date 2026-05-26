@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { Avatar } from '../components/ui/Avatar';
+import { Segmented } from '../components/ui/Segmented';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { ErrorState } from '../components/ui/ErrorState';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -13,60 +15,58 @@ interface ClubDetailsScreenProps {
 
 type ClubTab = 'about' | 'members' | 'events' | 'chat';
 
-const tabs: { id: ClubTab; label: string }[] = [
-  { id: 'about', label: 'About' },
-  { id: 'members', label: 'Members' },
-  { id: 'events', label: 'Events' },
-  { id: 'chat', label: 'Chat' },
+const MEMBERS = [
+  { name: 'Mike R.',   role: 'Admin',     v: 'lime' as const },
+  { name: 'Sarah K.',  role: 'Moderator', v: 'blue' as const },
+  { name: 'Alex T.',   role: 'Member',    v: 'coral' as const },
+  { name: 'Jordan P.', role: 'Member',    v: 'blue' as const },
+  { name: 'Casey W.',  role: 'Member',    v: 'lime' as const },
 ];
 
-const members = [
-  { name: 'Mike R.', role: 'Admin', src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg' },
-  { name: 'Sarah K.', role: 'Moderator', src: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD' },
-  { name: 'Alex T.', role: 'Member', src: null },
-  { name: 'Jordan P.', role: 'Member', src: null },
-  { name: 'Casey W.', role: 'Member', src: null },
+const CHAT = [
+  { sender: 'Mike R.',  body: "Who's in for Saturday morning?",   time: '10:32 AM', isMe: false, v: 'lime' as const },
+  { sender: 'Sarah K.', body: "I'm there! Bringing a guest too.",  time: '10:35 AM', isMe: false, v: 'blue' as const },
+  { sender: 'Me',       body: 'Count me in! Can we do doubles?',    time: '10:38 AM', isMe: true,  v: 'lime' as const },
+  { sender: 'Mike R.',  body: "Absolutely. I'll set up the rotation.", time: '10:40 AM', isMe: false, v: 'lime' as const },
 ];
 
-const chatMessages = [
-  { id: '1', sender: 'Mike R.', body: 'Who\'s in for Saturday morning?', time: '10:32 AM', isMe: false },
-  { id: '2', sender: 'Sarah K.', body: 'I\'m there! Bringing a guest too.', time: '10:35 AM', isMe: false },
-  { id: '3', sender: 'Me', body: 'Count me in! Can we do doubles?', time: '10:38 AM', isMe: true },
-  { id: '4', sender: 'Mike R.', body: 'Absolutely. I\'ll set up the rotation.', time: '10:40 AM', isMe: false },
+const EVENTS = [
+  { title: 'Saturday Mix-In',        date: 'Sat, Oct 14 · 9:00 AM',  spots: '8/12',  day: 'SAT', num: '14', thumb: 'lime'  as const },
+  { title: 'Weekly Doubles League',  date: 'Tue, Oct 17 · 6:30 PM',  spots: '14/16', day: 'TUE', num: '17', thumb: 'blue'  as const },
+  { title: 'Beginner Clinic',        date: 'Sun, Oct 22 · 2:00 PM',  spots: '4/8',   day: 'SUN', num: '22', thumb: 'coral' as const },
 ];
 
-export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
-  const [activeTab, setActiveTab] = useState<ClubTab>('about');
+export function ClubDetailsScreen({ onBack, onNavigate }: ClubDetailsScreenProps) {
+  const [tab, setTab] = useState<ClubTab>('about');
   const [message, setMessage] = useState('');
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
   const { state: demoState } = useDemoState();
 
   if (demoState === 'loading') {
     return (
-      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="mx-auto w-full max-w-7xl px-5 pt-6 space-y-4">
-          <LoadingSkeleton variant="block" count={1} />
-          <LoadingSkeleton variant="card" count={2} />
-        </main>
+      <div className="scroll safe-top safe-bottom" style={{ padding: '0 16px' }}>
+        <LoadingSkeleton variant="block" count={1} />
+        <div style={{ marginTop: 12 }}>
+          <LoadingSkeleton variant="card" count={3} />
+        </div>
       </div>
     );
   }
   if (demoState === 'error') {
     return (
-      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+      <div className="scroll safe-top safe-bottom">
         <ErrorState
           title="Couldn't load this club"
-          message="We couldn't fetch the club page. Pull down to retry or check back shortly."
-          onRetry={() => { /* no-op */ }}
+          message="We couldn't fetch the club page. Pull down to retry."
+          onRetry={() => {}}
         />
       </div>
     );
   }
   if (demoState === 'empty') {
     return (
-      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+      <div className="scroll safe-top safe-bottom">
         <EmptyState
-          icon="group_off"
+          icon="groups"
           title="This club isn't accepting new members"
           description="Try browsing other clubs in your area."
         />
@@ -75,157 +75,171 @@ export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
   }
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        {/* Club Header */}
-        <div className="relative h-48 md:h-56">
-          <img
-            alt=""
-            className="h-full w-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-4 left-5">
-            <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg text-white">Neon Smashers</h1>
-            <p className="text-white/80 text-body-md">128 members &middot; Competitive</p>
+    <div className="scroll" style={{ paddingBottom: 30 }}>
+      <div className="detail-hero" style={{ height: 260 }}>
+        <div className="img" style={{ background: 'linear-gradient(135deg, #0035be 0%, #4d6dff 100%)' }} />
+        <div className="grad" />
+        <div className="top-controls">
+          <button className="icon-btn" onClick={onBack} aria-label="Back">
+            <Icon name="back" size={18} />
+          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="icon-btn" aria-label="Share">
+              <Icon name="share" size={16} />
+            </button>
+            <button className="icon-btn" aria-label="Message">
+              <Icon name="message" size={16} />
+            </button>
           </div>
         </div>
-
-        <main className="mx-auto max-w-7xl px-5 pt-4 pb-28 space-y-6">
-
-          {/* Club Actions */}
-          <div className="flex gap-3">
-            <button className="flex-1 bg-secondary-container text-on-secondary-container h-12 rounded-full font-bold active:scale-95 transition-all">
-              Joined
-            </button>
-            <button className="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-lowest text-primary active:scale-90 transition-all" style={cardShadow}>
-              <Icon name="share" size={20} />
-            </button>
-            <button className="w-12 h-12 flex items-center justify-center rounded-full bg-surface-container-lowest text-primary active:scale-90 transition-all" style={cardShadow}>
-              <Icon name="mail" size={20} />
-            </button>
+        <div className="info">
+          <div className="tag-row">
+            <span className="tag lime">Competitive</span>
+            <span className="tag">128 members</span>
           </div>
-
-          {/* Tab Bar */}
-          <div className="flex rounded-full bg-surface-container-high p-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 rounded-full py-2 text-center font-heading text-body-md font-bold transition-colors ${
-                  activeTab === tab.id ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <h1>Neon Smashers</h1>
+          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.95 }}>
+            Downtown Austin · 4.8 ★
           </div>
+        </div>
+      </div>
 
-          {/* Tab Content */}
-          {activeTab === 'about' && (
-            <div className="space-y-4">
-              <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-3" style={cardShadow}>
-                <h3 className="font-heading text-headline-md">About</h3>
-                <p className="text-body-md text-on-surface-variant leading-relaxed">
-                  Welcome to Neon Smashers — Austin's most active pickleball community. We host weekly competitive and casual games across multiple courts in the downtown area. All skill levels welcome, from beginners to tournament players.
-                </p>
+      <div className="detail-body">
+        <button className="btn-primary" style={{ margin: '0 0 14px', width: '100%' }}>
+          <Icon name="check" size={16} /> Joined
+        </button>
+
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'about', label: 'About' },
+            { value: 'members', label: 'Members' },
+            { value: 'events', label: 'Events' },
+            { value: 'chat', label: 'Chat' },
+          ]}
+        />
+
+        <div style={{ marginTop: 16 }}>
+          {tab === 'about' && (
+            <>
+              <div className="about-card">
+                <div className="t-eyebrow" style={{ marginBottom: 6 }}>About</div>
+                <p>Austin's most active pickleball community. We host weekly competitive and casual games across downtown courts. All skill levels welcome.</p>
               </div>
-              <div className="bg-surface-container-lowest rounded-[12px] p-5 space-y-3" style={cardShadow}>
-                <h3 className="font-heading text-headline-md">Rules</h3>
-                <ul className="text-body-md text-on-surface-variant space-y-2">
-                  <li className="flex items-start gap-2">
-                    <Icon name="check_circle" size={18} filled className="text-secondary mt-0.5 shrink-0" />
-                    Be respectful and supportive of all players
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Icon name="check_circle" size={18} filled className="text-secondary mt-0.5 shrink-0" />
-                    RSVP at least 2 hours before events
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Icon name="check_circle" size={18} filled className="text-secondary mt-0.5 shrink-0" />
-                    Bring water and wear court shoes
-                  </li>
+              <div className="about-card">
+                <div className="t-eyebrow" style={{ marginBottom: 6 }}>Rules</div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {['Be respectful and supportive of all players', 'RSVP at least 2 hours before events', 'Bring water and wear court shoes'].map((r) => (
+                    <li key={r} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: 'var(--ink-2)' }}>
+                      <span
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 6,
+                          background: 'var(--lime-soft)',
+                          color: 'var(--lime-ink)',
+                          flexShrink: 0,
+                          marginTop: 2,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Icon name="check" size={11} />
+                      </span>
+                      {r}
+                    </li>
+                  ))}
                 </ul>
               </div>
+            </>
+          )}
+
+          {tab === 'members' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {MEMBERS.map((m) => (
+                <div key={m.name} className="organizer" style={{ margin: 0 }}>
+                  <Avatar name={m.name} size={40} variant={m.v} />
+                  <div className="meta">
+                    <div className="role">{m.role}</div>
+                    <div className="name">{m.name}</div>
+                  </div>
+                  <Icon name="chevron" size={16} style={{ color: 'var(--surface-3)' }} />
+                </div>
+              ))}
             </div>
           )}
 
-          {activeTab === 'members' && (
-            <div className="space-y-2">
-              {members.map((member) => (
-                <div key={member.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-4" style={cardShadow}>
-                  {member.src ? (
-                    <img alt="" className="w-10 h-10 rounded-full object-cover" src={member.src} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-label-sm">
-                      {member.name.split(' ').map((n) => n[0]).join('')}
+          {tab === 'events' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {EVENTS.map((e) => (
+                <button key={e.title} className="game-row" onClick={() => onNavigate('game-details', { id: '1' })}>
+                  <div className={`thumb ${e.thumb}`}>
+                    <span className="day">{e.day}</span>
+                    <span className="num">{e.num}</span>
+                  </div>
+                  <div className="body">
+                    <div className="title">{e.title}</div>
+                    <div className="meta">
+                      <span className="m"><Icon name="clock" size={11} />{e.date}</span>
+                      <span className="m"><Icon name="paddle" size={11} />{e.spots}</span>
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="font-heading text-body-lg font-semibold">{member.name}</p>
-                    <p className="text-label-sm text-on-surface-variant">{member.role}</p>
                   </div>
-                  <Icon name="chevron_right" size={20} className="text-outline" />
-                </div>
+                </button>
               ))}
             </div>
           )}
 
-          {activeTab === 'events' && (
-            <div className="space-y-3">
-              {[
-                { title: 'Saturday Mix-In', date: 'Sat, Oct 14 • 9:00 AM', spots: '8/12' },
-                { title: 'Weekly Doubles League', date: 'Tue, Oct 17 • 6:30 PM', spots: '14/16' },
-                { title: 'Beginner Clinic', date: 'Sun, Oct 22 • 2:00 PM', spots: '4/8' },
-              ].map((event) => (
-                <div key={event.title} className="flex items-center justify-between bg-surface-container-lowest rounded-[12px] p-4 cursor-pointer active:scale-[0.98] transition-transform" style={cardShadow}>
-                  <div>
-                    <h3 className="font-heading text-body-lg font-semibold">{event.title}</h3>
-                    <p className="text-body-md text-on-surface-variant">{event.date}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-label-sm font-bold text-secondary">{event.spots} spots</span>
-                    <Icon name="chevron_right" size={20} className="text-outline" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === 'chat' && (
-            <div className="space-y-4">
-              <div className="space-y-3">
-                {chatMessages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] rounded-[12px] p-3 ${
-                      msg.isMe
-                        ? 'bg-primary-container text-on-primary-container rounded-br-[4px]'
-                        : 'bg-surface-container-lowest text-on-surface rounded-bl-[4px]'
-                    }`} style={!msg.isMe ? cardShadow : undefined}>
-                      {!msg.isMe && <p className="text-label-sm font-bold text-primary mb-0.5">{msg.sender}</p>}
-                      <p className="text-body-md">{msg.body}</p>
-                      <p className="text-label-sm text-on-surface-variant text-right mt-1">{msg.time}</p>
+          {tab === 'chat' && (
+            <>
+              <div className="chat-list">
+                {CHAT.map((msg, i) => (
+                  <div key={i} className={`chat-msg ${msg.isMe ? '' : 'organizer'}`} style={{ flexDirection: msg.isMe ? 'row-reverse' : 'row' }}>
+                    <Avatar name={msg.sender === 'Me' ? 'Riley' : msg.sender} size={32} variant={msg.v} />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: msg.isMe ? 'flex-end' : 'flex-start' }}>
+                      <div className="by">{msg.sender} · {msg.time}</div>
+                      <div className="bubble">{msg.body}</div>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                 <input
                   type="text"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
-                  style={cardShadow}
+                  placeholder="Type a message…"
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    padding: '0 14px',
+                    background: 'var(--surface)',
+                    border: '0.5px solid var(--hairline)',
+                    borderRadius: 14,
+                    outline: 'none',
+                    color: 'var(--ink)',
+                  }}
                 />
-                <button className="w-12 h-12 bg-secondary-container text-on-secondary-container rounded-full flex items-center justify-center active:scale-90 transition-all">
-                  <Icon name="send" size={20} />
+                <button
+                  aria-label="Send"
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    background: 'var(--lime)',
+                    color: 'var(--lime-ink)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="send" size={18} />
                 </button>
               </div>
-            </div>
+            </>
           )}
-
-        </main>
+        </div>
       </div>
     </div>
   );

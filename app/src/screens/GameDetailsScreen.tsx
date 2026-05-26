@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { Avatar } from '../components/ui/Avatar';
+import { CourtIllustration } from '../components/ui/CourtIllustration';
 import { DuprExplainerSheet } from '../components/ui/DuprExplainerSheet';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import { ErrorState } from '../components/ui/ErrorState';
@@ -12,42 +14,51 @@ interface GameDetailsScreenProps {
   gameId?: string;
 }
 
-export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
+const PLAYERS = [
+  { name: 'Coach Mike', v: 'lime' as const },
+  { name: 'Sarah K',    v: 'blue' as const },
+  { name: 'Alex T',     v: 'coral' as const },
+  { name: 'Jordan M',   v: 'blue' as const },
+  { name: 'Taylor R',   v: 'lime' as const },
+  { name: 'Casey L',    v: 'blue' as const },
+  { name: 'Morgan P',   v: 'coral' as const },
+  { name: 'You',        v: 'lime' as const, you: true },
+];
+
+export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps) {
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
-  const [duprSheetOpen, setDuprSheetOpen] = useState(false);
-  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const [duprOpen, setDuprOpen] = useState(false);
   const { state: demoState } = useDemoState();
 
   if (demoState === 'loading') {
     return (
-      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-        <main className="mx-auto w-full max-w-xl px-5 pt-6 pb-28 space-y-4">
-          <LoadingSkeleton variant="block" count={1} />
-          <LoadingSkeleton variant="card" count={1} />
-          <LoadingSkeleton variant="list-row" count={4} />
-        </main>
+      <div className="scroll safe-top safe-bottom" style={{ padding: '0 16px' }}>
+        <LoadingSkeleton variant="block" count={1} />
+        <div style={{ marginTop: 12 }}>
+          <LoadingSkeleton variant="card" count={3} />
+        </div>
       </div>
     );
   }
   if (demoState === 'error') {
     return (
-      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+      <div className="scroll safe-top safe-bottom">
         <ErrorState
           title="Couldn't load this game"
-          message="We couldn't fetch this game's details. Pull down to retry or check back in a moment."
-          onRetry={() => { /* no-op */ }}
+          message="We couldn't fetch this game's details. Pull down to retry."
+          onRetry={() => {}}
         />
       </div>
     );
   }
   if (demoState === 'empty') {
     return (
-      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+      <div className="scroll safe-top safe-bottom">
         <EmptyState
-          icon="event_busy"
+          icon="paddle"
           title="This game is no longer available"
-          description="The organizer may have cancelled or filled all the spots. Try another game nearby."
+          description="The organizer may have cancelled or filled all the spots."
           action={{ label: 'Find another game', onPress: () => onNavigate('games') }}
         />
       </div>
@@ -55,255 +66,239 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
   }
 
   const handleJoin = () => {
+    if (joined || joining) return;
     setJoining(true);
     setTimeout(() => {
       setJoining(false);
       setJoined(true);
-    }, 1500);
+    }, 900);
   };
 
   return (
-    <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="scrollbar-none overflow-y-auto flex-1">
-        <main className="max-w-xl mx-auto px-5 pt-6 pb-40 space-y-6">
-
-          {/* In-page section nav */}
-          <nav
-            aria-label="Game sections"
-            className="sticky top-0 -mx-5 px-5 pt-2 pb-3 bg-background/95 backdrop-blur z-10 flex gap-2 overflow-x-auto scrollbar-none"
-          >
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'players', label: 'Players' },
-              { id: 'chat', label: 'Chat' },
-            ].map((s) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                className="inline-flex items-center rounded-full bg-surface-container-high px-4 py-1.5 text-label-sm font-bold text-on-surface-variant hover:bg-surface-container-highest transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                {s.label}
-              </a>
-            ))}
-          </nav>
-
-          {/* Hero Section */}
-          <section id="overview" className="space-y-4 scroll-mt-20">
-            <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg text-on-surface">Saturday Morning Mix-In</h1>
-            <div className="flex flex-wrap gap-2">
-              <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full font-bold text-label-sm">Beginners Welcome</span>
-              <span className="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-bold text-label-sm">Open Play</span>
-              <button
-                type="button"
-                onClick={() => setDuprSheetOpen(true)}
-                aria-label="What does the skill range mean?"
-                className="inline-flex items-center gap-1 bg-surface-container-high text-on-surface-variant px-4 py-1.5 rounded-full font-bold text-label-sm transition active:scale-95 hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                Skill: 2.5–3.5
-                <Icon name="help" size={14} />
-              </button>
-            </div>
-
-            {/* Format & Details Row */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-surface-container-lowest rounded-[12px] p-3 text-center" style={cardShadow}>
-                <p className="font-bold text-label-sm text-on-surface-variant">Format</p>
-                <p className="font-heading text-body-lg font-semibold text-on-surface">Doubles</p>
-              </div>
-              <div className="bg-surface-container-lowest rounded-[12px] p-3 text-center" style={cardShadow}>
-                <p className="font-bold text-label-sm text-on-surface-variant">Skill</p>
-                <p className="font-heading text-body-lg font-semibold text-on-surface">2.5–3.5</p>
-              </div>
-              <div className="bg-surface-container-lowest rounded-[12px] p-3 text-center" style={cardShadow}>
-                <p className="font-bold text-label-sm text-on-surface-variant">Spots</p>
-                <p className="font-heading text-body-lg font-semibold text-secondary">8/12</p>
-              </div>
-            </div>
-
-            {/* Organizer Card */}
-            <div className="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-[12px]" style={cardShadow}>
-              <div className="relative">
-                <img
-                  alt=""
-                  className="w-14 h-14 rounded-full object-cover border-2 border-secondary-container"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg"
-                />
-                <div className="absolute -bottom-1 -right-1 bg-primary text-white p-0.5 rounded-full border-2 border-white flex">
-                  <Icon name="verified" size={14} filled />
-                </div>
-              </div>
-              <div>
-                <p className="font-bold text-label-sm text-on-surface-variant uppercase tracking-wider">Organizer</p>
-                <p className="font-heading text-headline-md text-on-surface">Coach Mike</p>
-              </div>
-              <button className="ml-auto w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-high text-primary active:scale-90 transition-all">
-                <Icon name="mail" size={20} />
-              </button>
-            </div>
-          </section>
-
-          {/* Location Card */}
-          <section className="bg-surface-container-lowest rounded-[12px] overflow-hidden" style={cardShadow}>
-            <div className="h-48 w-full relative">
-              <img
-                className="w-full h-full object-cover"
-                alt=""
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCChxs_Ha_J-LXMi4XCQ_MOHPsTAP5ZjyQxCUKRzWuKcG2mkY_6TfaKUIUQgIa1dkqtSmhqJxDL9wzo3Lu2-01dUQUs-qOlNKQMKROuzPb-CEBnX1Jlr7B-F1HoSkvLpgNQumifF8tgOgC09jBT9MZ7DdYnOk9uKosrqKILjo7IqZZwl1UCbMJe5hYWd7rvb6ovMrYTRut0xbPwkuGRt5TcVdrZsyirbLQUpL1TX5wKLy4kH6aaV4Wj9TTLhYeMTCWUkKqNeK5z"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-            </div>
-            <div className="p-5 flex justify-between items-center">
-              <div>
-                <h3 className="font-heading text-headline-md text-on-surface">Riverside Courts</h3>
-                <p className="text-body-md text-on-surface-variant">1200 Willow St, Austin, TX</p>
-              </div>
-              <a className="flex flex-col items-center gap-1 text-primary group active:scale-95 transition-transform cursor-pointer">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <Icon name="directions" size={24} />
-                </div>
-                <span className="font-bold text-label-sm">Get Directions</span>
-              </a>
-            </div>
-          </section>
-
-          {/* About Section */}
-          <section className="space-y-3">
-            <h3 className="font-heading text-headline-md text-on-surface">About this game</h3>
-            <div className="text-body-lg text-on-surface-variant leading-relaxed">
-              <p>Ready to shake off the week? Our Saturday Mix-In is all about high energy and meeting new playing partners! We've got 4 courts reserved for three hours of non-stop pickleball action.</p>
-              <p className="mt-4">Whether you're just learning the dink or you're a seasoned pro, we rotate everyone every 15 minutes so you get to play with a variety of styles. Expect good music, plenty of water breaks, and a very supportive crew!</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <div className="bg-surface-container p-4 rounded-[12px] flex items-center gap-3">
-                <Icon name="calendar_today" size={24} className="text-secondary" />
-                <div>
-                  <p className="font-bold text-label-sm text-on-surface-variant">Date</p>
-                  <p className="text-body-md font-bold text-on-surface">Sat, Oct 14</p>
-                </div>
-              </div>
-              <div className="bg-surface-container p-4 rounded-[12px] flex items-center gap-3">
-                <Icon name="schedule" size={24} className="text-secondary" />
-                <div>
-                  <p className="font-bold text-label-sm text-on-surface-variant">Time</p>
-                  <p className="text-body-md font-bold text-on-surface">9:00 - 12:00</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Players */}
-          <section id="players" className="space-y-3 scroll-mt-20">
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading text-headline-md text-on-surface">Players (8/12)</h3>
-              <button className="text-primary font-bold text-label-sm hover:underline" onClick={() => onNavigate('invite-players', { id: '1' })}>Invite</button>
-            </div>
-            <div className="space-y-2">
-              {[
-                { name: 'Coach Mike', role: 'Organizer', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg', verified: true },
-                { name: 'Sarah K.', role: 'Player', avatar: '', initial: 'S' },
-                { name: 'Alex T.', role: 'Player', avatar: '', initial: 'A' },
-                { name: 'Jordan M.', role: 'Player', avatar: '', initial: 'J' },
-                { name: 'Taylor R.', role: 'Player', avatar: '', initial: 'T' },
-                { name: 'Casey L.', role: 'Player', avatar: '', initial: 'C' },
-                { name: 'Morgan P.', role: 'Player', avatar: '', initial: 'M' },
-                { name: 'Riley W.', role: 'Player', avatar: '', initial: 'R' },
-              ].map((player) => (
-                <div key={player.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-3" style={cardShadow}>
-                  {player.avatar ? (
-                    <img alt="" className="w-10 h-10 rounded-full object-cover" src={player.avatar} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-heading font-bold text-body-md">
-                      {player.initial}
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-heading text-body-lg font-semibold text-on-surface">{player.name}</p>
-                    <p className="text-label-sm text-on-surface-variant">{player.role}</p>
-                  </div>
-                  {player.verified && (
-                    <Icon name="verified" size={18} filled className="text-primary ml-auto" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Chat */}
-          <section id="chat" className="space-y-3 pb-8 scroll-mt-20">
-            <h3 className="font-heading text-headline-md text-on-surface">Game Chat</h3>
-            <div className="space-y-3">
-              {[
-                { from: 'Coach Mike', msg: "Hey everyone! Excited for Saturday. Bring water — it's gonna be hot out there.", time: '10:32 AM', isOrganizer: true },
-                { from: 'Sarah K.', msg: 'Will do! Are we still rotating every 15 minutes?', time: '10:45 AM', isOrganizer: false },
-                { from: 'Coach Mike', msg: 'Yep! Standard round robin format. Everyone plays with everyone.', time: '10:50 AM', isOrganizer: true },
-              ].map((msg, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-label-sm font-bold ${msg.isOrganizer ? 'bg-secondary-container text-on-secondary-container' : 'bg-primary/10 text-primary'}`}>
-                    {msg.from.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-heading text-body-md font-semibold text-on-surface">{msg.from}</span>
-                      <span className="text-label-sm text-outline">{msg.time}</span>
-                    </div>
-                    <p className="text-body-md text-on-surface-variant">{msg.msg}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-4">
-              <input
-                type="text"
-                placeholder="Type a message..."
-                className="flex-1 h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 text-body-md"
-              />
-              <button className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center active:scale-90 transition-all">
-                <Icon name="send" size={20} />
-              </button>
-            </div>
-          </section>
-
-        </main>
+    <div className="scroll" style={{ paddingBottom: 130 }}>
+      <div className="detail-hero">
+        <div className="img" style={{ background: 'linear-gradient(135deg, #0040e0 0%, #6c83ff 60%, #a5b9ff 100%)' }} />
+        <div
+          style={{
+            position: 'absolute',
+            right: -30,
+            top: 60,
+            opacity: 0.85,
+            transform: 'rotate(-12deg) scale(1.1)',
+          }}
+        >
+          <CourtIllustration width={240} />
+        </div>
+        <div className="grad" />
+        <div className="top-controls">
+          <button className="icon-btn" onClick={onBack} aria-label="Back">
+            <Icon name="back" size={18} />
+          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="icon-btn" aria-label="Share">
+              <Icon name="share" size={16} />
+            </button>
+            <button className="icon-btn" aria-label="Save">
+              <Icon name="heart_o" size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="info">
+          <div className="tag-row">
+            <button
+              type="button"
+              className="tag lime"
+              onClick={() => setDuprOpen(true)}
+              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              3.0–3.5 <Icon name="help" size={11} />
+            </button>
+            <span className="tag">Beginners welcome</span>
+            <span className="tag">Doubles</span>
+          </div>
+          <h1>Saturday Morning Mix-In</h1>
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, opacity: 0.95 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Icon name="clock" size={14} /> Sat · 9:00 AM
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Icon name="location" size={14} /> Riverside
+            </span>
+          </div>
+        </div>
       </div>
 
-      <DuprExplainerSheet open={duprSheetOpen} onClose={() => setDuprSheetOpen(false)} />
+      <div className="detail-body">
+        <div className="kv-grid">
+          <div className="kv">
+            <div className="eyebrow">Format</div>
+            <div className="val">Doubles</div>
+          </div>
+          <div className="kv">
+            <div className="eyebrow">Skill</div>
+            <div className="val">2.5–3.5</div>
+          </div>
+          <div className="kv">
+            <div className="eyebrow">Spots</div>
+            <div className="val lime">4 left</div>
+          </div>
+        </div>
 
-      {/* Fixed Action Bar */}
-      <div className="fixed bottom-0 left-0 w-full bg-surface-container-lowest/80 backdrop-blur-md px-5 py-6 z-50 flex items-center justify-between border-t border-surface-container-high" style={cardShadow}>
-        <div className="flex flex-col">
-          <span className="font-bold text-label-sm text-on-surface-variant">Price per person</span>
-          <span className="font-heading text-headline-md text-on-surface">$12.00</span>
+        <div className="organizer">
+          <Avatar name="Coach Mike" size={48} variant="lime" />
+          <div className="meta">
+            <div className="role">Hosted by</div>
+            <div className="name">
+              Coach Mike{' '}
+              <span style={{ color: 'var(--primary)' }}>•</span>{' '}
+              <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700 }}>Verified</span>
+            </div>
+          </div>
+          <div className="actions">
+            <button className="icon-btn" aria-label="Message organizer">
+              <Icon name="message" size={16} />
+            </button>
+          </div>
+        </div>
+
+        <div className="location-card">
+          <div className="map-preview">
+            <div className="pin">
+              <Icon name="location" size={16} />
+            </div>
+          </div>
+          <div className="map-info">
+            <div className="text">
+              <div className="name">Riverside Courts</div>
+              <div className="addr">1200 Willow St, Austin, TX · 1.2 mi</div>
+            </div>
+            <button className="directions" aria-label="Get directions">
+              <Icon name="directions" size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="about-card">
+          <div className="t-eyebrow" style={{ marginBottom: 6 }}>About this game</div>
+          <p>Ready to shake off the week? Our Saturday Mix-In is high energy and a great way to meet new partners. 4 courts reserved for 3 hours of non-stop pickleball.</p>
+          <p>We rotate every 15 minutes so you get to play with a variety of styles. Good music, plenty of water breaks, very supportive crew.</p>
+        </div>
+
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <div className="t-eyebrow">Players</div>
+              <div className="hd-3" style={{ marginTop: 4 }}>8 going · 4 spots open</div>
+            </div>
+            <button className="more" onClick={() => onNavigate('invite-players', { id: 'g1' })}>Invite</button>
+          </div>
+          <div className="players-grid">
+            {PLAYERS.map((p) => (
+              <div key={p.name} className="player">
+                <Avatar name={p.name} size={56} variant={p.v} />
+                <div className="name">{p.you ? 'You' : p.name.split(' ')[0]}</div>
+              </div>
+            ))}
+            {[1, 2, 3, 4].map((i) => (
+              <div key={`e${i}`} className="player empty">
+                <Avatar size={56} />
+                <div className="name" style={{ color: 'var(--muted)' }}>Open</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="t-eyebrow" style={{ marginBottom: 10 }}>Game chat · 3 messages</div>
+          <div className="chat-list">
+            <div className="chat-msg organizer">
+              <Avatar name="Coach Mike" size={32} variant="lime" />
+              <div>
+                <div className="by">Coach Mike · 10:32 AM</div>
+                <div className="bubble">Hey everyone! Bring water — it's gonna be hot. We start sharp at 9 ⏰</div>
+              </div>
+            </div>
+            <div className="chat-msg">
+              <Avatar name="Sarah K" size={32} />
+              <div>
+                <div className="by">Sarah K · 10:45 AM</div>
+                <div className="bubble">Will do! Still rotating every 15 min?</div>
+              </div>
+            </div>
+            <div className="chat-msg organizer">
+              <Avatar name="Coach Mike" size={32} variant="lime" />
+              <div>
+                <div className="by">Coach Mike · 10:50 AM</div>
+                <div className="bubble">Yep! Standard round robin — everyone plays with everyone 🎾</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <input
+              type="text"
+              placeholder="Type a message…"
+              style={{
+                flex: 1,
+                height: 44,
+                padding: '0 14px',
+                background: 'var(--surface)',
+                border: '0.5px solid var(--hairline)',
+                borderRadius: 14,
+                outline: 'none',
+                color: 'var(--ink)',
+              }}
+            />
+            <button
+              aria-label="Send"
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: 'var(--lime)',
+                color: 'var(--lime-ink)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="send" size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="sticky-cta">
+        <div className="price">
+          <div className="eyebrow">Per person</div>
+          <div className="amount">$12</div>
         </div>
         <button
+          className={`btn-join ${joined ? 'joined' : ''}`}
           onClick={handleJoin}
           disabled={joining || joined}
-          className={`px-10 h-12 rounded-full font-heading text-headline-md active:scale-95 transition-all flex items-center justify-center gap-2 ${
-            joined
-              ? 'bg-secondary text-white'
-              : joining
-                ? 'bg-primary text-white'
-                : 'bg-secondary-container text-on-secondary-container hover:brightness-105'
-          }`}
-          style={{ boxShadow: 'var(--shadow-button)' }}
         >
           {joining ? (
             <>
-              <Icon name="sync" size={20} className="animate-spin" />
-              Joining...
+              <span style={{ display: 'inline-flex', animation: 'spin 1s linear infinite' }}>
+                <Icon name="spinner" size={18} />
+              </span>
+              Joining…
             </>
           ) : joined ? (
             <>
-              <Icon name="check_circle" size={20} filled />
+              <Icon name="check" size={16} />
               You're in!
             </>
           ) : (
             <>
+              <Icon name="bolt" size={16} />
               Join Game
-              <Icon name="bolt" size={20} />
             </>
           )}
         </button>
       </div>
+
+      <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
     </div>
   );
 }

@@ -7,7 +7,6 @@ interface FormSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
   required?: boolean;
   options: Array<{ value: string; label: string }>;
   containerClassName?: string;
-  selectClassName?: string;
 }
 
 export function FormSelect({
@@ -17,7 +16,6 @@ export function FormSelect({
   required,
   options,
   containerClassName = '',
-  selectClassName = '',
   id,
   ...selectProps
 }: FormSelectProps) {
@@ -28,23 +26,19 @@ export function FormSelect({
   const showError = Boolean(error);
 
   return (
-    <div className={`space-y-1 ${containerClassName}`}>
+    <div className={`field ${containerClassName}`} style={{ padding: 0 }}>
       {label && (
-        <label
-          htmlFor={selectId}
-          className="block text-label-sm font-bold uppercase tracking-wider text-on-surface-variant ml-1"
-        >
+        <label htmlFor={selectId} className="lbl">
           {label}
-          {required && <span className="text-error ml-0.5">*</span>}
+          {required && <span style={{ color: 'var(--coral)', marginLeft: 2 }}>*</span>}
         </label>
       )}
       <select
         id={selectId}
         aria-invalid={showError || undefined}
         aria-describedby={showError ? errorId : hint ? hintId : undefined}
-        className={`w-full h-12 px-4 bg-surface-container-low border ${showError ? 'border-error' : 'border-outline-variant'}
-          rounded-[12px] focus:outline-none focus:ring-2 ${showError ? 'focus:ring-error/30 focus:border-error' : 'focus:ring-primary/20 focus:border-primary'}
-          transition-all text-body-md ${selectClassName}`}
+        className="control"
+        style={{ borderColor: showError ? 'var(--coral)' : undefined }}
         {...selectProps}
       >
         {options.map((opt) => (
@@ -52,9 +46,9 @@ export function FormSelect({
         ))}
       </select>
       {showError ? (
-        <p id={errorId} className="text-label-sm font-bold text-error ml-1">{error}</p>
+        <p id={errorId} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--coral)' }}>{error}</p>
       ) : hint ? (
-        <p id={hintId} className="text-label-sm text-on-surface-variant ml-1">{hint}</p>
+        <p id={hintId} style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>{hint}</p>
       ) : null}
     </div>
   );

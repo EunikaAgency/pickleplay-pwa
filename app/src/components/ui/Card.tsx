@@ -2,7 +2,6 @@ import { type HTMLAttributes, type KeyboardEvent } from 'react';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   padding?: 'none' | 'sm' | 'md' | 'lg';
-  elevation?: 'flat' | 'card';
   interactive?: boolean;
 }
 
@@ -15,7 +14,6 @@ const paddingClass = {
 
 export function Card({
   padding = 'md',
-  elevation = 'card',
   interactive,
   className = '',
   children,
@@ -34,9 +32,9 @@ export function Card({
 
   return (
     <div
-      className={`rounded-[12px] bg-surface-container-lowest ${paddingClass[padding]} ${elevation === 'card' ? 'shadow-card' : ''}
-        ${isInteractive ? 'cursor-pointer transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40' : ''}
-        ${className}`}
+      className={`card ${paddingClass[padding]} ${
+        isInteractive ? 'cursor-pointer transition-transform active:scale-[0.98]' : ''
+      } ${className}`}
       onClick={onClick}
       role={isInteractive ? 'button' : undefined}
       tabIndex={isInteractive ? 0 : undefined}

@@ -11,9 +11,7 @@ interface BaseProps {
   containerClassName?: string;
 }
 
-interface FormFieldProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, 'className' | 'size'> {
-  inputClassName?: string;
-}
+interface FormFieldProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, 'className' | 'size'> {}
 
 export function FormField({
   label,
@@ -23,7 +21,6 @@ export function FormField({
   leadingIcon,
   trailingSlot,
   containerClassName = '',
-  inputClassName = '',
   id,
   ...inputProps
 }: FormFieldProps) {
@@ -34,44 +31,50 @@ export function FormField({
   const showError = Boolean(error);
 
   return (
-    <div className={`space-y-1 ${containerClassName}`}>
+    <div className={`field ${containerClassName}`} style={{ padding: 0 }}>
       {label && (
-        <label
-          htmlFor={inputId}
-          className="block text-label-sm font-bold uppercase tracking-wider text-on-surface-variant ml-1"
-        >
+        <label htmlFor={inputId} className="lbl">
           {label}
-          {required && <span className="text-error ml-0.5">*</span>}
+          {required && <span style={{ color: 'var(--coral)', marginLeft: 2 }}>*</span>}
         </label>
       )}
-      <div className="relative group">
+      <div style={{ position: 'relative' }}>
         {leadingIcon && (
-          <Icon
-            name={leadingIcon}
-            size={20}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-outline transition-colors group-focus-within:text-primary"
-          />
+          <span
+            style={{
+              position: 'absolute',
+              left: 14,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--muted)',
+              pointerEvents: 'none',
+            }}
+          >
+            <Icon name={leadingIcon} size={18} />
+          </span>
         )}
         <input
           id={inputId}
           aria-invalid={showError || undefined}
           aria-describedby={showError ? errorId : hint ? hintId : undefined}
-          className={`w-full h-12 ${leadingIcon ? 'pl-12' : 'pl-4'} ${trailingSlot ? 'pr-12' : 'pr-4'}
-            bg-surface-container-low border ${showError ? 'border-error' : 'border-outline-variant'}
-            rounded-[12px] focus:outline-none focus:ring-2 ${showError ? 'focus:ring-error/30 focus:border-error' : 'focus:ring-primary/20 focus:border-primary'}
-            transition-all text-body-md ${inputClassName}`}
+          className="control"
+          style={{
+            paddingLeft: leadingIcon ? 42 : 16,
+            paddingRight: trailingSlot ? 44 : 16,
+            borderColor: showError ? 'var(--coral)' : undefined,
+          }}
           {...inputProps}
         />
         {trailingSlot && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">{trailingSlot}</div>
+          <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>{trailingSlot}</div>
         )}
       </div>
       {showError ? (
-        <p id={errorId} className="text-label-sm font-bold text-error ml-1">
+        <p id={errorId} style={{ marginTop: 6, fontSize: 12, fontWeight: 700, color: 'var(--coral)' }}>
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-label-sm text-on-surface-variant ml-1">
+        <p id={hintId} style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>
           {hint}
         </p>
       ) : null}

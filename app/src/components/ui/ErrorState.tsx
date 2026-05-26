@@ -1,5 +1,3 @@
-import { Icon } from './Icon';
-
 interface ErrorStateProps {
   title?: string;
   message: string;
@@ -8,20 +6,30 @@ interface ErrorStateProps {
 
 export function ErrorState({ title = 'Something went wrong', message, onRetry }: ErrorStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
-      <div className="w-20 h-20 rounded-full bg-error-container flex items-center justify-center mb-5">
-        <Icon name="error" size={40} className="text-error" />
+    <div className="flex flex-col items-center text-center px-6 py-10">
+      <div
+        style={{
+          width: 64,
+          height: 64,
+          borderRadius: 20,
+          background: 'var(--coral-soft)',
+          color: 'var(--coral)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 14,
+          fontFamily: 'var(--font-heading)',
+          fontWeight: 600,
+          fontSize: 28,
+        }}
+      >
+        !
       </div>
-      <h3 className="font-heading text-headline-md text-on-surface mb-2">{title}</h3>
-      <p className="text-body-md text-on-surface-variant max-w-xs mb-6">{message}</p>
+      <div className="hd-2" style={{ marginBottom: 6 }}>{title}</div>
+      <div className="t-sm" style={{ maxWidth: 320 }}>{message}</div>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          className="h-12 px-8 bg-primary text-on-primary font-heading text-body-lg font-bold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-all"
-          style={{ boxShadow: 'var(--shadow-button)' }}
-        >
-          <Icon name="refresh" size={20} />
-          Try Again
+        <button className="btn-primary dark" style={{ marginTop: 18, width: 'auto', padding: '0 24px' }} onClick={onRetry}>
+          Try again
         </button>
       )}
     </div>
