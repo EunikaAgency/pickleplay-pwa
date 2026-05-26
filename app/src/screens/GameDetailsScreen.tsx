@@ -31,6 +31,23 @@ export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps
             <div className="flex flex-wrap gap-2">
               <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full font-bold text-label-sm">Beginners Welcome</span>
               <span className="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-bold text-label-sm">Open Play</span>
+              <span className="bg-surface-container-high text-on-surface-variant px-4 py-1.5 rounded-full font-bold text-label-sm">Skill: 2.5–3.5</span>
+            </div>
+
+            {/* Format & Details Row */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-surface-container-lowest rounded-[12px] p-3 text-center" style={cardShadow}>
+                <p className="font-bold text-label-sm text-on-surface-variant">Format</p>
+                <p className="font-heading text-body-lg font-semibold text-on-surface">Doubles</p>
+              </div>
+              <div className="bg-surface-container-lowest rounded-[12px] p-3 text-center" style={cardShadow}>
+                <p className="font-bold text-label-sm text-on-surface-variant">Skill</p>
+                <p className="font-heading text-body-lg font-semibold text-on-surface">2.5–3.5</p>
+              </div>
+              <div className="bg-surface-container-lowest rounded-[12px] p-3 text-center" style={cardShadow}>
+                <p className="font-bold text-label-sm text-on-surface-variant">Spots</p>
+                <p className="font-heading text-body-lg font-semibold text-secondary">8/12</p>
+              </div>
             </div>
 
             {/* Organizer Card */}
@@ -80,7 +97,7 @@ export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps
           </section>
 
           {/* About Section */}
-          <section className="space-y-3 pb-8">
+          <section className="space-y-3">
             <h3 className="font-heading text-headline-md text-on-surface">About this game</h3>
             <div className="text-body-lg text-on-surface-variant leading-relaxed">
               <p>Ready to shake off the week? Our Saturday Mix-In is all about high energy and meeting new playing partners! We've got 4 courts reserved for three hours of non-stop pickleball action.</p>
@@ -101,6 +118,78 @@ export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps
                   <p className="text-body-md font-bold text-on-surface">9:00 - 12:00</p>
                 </div>
               </div>
+            </div>
+          </section>
+
+          {/* Players */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading text-headline-md text-on-surface">Players (8/12)</h3>
+              <button className="text-primary font-bold text-label-sm hover:underline" onClick={() => onNavigate('invite-players', { id: '1' })}>Invite</button>
+            </div>
+            <div className="space-y-2">
+              {[
+                { name: 'Coach Mike', role: 'Organizer', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg', verified: true },
+                { name: 'Sarah K.', role: 'Player', avatar: '', initial: 'S' },
+                { name: 'Alex T.', role: 'Player', avatar: '', initial: 'A' },
+                { name: 'Jordan M.', role: 'Player', avatar: '', initial: 'J' },
+                { name: 'Taylor R.', role: 'Player', avatar: '', initial: 'T' },
+                { name: 'Casey L.', role: 'Player', avatar: '', initial: 'C' },
+                { name: 'Morgan P.', role: 'Player', avatar: '', initial: 'M' },
+                { name: 'Riley W.', role: 'Player', avatar: '', initial: 'R' },
+              ].map((player) => (
+                <div key={player.name} className="flex items-center gap-3 bg-surface-container-lowest rounded-[12px] p-3" style={cardShadow}>
+                  {player.avatar ? (
+                    <img alt={player.name} className="w-10 h-10 rounded-full object-cover" src={player.avatar} />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-heading font-bold text-body-md">
+                      {player.initial}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-heading text-body-lg font-semibold text-on-surface">{player.name}</p>
+                    <p className="text-label-sm text-on-surface-variant">{player.role}</p>
+                  </div>
+                  {player.verified && (
+                    <Icon name="verified" size={18} filled className="text-primary ml-auto" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Chat */}
+          <section className="space-y-3 pb-8">
+            <h3 className="font-heading text-headline-md text-on-surface">Game Chat</h3>
+            <div className="space-y-3">
+              {[
+                { from: 'Coach Mike', msg: "Hey everyone! Excited for Saturday. Bring water — it's gonna be hot out there.", time: '10:32 AM', isOrganizer: true },
+                { from: 'Sarah K.', msg: 'Will do! Are we still rotating every 15 minutes?', time: '10:45 AM', isOrganizer: false },
+                { from: 'Coach Mike', msg: 'Yep! Standard round robin format. Everyone plays with everyone.', time: '10:50 AM', isOrganizer: true },
+              ].map((msg, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-label-sm font-bold ${msg.isOrganizer ? 'bg-secondary-container text-on-secondary-container' : 'bg-primary/10 text-primary'}`}>
+                    {msg.from.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-heading text-body-md font-semibold text-on-surface">{msg.from}</span>
+                      <span className="text-label-sm text-outline">{msg.time}</span>
+                    </div>
+                    <p className="text-body-md text-on-surface-variant">{msg.msg}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                className="flex-1 h-12 px-4 bg-surface-container-lowest border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 text-body-md"
+              />
+              <button className="w-12 h-12 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center active:scale-90 transition-all">
+                <Icon name="send" size={20} />
+              </button>
             </div>
           </section>
 

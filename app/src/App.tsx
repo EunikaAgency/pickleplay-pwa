@@ -115,7 +115,7 @@ export default function App() {
 
   const hideChrome = ['onboarding', 'login', 'search', 'notifications', 'nearby-filters', 'game-filters'].includes(screen.id);
   const showTabBar = isLoggedIn && isTabScreen(screen.id) && !hideChrome;
-  const showFab = isLoggedIn && screen.id === 'home' && !hideChrome;
+  const showFab = isLoggedIn && (screen.id === 'home' || screen.id === 'games') && !hideChrome;
   const showBack = isLoggedIn && !isTabScreen(screen.id) && !hideChrome;
 
   const renderScreen = () => {
@@ -151,7 +151,7 @@ export default function App() {
       case 'edit-profile':
         return <EditProfileScreen onBack={goBack} />;
       case 'settings':
-        return <SettingsScreen onBack={goBack} onLogout={handleLogout} />;
+        return <SettingsScreen onBack={goBack} onLogout={handleLogout} onNavigate={navigate} />;
       case 'search':
         return <SearchScreen onNavigate={navigate} onBack={goBack} />;
       case 'invite-players':

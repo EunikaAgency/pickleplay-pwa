@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
 
 interface NotificationsScreenProps {
@@ -5,7 +6,7 @@ interface NotificationsScreenProps {
   onBack: () => void;
 }
 
-const notifications = [
+const initialNotifications = [
   {
     id: '1', type: 'game_invite', title: 'Game Invite', body: 'Coach Mike invited you to Saturday Morning Mix-In',
     time: '5 min ago', read: false, icon: 'sports_tennis', iconBg: 'bg-primary/10 text-primary',
@@ -32,7 +33,13 @@ const notifications = [
 ];
 
 export function NotificationsScreen({ onNavigate }: NotificationsScreenProps) {
+  const [items, setItems] = useState(initialNotifications);
+  const hasUnread = items.some((n) => !n.read);
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+
+  const markAllRead = () => {
+    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden pb-24">
@@ -41,10 +48,12 @@ export function NotificationsScreen({ onNavigate }: NotificationsScreenProps) {
 
           <div className="flex items-center justify-between mb-2">
             <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg">Notifications</h1>
-            <button className="text-primary font-bold text-label-sm hover:underline">Mark all read</button>
+            {hasUnread && (
+              <button className="text-primary font-bold text-label-sm hover:underline" onClick={markAllRead}>Mark all read</button>
+            )}
           </div>
 
-          {notifications.map((n) => (
+          {items.map((n) => (
             <div
               key={n.id}
               className={`flex gap-3 p-4 rounded-[12px] transition-all cursor-pointer active:scale-[0.98] ${

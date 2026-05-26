@@ -111,6 +111,7 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
                           if (item.type === 'court') onNavigate('court-details', { id: item.id });
                           else if (item.type === 'game') onNavigate('game-details', { id: item.id });
                           else if (item.type === 'club') onNavigate('club-details', { id: item.id });
+                          else if (item.type === 'player') onNavigate('profile');
                         }}
                       >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${typeColors[item.type]}`}>

@@ -43,13 +43,13 @@ export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
 
           {/* Quick Actions Row */}
           <div className="grid grid-cols-3 gap-3">
-            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow}>
+            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow} onClick={() => window.open('https://maps.google.com', '_blank')}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Icon name="directions" size={24} />
               </div>
               <span className="font-bold text-label-sm">Directions</span>
             </button>
-            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow}>
+            <button className="flex flex-col items-center gap-1 bg-surface-container-lowest rounded-[12px] p-4 active:scale-95 transition-transform" style={cardShadow} onClick={() => onNavigate('games')}>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Icon name="calendar_today" size={24} />
               </div>

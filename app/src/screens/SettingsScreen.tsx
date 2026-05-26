@@ -3,6 +3,7 @@ import { Icon } from '../components/ui/Icon';
 interface SettingsScreenProps {
   onBack: () => void;
   onLogout: () => void;
+  onNavigate: (screen: string, params?: Record<string, string>) => void;
 }
 
 const settingsSections = [
@@ -23,7 +24,7 @@ const settingsSections = [
   },
 ];
 
-export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onLogout, onNavigate }: SettingsScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (
@@ -40,6 +41,7 @@ export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
                     key={item.id}
                     className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-[12px] cursor-pointer active:scale-[0.98] transition-transform group"
                     style={cardShadow}
+                    onClick={() => onNavigate(item.id)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">

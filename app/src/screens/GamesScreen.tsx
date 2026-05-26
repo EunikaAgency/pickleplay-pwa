@@ -7,6 +7,16 @@ interface GamesScreenProps {
 
 type GameTab = 'my-games' | 'upcoming' | 'completed';
 
+const dateChips = [
+  { label: 'Today', date: 'May 26' },
+  { label: 'Tomorrow', date: 'May 27' },
+  { label: 'Sat', date: 'May 30' },
+  { label: 'Sun', date: 'May 31' },
+  { label: 'Mon', date: 'Jun 1' },
+  { label: 'Tue', date: 'Jun 2' },
+  { label: 'Wed', date: 'Jun 3' },
+];
+
 const myGames = [
   {
     id: '1', title: 'Saturday Morning Mix-In', date: 'Sat, Oct 14 • 9:00 AM',
@@ -97,6 +107,7 @@ function GameCard({ game, onClick, cardShadow }: { game: typeof myGames[0]; onCl
 
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const [activeTab, setActiveTab] = useState<GameTab>('my-games');
+  const [selectedDate, setSelectedDate] = useState(0);
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   const currentGames = activeTab === 'my-games' ? myGames : activeTab === 'upcoming' ? upcomingGames : completedGames;
@@ -130,6 +141,27 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
               Filters
             </button>
           </div>
+
+          {/* Date Chips */}
+          {(activeTab === 'upcoming' || activeTab === 'my-games') && (
+            <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+              {dateChips.map((chip, i) => (
+                <button
+                  key={chip.date}
+                  onClick={() => setSelectedDate(i)}
+                  className={`flex flex-col items-center shrink-0 px-4 py-2 rounded-[12px] transition-all active:scale-95 ${
+                    selectedDate === i
+                      ? 'bg-secondary-container text-on-secondary-container'
+                      : 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant'
+                  }`}
+                  style={selectedDate === i ? cardShadow : undefined}
+                >
+                  <span className="font-heading text-body-md font-bold">{chip.label}</span>
+                  <span className="text-label-sm opacity-70">{chip.date}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Games List */}
           <div className="space-y-3">
