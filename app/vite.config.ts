@@ -54,6 +54,9 @@ export default defineConfig({
     }),
   ],
   server: {
+    port: 9000,
+    host: '0.0.0.0',
+    allowedHosts: ['pickleplay-pwa.eunika.xyz'],
     proxy: {
       '/api': 'http://localhost:3001',
     },

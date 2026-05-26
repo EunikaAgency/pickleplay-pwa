@@ -31,7 +31,7 @@ const chatMessages = [
   { id: '4', sender: 'Mike R.', body: 'Absolutely. I\'ll set up the rotation.', time: '10:40 AM', isMe: false },
 ];
 
-export function ClubDetailsScreen({ onBack }: ClubDetailsScreenProps) {
+export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
   const [activeTab, setActiveTab] = useState<ClubTab>('about');
   const [message, setMessage] = useState('');
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;

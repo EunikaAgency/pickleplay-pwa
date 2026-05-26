@@ -24,7 +24,7 @@ const settingsSections = [
   },
 ];
 
-export function SettingsScreen({ onBack, onLogout, onNavigate }: SettingsScreenProps) {
+export function SettingsScreen({ onLogout, onNavigate }: SettingsScreenProps) {
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
 
   return (

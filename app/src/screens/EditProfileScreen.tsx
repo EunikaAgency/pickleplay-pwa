@@ -5,7 +5,7 @@ interface EditProfileScreenProps {
   onBack: () => void;
 }
 
-export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
+export function EditProfileScreen(_props: EditProfileScreenProps) {
   const [firstName, setFirstName] = useState('Riley');
   const [lastName, setLastName] = useState('Pickler');
   const [bio, setBio] = useState('The dink master.');

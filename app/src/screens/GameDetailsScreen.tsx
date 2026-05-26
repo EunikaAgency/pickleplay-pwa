@@ -7,7 +7,7 @@ interface GameDetailsScreenProps {
   gameId?: string;
 }
 
-export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps) {
+export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
   const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;

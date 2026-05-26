@@ -6,7 +6,7 @@ interface CreateGameScreenProps {
   onBack: () => void;
 }
 
-export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) {
+export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [date, setDate] = useState('');
