@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ReClub Screenshot Gallery</title>
+  <style>
+    :root {
+      --bg: #f4f7fc;
+      --card: #ffffff;
+      --text: #16202a;
+      --muted: #66727d;
+      --accent: #4854f5;
+      --border: #d9e1ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 24px;
+      background: linear-gradient(135deg, #f7c74a, #ffffff);
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { margin: 0 0 8px; }
+    p { margin: 0; color: var(--muted); }
+    main {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    }
+    img {
+      width: 100%;
+      height: 360px;
+      object-fit: cover;
+      display: block;
+      background: #eef2f7;
+    }
+    .meta {
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ReClub Screenshot Gallery</h1>
+    <p>Generated visual browser for all captured ReClub mobile screens.</p>
+  </header>
+  <main id="gallery"></main>
+  <script>
+    const files = [
+      "ReClub Get Started.jpg",
+      "ReClub Signup Front.jpg",
+      "ReClub User Signup Input.jpg",
+      "Select Your Sports with Selection Beginner, Medium, Expert.jpg",
+      "Successful Signup.jpg",
+      "Homepage - Help.jpg",
+      "Homepage Inbox Icon - Inbox.jpg",
+      "Homepage Notication Icon - Notifications.jpg",
+      "Homepage Search Icon - Chats.jpg",
+      "Homepage Search Icon - Clubs.jpg",
+      "Homepage Search Icon - Meets.jpg",
+      "Homepage Search Icon - Competitions.jpg",
+      "Homepage Search Icon - Players.jpg",
+      "Homepage Search Icon - Coaches.jpg",
+      "Homepage Search Icon - Community Filter.jpg",
+      "Homepage Search Icon - Your Sports Filter.jpg",
+      "Homepage Search Icon - Map Filters.jpg",
+      "Homepage Search Icon - Map Icon when click.jpg",
+      "Homepage Search Icon - Players - Profile.jpg",
+      "Homepage Search Icon - Players - Profile part 2.jpg",
+      "Homepage Search Icon - Coaches - Profile.jpg",
+      "Homepage Search Icon - Participants.jpg",
+      "Homepage Search Icon - Meets - Details.jpg",
+      "Homepage Search Icon - Meets - Details part 2.jpg",
+      "Homepage Search Icon - Meets - Matches.jpg",
+      "Homepage Search Icon - Competitions - Details.jpg",
+      "Homepage Search Icon - Competitions - Registration.jpg",
+      "Homepage Search Icon - Competitions - Matches.jpg",
+      "Homepage Search Icon - Competitions - Results.jpg",
+      "Homepage Search Icon - Competitions - Discussion.jpg",
+      "Join a club.jpg",
+      "Join a club - sample club details.jpg",
+      "Join Community - User Location.jpg",
+      "My Clubs Main Directory.jpg",
+      "My Clubs - Sample Club Profile.jpg",
+      "My Clubs - Activities.jpg",
+      "My Clubs - Discussion.jpg",
+      "My Clubs - Members.jpg",
+      "My Clubs - Library.jpg",
+      "My Clubs - Chat.jpg",
+      "My Clubs - Menu Icon when Click.jpg",
+      "Feed - Social Feed.jpg",
+      "Inbox - Chat Feedback.jpg",
+      "Create - meet, competition, club.jpg",
+      "Create - Meet Option.jpg",
+      "Create - Meet Input Details.jpg",
+      "Create - Competition Info.jpg",
+      "Create - Competition Input Details.jpg",
+      "Create - Clubs Info.jpg",
+      "Create - Club Select Sports.jpg",
+      "Create - Club Select Community.jpg",
+      "Create - Club Name - Private.jpg",
+      "Create - Club Invite Friends.jpg",
+      "Create - Club Enable Chat.jpg",
+      "Create - Club - Create 1st Activity.jpg",
+      "Create - Club Success.jpg",
+      "Statistics - Rankings.jpg",
+      "Statistics - Cred Leaderboard.jpg",
+      "Statistics - Teammates.jpg",
+      "Statistics - Opponents.jpg",
+      "Statistics - Charts.jpg",
+      "Account Profile Settings.jpg",
+      "Account Profile Game Profile.jpg",
+      "Account Profile Language Settings.jpg",
+      "Account Profile - when profile pic is clicked.jpg",
+      "Notifications Settings.jpg"
+    ];
+
+    const gallery = document.getElementById("gallery");
+    files.forEach((file) => {
+      const card = document.createElement("article");
+      card.className = "card";
+      card.innerHTML = `
+        <img src="../${file}" alt="${file}">
+        <div class="meta">${file}</div>
+      `;
+      gallery.appendChild(card);
+    });
+  </script>
+</body>
+</html>

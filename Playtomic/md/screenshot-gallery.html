@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Playtomic Screenshot Gallery</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #102533;
+      --muted: #5d6b76;
+      --line: #dfe4ea;
+      --blue: #315df4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 18px 24px;
+    }
+    h1 { margin: 0 0 4px; font-size: 24px; }
+    header p { margin: 0; color: var(--muted); }
+    nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+    nav a {
+      color: var(--blue);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+    main { padding: 24px; max-width: 1280px; margin: 0 auto; }
+    section { margin-bottom: 36px; }
+    h2 { font-size: 22px; margin: 0 0 14px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    article {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    article img {
+      display: block;
+      width: 100%;
+      height: 520px;
+      object-fit: contain;
+      background: #eef1f5;
+      border-bottom: 1px solid var(--line);
+    }
+    .body { padding: 14px; }
+    h3 { margin: 0 0 6px; font-size: 18px; }
+    .file { color: var(--blue); font-size: 13px; word-break: break-word; margin-bottom: 10px; }
+    .label { font-weight: 700; }
+    p { margin: 0 0 10px; }
+    ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    @media (max-width: 640px) {
+      header, nav, main { padding-left: 14px; padding-right: 14px; }
+      article img { height: 430px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Playtomic Screenshot Gallery</h1>
+    <p>Static reverse-engineering viewer. See PAGES-MAP.md and APP-FLOWS.md for full notes.</p>
+  </header>
+  <nav>
+    <a href="#home">Home/Auth</a>
+    <a href="#booking">Booking</a>
+    <a href="#learn">Learn</a>
+    <a href="#matches">Matches</a>
+    <a href="#community">Community</a>
+    <a href="#profile">Profile</a>
+    <a href="#settings">Settings</a>
+  </nav>
+  <main>
+    <section id="home">
+      <h2>Home, Auth, Premium</h2>
+      <div class="grid">
+        <article><img src="HomePage%201.jpg" alt="Home dashboard"><div class="body"><h3>Home Dashboard</h3><div class="file">HomePage 1.jpg</div><p>Main authenticated landing page with task prompt, quick actions, suggested clubs, and bottom tabs.</p><ul><li>CTAs: Book a court, Learn, Compete, Find a match, Enable location.</li><li>Needs profile, club recommendations, and location state.</li></ul></div></article>
+        <article><img src="HomePage%202.jpg" alt="Home scrolled"><div class="body"><h3>Home Scrolled</h3><div class="file">HomePage 2.jpg</div><p>Lower home feed with friend suggestions and an improve-your-level lesson/course listing.</p><ul><li>CTAs: See all, add phonebook friends.</li><li>Needs contacts state and lesson catalog.</li></ul></div></article>
+        <article><img src="Login.jpg" alt="Login"><div class="body"><h3>Login Or Sign Up</h3><div class="file">Login.jpg</div><p>Authentication entry with Google, Facebook, and email sign-in options.</p><ul><li>Links: Terms of Use, Privacy Policy.</li><li>Email/password forms are missing.</li></ul></div></article>
+        <article><img src="Premium%20Plan.jpg" alt="Premium plan"><div class="body"><h3>Premium Plan</h3><div class="file">Premium Plan.jpg</div><p>Subscription upsell with trial, annual price, feature comparison, restore purchase, and terms.</p><ul><li>CTA: Start 14 day free trial.</li><li>Repeated benefit labels need verification.</li></ul></div></article>
+      </div>
+    </section>
+
+    <section id="booking">
+      <h2>Book A Court</h2>
+      <div class="grid">
+        <article><img src="Book%20a%20court.jpg" alt="Court list"><div class="body"><h3>Court Results List</h3><div class="file">Book a court.jpg</div><p>List of venues with images, distance, location, price, duration, favorite state, and available times.</p><ul><li>CTAs: View map, filters, sport/date/time chips, time slots.</li><li>Checkout/confirmation missing.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20View%20Map.jpg" alt="Court map"><div class="body"><h3>Court Map View</h3><div class="file">Book a court -- View Map.jpg</div><p>Google map with club markers and the same search/filter controls.</p><ul><li>CTA: View list.</li><li>Needs coordinates and map provider.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20search.jpg" alt="Location picker"><div class="body"><h3>Location Picker</h3><div class="file">Book a court -- search.jpg</div><p>Place autocomplete for searching court availability around a city/location.</p><ul><li>CTAs: Around me, location rows.</li><li>Needs geocoding/autocomplete.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20filter.jpg" alt="Filter panel"><div class="body"><h3>Advanced Filters</h3><div class="file">Book a court -- filter.jpg</div><p>Filters by availability, duration, court type, features, and size.</p><ul><li>CTA: See 7 results, Reset.</li><li>Some options disabled by result set.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20filter%202.jpg" alt="Filter scrolled"><div class="body"><h3>Advanced Filters Scrolled</h3><div class="file">Book a court -- filter 2.jpg</div><p>Continuation of the court filter page showing feature and size options.</p><ul><li>Includes Wall, Crystal, Panoramic, Single, Double.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20filter%203.jpg" alt="Sport selector"><div class="body"><h3>Sport Selector</h3><div class="file">Book a court -- filter 3.jpg</div><p>Bottom sheet for choosing Padel, Tennis, Pickleball, or Other sports.</p><ul><li>CTA: Select sport.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20filter%204.jpg" alt="Date selector"><div class="body"><h3>Date Selector</h3><div class="file">Book a court -- filter 4.jpg</div><p>Calendar picker allowing up to three selected days.</p><ul><li>CTA: See results.</li><li>Shows May and June 2026.</li></ul></div></article>
+        <article><img src="Book%20a%20court%20--%20filter%205.jpg" alt="Time selector"><div class="body"><h3>Time Selector</h3><div class="file">Book a court -- filter 5.jpg</div><p>Bottom sheet for all day or time-of-day ranges.</p><ul><li>Options: Specific hours, All day, Morning, Afternoon, Evening.</li></ul></div></article>
+      </div>
+    </section>
+
+    <section id="learn">
+      <h2>Learn</h2>
+      <div class="grid">
+        <article><img src="Learn.jpg" alt="Learn classes"><div class="body"><h3>Classes Search</h3><div class="file">Learn.jpg</div><p>Class/lesson listings grouped by date with venue, participants, sport, level, and price.</p><ul><li>Controls: search, filters, sport/level chips.</li><li>Class detail and checkout are missing.</li></ul></div></article>
+      </div>
+    </section>
+
+    <section id="matches">
+      <h2>Matches / Compete</h2>
+      <div class="grid">
+        <article><img src="Compete%20--%20Step%201.jpg" alt="Match sport step"><div class="body"><h3>Match Search Sport Step</h3><div class="file">Compete -- Step 1.jpg</div><p>Bottom-sheet wizard step for selecting match sport.</p><ul><li>Options: Padel, Tennis.</li><li>CTA: Next.</li></ul></div></article>
+        <article><img src="Compete%20--%20Step%202.jpg" alt="Match level step"><div class="body"><h3>Match Search Level Step</h3><div class="file">Compete -- Step 2.jpg</div><p>Skill level selection for match results.</p><ul><li>Levels from Beginner through Competition.</li><li>Link to full test.</li></ul></div></article>
+        <article><img src="Compete%20--%20Step%203.jpg" alt="Match place step"><div class="body"><h3>Match Search Place Step</h3><div class="file">Compete -- Step 3.jpg</div><p>Club and distance selection step for match search.</p><ul><li>Includes recent/favorite clubs and distance slider.</li></ul></div></article>
+        <article><img src="Compete%20Result.jpg" alt="Match results"><div class="body"><h3>Match Results</h3><div class="file">Compete Result.jpg</div><p>Empty result state with create-match CTA and flexible suggested match card.</p><ul><li>CTA: Start a match.</li><li>Match creation/join detail missing.</li></ul></div></article>
+      </div>
+    </section>
+
+    <section id="community">
+      <h2>Community And Groups</h2>
+      <div class="grid">
+        <article><img src="Community.jpg" alt="Community feed"><div class="body"><h3>Community Feed</h3><div class="file">Community.jpg</div><p>Social feed with player search, feed/groups tabs, suggestions, and official posts.</p><ul><li>CTAs: Search players, See all, floating plus.</li></ul></div></article>
+        <article><img src="Community%20Groups.jpg" alt="Community groups"><div class="body"><h3>Groups Empty State</h3><div class="file">Community Groups.jpg</div><p>Groups tab when the user is not a member of any group.</p><ul><li>CTA: New group.</li></ul></div></article>
+        <article><img src="Community%20--%20Create%20Group.jpg" alt="Create group step 1"><div class="body"><h3>New Group Step 1</h3><div class="file">Community -- Create Group.jpg</div><p>Select sport and privacy for a new group.</p><ul><li>CTA: Next step.</li></ul></div></article>
+        <article><img src="Community%20--%20Create%20Group%202.jpg" alt="Create group step 2"><div class="body"><h3>New Group Info</h3><div class="file">Community -- Create Group 2.jpg</div><p>Group information form with picture upload, name, and description.</p><ul><li>CTA text is partially unclear; needs verification.</li></ul></div></article>
+        <article><img src="Community%20--%20Created%20Group%202.jpg" alt="Group detail"><div class="body"><h3>Group Detail</h3><div class="file">Community -- Created Group 2.jpg</div><p>Created private padel group with member strip, group details, and chat shortcut.</p><ul><li>CTAs: Add, View all, chat.</li></ul></div></article>
+        <article><img src="Community%20--%20Created%20Group.jpg" alt="Add members"><div class="body"><h3>Add Members</h3><div class="file">Community -- Created Group.jpg</div><p>User search/suggestion screen for adding members during or after group creation.</p><ul><li>Filename likely mislabels this screen; needs verification.</li></ul></div></article>
+        <article><img src="Community%20--%20Group%20Chat.jpg" alt="Group chat"><div class="body"><h3>Group Chat</h3><div class="file">Community -- Group Chat.jpg</div><p>Chat thread inside the created group.</p><ul><li>Controls: Details, message input, send.</li></ul></div></article>
+      </div>
+    </section>
+
+    <section id="profile">
+      <h2>Profile And Activity</h2>
+      <div class="grid">
+        <article><img src="Profile.jpg" alt="Profile"><div class="body"><h3>Profile Overview</h3><div class="file">Profile.jpg</div><p>User profile with stats, edit/premium actions, sport tabs, and level progression.</p><ul><li>CTAs: Edit profile, Go Premium, Start levelling.</li></ul></div></article>
+        <article><img src="Profile%202.jpg" alt="Profile preferences"><div class="body"><h3>Profile Preferences</h3><div class="file">Profile 2.jpg</div><p>Lower profile screen showing unset player preferences.</p><ul><li>Preferences: best hand, court position, match type, preferred time.</li></ul></div></article>
+        <article><img src="Profile%20--%20Edit.jpg" alt="Edit profile"><div class="body"><h3>Edit Profile</h3><div class="file">Profile -- Edit.jpg</div><p>Personal information form with avatar, name, email, phone, gender, birth date, and description.</p><ul><li>Save control not visible; needs verification.</li></ul></div></article>
+        <article><img src="Profile%20--%20Edit%202.jpg" alt="Edit profile scrolled"><div class="body"><h3>Edit Profile Scrolled</h3><div class="file">Profile -- Edit 2.jpg</div><p>Continuation of edit profile with location, preferences, interests, and password sections.</p><ul><li>Likely same page at another scroll position.</li></ul></div></article>
+        <article><img src="Your%20Activity.jpg" alt="Your Activity"><div class="body"><h3>Your Activity</h3><div class="file">Your Activity.jpg</div><p>Activity menu for bookings, classes, programs, groups, and favorite clubs.</p><ul><li>Destination list screens are missing.</li></ul></div></article>
+      </div>
+    </section>
+
+    <section id="settings">
+      <h2>Settings</h2>
+      <div class="grid">
+        <article><img src="Settings.jpg" alt="Settings"><div class="body"><h3>Settings Index</h3><div class="file">Settings.jpg</div><p>Account settings hub with privacy, notifications, security, and account deletion.</p><ul><li>Security and delete confirmation missing.</li></ul></div></article>
+        <article><img src="Settings%20--%20Privacy.jpg" alt="Privacy"><div class="body"><h3>Privacy Settings</h3><div class="file">Settings -- Privacy.jpg</div><p>Privacy controls for private account, blocked accounts, activity, and location visibility.</p><ul><li>Some lower labels need verification.</li></ul></div></article>
+        <article><img src="Settings%20--%20Privacy%202.jpg" alt="Privacy scrolled"><div class="body"><h3>Privacy Settings Scrolled</h3><div class="file">Settings -- Privacy 2.jpg</div><p>Continuation of privacy settings with location/privacy and data settings.</p><ul><li>Likely same screen at another scroll position.</li></ul></div></article>
+        <article><img src="Settings%20--%20Notification.jpg" alt="Notifications"><div class="body"><h3>Notification Settings</h3><div class="file">Settings -- Notification.jpg</div><p>Push/app notification toggles and priority alerts.</p><ul><li>Includes prompt to turn on notifications.</li></ul></div></article>
+        <article><img src="Settings%20--%20Notification%202.jpg" alt="Notifications scrolled"><div class="body"><h3>Notification Settings Scrolled</h3><div class="file">Settings -- Notification 2.jpg</div><p>Continuation with app notification and marketing communication preferences.</p><ul><li>Likely same screen at another scroll position.</li></ul></div></article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Playbypoint Screenshot Gallery</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --text: #101820;
+      --muted: #667085;
+      --line: #d9dee7;
+      --accent: #1f5f46;
+      --warn: #b54708;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .summary {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    nav a {
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    main {
+      width: min(1380px, calc(100% - 32px));
+      margin: 24px auto 64px;
+    }
+
+    section {
+      margin: 0 0 36px;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    .group-note {
+      margin: -8px 0 14px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      display: grid;
+      grid-template-columns: minmax(120px, 42%) 1fr;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      min-height: 260px;
+    }
+
+    .card img {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #eef1f5;
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .file {
+      margin: 0 0 10px;
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .card p {
+      margin: 0 0 8px;
+    }
+
+    .label {
+      display: inline-block;
+      margin: 0 0 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #e7f0eb;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .label.warn {
+      background: #fff4e5;
+      color: var(--warn);
+    }
+
+    @media (max-width: 700px) {
+      header {
+        position: static;
+      }
+
+      .card {
+        grid-template-columns: 1fr;
+      }
+
+      .card img {
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Playbypoint Existing Screen Gallery</h1>
+    <p class="summary">Static documentation viewer for 58 mobile screenshots. Notes are inferred from visuals only.</p>
+    <nav aria-label="Gallery sections">
+      <a href="#auth">Auth</a>
+      <a href="#discovery">Discovery</a>
+      <a href="#club-booking">Club Booking</a>
+      <a href="#bookings">Bookings</a>
+      <a href="#chat-support">Chat Support</a>
+      <a href="#profile-settings">Profile Settings</a>
+      <a href="#general-notifications">General</a>
+      <a href="#payments">Payments</a>
+      <a href="#community">Community</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="auth">
+      <h2>Auth And Onboarding</h2>
+      <p class="group-note">Public/login entry points and first-run intent capture.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/welcome.jpg" alt="Welcome greeting screen" loading="lazy">
+          <div>
+            <h3>Welcome Greeting</h3>
+            <p class="file">playbypoint/welcome.jpg</p>
+            <span class="label">Entry</span>
+            <p>Personalized welcome with `Let's go!` CTA. Likely appears after auth or onboarding start.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Welcome first step.jpg" alt="Onboarding goal selection" loading="lazy">
+          <div>
+            <h3>Goal Selection</h3>
+            <p class="file">playbypoint/Welcome first step.jpg</p>
+            <span class="label">Onboarding</span>
+            <p>Asks why the user came to Playbypoint. Options route toward club joining, discovery, matches, or other.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Signin.jpg" alt="Sign in screen" loading="lazy">
+          <div>
+            <h3>Sign In</h3>
+            <p class="file">playbypoint/Signin.jpg</p>
+            <span class="label">Auth</span>
+            <p>Email/password form with forgot password, magic link, sign-up, Terms, and Privacy links.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Sign In Magic Link.jpg" alt="Magic link sign in modal" loading="lazy">
+          <div>
+            <h3>Magic Link Modal</h3>
+            <p class="file">playbypoint/Sign In Magic Link.jpg</p>
+            <span class="label">Auth</span>
+            <p>Email modal with clear button and `Send Magic Link`. Requires email delivery backend.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Signup.jpg" alt="Sign up screen" loading="lazy">
+          <div>
+            <h3>Sign Up</h3>
+            <p class="file">playbypoint/Signup.jpg</p>
+            <span class="label">Auth</span>
+            <p>Registration form for name, email, phone, and password. CTA disabled while fields are empty.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="discovery">
+      <h2>Discovery And Club Search</h2>
+      <p class="group-note">Club search, recommended clubs, map search, favorites, location handling, and discovery filters.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Find a club.jpg" alt="Find a club search screen" loading="lazy">
+          <div>
+            <h3>Find A Club</h3>
+            <p class="file">playbypoint/Find a club.jpg</p>
+            <span class="label">Clubs Tab</span>
+            <p>Search and suggested club list with distances, addresses, and `Explore clubs near you`.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Enable Location.jpg" alt="GPS disabled dialog" loading="lazy">
+          <div>
+            <h3>GPS Disabled Dialog</h3>
+            <p class="file">playbypoint/Enable Location.jpg</p>
+            <span class="label warn">Needs Verification</span>
+            <p>Blocking dialog when location is unavailable. User can only acknowledge with `OK` in the capture.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Favorite Club.jpg" alt="Favorite clubs empty state" loading="lazy">
+          <div>
+            <h3>Favorite Clubs Empty State</h3>
+            <p class="file">playbypoint/Favorite Club.jpg</p>
+            <span class="label">Favorites</span>
+            <p>Explains that saved clubs appear after tapping the heart. CTA opens discovery.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Discover Page.jpg" alt="Discover home screen" loading="lazy">
+          <div>
+            <h3>Discover Home</h3>
+            <p class="file">playbypoint/Discover Page.jpg</p>
+            <span class="label">Discover Tab</span>
+            <p>Current location, filter, search, map shortcut, `Your Clubs`, `Clubs for You`, and `Book a Court` cards.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Discover Filter.jpg" alt="Discover filter date and time" loading="lazy">
+          <div>
+            <h3>Discover Filter: Date/Time</h3>
+            <p class="file">playbypoint/Settings Discover Filter.jpg</p>
+            <span class="label warn">Filename Oddity</span>
+            <p>Filter sheet over Discover. Shows date picker, time selector, availability window, and sport selection.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Discover Filter.jpg" alt="Discover filter sport list" loading="lazy">
+          <div>
+            <h3>Discover Filter: Sports</h3>
+            <p class="file">playbypoint/Discover Filter.jpg</p>
+            <span class="label">Filter</span>
+            <p>Sports include Tennis, Pickleball, Padel, Squash, Golf, Badminton, Swimming, and Fitness.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Discover Map.jpg" alt="Discover map screen" loading="lazy">
+          <div>
+            <h3>Discover Map</h3>
+            <p class="file">playbypoint/Discover Map.jpg</p>
+            <span class="label">Map</span>
+            <p>Google map with club markers, search field, `Search here`, recenter button, and selected club card.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="club-booking">
+      <h2>Club Detail And Booking</h2>
+      <p class="group-note">Facility detail, booking entry points, schedule grid, and member-only gate.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Selected Club About.jpg" alt="Selected club about tab" loading="lazy">
+          <div>
+            <h3>Club Detail: About</h3>
+            <p class="file">playbypoint/Selected Club About.jpg</p>
+            <span class="label">Club Detail</span>
+            <p>Hero image, Save, facility selector, About tab, Chat, overview, contact links, map, and Book now CTA.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Selected Club Book.jpg" alt="Selected club book tab" loading="lazy">
+          <div>
+            <h3>Club Detail: Book</h3>
+            <p class="file">playbypoint/Selected Club Book.jpg</p>
+            <span class="label">Club Detail</span>
+            <p>Shows court playability, `View Calendar`, camera/icon button, and sticky Book now CTA.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Book Now Button.jpg" alt="Book now bottom sheet" loading="lazy">
+          <div>
+            <h3>Booking Type Sheet</h3>
+            <p class="file">playbypoint/Book Now Button.jpg</p>
+            <span class="label">Booking</span>
+            <p>Bottom sheet asks what to book. Only visible option is `Book Now`; `Next` is disabled until selection.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/View Calendar.jpg" alt="Court calendar schedule" loading="lazy">
+          <div>
+            <h3>Calendar / Schedule</h3>
+            <p class="file">playbypoint/View Calendar.jpg</p>
+            <span class="label">Booking</span>
+            <p>Day selector and court/time grid showing existing reservation blocks.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/View Calendar Schedule.jpg" alt="Reservation detail modal" loading="lazy">
+          <div>
+            <h3>Reservation Detail Modal</h3>
+            <p class="file">playbypoint/View Calendar Schedule.jpg</p>
+            <span class="label">Booking</span>
+            <p>Modal displays reservation time and a `Cancel` action after tapping a reservation block.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Membership required if not member.jpg" alt="Members only booking gate" loading="lazy">
+          <div>
+            <h3>Members-Only Gate</h3>
+            <p class="file">playbypoint/Settings Membership required if not member.jpg</p>
+            <span class="label warn">Needs Verification</span>
+            <p>Blocks booking for non-members. CTAs are `EXPLORE MEMBERSHIPS` and request member verification.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="bookings">
+      <h2>Bookings And Orders</h2>
+      <p class="group-note">User booking list, filters, and empty order states.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/My Booking Scheduled.jpg" alt="Scheduled bookings empty state" loading="lazy">
+          <div>
+            <h3>My Bookings: Scheduled</h3>
+            <p class="file">playbypoint/My Booking Scheduled.jpg</p>
+            <span class="label">Bookings Tab</span>
+            <p>Scheduled tab with Date, Payment status, and Categories filters. Empty state shown.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/My Booking Unscheduled.jpg" alt="Unscheduled bookings empty state" loading="lazy">
+          <div>
+            <h3>My Bookings: Unscheduled</h3>
+            <p class="file">playbypoint/My Booking Unscheduled.jpg</p>
+            <span class="label">Bookings Tab</span>
+            <p>Unscheduled tab with no booking records.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/My Booking Categories Filter.jpg" alt="Booking categories filter" loading="lazy">
+          <div>
+            <h3>Category Filter</h3>
+            <p class="file">playbypoint/My Booking Categories Filter.jpg</p>
+            <span class="label">Filter</span>
+            <p>Filter sheet with All, Reservation, Lesson, Rental, and a partially visible Program option.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/My Booking Payment Filter.jpg" alt="Booking payment status filter" loading="lazy">
+          <div>
+            <h3>Payment Status Filter</h3>
+            <p class="file">playbypoint/My Booking Payment Filter.jpg</p>
+            <span class="label">Filter</span>
+            <p>Filter sheet with All, Paid, Unpaid, Close, and Apply.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Orders.jpg" alt="Orders empty state" loading="lazy">
+          <div>
+            <h3>Orders Empty State</h3>
+            <p class="file">playbypoint/Orders.jpg</p>
+            <span class="label">Orders</span>
+            <p>Shows `No orders to date` with back navigation.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings My Orders.jpg" alt="Mislabeled my orders or memberships screen" loading="lazy">
+          <div>
+            <h3>My Orders / Memberships Ambiguity</h3>
+            <p class="file">playbypoint/Settings My Orders.jpg</p>
+            <span class="label warn">Needs Verification</span>
+            <p>Filename says My Orders, but screen title appears to be Memberships. Verify routing or screenshot label.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="chat-support">
+      <h2>Chat And Support</h2>
+      <p class="group-note">In-app chat inboxes, archived chats, help center, and support widget.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Chats Support.jpg" alt="Chats support tab" loading="lazy">
+          <div>
+            <h3>Chats: Support</h3>
+            <p class="file">playbypoint/Chats Support.jpg</p>
+            <span class="label">Chat</span>
+            <p>Support tab selected, archive icon visible, no conversation data.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Chats Reservation.jpg" alt="Chats reservation tab" loading="lazy">
+          <div>
+            <h3>Chats: Reservation</h3>
+            <p class="file">playbypoint/Chats Reservation.jpg</p>
+            <span class="label">Chat</span>
+            <p>Reservation tab selected, no reservation chat data.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Chat Archieved.jpg" alt="Archived chats screen" loading="lazy">
+          <div>
+            <h3>Archived Chats</h3>
+            <p class="file">playbypoint/Chat Archieved.jpg</p>
+            <span class="label">Chat</span>
+            <p>Archived conversations screen with empty state. Filename has spelling `Archieved`.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Help Center.jpg" alt="Help center screen" loading="lazy">
+          <div>
+            <h3>Help Center</h3>
+            <p class="file">playbypoint/Settings Help Center.jpg</p>
+            <span class="label">Support</span>
+            <p>Support entry with Chat with us, Call us, and Technical Support rows.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings App Feedback.jpg" alt="App feedback support widget" loading="lazy">
+          <div>
+            <h3>App Feedback / Support Widget</h3>
+            <p class="file">playbypoint/Settings App Feedback.jpg</p>
+            <span class="label">Support</span>
+            <p>Embedded help widget with messages, article search, support message CTA, and system status.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="profile-settings">
+      <h2>Profile And Settings Directory</h2>
+      <p class="group-note">Profile overview/edit and the full settings menu in two scroll positions.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Profile.jpg" alt="Profile overview" loading="lazy">
+          <div>
+            <h3>Profile Overview</h3>
+            <p class="file">playbypoint/Profile.jpg</p>
+            <span class="label">Profile Tab</span>
+            <p>User identity, avatar edit, settings gear, bookings/followers/following counts, and statistics card.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Profile Update.jpg" alt="Profile update screen" loading="lazy">
+          <div>
+            <h3>Profile Update</h3>
+            <p class="file">playbypoint/Profile Update.jpg</p>
+            <span class="label">Profile</span>
+            <p>Edit name, phone, email/address, profile photo, and publication/privacy toggles.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings.jpg" alt="Settings directory top" loading="lazy">
+          <div>
+            <h3>Settings Directory: Top</h3>
+            <p class="file">playbypoint/Settings.jpg</p>
+            <span class="label">Settings</span>
+            <p>User header and menu entries for Game Matches, Recordings, Leaderboard, Orders, Memberships, Payments, Residency, Family, and Waivers.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings2.jpg" alt="Settings directory lower scroll position" loading="lazy">
+          <div>
+            <h3>Settings Directory: Lower</h3>
+            <p class="file">playbypoint/Settings2.jpg</p>
+            <span class="label">Settings</span>
+            <p>Lower menu entries for Friends, Notifications, General, Help Center, App Feedback, About v4.1.3, Sign out, and Delete Account.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="general-notifications">
+      <h2>General Settings And Notifications</h2>
+      <p class="group-note">Language, statistics, password, and long notification preference forms.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Settings General.jpg" alt="General settings menu" loading="lazy">
+          <div>
+            <h3>General Settings</h3>
+            <p class="file">playbypoint/Settings General.jpg</p>
+            <span class="label">Settings</span>
+            <p>Menu for Language, Statistics, and Change Password.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings General Language.jpg" alt="Language selection screen" loading="lazy">
+          <div>
+            <h3>Language Picker</h3>
+            <p class="file">playbypoint/Settings General Language.jpg</p>
+            <span class="label warn">Copy Issue</span>
+            <p>English selected. Options include `Spahish`, French, and Japanese. `Spahish` likely typo.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings General Statistics.jpg" alt="General statistics screen" loading="lazy">
+          <div>
+            <h3>Statistics</h3>
+            <p class="file">playbypoint/Settings General Statistics.jpg</p>
+            <span class="label">Settings</span>
+            <p>Monthly reservation counters: created, rainout, total, cancelled, and no-show.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings General Change Password.jpg" alt="Change password screen" loading="lazy">
+          <div>
+            <h3>Change Password</h3>
+            <p class="file">playbypoint/Settings General Change Password.jpg</p>
+            <span class="label">Settings</span>
+            <p>Password and confirm password fields with visibility toggles and bottom Update CTA.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Notifications.jpg" alt="Notifications top scroll" loading="lazy">
+          <div>
+            <h3>Notifications: Push Top</h3>
+            <p class="file">playbypoint/Settings Notifications.jpg</p>
+            <span class="label">Settings</span>
+            <p>Push master toggle and many category toggles, with sticky Update button.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Notifications2.jpg" alt="Notifications lower scroll" loading="lazy">
+          <div>
+            <h3>Notifications: Email Section</h3>
+            <p class="file">playbypoint/Settings Notifications2.jpg</p>
+            <span class="label">Settings</span>
+            <p>Lower notification categories and Email Notifications master/category toggles.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="payments">
+      <h2>Payments, Billing, Residency</h2>
+      <p class="group-note">Payment settings, saved cards, billing address, credits, accounts, history, passes, and residency proof.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Settings Payment.jpg" alt="Payment settings menu" loading="lazy">
+          <div>
+            <h3>Payment Settings</h3>
+            <p class="file">playbypoint/Settings Payment.jpg</p>
+            <span class="label">Payments</span>
+            <p>Index for cards, club credits, club account, payment history, billing address, and booking passes.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Cards Add New Cards.jpg" alt="Cards empty state" loading="lazy">
+          <div>
+            <h3>Cards Empty State</h3>
+            <p class="file">playbypoint/Settings Payment Cards Add New Cards.jpg</p>
+            <span class="label">Payments</span>
+            <p>No cards saved. Top plus and bottom `ADD NEW CARD` are visible.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Add New Cards Form.jpg" alt="Add new card form" loading="lazy">
+          <div>
+            <h3>Add Card Form</h3>
+            <p class="file">playbypoint/Add New Cards Form.jpg</p>
+            <span class="label">Payments</span>
+            <p>Card number, expiry, CVV, name, authorization copy, and Save CTA.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Billng Address.jpg" alt="Billing address empty state" loading="lazy">
+          <div>
+            <h3>Billing Address List</h3>
+            <p class="file">playbypoint/Settings Payment Billng Address.jpg</p>
+            <span class="label warn">Filename Typo</span>
+            <p>Empty billing address list with plus action. Filename says `Billng`.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Billing Address Add Form.jpg" alt="Add billing address form" loading="lazy">
+          <div>
+            <h3>Add Billing Address</h3>
+            <p class="file">playbypoint/Settings Payment Billing Address Add Form.jpg</p>
+            <span class="label">Payments</span>
+            <p>Full name, address, city, state, zip code, default address checkbox, and Save action.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Club Credits.jpg" alt="Club credits screen" loading="lazy">
+          <div>
+            <h3>Club Credits</h3>
+            <p class="file">playbypoint/Settings Payment Club Credits.jpg</p>
+            <span class="label">Payments</span>
+            <p>Facility selector and current balance `P0.00`.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Club Account.jpg" alt="Club account screen" loading="lazy">
+          <div>
+            <h3>Club Account</h3>
+            <p class="file">playbypoint/Settings Payment Club Account.jpg</p>
+            <span class="label">Payments</span>
+            <p>Selected facility `ACCI RACKET SPORTS` and empty `No Account available` state.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Payment History.jpg" alt="Payment history empty state" loading="lazy">
+          <div>
+            <h3>Payment History</h3>
+            <p class="file">playbypoint/Settings Payment Payment History.jpg</p>
+            <span class="label">Payments</span>
+            <p>Empty state: user has not made any payment yet.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Payment Booking Passes.jpg" alt="Booking passes screen" loading="lazy">
+          <div>
+            <h3>Booking Passes</h3>
+            <p class="file">playbypoint/Settings Payment Booking Passes.jpg</p>
+            <span class="label">Payments</span>
+            <p>User is out of booking passes and is directed to contact facility or check memberships.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Proof Of Residency.jpg" alt="Proof of residency screen" loading="lazy">
+          <div>
+            <h3>Proof Of Residency</h3>
+            <p class="file">playbypoint/Settings Proof Of Residency.jpg</p>
+            <span class="label">Verification</span>
+            <p>Address, zip code, document type, upload file, unconfirmed status, and Accept CTA.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="community">
+      <h2>Community, Membership, Records</h2>
+      <p class="group-note">Game matches, friends, recordings, leaderboard, membership, family, and waivers.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="playbypoint/Settings Game Matches.jpg" alt="Game matches open match screen" loading="lazy">
+          <div>
+            <h3>Game Matches: Open</h3>
+            <p class="file">playbypoint/Settings Game Matches.jpg</p>
+            <span class="label">Game Matches</span>
+            <p>Open Match selected, Closed Match available, Official Match toggle, no data.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Game Matches Closed Match.jpg" alt="Game matches closed match screen" loading="lazy">
+          <div>
+            <h3>Game Matches: Closed</h3>
+            <p class="file">playbypoint/Settings Game Matches Closed Match.jpg</p>
+            <span class="label">Game Matches</span>
+            <p>Closed Match selected with no data.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Game Matches Filter.jpg" alt="Game matches sport filter popup" loading="lazy">
+          <div>
+            <h3>Game Matches Filter</h3>
+            <p class="file">playbypoint/Settings Game Matches Filter.jpg</p>
+            <span class="label">Game Matches</span>
+            <p>Popup menu with pickleball, All, and Cancel.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Friends.jpg" alt="Friends followers screen" loading="lazy">
+          <div>
+            <h3>Friends</h3>
+            <p class="file">playbypoint/Settings Friends.jpg</p>
+            <span class="label">Social</span>
+            <p>Followers/following tabs, empty `No players added yet` state.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Leaderboard.jpg" alt="Leaderboard empty state" loading="lazy">
+          <div>
+            <h3>Leaderboard</h3>
+            <p class="file">playbypoint/Leaderboard.jpg</p>
+            <span class="label">Social</span>
+            <p>Leaderboard screen with no ranking data.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/My Recordings.jpg" alt="My recordings empty state with localization keys" loading="lazy">
+          <div>
+            <h3>My Recordings</h3>
+            <p class="file">playbypoint/My Recordings.jpg</p>
+            <span class="label warn">Localization Issue</span>
+            <p>Empty recording state displays raw keys instead of readable copy.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Membership.jpg" alt="Memberships empty state" loading="lazy">
+          <div>
+            <h3>Memberships</h3>
+            <p class="file">playbypoint/Settings Membership.jpg</p>
+            <span class="label">Membership</span>
+            <p>Empty membership state: user does not have any membership.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Family.jpg" alt="Family empty state" loading="lazy">
+          <div>
+            <h3>Family</h3>
+            <p class="file">playbypoint/Settings Family.jpg</p>
+            <span class="label">Account</span>
+            <p>No family members, plus action visible for adding one.</p>
+          </div>
+        </article>
+        <article class="card">
+          <img src="playbypoint/Settings Waivers.jpg" alt="Waivers empty state" loading="lazy">
+          <div>
+            <h3>Waivers</h3>
+            <p class="file">playbypoint/Settings Waivers.jpg</p>
+            <span class="label">Account</span>
+            <p>Waiver list empty state.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700&amp;family=Nunito+Sans:wght@400;600;700&amp;family=Fredoka:wght@400;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-bright": "#f8f9fc",
+                    "on-primary-fixed": "#001356",
+                    "inverse-on-surface": "#f0f1f4",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed-dim": "#abd600",
+                    "surface-container": "#edeef1",
+                    "error-container": "#ffdad6",
+                    "inverse-primary": "#b8c3ff",
+                    "on-tertiary-fixed-variant": "#8a1d00",
+                    "on-background": "#191c1e",
+                    "on-primary-fixed-variant": "#0035be",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2e3133",
+                    "on-secondary": "#ffffff",
+                    "outline": "#747688",
+                    "tertiary-fixed": "#ffdad2",
+                    "on-primary": "#ffffff",
+                    "surface": "#f8f9fc",
+                    "surface-container-low": "#f2f3f6",
+                    "on-secondary-fixed": "#161e00",
+                    "on-secondary-fixed-variant": "#3c4d00",
+                    "on-error-container": "#93000a",
+                    "secondary": "#506600",
+                    "primary": "#0040e0",
+                    "tertiary-container": "#cf3000",
+                    "on-primary-container": "#efefff",
+                    "surface-tint": "#124af0",
+                    "on-tertiary-fixed": "#3c0700",
+                    "surface-container-high": "#e7e8eb",
+                    "on-tertiary-container": "#ffede9",
+                    "surface-variant": "#e1e2e5",
+                    "primary-fixed": "#dde1ff",
+                    "surface-container-highest": "#e1e2e5",
+                    "on-surface-variant": "#434656",
+                    "secondary-container": "#c1f100",
+                    "primary-container": "#2e5bff",
+                    "tertiary-fixed-dim": "#ffb4a2",
+                    "secondary-fixed": "#c3f400",
+                    "on-secondary-container": "#546b00",
+                    "outline-variant": "#c4c5d9",
+                    "surface-dim": "#d9dadd",
+                    "on-surface": "#191c1e",
+                    "background": "#f8f9fc",
+                    "tertiary": "#a32400",
+                    "primary-fixed-dim": "#b8c3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "16px",
+                    "xl": "3rem",
+                    "full": "16px"
+            },
+            "spacing": {
+                    "touch-target-min": "48px",
+                    "base": "8px",
+                    "container-padding": "20px",
+                    "gutter": "16px",
+                    "card-gap": "12px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Fredoka", "sans-serif"],
+                    "headline-lg-mobile": ["Fredoka", "sans-serif"],
+                    "body-lg": ["Nunito Sans", "sans-serif"],
+                    "headline-md": ["Fredoka", "sans-serif"],
+                    "headline-lg": ["Fredoka", "sans-serif"],
+                    "body-md": ["Nunito Sans", "sans-serif"],
+                    "label-sm": ["Nunito Sans", "sans-serif"]
+            },
+            "fontSize": {
+                    "headline-xl": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["25px", {"lineHeight": "30px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["21px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "21px", "fontWeight": "400"}],
+                    "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tinted-shadow {
+            box-shadow: 0 4px 20px -2px rgba(0, 64, 224, 0.1);
+        }
+        .active-pill-shadow {
+            box-shadow: 0 8px 15px -3px rgba(0, 64, 224, 0.15);
+        }
+        body {
+            background-color: #f8f9fc;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-background min-h-screen pb-32">
+<!-- Top AppBar (from JSON context) -->
+<header class="w-full top-0 sticky z-50 bg-surface dark:bg-background shadow-sm shadow-primary/10">
+<nav class="flex justify-between items-center px-container-padding h-touch-target-min w-full max-w-7xl mx-auto">
+<button class="active:scale-95 transition-transform hover:opacity-80 flex items-center">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">PicklePlay</span>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity">chat</span>
+</div>
+</nav>
+</header>
+<main class="max-w-xl mx-auto px-container-padding pt-6 space-y-6">
+<!-- Hero Section -->
+<section class="space-y-4">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-background">Saturday Morning Mix-In</h1>
+<div class="flex flex-wrap gap-2">
+<span class="bg-primary/10 text-primary px-4 py-1.5 rounded-full font-label-sm text-label-sm">Beginners Welcome</span>
+<span class="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-label-sm text-label-sm">Open Play</span>
+</div>
+<!-- Organizer Card -->
+<div class="flex items-center gap-4 bg-surface-container-lowest p-4 rounded-lg tinted-shadow">
+<div class="relative">
+<img alt="Organizer Avatar" class="w-14 h-14 rounded-full object-cover border-2 border-secondary-container" data-alt="A friendly, smiling middle-aged man with an athletic build and salt-and-pepper hair, wearing a vibrant neon lime performance polo shirt. He is outdoors on a sunny day at a pickleball court, with soft bokeh blurring the court background. The lighting is high-key and cheerful, perfectly matching a modern, clean sports community aesthetic with bright blues and lime greens." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLihjzyIyto-nfaYbB6LfyCCfi60IYWA12T0HeSYyhsi2Ng3e9s4N01dzYevyoSm08MTb60uLPaG5eIP1WLnVudq9kM9pl7JtcpAyTM7VvOcTQB8JDcdSU_1uVC_e0a9LkDlWGvEQ22aL8uBorsYEHaGQyBlrDNMG1eLsa1-7h8AN_A0LAqV1HTFkVM2vUyeaZukw_Bxx78xV7hYTpwQegZ0RSw2RMoWEfRjaqwq3pfMLvKWp5IkxE0CjK6sMNeC1wcB0efUNg"/>
+<div class="absolute -bottom-1 -right-1 bg-primary text-white p-0.5 rounded-full border-2 border-white">
+<span class="material-symbols-outlined text-[14px] block" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Organizer</p>
+<p class="font-headline-md text-headline-md text-on-surface">Coach Mike</p>
+</div>
+<button class="ml-auto w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-high text-primary active:scale-90 transition-all">
+<span class="material-symbols-outlined">mail</span>
+</button>
+</div>
+</section>
+<!-- Location Card -->
+<section class="bg-surface-container-lowest rounded-lg tinted-shadow overflow-hidden">
+<div class="h-48 w-full relative">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist map illustration of a local park area in Austin, Texas, showing stylized streets and a prominent green park area. The map uses a soft, light-mode color palette with pastel greens and cool greys, featuring a vibrant electric blue location pin icon dropped over a pickleball court area. The style is modern, friendly, and readable." data-location="Austin, Texas" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCChxs_Ha_J-LXMi4XCQ_MOHPsTAP5ZjyQxCUKRzWuKcG2mkY_6TfaKUIUQgIa1dkqtSmhqJxDL9wzo3Lu2-01dUQUs-qOlNKQMKROuzPb-CEBnX1Jlr7B-F1HoSkvLpgNQumifF8tgOgC09jBT9MZ7DdYnOk9uKosrqKILjo7IqZZwl1UCbMJe5hYWd7rvb6ovMrYTRut0xbPwkuGRt5TcVdrZsyirbLQUpL1TX5wKLy4kH6aaV4Wj9TTLhYeMTCWUkKqNeK5z"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+</div>
+<div class="p-container-padding flex justify-between items-center">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface">Riverside Courts</h3>
+<p class="font-body-md text-on-surface-variant">1200 Willow St, Austin, TX</p>
+</div>
+<a class="flex flex-col items-center gap-1 text-primary group active:scale-95 transition-transform" href="#">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined">directions</span>
+</div>
+<span class="font-label-sm text-label-sm">Get Directions</span>
+</a>
+</div>
+</section>
+<!-- About Section -->
+<section class="space-y-3 pb-8">
+<h3 class="font-headline-md text-headline-md text-on-surface">About this game</h3>
+<div class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+<p>Ready to shake off the week? Our Saturday Mix-In is all about high energy and meeting new playing partners! We've got 4 courts reserved for three hours of non-stop pickleball action.</p>
+<p class="mt-4">Whether you're just learning the dink or you're a seasoned pro, we rotate everyone every 15 minutes so you get to play with a variety of styles. Expect good music, plenty of water breaks, and a very supportive crew!</p>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-6">
+<div class="bg-surface-container p-4 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">calendar_today</span>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Date</p>
+<p class="font-body-md font-bold text-on-surface">Sat, Oct 14</p>
+</div>
+</div>
+<div class="bg-surface-container p-4 rounded-lg flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary">schedule</span>
+<div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Time</p>
+<p class="font-body-md font-bold text-on-surface">9:00 - 12:00</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Fixed Action Bar -->
+<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest/80 backdrop-blur-md px-container-padding py-6 z-50 flex items-center justify-between tinted-shadow border-t border-surface-container-high">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Price per person</span>
+<span class="font-headline-md text-headline-md text-on-surface">$12.00</span>
+</div>
+<button class="bg-secondary-container text-on-secondary-container px-10 h-touch-target-min rounded-full font-headline-md text-headline-md active:scale-95 transition-all active-pill-shadow hover:brightness-105 flex items-center justify-center gap-2">
+            Join Game
+            <span class="material-symbols-outlined">bolt</span>
+</button>
+</div>
+<!-- Bottom Navigation (from JSON context) -->
+<footer class="fixed bottom-0 left-0 w-full z-40 flex justify-around items-center px-2 pb-4 pt-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-lg shadow-primary/15 md:hidden pointer-events-none opacity-0 translate-y-full transition-all duration-300" id="bottom-nav-trigger">
+<!-- Placeholder for scroll-up reveal or mobile context -->
+</footer>
+<script>
+        // Simple micro-interaction for the "Join Game" button
+        const joinBtn = document.querySelector('button');
+        joinBtn.addEventListener('click', function() {
+            if(this.innerText.includes('Join')) {
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Joining...';
+                this.classList.replace('bg-secondary-container', 'bg-primary');
+                this.classList.replace('text-on-secondary-container', 'text-white');
+                
+                setTimeout(() => {
+                    this.innerHTML = '<span class="material-symbols-outlined">check_circle</span> You\'re in!';
+                    this.classList.replace('bg-primary', 'bg-secondary');
+                }, 1500);
+            }
+        });
+
+        // Hide fixed bottom action bar when scrolling near bottom to avoid overlap if needed
+        // (Handled here by padding on body)
+    </script>
+<script src="../app-router.js"></script>
+</body></html>

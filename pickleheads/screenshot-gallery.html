@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PicklePlay Screenshot Gallery</title>
+  <style>
+    :root {
+      --bg: #f6fbfe;
+      --card: #ffffff;
+      --ink: #163047;
+      --muted: #5f7285;
+      --line: #d8e5ee;
+      --accent: #1f9ac3;
+      --accent-2: #132a67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #dff4ff 0, transparent 28rem),
+        linear-gradient(180deg, #f8fdff 0%, #eef7fb 100%);
+    }
+    header {
+      padding: 32px 20px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.75);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    nav a {
+      text-decoration: none;
+      color: var(--accent-2);
+      background: #e9f7fd;
+      border: 1px solid #cce7f2;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-weight: 600;
+    }
+    main {
+      padding: 24px 20px 48px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    section {
+      margin-bottom: 40px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+    }
+    .section-note {
+      margin-bottom: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 12px 30px rgba(16, 52, 80, 0.08);
+    }
+    .card img {
+      display: block;
+      width: 100%;
+      background: #f4f7f9;
+    }
+    .copy {
+      padding: 16px;
+    }
+    .copy h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .meta {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    ul {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .footer {
+      margin-top: 36px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+    }
+    @media (max-width: 720px) {
+      h1 { font-size: 24px; }
+      h2 { font-size: 20px; }
+      main { padding: 18px 14px 40px; }
+      header { padding: 24px 14px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PicklePlay Screenshot Gallery</h1>
+    <p>Reverse-engineered documentation viewer for the screenshot set in this folder. Groupings and notes are inferred from the UI and should be treated as a starting map for developers.</p>
+    <nav>
+      <a href="#home">Home</a>
+      <a href="#nearby">Nearby</a>
+      <a href="#games">Games</a>
+      <a href="#groups">Groups</a>
+      <a href="#messages">Messages</a>
+      <a href="#stats">Stats</a>
+      <a href="#account">Account</a>
+    </nav>
+  </header>
+  <main>
+    <section id="home">
+      <h2>Home / Dashboard</h2>
+      <p class="section-note">Signed-in landing area with shortcuts, onboarding, notifications summary, and game discovery.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="homepage.jpeg" alt="Homepage dashboard">
+          <div class="copy">
+            <h3>Home Dashboard</h3>
+            <span class="meta">homepage.jpeg</span>
+            <ul>
+              <li>Shows top shortcuts, checklist summary, and a date-grouped find-games feed.</li>
+              <li>Likely default signed-in home state.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="homepage- when logged in.jpeg" alt="Homepage when logged in">
+          <div class="copy">
+            <h3>Home Dashboard Variant</h3>
+            <span class="meta">homepage- when logged in.jpeg</span>
+            <ul>
+              <li>Shows zero invitations and zero messages cards more clearly.</li>
+              <li>Appears to be the same route with a different user state.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="homepage checklist after registration.jpeg" alt="Homepage checklist after registration">
+          <div class="copy">
+            <h3>Onboarding Checklist</h3>
+            <span class="meta">homepage checklist after registration.jpeg</span>
+            <ul>
+              <li>Expanded first-run checklist embedded on Home.</li>
+              <li>Connects to profile, rating, court following, and permissions flows.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="fileters found on homepage.jpeg" alt="Home find games filters">
+          <div class="copy">
+            <h3>Home Find Games Filters</h3>
+            <span class="meta">fileters found on homepage.jpeg</span>
+            <ul>
+              <li>Skill, day, time, location, radius, and vacation-mode filters.</li>
+              <li>Likely powers the Home feed rather than the Nearby map.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="nearby">
+      <h2>Nearby / Court Discovery</h2>
+      <p class="section-note">Map and list-based court search, detailed venue profiles, and advanced court/game filtering.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="nearby -- find courts.jpeg" alt="Nearby find courts map view">
+          <div class="copy">
+            <h3>Nearby Courts, Map View</h3>
+            <span class="meta">nearby -- find courts.jpeg</span>
+            <ul>
+              <li>Map search with court pins, search bar, filters, and court/game segment switch.</li>
+              <li>Bottom card previews the currently selected court.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- when map is toggled --ether a map or a list.jpeg" alt="Nearby court list view">
+          <div class="copy">
+            <h3>Nearby Courts, List View</h3>
+            <span class="meta">nearby -- when map is toggled --ether a map or a list.jpeg</span>
+            <ul>
+              <li>Same search context in list mode.</li>
+              <li>Includes a visible Create Court CTA.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- court-details.jpeg" alt="Court details page">
+          <div class="copy">
+            <h3>Court Details</h3>
+            <span class="meta">nearby -- court-details.jpeg</span>
+            <ul>
+              <li>Venue hero image, amenities, map, follow CTA, and schedule/groups/chat tabs.</li>
+              <li>Likely the main facility profile route.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- courts -- filter options.jpeg" alt="Court filters part 1">
+          <div class="copy">
+            <h3>Court Filters, Part 1</h3>
+            <span class="meta">nearby -- courts -- filter options.jpeg</span>
+            <ul>
+              <li>Follow-only, court count, type, and access filters.</li>
+              <li>Shows premium-badged venue filter options.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- courts -- filter options part 2.jpeg" alt="Court filters part 2">
+          <div class="copy">
+            <h3>Court Filters, Part 2</h3>
+            <span class="meta">nearby -- courts -- filter options part 2.jpeg</span>
+            <ul>
+              <li>Access and amenities filter continuation.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- courts -- filter options part 3.jpeg" alt="Court filters part 3">
+          <div class="copy">
+            <h3>Court Filters, Part 3</h3>
+            <span class="meta">nearby -- courts -- filter options part 3.jpeg</span>
+            <ul>
+              <li>Extended amenity and surface filters.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- games -- filter icon when clicked.jpeg" alt="Nearby games filters part 1">
+          <div class="copy">
+            <h3>Nearby Games Filters, Part 1</h3>
+            <span class="meta">nearby -- games -- filter icon when clicked.jpeg</span>
+            <ul>
+              <li>Access restrictions and game-format filters.</li>
+              <li>Text reuse on the CTA should be verified.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- games -- filter icon when clicked part 2.jpeg" alt="Nearby games filters part 2">
+          <div class="copy">
+            <h3>Nearby Games Filters, Part 2</h3>
+            <span class="meta">nearby -- games -- filter icon when clicked part 2.jpeg</span>
+            <ul>
+              <li>More format checkboxes for niche game types.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="nearby -- games -- filter icon when clicked part 3.jpeg" alt="Nearby games filters part 3">
+          <div class="copy">
+            <h3>Nearby Games Filters, Part 3</h3>
+            <span class="meta">nearby -- games -- filter icon when clicked part 3.jpeg</span>
+            <ul>
+              <li>Skill-level filtering for nearby games.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="games">
+      <h2>Games / Sessions</h2>
+      <p class="section-note">Session discovery, creation, invitation, and participation flows.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="games -- create session.jpeg" alt="Games landing page">
+          <div class="copy">
+            <h3>Games Landing</h3>
+            <span class="meta">games -- create session.jpeg</span>
+            <ul>
+              <li>Despite the filename, this looks like the main upcoming/completed sessions page.</li>
+              <li>Contains the main Create a new session CTA.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="games -- options after create session .jpeg" alt="Play pickleball mode selector">
+          <div class="copy">
+            <h3>Mode Selector</h3>
+            <span class="meta">games -- options after create session .jpeg</span>
+            <ul>
+              <li>Choose between Quick Game, Weekly Game, Round Robin, or Mini Tournament.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="games -- when quick game is clicked.jpeg" alt="Quick game creation form">
+          <div class="copy">
+            <h3>Quick Game Creation</h3>
+            <span class="meta">games -- when quick game is clicked.jpeg</span>
+            <ul>
+              <li>Detailed session form with privacy, repeats, ratings, co-host, and payment settings.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="games -- when a session successfully created.jpeg" alt="Session created confirmation">
+          <div class="copy">
+            <h3>Creation Confirmation</h3>
+            <span class="meta">games -- when a session successfully created.jpeg</span>
+            <ul>
+              <li>Success state that pushes users into inviting players.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="games -- when a session clicked invite players now.jpeg" alt="Invite options for a session">
+          <div class="copy">
+            <h3>Invite Players Menu</h3>
+            <span class="meta">games -- when a session clicked invite players now.jpeg</span>
+            <ul>
+              <li>Multiple invite channels: text link, QR, players, groups, lists, confirmed players.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="games -- session details.jpeg" alt="Session details organizer view">
+          <div class="copy">
+            <h3>Session Details, Organizer View</h3>
+            <span class="meta">games -- session details.jpeg</span>
+            <ul>
+              <li>Shows owner controls like Invite, Edit, and Cancel.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="games -- a private session where other player set it.jpeg" alt="Private session detail">
+          <div class="copy">
+            <h3>Session Details, Private External Session</h3>
+            <span class="meta">games -- a private session where other player set it.jpeg</span>
+            <ul>
+              <li>Shows outsider access state with Request to Join.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="groups">
+      <h2>Groups</h2>
+      <p class="section-note">Group management area, multi-step group creation, and group chat.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="groups -- my groups.jpeg" alt="My groups page">
+          <div class="copy">
+            <h3>My Groups</h3>
+            <span class="meta">groups -- my groups.jpeg</span>
+            <ul>
+              <li>Main hub for groups, lists, and nearby tabs.</li>
+              <li>Includes search, group cards, and Create Group CTA.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- create group step 1.jpeg" alt="Create group step 1">
+          <div class="copy">
+            <h3>Create Group, Step 1</h3>
+            <span class="meta">groups -- create group step 1.jpeg</span>
+            <ul>
+              <li>Basic information: name and description.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- create group step 2.jpeg" alt="Create group step 2">
+          <div class="copy">
+            <h3>Create Group, Step 2</h3>
+            <span class="meta">groups -- create group step 2.jpeg</span>
+            <ul>
+              <li>Choose one or more courts.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- create group step 3.jpeg" alt="Create group step 3">
+          <div class="copy">
+            <h3>Create Group, Step 3</h3>
+            <span class="meta">groups -- create group step 3.jpeg</span>
+            <ul>
+              <li>Access settings, skill range, plus requirements, and invite permissions.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- create group step 4.jpeg" alt="Create group step 4">
+          <div class="copy">
+            <h3>Create Group, Step 4</h3>
+            <span class="meta">groups -- create group step 4.jpeg</span>
+            <ul>
+              <li>Upload or skip group photo.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- create group confirmation.jpeg" alt="Create group confirmation">
+          <div class="copy">
+            <h3>Create Group Confirmation</h3>
+            <span class="meta">groups -- create group confirmation.jpeg</span>
+            <ul>
+              <li>Confirms group setup and invites the user to add members.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- group chat.jpeg" alt="Group chat">
+          <div class="copy">
+            <h3>Group Chat</h3>
+            <span class="meta">groups -- group chat.jpeg</span>
+            <ul>
+              <li>Group-scoped messaging with Details, Sessions, and Chat tabs.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="groups -- Adding player to a group --kinda like invite a player.jpeg" alt="Add player to group">
+          <div class="copy">
+            <h3>Add Player to Group</h3>
+            <span class="meta">groups -- Adding player to a group --kinda like invite a player.jpeg</span>
+            <ul>
+              <li>Likely member invite flow.</li>
+              <li>Needs verification before building against it.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="messages">
+      <h2>Notifications / Messaging</h2>
+      <p class="section-note">Global inbox, invite inbox, fine-grained alerts, and email reminders.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="this shows when active chat icon was clicked which is beside bell notification.jpeg" alt="Active chats">
+          <div class="copy">
+            <h3>Active Chats Inbox</h3>
+            <span class="meta">this shows when active chat icon was clicked which is beside bell notification.jpeg</span>
+            <ul>
+              <li>Global thread list with support and group chat entries.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="pending invites when notification bell was clicked.jpeg" alt="Pending invites">
+          <div class="copy">
+            <h3>Pending Invites</h3>
+            <span class="meta">pending invites when notification bell was clicked.jpeg</span>
+            <ul>
+              <li>Empty invite inbox with create-session and declined-session CTAs.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="account settings -- notifications.jpeg" alt="Notification settings">
+          <div class="copy">
+            <h3>Notification Settings</h3>
+            <span class="meta">account settings -- notifications.jpeg</span>
+            <ul>
+              <li>Extensive push/email preferences with timing matrix and format filters.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="an email user gets 4 hours before the play.jpeg" alt="Reminder email">
+          <div class="copy">
+            <h3>Reminder Email</h3>
+            <span class="meta">an email user gets 4 hours before the play.jpeg</span>
+            <ul>
+              <li>Transactional email preview for a session reminder.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="stats">
+      <h2>Stats / Ratings</h2>
+      <p class="section-note">Personal stats dashboard and configurable rating/profile exposure.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="stats.jpeg" alt="Stats page">
+          <div class="copy">
+            <h3>Stats Dashboard</h3>
+            <span class="meta">stats.jpeg</span>
+            <ul>
+              <li>Shows activity summaries, record tiles, and premium stats upsell.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="ratings page where it integrates with universal ratings also has self reporting ratings.jpeg" alt="Ratings page">
+          <div class="copy">
+            <h3>Ratings</h3>
+            <span class="meta">ratings page where it integrates with universal ratings also has self reporting ratings.jpeg</span>
+            <ul>
+              <li>Connects DUPR and stores self-reported or alternate ratings.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="account">
+      <h2>Account / Settings</h2>
+      <p class="section-note">The account hub surfaces profile, subscription, billing, permissions, location, contact, and preferences.</p>
+      <div class="grid">
+        <article class="card">
+          <img src="account settings -- reachable via account icon on home.jpeg" alt="Account settings hub">
+          <div class="copy">
+            <h3>Account Settings Hub</h3>
+            <span class="meta">account settings -- reachable via account icon on home.jpeg</span>
+            <ul>
+              <li>Central settings launcher plus upgrade, help, privacy, terms, and logout.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="easy access links when navigating on account settings.jpeg" alt="Account links shortcut state">
+          <div class="copy">
+            <h3>Settings Shortcuts Variant</h3>
+            <span class="meta">easy access links when navigating on account settings.jpeg</span>
+            <ul>
+              <li>Likely another state of the settings hub.</li>
+              <li>Needs verification if separate from the main settings page.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="profile settings under account settings.jpeg" alt="Profile settings">
+          <div class="copy">
+            <h3>Profile Settings</h3>
+            <span class="meta">profile settings under account settings.jpeg</span>
+            <ul>
+              <li>Name, gender, avatar, and delete-account management.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="account settings -- contact info.jpeg" alt="Contact info settings">
+          <div class="copy">
+            <h3>Contact Info</h3>
+            <span class="meta">account settings -- contact info.jpeg</span>
+            <ul>
+              <li>Manage email addresses and phone numbers.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="account settings -- location settings.jpeg" alt="Location settings">
+          <div class="copy">
+            <h3>Location Settings</h3>
+            <span class="meta">account settings -- location settings.jpeg</span>
+            <ul>
+              <li>Home location plus vacation-mode override.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="account settings -- payment.jpeg" alt="Payment settings">
+          <div class="copy">
+            <h3>Payments</h3>
+            <span class="meta">account settings -- payment.jpeg</span>
+            <ul>
+              <li>Stripe setup, cards, currency, payment history, and payout handles.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="account settings -- subscription.jpeg" alt="Subscription settings">
+          <div class="copy">
+            <h3>Subscription / Plan Usage</h3>
+            <span class="meta">account settings -- subscription.jpeg</span>
+            <ul>
+              <li>Usage quotas and Plus/Pro/Ultra pricing.</li>
+            </ul>
+          </div>
+        </article>
+        <article class="card">
+          <img src="account settings -- permissions.jpeg" alt="Permissions settings">
+          <div class="copy">
+            <h3>Permissions</h3>
+            <span class="meta">account settings -- permissions.jpeg</span>
+            <ul>
+              <li>Device-level permission status with deep links to OS settings.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="footer">
+      See <code>PAGES-MAP.md</code> for the full written page inventory and <code>APP-FLOWS.md</code> for the route-level flow map.
+    </div>
+  </main>
+</body>
+</html>

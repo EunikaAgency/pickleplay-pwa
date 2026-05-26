@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PicklePlay - Nearby Courts &amp; Games</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@600;700&amp;family=Nunito+Sans:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "error": "#ba1a1a",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-bright": "#f8f9fc",
+                    "on-primary-fixed": "#001356",
+                    "inverse-on-surface": "#f0f1f4",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed-dim": "#abd600",
+                    "surface-container": "#edeef1",
+                    "error-container": "#ffdad6",
+                    "inverse-primary": "#b8c3ff",
+                    "on-tertiary-fixed-variant": "#8a1d00",
+                    "on-background": "#191c1e",
+                    "on-primary-fixed-variant": "#0035be",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2e3133",
+                    "on-secondary": "#ffffff",
+                    "outline": "#747688",
+                    "tertiary-fixed": "#ffdad2",
+                    "on-primary": "#ffffff",
+                    "surface": "#f8f9fc",
+                    "surface-container-low": "#f2f3f6",
+                    "on-secondary-fixed": "#161e00",
+                    "on-secondary-fixed-variant": "#3c4d00",
+                    "on-error-container": "#93000a",
+                    "secondary": "#506600",
+                    "primary": "#0040e0",
+                    "tertiary-container": "#cf3000",
+                    "on-primary-container": "#efefff",
+                    "surface-tint": "#124af0",
+                    "on-tertiary-fixed": "#3c0700",
+                    "surface-container-high": "#e7e8eb",
+                    "on-tertiary-container": "#ffede9",
+                    "surface-variant": "#e1e2e5",
+                    "primary-fixed": "#dde1ff",
+                    "surface-container-highest": "#e1e2e5",
+                    "on-surface-variant": "#434656",
+                    "secondary-container": "#c1f100",
+                    "primary-container": "#2e5bff",
+                    "tertiary-fixed-dim": "#ffb4a2",
+                    "secondary-fixed": "#c3f400",
+                    "on-secondary-container": "#546b00",
+                    "outline-variant": "#c4c5d9",
+                    "surface-dim": "#d9dadd",
+                    "on-surface": "#191c1e",
+                    "background": "#f8f9fc",
+                    "tertiary": "#a32400",
+                    "primary-fixed-dim": "#b8c3ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "16px",
+                    "xl": "3rem",
+                    "full": "16px"
+            },
+            "spacing": {
+                    "touch-target-min": "48px",
+                    "base": "8px",
+                    "container-padding": "20px",
+                    "gutter": "16px",
+                    "card-gap": "12px"
+            },
+            "fontFamily": {
+                    "headline-xl": ["Rubik"],
+                    "headline-lg-mobile": ["Rubik"],
+                    "body-lg": ["Nunito Sans"],
+                    "headline-md": ["Rubik"],
+                    "headline-lg": ["Rubik"],
+                    "body-md": ["Nunito Sans"],
+                    "label-sm": ["Nunito Sans"]
+            },
+            "fontSize": {
+                    "headline-xl": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["25px", {"lineHeight": "30px", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["21px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "21px", "fontWeight": "400"}],
+                    "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab-indicator {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tinted-shadow {
+            box-shadow: 0 4px 20px -2px rgba(0, 64, 224, 0.1);
+        }
+        .glass-header {
+            backdrop-filter: blur(8px);
+            background: rgba(248, 249, 252, 0.8);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-50 bg-surface dark:bg-background shadow-sm shadow-primary/10">
+<div class="flex justify-between items-center px-container-padding h-touch-target-min w-full max-w-7xl mx-auto">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">PicklePlay</h1>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform" data-icon="chat">chat</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-container-padding pt-6 space-y-6">
+<!-- Toggle Switcher -->
+<div class="flex justify-center">
+<div class="bg-surface-container-high p-1 rounded-full flex relative w-full max-w-xs">
+<button class="flex-1 py-2 px-6 rounded-full font-headline-md text-body-md z-10 transition-colors text-on-secondary-container bg-secondary-container" id="toggle-courts" onclick="switchToggle('courts')">Courts</button>
+<button class="flex-1 py-2 px-6 rounded-full font-headline-md text-body-md z-10 transition-colors text-on-surface-variant" id="toggle-games" onclick="switchToggle('games')">Games</button>
+</div>
+</div>
+<!-- Filter Chips Row -->
+<div class="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+<button class="flex items-center gap-2 bg-primary-container text-on-primary-container px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[16px]" data-icon="tune">tune</span>
+<span class="font-label-sm text-label-sm">Filters</span>
+</button>
+<button class="flex items-center gap-2 bg-surface-container-highest text-on-surface-variant px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-all">
+<span class="font-label-sm text-label-sm">Indoor</span>
+</button>
+<button class="flex items-center gap-2 bg-surface-container-highest text-on-surface-variant px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-all">
+<span class="font-label-sm text-label-sm">Public</span>
+</button>
+<button class="flex items-center gap-2 bg-surface-container-highest text-on-surface-variant px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-all">
+<span class="font-label-sm text-label-sm">Lighted</span>
+</button>
+<button class="flex items-center gap-2 bg-surface-container-highest text-on-surface-variant px-4 py-2 rounded-full whitespace-nowrap active:scale-95 transition-all">
+<span class="font-label-sm text-label-sm">Available Now</span>
+</button>
+</div>
+<!-- View Title & Map Action -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg">Nearby in Austin</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">24 courts found within 5 miles</p>
+</div>
+<button class="bg-primary text-on-primary p-3 rounded-full tinted-shadow active:scale-90 transition-all">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+</button>
+</div>
+<!-- Court Cards Grid (Bento/Asymmetric Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter" id="courts-view">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg tinted-shadow overflow-hidden group cursor-pointer active:scale-[0.98] transition-all">
+<div class="relative h-48">
+<img alt="Pickleball Court" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A vibrant outdoor pickleball court with professional blue and green surfacing under bright summer sunlight. The scene is shot from a low angle emphasizing the clean net and crisp court lines. Two players are blurred in the background, adding a sense of active community sports life. The overall mood is energetic, high-contrast, and inviting, perfectly matching a premium sports app aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsL986uwrjRnAFPLVZTE71SgRlgtERnWB_O-_u-mg4qaddBohUzg2f9di6EjSOELb6gOdw5hpL_oiC_o8ZrPChGext6DF4-_g10CoLCaIMBtZ1oDYsDm-Q89VmI4GCI4qum9HaYOx0PQN98F1AJfvJh0jZUfJpE5qf_wdLWBpxpdg4Q0O9J_lQlCGuXKu6RCm-me0mSj6T7miyRvXid9yuUZHJgdgUeLXoT18Lf6wzh6Z3ZM0VQGmIKAHPEmkQ69DWo8kMreU1"/>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-3 py-1 rounded-full">Indoor</span>
+<span class="bg-surface-container-lowest/90 text-primary font-label-sm text-label-sm px-3 py-1 rounded-full backdrop-blur-sm">6 Courts</span>
+</div>
+<button class="absolute bottom-3 right-3 bg-surface-container-lowest text-error p-2 rounded-full shadow-md active:scale-90 transition-all">
+<span class="material-symbols-outlined" data-icon="favorite" data-weight="fill" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+<div class="p-container-padding space-y-2">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md">Austin Smash Center</h3>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-[16px]" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm">4.9</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+                        0.8 miles away • Downtown
+                    </p>
+<div class="pt-2 flex gap-2 overflow-hidden">
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Restrooms</span>
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Pro Shop</span>
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Coffee</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg tinted-shadow overflow-hidden group cursor-pointer active:scale-[0.98] transition-all">
+<div class="relative h-48">
+<img alt="Pickleball Court" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Modern indoor pickleball facility with multiple courts separated by nets. The lighting is bright and even, highlighting the vibrant blue court surfaces. The architecture features high ceilings with exposed industrial elements, creating a spacious and professional athletic environment. The style is clean, modern, and high-energy with a focus on accessibility and premium community sport spaces." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDa2ERNy2GGwjBkw4-3pvNcU9GWPQXFx7_RdJgrZXkBOtqYhp1ImtS5_TIiuky0GsnGS2b_mMt-axhoWEFF-CJuJszESpVrCQudWflWVgGUZMySfGLU-rVb82QdT8mrWpllsd_8koBYuTHhnwi1xhdcYK_aj_El7fUBswk-C_f0zCVg6RJuzCxYAXz0jPasoM97qvgzAx96oRw1LTzzkK7J7y7SniEFa7YOCA5HiCRD7gD1k2VgAPJOABL8-txI4OIwGuRWEPYX"/>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="bg-surface-container-lowest/90 text-primary font-label-sm text-label-sm px-3 py-1 rounded-full backdrop-blur-sm">Public</span>
+<span class="bg-surface-container-lowest/90 text-primary font-label-sm text-label-sm px-3 py-1 rounded-full backdrop-blur-sm">4 Courts</span>
+</div>
+</div>
+<div class="p-container-padding space-y-2">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md">Zilker Park Courts</h3>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-[16px]" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm">4.7</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+                        2.4 miles away • South Austin
+                    </p>
+<div class="pt-2 flex gap-2">
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Lighted</span>
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Free</span>
+</div>
+</div>
+</div>
+<!-- Card 3 (Featured/Large) -->
+<div class="bg-primary text-on-primary rounded-lg tinted-shadow overflow-hidden group cursor-pointer active:scale-[0.98] transition-all flex flex-col md:col-span-2 lg:col-span-1">
+<div class="p-container-padding space-y-4 flex-1 flex flex-col justify-center text-center">
+<div class="bg-secondary-container w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2">
+<span class="material-symbols-outlined text-on-secondary-container text-4xl" data-icon="add_location">add_location</span>
+</div>
+<h3 class="font-headline-md text-headline-md">Missing a court?</h3>
+<p class="font-body-md text-body-md opacity-90">Help the community grow by adding a local spot you know about!</p>
+<button class="bg-secondary-fixed text-on-secondary-fixed font-bold py-3 px-8 rounded-full self-center active:scale-95 transition-all shadow-lg">
+                        Add it now!
+                    </button>
+</div>
+<div class="h-2 bg-secondary-container w-full"></div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest rounded-lg tinted-shadow overflow-hidden group cursor-pointer active:scale-[0.98] transition-all">
+<div class="relative h-48">
+<img alt="Private Court" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="An exclusive private pickleball court nestled within lush tropical greenery. The court features a unique terracotta and navy color scheme. The lighting is golden hour, casting long soft shadows and a warm glow over the pristine playing surface. The aesthetic is luxurious, tranquil, and high-end, suggesting a premium membership or club experience in a serene garden setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARk0pzgK8gYkMfbZ40r6oCDE9S9XldNiMq2e6nnQ4M38al1LG__JRRFt7p5T2-u98nFVpJvflXX_Q1i43TmRTjg9B89WedV4cQURvA5FvWQOi7Cd6e5M4YZAYiHCvsck0gdQSXDHG1BTIuhH0bpERvegmC4G0-O0oh52YMKfwkRQucFoQo3TeQHkzpQjViV8OuDiBOKw731nBnUqB0QADFHOvEz2X4asznNoRyqw14fFzqFgkrRDA7Z8DCpnd9FWWm4LFxdUhs"/>
+<div class="absolute top-3 left-3 flex gap-2">
+<span class="bg-surface-container-lowest/90 text-primary font-label-sm text-label-sm px-3 py-1 rounded-full backdrop-blur-sm">Club</span>
+<span class="bg-surface-container-lowest/90 text-primary font-label-sm text-label-sm px-3 py-1 rounded-full backdrop-blur-sm">8 Courts</span>
+</div>
+</div>
+<div class="p-container-padding space-y-2">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md">The Pickle Lodge</h3>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-[16px]" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-sm text-label-sm">5.0</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]" data-icon="location_on">location_on</span>
+                        4.1 miles away • North Loop
+                    </p>
+<div class="pt-2 flex gap-2">
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Showers</span>
+<span class="text-[10px] uppercase font-bold tracking-wider text-outline px-2 py-0.5 border border-outline-variant rounded-md">Lounge</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Hidden Games View (Simulated for Toggle) -->
+<div class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter" id="games-view">
+<div class="md:col-span-full py-12 text-center space-y-4">
+<span class="material-symbols-outlined text-6xl text-outline-variant" data-icon="sports_tennis">sports_tennis</span>
+<p class="font-headline-md text-headline-md text-on-surface-variant">Finding live games near you...</p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-lg shadow-primary/15 rounded-t-lg">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-label-sm text-label-sm">Nearby</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>
+<span class="font-label-sm text-label-sm">Games</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-sm text-label-sm">Clubs</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        function switchToggle(type) {
+            const courtsBtn = document.getElementById('toggle-courts');
+            const gamesBtn = document.getElementById('toggle-games');
+            const courtsView = document.getElementById('courts-view');
+            const gamesView = document.getElementById('games-view');
+
+            if (type === 'courts') {
+                courtsBtn.classList.add('bg-secondary-container', 'text-on-secondary-container');
+                courtsBtn.classList.remove('text-on-surface-variant');
+                gamesBtn.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+                gamesBtn.classList.add('text-on-surface-variant');
+                courtsView.classList.remove('hidden');
+                gamesView.classList.add('hidden');
+            } else {
+                gamesBtn.classList.add('bg-secondary-container', 'text-on-secondary-container');
+                gamesBtn.classList.remove('text-on-surface-variant');
+                courtsBtn.classList.remove('bg-secondary-container', 'text-on-secondary-container');
+                courtsBtn.classList.add('text-on-surface-variant');
+                gamesView.classList.remove('hidden');
+                courtsView.classList.add('hidden');
+            }
+        }
+
+        // Simple scroll reveal for cards
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-4');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('#courts-view > div').forEach(card => {
+            card.classList.add('opacity-0', 'translate-y-4', 'transition-all', 'duration-500');
+            observer.observe(card);
+        });
+    </script>
+<script src="../app-router.js"></script>
+</body></html>

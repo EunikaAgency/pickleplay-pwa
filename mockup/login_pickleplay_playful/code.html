@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PicklePlay - Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700&amp;family=Nunito+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .tinted-shadow {
+            box-shadow: 0 10px 30px -10px rgba(0, 64, 224, 0.15);
+        }
+        .bouncy-hover:active {
+            transform: scale(0.98);
+            transition: transform 0.1s ease-out;
+        }
+        .bg-mesh {
+            background-color: #f8f9fc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(0, 64, 224, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(193, 241, 0, 0.1) 0px, transparent 50%);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f8f9fc",
+                        "on-primary-fixed": "#001356",
+                        "inverse-on-surface": "#f0f1f4",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#abd600",
+                        "surface-container": "#edeef1",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#b8c3ff",
+                        "on-tertiary-fixed-variant": "#8a1d00",
+                        "on-background": "#191c1e",
+                        "on-primary-fixed-variant": "#0035be",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3133",
+                        "on-secondary": "#ffffff",
+                        "outline": "#747688",
+                        "tertiary-fixed": "#ffdad2",
+                        "on-primary": "#ffffff",
+                        "surface": "#f8f9fc",
+                        "surface-container-low": "#f2f3f6",
+                        "on-secondary-fixed": "#161e00",
+                        "on-secondary-fixed-variant": "#3c4d00",
+                        "on-error-container": "#93000a",
+                        "secondary": "#506600",
+                        "primary": "#0040e0",
+                        "tertiary-container": "#cf3000",
+                        "on-primary-container": "#efefff",
+                        "surface-tint": "#124af0",
+                        "on-tertiary-fixed": "#3c0700",
+                        "surface-container-high": "#e7e8eb",
+                        "on-tertiary-container": "#ffede9",
+                        "surface-variant": "#e1e2e5",
+                        "primary-fixed": "#dde1ff",
+                        "surface-container-highest": "#e1e2e5",
+                        "on-surface-variant": "#434656",
+                        "secondary-container": "#c1f100",
+                        "primary-container": "#2e5bff",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "secondary-fixed": "#c3f400",
+                        "on-secondary-container": "#546b00",
+                        "outline-variant": "#c4c5d9",
+                        "surface-dim": "#d9dadd",
+                        "on-surface": "#191c1e",
+                        "background": "#f8f9fc",
+                        "tertiary": "#a32400",
+                        "primary-fixed-dim": "#b8c3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "16px",
+                        "xl": "3rem",
+                        "full": "16px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "base": "8px",
+                        "container-padding": "20px",
+                        "gutter": "16px",
+                        "card-gap": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Rubik"],
+                        "headline-lg-mobile": ["Rubik"],
+                        "body-lg": ["Nunito Sans"],
+                        "headline-md": ["Rubik"],
+                        "headline-lg": ["Rubik"],
+                        "body-md": ["Nunito Sans"],
+                        "label-sm": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["25px", {"lineHeight": "30px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["21px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "21px", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen font-body-md overflow-x-hidden bg-mesh">
+<!-- Top Navigation Suppression: Not rendered for Transactional Login Flow -->
+<main class="relative flex flex-col md:flex-row min-h-screen w-full items-stretch justify-center p-4 md:p-0">
+<!-- Hero Section (Visual Anchor) -->
+<section class="flex-1 hidden md:flex flex-col justify-center items-center relative overflow-hidden bg-primary-container p-12">
+<!-- Decorative shapes for Playful Modernism -->
+<div class="absolute -top-20 -left-20 w-80 h-80 bg-secondary-container rounded-full opacity-20 blur-3xl animate-pulse"></div>
+<div class="absolute -bottom-40 -right-20 w-96 h-96 bg-tertiary-container rounded-full opacity-10 blur-3xl animate-bounce"></div>
+<div class="relative z-10 text-center space-y-6">
+<div class="flex items-center justify-center space-x-3 mb-8">
+<span class="material-symbols-outlined text-[64px] text-secondary" style="font-variation-settings: 'FILL' 1;">sports_tennis</span>
+<h1 class="font-headline-xl text-headline-xl text-on-primary-container tracking-tight">PicklePlay</h1>
+</div>
+<div class="relative">
+<img class="w-full max-w-lg rounded-lg tinted-shadow transform -rotate-2 hover:rotate-0 transition-transform duration-500 border-8 border-white" data-alt="A dynamic action shot of two diverse friends playing pickleball on a vibrant neon blue and lime green court under bright sunny day lighting. The scene captures high energy and joy, with a shallow depth of field focusing on the yellow ball in mid-air. The visual style is crisp and modern, featuring clean lines and a high-key light-mode aesthetic that matches the electric blue and neon lime branding." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpfByT3q1YIF8lrRviwwRuL72MUO9nxSSrm_zzAA-UMCRtNWmMPJvsXtOm-gjNjoU9mULcsmHPtZJFw-bmPf4iT6HFrBvkN8jkcCapuLNdW-wyz2PUJ4c2K51n1bLqJcdgRc9R0c_gODV0tFxy-zXj0ondBthKQ6F42osmjp9z-atPbsTNGNniFjchTaJrVzK5ifLMQdJKlYD9B4QecTiuYPvCLgWiTPDwSI9RiW97N4sFK0l63Ojd3A6oCowgt_Ad7aWEJKsu"/>
+<div class="absolute -bottom-6 -right-6 bg-secondary-container p-6 rounded-lg tinted-shadow transform rotate-3">
+<p class="font-headline-md text-headline-md text-on-secondary-container">Enter the Kitchen.</p>
+</div>
+</div>
+<p class="text-on-primary-container font-body-lg text-body-lg max-w-md mx-auto opacity-90 mt-12">
+                    Join the fastest growing community of casual and competitive pickleball players. Your next match is just a tap away.
+                </p>
+</div>
+</section>
+<!-- Login Form Section -->
+<section class="flex-1 flex flex-col justify-center items-center px-container-padding py-12 md:px-12 bg-transparent z-20">
+<!-- Mobile Header (Visible only on small screens) -->
+<div class="md:hidden text-center mb-10">
+<div class="flex items-center justify-center space-x-2 mb-2">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">sports_tennis</span>
+<h2 class="font-headline-md text-headline-md text-primary">PicklePlay</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant italic">Enter the Kitchen.</p>
+</div>
+<div class="w-full max-w-md bg-surface-container-lowest rounded-lg p-8 md:p-10 tinted-shadow border border-surface-variant/30">
+<div class="mb-10 text-left">
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-2">Welcome Back</h2>
+<p class="text-on-surface-variant font-body-md text-body-md">Ready to hit the courts?</p>
+</div>
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-on-surface-variant ml-1">EMAIL ADDRESS</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">mail</span>
+<input class="w-full h-touch-target-min pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-body-md" placeholder="you@example.com" type="email"/>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center px-1">
+<label class="block font-label-sm text-label-sm text-on-surface-variant">PASSWORD</label>
+<a class="text-primary font-label-sm text-label-sm hover:underline" href="#">Forgot?</a>
+</div>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
+<input class="w-full h-touch-target-min pl-12 pr-12 bg-surface-container-low border border-outline-variant rounded-[16px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-body-md" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full h-touch-target-min bg-secondary-container text-on-secondary-container font-headline-md text-[16px] rounded-full tinted-shadow bouncy-hover transition-all flex items-center justify-center space-x-2" type="button">
+<span>Sign In</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</form>
+<div class="relative my-10">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant"></div>
+</div>
+<div class="relative flex justify-center text-label-sm">
+<span class="bg-surface-container-lowest px-4 text-on-surface-variant font-label-sm">OR CONTINUE WITH</span>
+</div>
+</div>
+<div class="flex gap-4 justify-center">
+<button class="w-14 h-14 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-container-low transition-colors bouncy-hover">
+<img alt="Google" class="w-6 h-6" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYXhjvzgVvy8PmhEtel4UerRhEwSaXUhGM6UOOvB73q1CUuV-CrT7pix520ZmqsLiRoZhlfGHLweHCEY8LRAMcB6Wc-TE4QQXdiCSiYmXltthLb7vyvdthPsitUxYDJfBZ4pkCCtslMoqru8_RoTTELcjYAcI8UdWjIySj-BV3sP4sP4BYaSLPcb4UiKf4T4R3H1zRa6V5DM0UkWEciAU4oXASm4WiEfxiI8CSB0Xrvc5EQqi8EjNUUtEj0MADyzZO704-MEfA"/>
+</button>
+<button class="w-14 h-14 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-container-low transition-colors bouncy-hover">
+<span class="material-symbols-outlined text-on-surface" style="font-variation-settings: 'FILL' 1;">ios</span>
+</button>
+<button class="w-14 h-14 rounded-full border border-outline-variant flex items-center justify-center hover:bg-surface-container-low transition-colors bouncy-hover">
+<span class="material-symbols-outlined text-[#1877F2]" style="font-variation-settings: 'FILL' 1;">social_leaderboard</span>
+</button>
+</div>
+<div class="mt-10 text-center">
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        New to the court? 
+                        <a class="text-primary font-bold hover:underline ml-1" href="#">Join the league</a>
+</p>
+</div>
+</div>
+<!-- Subtle Trust Signals -->
+<div class="mt-8 flex items-center space-x-6 opacity-60">
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-sm">verified_user</span>
+<span class="text-[12px] font-bold">SECURE SSL</span>
+</div>
+<div class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-sm">groups</span>
+<span class="text-[12px] font-bold">10K+ PLAYERS</span>
+</div>
+</div>
+</section>
+</main>
+<!-- Navigation suppression (Login Screen) -->
+<!-- BottomNavBar and TopAppBar are HIDDEN for linear transactional journey -->
+<script>
+        // Simple micro-interaction for input focus
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.parentElement.classList.add('scale-[1.01]');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.parentElement.classList.remove('scale-[1.01]');
+            });
+        });
+
+        // Background floating elements animation logic
+        const createParticle = () => {
+            const particle = document.createElement('div');
+            const size = Math.random() * 20 + 10;
+            particle.className = 'fixed bg-secondary-container opacity-5 rounded-full pointer-events-none z-0';
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.left = `${Math.random() * 100}vw`;
+            particle.style.top = `${Math.random() * 100}vh`;
+            document.body.appendChild(particle);
+
+            let posX = parseFloat(particle.style.left);
+            let posY = parseFloat(particle.style.top);
+            let velX = (Math.random() - 0.5) * 0.2;
+            let velY = (Math.random() - 0.5) * 0.2;
+
+            const move = () => {
+                posX += velX;
+                posY += velY;
+                if (posX < 0 || posX > 100) velX *= -1;
+                if (posY < 0 || posY > 100) velY *= -1;
+                particle.style.left = `${posX}vw`;
+                particle.style.top = `${posY}vh`;
+                requestAnimationFrame(move);
+            };
+            move();
+        };
+
+        for(let i=0; i<8; i++) createParticle();
+    </script>
+<script src="../app-router.js"></script>
+</body></html>

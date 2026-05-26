@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&amp;family=Rubik:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-shadow-primary {
+      box-shadow: 0 4px 20px -2px rgba(0, 64, 224, 0.1);
+    }
+    .custom-shadow-fab {
+      box-shadow: 0 8px 30px -4px rgba(0, 64, 224, 0.15);
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "error": "#ba1a1a",
+            "surface-container-lowest": "#ffffff",
+            "surface-bright": "#f8f9fc",
+            "on-primary-fixed": "#001356",
+            "inverse-on-surface": "#f0f1f4",
+            "on-tertiary": "#ffffff",
+            "secondary-fixed-dim": "#abd600",
+            "surface-container": "#edeef1",
+            "error-container": "#ffdad6",
+            "inverse-primary": "#b8c3ff",
+            "on-tertiary-fixed-variant": "#8a1d00",
+            "on-background": "#191c1e",
+            "on-primary-fixed-variant": "#0035be",
+            "on-error": "#ffffff",
+            "inverse-surface": "#2e3133",
+            "on-secondary": "#ffffff",
+            "outline": "#747688",
+            "tertiary-fixed": "#ffdad2",
+            "on-primary": "#ffffff",
+            "surface": "#f8f9fc",
+            "surface-container-low": "#f2f3f6",
+            "on-secondary-fixed": "#161e00",
+            "on-secondary-fixed-variant": "#3c4d00",
+            "on-error-container": "#93000a",
+            "secondary": "#506600",
+            "primary": "#0040e0",
+            "tertiary-container": "#cf3000",
+            "on-primary-container": "#efefff",
+            "surface-tint": "#124af0",
+            "on-tertiary-fixed": "#3c0700",
+            "surface-container-high": "#e7e8eb",
+            "on-tertiary-container": "#ffede9",
+            "surface-variant": "#e1e2e5",
+            "primary-fixed": "#dde1ff",
+            "surface-container-highest": "#e1e2e5",
+            "on-surface-variant": "#434656",
+            "secondary-container": "#c1f100",
+            "primary-container": "#2e5bff",
+            "tertiary-fixed-dim": "#ffb4a2",
+            "secondary-fixed": "#c3f400",
+            "on-secondary-container": "#546b00",
+            "outline-variant": "#c4c5d9",
+            "surface-dim": "#d9dadd",
+            "on-surface": "#191c1e",
+            "background": "#f8f9fc",
+            "tertiary": "#a32400",
+            "primary-fixed-dim": "#b8c3ff"
+          },
+          "borderRadius": {
+            "DEFAULT": "1rem",
+            "lg": "16px",
+            "xl": "3rem",
+            "full": "16px"
+          },
+          "spacing": {
+            "touch-target-min": "48px",
+            "base": "8px",
+            "container-padding": "20px",
+            "gutter": "16px",
+            "card-gap": "12px"
+          },
+          "fontFamily": {
+            "headline-xl": ["Rubik"],
+            "headline-lg-mobile": ["Rubik"],
+            "body-lg": ["Nunito Sans"],
+            "headline-md": ["Rubik"],
+            "headline-lg": ["Rubik"],
+            "body-md": ["Nunito Sans"],
+            "label-sm": ["Nunito Sans"]
+          },
+          "fontSize": {
+            "headline-xl": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "headline-lg-mobile": ["25px", {"lineHeight": "30px", "fontWeight": "700"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "headline-md": ["21px", {"lineHeight": "28px", "fontWeight": "600"}],
+            "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+            "body-md": ["14px", {"lineHeight": "21px", "fontWeight": "400"}],
+            "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-surface dark:bg-background shadow-sm shadow-primary/10 z-50">
+<div class="flex justify-between items-center px-container-padding h-touch-target-min w-full max-w-7xl mx-auto">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">PicklePlay</h1>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform" data-icon="chat">chat</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-container-padding pt-8">
+<!-- Hero Profile Section -->
+<section class="flex flex-col items-center mb-10 text-center">
+<div class="relative mb-6">
+<div class="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-surface-container-lowest custom-shadow-primary">
+<img alt="Profile Avatar" class="w-full h-full object-cover" data-alt="A professional studio portrait of a confident and athletic woman in her 30s wearing stylish sports apparel. The lighting is bright and airy with a modern light-mode aesthetic. The background is a soft, blurred gradient of electric blue and neutral grey, emphasizing a playful yet competitive mood. The composition is clean and premium, reflecting a high-energy lifestyle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD"/>
+</div>
+<div class="absolute bottom-0 right-0 bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full font-label-sm text-label-sm shadow-sm">
+          3.5 DUPR
+        </div>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg mb-1">Riley Pickler</h2>
+<p class="text-on-surface-variant font-body-md italic mb-4">"The dink master."</p>
+<!-- Stats Row -->
+<div class="grid grid-cols-3 gap-card-gap w-full max-w-md">
+<div class="bg-surface-container-lowest rounded-[8px] p-4 custom-shadow-primary flex flex-col items-center">
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-1">Games</span>
+<span class="font-headline-md text-headline-md text-primary">124</span>
+</div>
+<div class="bg-surface-container-lowest rounded-[8px] p-4 custom-shadow-primary flex flex-col items-center">
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-1">Wins</span>
+<span class="font-headline-md text-headline-md text-secondary">82</span>
+</div>
+<div class="bg-surface-container-lowest rounded-[8px] p-4 custom-shadow-primary flex flex-col items-center">
+<span class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider mb-1">Losses</span>
+<span class="font-headline-md text-headline-md text-tertiary">42</span>
+</div>
+</div>
+</section>
+<!-- Win Rate Progress Section -->
+<section class="bg-surface-container-lowest rounded-lg p-container-padding mb-8 custom-shadow-primary max-w-2xl mx-auto">
+<div class="flex justify-between items-end mb-3">
+<div>
+<h3 class="font-headline-md text-headline-md">Win Rate</h3>
+<p class="text-on-surface-variant font-body-md">You're crushing the courts!</p>
+</div>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-secondary">66%</span>
+</div>
+<div class="w-full h-4 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-secondary-fixed w-[66%] transition-all duration-1000 ease-out" id="win-rate-bar" style="width: 0%"></div>
+</div>
+</section>
+<!-- Settings List -->
+<section class="max-w-2xl mx-auto space-y-3">
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer custom-shadow-primary group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]" data-icon="account_circle">account_circle</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg font-bold">Account Settings</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Manage your profile &amp; info</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer custom-shadow-primary group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]" data-icon="security">security</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg font-bold">Privacy &amp; Security</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Control your court visibility</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer custom-shadow-primary group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]" data-icon="help">help</span>
+</div>
+<div>
+<h4 class="font-body-lg text-body-lg font-bold">Help &amp; Support</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Rules and platform guides</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Logout Action -->
+<button class="w-full flex items-center justify-center gap-2 p-4 mt-6 text-error font-bold hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-body-lg text-body-lg">Sign Out</span>
+</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-lg shadow-primary/15 rounded-t-lg">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-label-sm text-label-sm">Nearby</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>
+<span class="font-label-sm text-label-sm">Games</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-sm text-label-sm">Clubs</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</button>
+</nav>
+<script>
+    // Animate progress bar on load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('win-rate-bar').style.width = '66%';
+      }, 300);
+    });
+
+    // Add some simple micro-interactions to cards
+    const cards = document.querySelectorAll('.bg-surface-container-lowest');
+    cards.forEach(card => {
+      card.addEventListener('mouseenter', () => {
+        card.classList.add('scale-[1.02]');
+        card.classList.add('transition-transform');
+      });
+      card.addEventListener('mouseleave', () => {
+        card.classList.remove('scale-[1.02]');
+      });
+    });
+  </script>
+<script src="../app-router.js"></script>
+</body></html>

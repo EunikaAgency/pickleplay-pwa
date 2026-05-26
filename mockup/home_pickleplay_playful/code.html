@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PicklePlay - Ready to play?</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&amp;family=Nunito+Sans:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f8f9fc",
+                        "on-primary-fixed": "#001356",
+                        "inverse-on-surface": "#f0f1f4",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#abd600",
+                        "surface-container": "#edeef1",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#b8c3ff",
+                        "on-tertiary-fixed-variant": "#8a1d00",
+                        "on-background": "#191c1e",
+                        "on-primary-fixed-variant": "#0035be",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3133",
+                        "on-secondary": "#ffffff",
+                        "outline": "#747688",
+                        "tertiary-fixed": "#ffdad2",
+                        "on-primary": "#ffffff",
+                        "surface": "#f8f9fc",
+                        "surface-container-low": "#f2f3f6",
+                        "on-secondary-fixed": "#161e00",
+                        "on-secondary-fixed-variant": "#3c4d00",
+                        "on-error-container": "#93000a",
+                        "secondary": "#506600",
+                        "primary": "#0040e0",
+                        "tertiary-container": "#cf3000",
+                        "on-primary-container": "#efefff",
+                        "surface-tint": "#124af0",
+                        "on-tertiary-fixed": "#3c0700",
+                        "surface-container-high": "#e7e8eb",
+                        "on-tertiary-container": "#ffede9",
+                        "surface-variant": "#e1e2e5",
+                        "primary-fixed": "#dde1ff",
+                        "surface-container-highest": "#e1e2e5",
+                        "on-surface-variant": "#434656",
+                        "secondary-container": "#c1f100",
+                        "primary-container": "#2e5bff",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "secondary-fixed": "#c3f400",
+                        "on-secondary-container": "#546b00",
+                        "outline-variant": "#c4c5d9",
+                        "surface-dim": "#d9dadd",
+                        "on-surface": "#191c1e",
+                        "background": "#f8f9fc",
+                        "tertiary": "#a32400",
+                        "primary-fixed-dim": "#b8c3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "16px",
+                        "xl": "3rem",
+                        "full": "16px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "base": "8px",
+                        "container-padding": "20px",
+                        "gutter": "16px",
+                        "card-gap": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Fredoka"],
+                        "headline-lg-mobile": ["Fredoka"],
+                        "body-lg": ["Nunito Sans"],
+                        "headline-md": ["Fredoka"],
+                        "headline-lg": ["Fredoka"],
+                        "body-md": ["Nunito Sans"],
+                        "label-sm": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["25px", {"lineHeight": "30px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["21px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "21px", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #f8f9fc;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .tinted-shadow {
+            box-shadow: 0 10px 30px -5px rgba(0, 64, 224, 0.1);
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface mb-24">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-40 bg-surface dark:bg-background shadow-sm shadow-primary/10">
+<div class="flex justify-between items-center px-container-padding h-touch-target-min w-full max-w-7xl mx-auto">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">PicklePlay</span>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-primary hover:opacity-80 transition-opacity active:scale-95 transition-transform" data-icon="chat">chat</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-container-padding pt-6 space-y-8">
+<!-- Greeting Section -->
+<section class="space-y-1">
+<h1 class="font-headline-xl text-headline-xl text-on-surface">Ready to play, Alex?</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">There are 12 open games near you today!</p>
+</section>
+<!-- Quick Action Tiles (Bento Style) -->
+<section class="grid grid-cols-2 md:grid-cols-4 gap-card-gap">
+<button class="flex flex-col items-center justify-center p-6 bg-secondary-container text-on-secondary-container rounded-lg tinted-shadow transition-transform active:scale-95">
+<div class="w-12 h-12 rounded-full bg-white/40 flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-2xl" data-icon="add_circle">add_circle</span>
+</div>
+<span class="font-headline-md text-[16px] font-bold">Create Game</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 bg-primary-container text-on-primary-container rounded-lg tinted-shadow transition-transform active:scale-95">
+<div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-2xl" data-icon="search">search</span>
+</div>
+<span class="font-headline-md text-[16px] font-bold">Find Games</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 bg-surface-container-high text-on-surface-variant rounded-lg tinted-shadow transition-transform active:scale-95">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-2xl text-primary" data-icon="group_add">group_add</span>
+</div>
+<span class="font-headline-md text-[16px] font-bold">Create Club</span>
+</button>
+<button class="flex flex-col items-center justify-center p-6 bg-surface-container-high text-on-surface-variant rounded-lg tinted-shadow transition-transform active:scale-95">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+<span class="material-symbols-outlined text-2xl text-primary" data-icon="map">map</span>
+</div>
+<span class="font-headline-md text-[16px] font-bold">Find Courts</span>
+</button>
+</section>
+<!-- Upcoming Activity Card -->
+<section>
+<div class="bg-white p-6 rounded-lg tinted-shadow flex flex-col md:flex-row gap-6 items-center">
+<div class="relative w-full md:w-48 h-32 rounded-lg overflow-hidden shrink-0">
+<img alt="Pickleball Court" class="w-full h-full object-cover" data-alt="A sun-drenched outdoor pickleball court featuring bright blue and green surfacing under a clear sky. The lighting is high-key and optimistic, matching a modern light-mode aesthetic. A few neon lime pickleballs are scattered near the net, creating a playful and energetic community sports atmosphere. The scene is clean, premium, and focused on social activity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB74wZImg86YqASBE9mTA8ilIQtez1ABlecRRJ-hbZ_Mm2dN-gFFIH8flXECbNEFThD4jo9iJeyUIYqVODn1Y3CYEirLVSLw4XO2ZLxXnoeDNspU0-9Rtr3Le2uwzxR9AVThARneifahVE8WcplIL-u1EhxHgyHw7lNm6L7uzN_TZ7LyuQWkyXcUOowoIEodYrAU5mnPLacJP7sSYjdWW0-55C_qZ5LEcTSTk0ZaL2M8ZmIFyZRdlsKLj3tLtoWyzQDw5XJavcD"/>
+<div class="absolute top-2 left-2 bg-secondary text-on-secondary text-label-sm font-label-sm px-3 py-1 rounded-full">Tomorrow</div>
+</div>
+<div class="flex-grow space-y-2 text-center md:text-left">
+<h2 class="font-headline-md text-headline-md">Morning Doubles Mixer</h2>
+<p class="font-body-md text-on-surface-variant">Tomorrow at 9:00 AM • Sunset Park Courts</p>
+<div class="flex items-center justify-center md:justify-start -space-x-2 mt-4">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-primary-fixed flex items-center justify-center text-[10px] font-bold">JD</div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-secondary-fixed flex items-center justify-center text-[10px] font-bold">SK</div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-tertiary-fixed flex items-center justify-center text-[10px] font-bold">ML</div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-surface-container-highest flex items-center justify-center text-[10px] font-bold">+5</div>
+</div>
+</div>
+<button class="w-full md:w-auto px-8 py-3 bg-secondary-container text-on-secondary-container font-bold rounded-full transition-all active:scale-90 hover:opacity-90">
+                    View Details
+                </button>
+</div>
+</section>
+<!-- Discover Games Section -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Discover Games</h2>
+<button class="text-primary font-bold hover:underline">See All</button>
+</div>
+<div class="flex overflow-x-auto gap-card-gap pb-4 hide-scrollbar -mx-container-padding px-container-padding">
+<!-- Card 1 -->
+<div class="min-w-[280px] bg-white rounded-lg tinted-shadow overflow-hidden group">
+<div class="h-40 relative">
+<img alt="Game" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A close-up shot of an electric blue pickleball paddle resting on a vibrant neon lime pickleball ball. The background is a soft-focus community sports center with warm wooden textures. The lighting is crisp and modern, highlighting the high-energy athletic gear. The overall mood is social, active, and inviting for players of all levels." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQeWJn-7Kk1HCR-1MhQ2a4JKM3hst4f2Go13gZorz6vGn8cKEUeXpeE3gDY6v6tBlYjWFTQLGTbHGRdv10L15u0FFVQC95N5dBLo0AcLAElZTzhP_oITmJh1BoD87sRmvOYdCL5Tl_YkEJwm8DgDULjJE3S0rp_uvrsn2lH7dTUfXyr1XiZAGc5jwCgKaiuxzTtkadzvjIwWFZNW0THmQVTRB1OtQV929zAPnNs-HFJuZKa_6n7mIrR33C5eCZFcXbW-BtyYd2"/>
+<div class="absolute bottom-2 left-2 flex gap-2">
+<span class="bg-white/90 backdrop-blur px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Beginner</span>
+</div>
+</div>
+<div class="p-4 space-y-2">
+<h3 class="font-headline-md text-[16px]">Rookie Rally Round</h3>
+<div class="flex items-center text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1" data-icon="schedule">schedule</span>
+                            Today, 5:30 PM
+                        </div>
+<div class="flex items-center text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1" data-icon="location_on">location_on</span>
+                            Central Hub • 1.2 mi
+                        </div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="min-w-[280px] bg-white rounded-lg tinted-shadow overflow-hidden group">
+<div class="h-40 relative">
+<img alt="Game" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Action shot of a young adult player lunging for a pickleball on a modern outdoor court. The player is wearing stylish white athletic wear with neon lime accents. The sun is setting in the background, casting a warm, golden glow across the court and creating long, dramatic shadows. The aesthetic is high-energy, premium, and intensely social." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByMwXrWnGLq1pjWr5EGIag1wSi3z-p4GQoRUYJv2WhqBU2vdxY0RD1VzOA5nJ4uLEuUPzDdOD-Tdkl_VBMRYPg1bGQ-buq9ulGnLkArv60HQOgh6IZmShrX6KsY_FSazVPyhayDM4qTTJ10rsLpGA2kpA3PUrVSW-xpILKCC--RXHWMf0z_iHdX2OilDEMAzH69rUL53KTk5lGpJUN_xzr_-cU0NIuVDBQRdURMjAjfcJUelBEO0EP7TvyKgouywscNgA72xI-"/>
+<div class="absolute bottom-2 left-2 flex gap-2">
+<span class="bg-white/90 backdrop-blur px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Advanced</span>
+</div>
+</div>
+<div class="p-4 space-y-2">
+<h3 class="font-headline-md text-[16px]">Competitive Singles</h3>
+<div class="flex items-center text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1" data-icon="schedule">schedule</span>
+                            Sat, 10:00 AM
+                        </div>
+<div class="flex items-center text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1" data-icon="location_on">location_on</span>
+                            The Kitchen • 3.5 mi
+                        </div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="min-w-[280px] bg-white rounded-lg tinted-shadow overflow-hidden group">
+<div class="h-40 relative">
+<img alt="Game" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A group of diverse friends high-fiving over the net of a pickleball court. The scene is brightly lit with midday sun, emphasizing a sense of joy and community. The color palette is dominated by the electric blue court and white tennis outfits with pops of neon lime. The composition is dynamic and captures the playful modernism of the sports brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpfByT3q1YIF8lrRviwwRuL72MUO9nxSSrm_zzAA-UMCRtNWmMPJvsXtOm-gjNjoU9mULcsmHPtZJFw-bmPf4iT6HFrBvkN8jkcCapuLNdW-wyz2PUJ4c2K51n1bLqJcdgRc9R0c_gODV0tFxy-zXj0ondBthKQ6F42osmjp9z-atPbsTNGNniFjchTaJrVzK5ifLMQdJKlYD9B4QecTiuYPvCLgWiTPDwSI9RiW97N4sFK0l63Ojd3A6oCowgt_Ad7aWEJKsu"/>
+<div class="absolute bottom-2 left-2 flex gap-2">
+<span class="bg-white/90 backdrop-blur px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Mixed Level</span>
+</div>
+</div>
+<div class="p-4 space-y-2">
+<h3 class="font-headline-md text-[16px]">Social Mixer &amp; Drinks</h3>
+<div class="flex items-center text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1" data-icon="schedule">schedule</span>
+                            Sun, 4:00 PM
+                        </div>
+<div class="flex items-center text-on-surface-variant text-label-sm">
+<span class="material-symbols-outlined text-[16px] mr-1" data-icon="location_on">location_on</span>
+                            Sky Courts • 0.8 mi
+                        </div>
+</div>
+</div>
+</div>
+</section>
+<!-- Stats Section -->
+<section class="bg-primary p-8 rounded-lg text-white flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="text-center md:text-left">
+<h3 class="font-headline-md text-headline-md">You're on a roll!</h3>
+<p class="opacity-80">You've played 4 games this week.</p>
+</div>
+<div class="flex gap-4">
+<div class="text-center">
+<div class="text-2xl font-headline-xl text-secondary-fixed">12</div>
+<div class="text-[10px] uppercase font-bold tracking-widest opacity-60">Wins</div>
+</div>
+<div class="w-px h-12 bg-white/20"></div>
+<div class="text-center">
+<div class="text-2xl font-headline-xl text-white">4.2</div>
+<div class="text-[10px] uppercase font-bold tracking-widest opacity-60">Rating</div>
+</div>
+<div class="w-px h-12 bg-white/20"></div>
+<div class="text-center">
+<div class="text-2xl font-headline-xl text-white">158</div>
+<div class="text-[10px] uppercase font-bold tracking-widest opacity-60">Rank</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FAB -->
+<button class="fixed right-6 bottom-24 w-14 h-14 bg-secondary-fixed text-on-secondary-fixed rounded-full tinted-shadow flex items-center justify-center z-50 transition-all hover:scale-110 active:scale-90">
+<span class="material-symbols-outlined text-2xl" data-icon="add">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-lg shadow-primary/15 rounded-t-lg">
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 py-1 rounded-full active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+<span class="font-label-sm text-label-sm">Nearby</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 py-1 rounded-full active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="sports_tennis">sports_tennis</span>
+<span class="font-label-sm text-label-sm">Games</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 py-1 rounded-full active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-sm text-label-sm">Clubs</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 py-1 rounded-full active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple ripple effect or interaction feedback can be added here
+        document.querySelectorAll('button, a').forEach(elem => {
+            elem.addEventListener('click', function(e) {
+                // Potential for adding micro-interactions
+            });
+        });
+
+        // Horizontal scroll animation hint
+        const scroller = document.querySelector('.hide-scrollbar');
+        let isDown = false;
+        letstartX;
+        let scrollLeft;
+
+        scroller.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - scroller.offsetLeft;
+            scrollLeft = scroller.scrollLeft;
+        });
+        scroller.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+        scroller.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+        scroller.addEventListener('mousemove', (e) => {
+            if(!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - scroller.offsetLeft;
+            const walk = (x - startX) * 2;
+            scroller.scrollLeft = scrollLeft - walk;
+        });
+    </script>
+<script src="../app-router.js"></script>
+</body></html>

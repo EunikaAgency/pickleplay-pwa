@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PicklePlay - Discover Clubs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700&amp;family=Nunito+Sans:wght@400;700&amp;family=Fredoka:wght@400;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .font-fredoka { font-family: 'Fredoka', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 20px -2px rgba(0, 64, 224, 0.1);
+        }
+        .active-nav-pill {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f8f9fc",
+                        "on-primary-fixed": "#001356",
+                        "inverse-on-surface": "#f0f1f4",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#abd600",
+                        "surface-container": "#edeef1",
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#b8c3ff",
+                        "on-tertiary-fixed-variant": "#8a1d00",
+                        "on-background": "#191c1e",
+                        "on-primary-fixed-variant": "#0035be",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2e3133",
+                        "on-secondary": "#ffffff",
+                        "outline": "#747688",
+                        "tertiary-fixed": "#ffdad2",
+                        "on-primary": "#ffffff",
+                        "surface": "#f8f9fc",
+                        "surface-container-low": "#f2f3f6",
+                        "on-secondary-fixed": "#161e00",
+                        "on-secondary-fixed-variant": "#3c4d00",
+                        "on-error-container": "#93000a",
+                        "secondary": "#506600",
+                        "primary": "#0040e0",
+                        "tertiary-container": "#cf3000",
+                        "on-primary-container": "#efefff",
+                        "surface-tint": "#124af0",
+                        "on-tertiary-fixed": "#3c0700",
+                        "surface-container-high": "#e7e8eb",
+                        "on-tertiary-container": "#ffede9",
+                        "surface-variant": "#e1e2e5",
+                        "primary-fixed": "#dde1ff",
+                        "surface-container-highest": "#e1e2e5",
+                        "on-surface-variant": "#434656",
+                        "secondary-container": "#c1f100",
+                        "primary-container": "#2e5bff",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "secondary-fixed": "#c3f400",
+                        "on-secondary-container": "#546b00",
+                        "outline-variant": "#c4c5d9",
+                        "surface-dim": "#d9dadd",
+                        "on-surface": "#191c1e",
+                        "background": "#f8f9fc",
+                        "tertiary": "#a32400",
+                        "primary-fixed-dim": "#b8c3ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "16px",
+                        "xl": "3rem",
+                        "full": "16px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "48px",
+                        "base": "8px",
+                        "container-padding": "20px",
+                        "gutter": "16px",
+                        "card-gap": "12px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Rubik"],
+                        "headline-lg-mobile": ["Rubik"],
+                        "body-lg": ["Nunito Sans"],
+                        "headline-md": ["Rubik"],
+                        "headline-lg": ["Rubik"],
+                        "body-md": ["Nunito Sans"],
+                        "label-sm": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["25px", {"lineHeight": "30px", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["21px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg": ["28px", {"lineHeight": "34px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "21px", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky z-40 bg-surface dark:bg-background shadow-sm shadow-primary/10">
+<div class="flex justify-between items-center px-container-padding h-touch-target-min w-full max-w-7xl mx-auto">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">PicklePlay</h1>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 transition-transform">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 transition-transform">chat</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-container-padding pt-6 space-y-8">
+<!-- My Clubs Section -->
+<section>
+<div class="flex justify-between items-end mb-4">
+<h2 class="font-fredoka text-headline-md text-primary">My Clubs</h2>
+<button class="text-primary font-bold text-label-sm uppercase tracking-wider hover:underline">View All</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-card-gap">
+<!-- Neon Smashers Card -->
+<div class="bg-surface-container-lowest rounded-lg p-container-padding custom-shadow flex items-center gap-4 group cursor-pointer active:scale-[0.98] transition-transform">
+<div class="w-16 h-16 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-2xl">bolt</span>
+</div>
+<div class="flex-1">
+<h3 class="font-fredoka text-headline-md text-on-surface">Neon Smashers</h3>
+<div class="flex gap-2 mt-1">
+<span class="bg-primary/10 text-primary px-3 py-0.5 rounded-full text-label-sm">Competitive</span>
+<span class="bg-secondary/10 text-secondary px-3 py-0.5 rounded-full text-label-sm">3 Active Events</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- Downtown Volleys Card -->
+<div class="bg-surface-container-lowest rounded-lg p-container-padding custom-shadow flex items-center gap-4 group cursor-pointer active:scale-[0.98] transition-transform">
+<div class="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container text-2xl">groups</span>
+</div>
+<div class="flex-1">
+<h3 class="font-fredoka text-headline-md text-on-surface">Downtown Volleys</h3>
+<div class="flex gap-2 mt-1">
+<span class="bg-primary/10 text-primary px-3 py-0.5 rounded-full text-label-sm">Social</span>
+<span class="bg-secondary/10 text-secondary px-3 py-0.5 rounded-full text-label-sm">Friendly</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Discover Nearby Section -->
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-tertiary">explore</span>
+<h2 class="font-fredoka text-headline-md text-on-surface">Discover Nearby</h2>
+</div>
+<!-- Featured Large Card -->
+<div class="relative w-full aspect-[16/9] md:aspect-[21/9] rounded-lg overflow-hidden custom-shadow mb-6 group">
+<img class="w-full h-full object-cover" data-alt="A vibrant outdoor pickleball court scene at sunset with warm golden hour lighting. A group of diverse players is laughing and playing a friendly match in the background. The foreground shows a professional pickleball paddle and ball resting on a clean court surface, embodying a playful modernism aesthetic with high-energy vibes and electric blue accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2EV0cyvMuMekUO2psqDEYAa9JTukNhSQhzsydF-lFuYEYIAcjvT5Khag839z2lIaH0OXPNIJdlBxOPcAKXNSGt2AZsYyFC3K-DDEgejV9HibLfSX8FVvmS83AgHtZnlLzveAQVxLZHesRPppGR7smLzogzDz0uOaz1Lspa4ND6jwuXKj1tH56uGQutiWcYOCxoDAhzJXMXu9kvSwfTw30UqVEG6vD70cktuEnRZ7FRpXCf17_iAz8Z9ni2NQt_mV7Y5XgF7nz"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
+<span class="bg-secondary-container text-on-secondary-container w-fit px-4 py-1 rounded-full font-bold text-label-sm mb-3">FEATURED CLUB</span>
+<h3 class="font-fredoka text-headline-xl text-white mb-2">The Kitchen Kings</h3>
+<p class="text-white/80 max-w-xl mb-6 font-body-lg">The city's largest community for competitive and casual play. 12 courts, pro coaches, and weekly mixers.</p>
+<div class="flex gap-4">
+<button class="bg-secondary-container text-on-secondary-container px-8 h-touch-target-min rounded-full font-bold hover:opacity-90 active:scale-95 transition-all">Join Club</button>
+<button class="bg-white/20 backdrop-blur-md text-white border-2 border-white/40 px-8 h-touch-target-min rounded-full font-bold hover:bg-white/30 active:scale-95 transition-all">Explore</button>
+</div>
+</div>
+</div>
+<!-- Grid of Smaller Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Club Card 1 -->
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden custom-shadow group">
+<div class="h-40 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A close-up shot of several brightly colored pickleball balls in a mesh bag sitting on a bright white surface. The lighting is crisp and modern, highlighting the vibrant neon yellow and orange of the sports equipment. The image has a clean, premium look with soft ambient blue-tinted shadows in the corners." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuuT43qFNYevw9MppmlcHg-Tv8RxCbdKUNu_a4-wYrCGXNUyns5FZyPhcNyUxpdcMjjSc0FOr4OSQdBOLrNJM32uIQFCAXRS2IsaSXMHli_V6c5ZAGlBdTspl6f1bA9QxukVvhiBsdAd3J87CTZRVCzj0n3yA6POpIRW_a2hAqS2iHuZPHQJ3zf1HCa7wjlkTLqydFsjHFKMP8QcC_RfTOpP4dYleCeep9SEhCwQMj9ZvGyPbQi-ATkQkDjix8v6Ob3SesuScj"/>
+<div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-sm font-bold">4.9</span>
+</div>
+</div>
+<div class="p-container-padding">
+<h4 class="font-fredoka text-headline-md text-on-surface mb-1">Paddle Pirates</h4>
+<p class="text-on-surface-variant text-body-md mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span> 1.2 miles away
+                        </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">Morning Play</span>
+<span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">Beginner Friendly</span>
+</div>
+<button class="w-full bg-primary text-white h-touch-target-min rounded-full font-bold hover:bg-primary-container transition-colors">Join Club</button>
+</div>
+</div>
+<!-- Club Card 2 -->
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden custom-shadow group">
+<div class="h-40 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Modern indoor sports facility with high-quality blue flooring and bright LED overhead lighting. The atmosphere is energetic and clean, designed for community sports activities. The perspective is from the side of a court, emphasizing a spacious and professional environment with a focus on accessible play and social joy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpfByT3q1YIF8lrRviwwRuL72MUO9nxSSrm_zzAA-UMCRtNWmMPJvsXtOm-gjNjoU9mULcsmHPtZJFw-bmPf4iT6HFrBvkN8jkcCapuLNdW-wyz2PUJ4c2K51n1bLqJcdgRc9R0c_gODV0tFxy-zXj0ondBthKQ6F42osmjp9z-atPbsTNGNniFjchTaJrVzK5ifLMQdJKlYD9B4QecTiuYPvCLgWiTPDwSI9RiW97N4sFK0l63Ojd3A6oCowgt_Ad7aWEJKsu"/>
+<div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-sm font-bold">4.7</span>
+</div>
+</div>
+<div class="p-container-padding">
+<h4 class="font-fredoka text-headline-md text-on-surface mb-1">The Dink Den</h4>
+<p class="text-on-surface-variant text-body-md mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span> 0.5 miles away
+                        </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">Indoor Courts</span>
+<span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">All Levels</span>
+</div>
+<button class="w-full bg-primary text-white h-touch-target-min rounded-full font-bold hover:bg-primary-container transition-colors">Join Club</button>
+</div>
+</div>
+<!-- Club Card 3 -->
+<div class="bg-surface-container-lowest rounded-lg overflow-hidden custom-shadow group">
+<div class="h-40 overflow-hidden relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="An artistic abstract background representing speed and motion with flowing lines of electric blue and neon lime. The composition is dynamic and clean, reflecting high-energy community sports. The lighting is soft and ambient with deep contrast, creating a professional and contemporary feel consistent with a playful modernism design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDH2BwrS1NRnoklgmWDysHFOLQLpjx4qbkqaUyjf30Xl3H0np4zVDJEhp9rM_mryyU9_jYmZb-f717tI-7RA2ZqglT36CPUyY5GFT9mOO6vhEnd802aMNwTDcj80N6-Pb-_viRilU1U4EkujEI7np02h_XbB-DvH82fHB9uVjB57j8AU5WvUYzktS67KEF6RNlh5WO1l5-1pWs6LlFC4cxFD2lyKL7X7nUHeMdNXXN9QuONxAF9syiitCxdQ88nziNVJ58Eq7XK"/>
+<div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-label-sm font-bold">5.0</span>
+</div>
+</div>
+<div class="p-container-padding">
+<h4 class="font-fredoka text-headline-md text-on-surface mb-1">Ace Alliance</h4>
+<p class="text-on-surface-variant text-body-md mb-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">location_on</span> 2.4 miles away
+                        </p>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">Night Play</span>
+<span class="bg-surface-container text-on-surface-variant px-3 py-1 rounded-full text-label-sm">Intermediate</span>
+</div>
+<button class="w-full bg-primary text-white h-touch-target-min rounded-full font-bold hover:bg-primary-container transition-colors">Join Club</button>
+</div>
+</div>
+</div>
+</section>
+<!-- New Club CTA -->
+<section class="bg-secondary-container rounded-lg p-8 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+<div class="absolute -right-10 -bottom-10 opacity-10">
+<span class="material-symbols-outlined text-[200px]" style="font-variation-settings: 'FILL' 1;">sports_tennis</span>
+</div>
+<div class="relative z-10 text-center md:text-left">
+<h2 class="font-fredoka text-headline-lg text-on-secondary-container mb-2">Can't find the perfect club?</h2>
+<p class="text-on-secondary-fixed-variant font-body-lg max-w-md">Start your own community and invite your friends to play together!</p>
+</div>
+<button class="relative z-10 bg-on-secondary-container text-secondary-fixed px-10 h-touch-target-min rounded-full font-bold text-headline-md shadow-lg active:scale-95 transition-all">Start a Club</button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-4 pt-2 bg-surface-container-lowest dark:bg-inverse-surface shadow-lg shadow-primary/15 rounded-t-lg md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">location_on</span>
+<span class="font-label-sm text-label-sm">Nearby</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">sports_tennis</span>
+<span class="font-label-sm text-label-sm">Games</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active-nav-pill" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-sm text-label-sm">Clubs</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors p-2 rounded-xl" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+<!-- FAB (Suppressed on this discovery screen as per instructions if needed, but let's add one specifically for 'Create Club' as it aligns) -->
+<button class="fixed right-6 bottom-24 md:bottom-10 w-14 h-14 bg-secondary text-white rounded-full shadow-lg shadow-secondary/30 flex items-center justify-center active:scale-90 transition-all z-40">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+<script>
+        // Simple scroll reveal for cards
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-10');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.custom-shadow').forEach(el => {
+            el.classList.add('transition-all', 'duration-700', 'opacity-0', 'translate-y-10');
+            observer.observe(el);
+        });
+    </script>
+<script src="../app-router.js"></script>
+</body></html>
