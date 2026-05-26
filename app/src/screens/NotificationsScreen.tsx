@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { useDemoState } from '../lib/demoState';
 
 interface NotificationsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -35,7 +39,8 @@ const initialNotifications = [
 export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenProps) {
   const [items, setItems] = useState(initialNotifications);
   const hasUnread = items.some((n) => !n.read);
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
 
   const markAllRead = () => {
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -63,12 +68,27 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
         <main className="mx-auto max-w-xl px-5 pt-3 pb-28 space-y-4">
 
           <div className="flex items-center justify-end mb-2">
-            {hasUnread && (
+            {hasUnread && demoState === 'normal' && (
               <button className="text-primary font-bold text-label-sm hover:underline" onClick={markAllRead}>Mark all read</button>
             )}
           </div>
 
-          {items.map((n) => (
+          {demoState === 'loading' ? (
+            <LoadingSkeleton variant="list-row" count={5} />
+          ) : demoState === 'error' ? (
+            <ErrorState
+              title="Couldn't load notifications"
+              message="We couldn't reach your inbox right now. Pull down to retry or check back in a moment."
+              onRetry={() => { /* no-op */ }}
+            />
+          ) : demoState === 'empty' ? (
+            <EmptyState
+              icon="notifications_none"
+              title="You're all caught up"
+              description="No new notifications. We'll let you know when a game invite, message, or club update arrives."
+            />
+          ) : (
+          items.map((n) => (
             <div
               key={n.id}
               className={`flex gap-3 p-4 rounded-[12px] transition-all cursor-pointer active:scale-[0.98] ${
@@ -91,7 +111,8 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                 <p className="text-label-sm text-outline mt-1">{n.time}</p>
               </div>
             </div>
-          ))}
+          ))
+          )}
 
         </main>
       </div>

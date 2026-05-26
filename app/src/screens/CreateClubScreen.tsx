@@ -14,7 +14,7 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
   const [skillMin, setSkillMin] = useState('all');
   const [skillMax, setSkillMax] = useState('all');
   const [submitted, setSubmitted] = useState(false);
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -154,7 +154,7 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
                 type="submit"
                 disabled={step === 1 && !name}
                 className="flex-1 bg-secondary-container text-on-secondary-container h-12 rounded-full font-heading text-body-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-105 disabled:opacity-50"
-                style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+                style={{ boxShadow: 'var(--shadow-button)' }}
               >
                 {step === 3 ? 'Create Club' : 'Next'}
                 <Icon name={step === 3 ? 'bolt' : 'arrow_forward'} size={20} />

@@ -7,7 +7,7 @@ interface TopBarProps {
 
 export function TopBar({ showBack = false, onBack }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-50 w-full bg-white py-1">
+    <header className="sticky top-0 z-50 w-full bg-surface-container-lowest py-1">
       <div className="mx-auto flex h-12 w-full max-w-7xl items-center justify-between px-5">
         <div className="flex items-center gap-2 min-w-0">
           {showBack && (
@@ -16,7 +16,7 @@ export function TopBar({ showBack = false, onBack }: TopBarProps) {
             </button>
           )}
           <span className="font-heading text-headline-md font-bold text-primary truncate">
-            PicklePlay
+            PickleBallers
           </span>
         </div>
         <div className="flex items-center gap-4">

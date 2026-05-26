@@ -106,8 +106,121 @@
 
   /* Shadows — tinted blue, not black */
   --shadow-card: 0 4px 20px -2px rgba(0, 64, 224, 0.10);
+  --shadow-button: 0 8px 15px -3px rgba(0, 64, 224, 0.15);
+  --shadow-cta: 0 10px 30px -10px rgba(0, 64, 224, 0.20);
+  --shadow-modal: 0 10px 30px -10px rgba(0, 64, 224, 0.15);
+  --shadow-modal-up: 0 -20px 60px -20px rgba(0, 64, 224, 0.25);
   --shadow-fab: 0 8px 30px -4px rgba(0, 64, 224, 0.15);
   --shadow-nav: 0 -4px 20px -4px rgba(0, 64, 224, 0.10);
+}
+
+/* Dark theme — token overrides via [data-theme="dark"] (toggle) or prefers-color-scheme (system) */
+[data-theme="dark"] {
+  --color-primary: #b8c3ff;
+  --color-primary-container: #0035be;
+  --color-on-primary: #001356;
+  --color-on-primary-container: #dde1ff;
+  --color-surface-tint: #b8c3ff;
+
+  --color-secondary: #abd600;
+  --color-secondary-container: #3c4d00;
+  --color-on-secondary: #2a3700;
+  --color-on-secondary-container: #c3f400;
+
+  --color-tertiary: #ffb4a2;
+  --color-tertiary-container: #8a1d00;
+  --color-on-tertiary: #5f1500;
+  --color-on-tertiary-container: #ffdad2;
+
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  --color-on-error-container: #ffdad6;
+
+  --color-surface: #121316;
+  --color-surface-dim: #121316;
+  --color-surface-bright: #393b3d;
+  --color-surface-container-lowest: #0e0f12;
+  --color-surface-container-low: #1c1e21;
+  --color-surface-container: #20232a;
+  --color-surface-container-high: #2a2d33;
+  --color-surface-container-highest: #353940;
+  --color-surface-variant: #2a2d33;
+  --color-on-surface: #e1e2e5;
+  --color-on-surface-variant: #c4c5d9;
+
+  --color-background: #121316;
+  --color-on-background: #e1e2e5;
+
+  --color-outline: #8c8e99;
+  --color-outline-variant: #434656;
+  --color-inverse-surface: #e1e2e5;
+  --color-inverse-on-surface: #2e3133;
+  --color-inverse-primary: #0035be;
+
+  /* Slightly stronger tints so blue shadows still read on dark surfaces */
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+  --shadow-button: 0 8px 15px -3px rgba(0, 0, 0, 0.45);
+  --shadow-cta: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+  --shadow-modal-up: 0 -20px 60px -20px rgba(0, 0, 0, 0.55);
+  --shadow-fab: 0 8px 30px -4px rgba(0, 0, 0, 0.45);
+  --shadow-nav: 0 -4px 20px -4px rgba(0, 0, 0, 0.45);
+}
+
+/* System dark preference (only when no manual theme is set) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-primary: #b8c3ff;
+    --color-primary-container: #0035be;
+    --color-on-primary: #001356;
+    --color-on-primary-container: #dde1ff;
+    --color-surface-tint: #b8c3ff;
+
+    --color-secondary: #abd600;
+    --color-secondary-container: #3c4d00;
+    --color-on-secondary: #2a3700;
+    --color-on-secondary-container: #c3f400;
+
+    --color-tertiary: #ffb4a2;
+    --color-tertiary-container: #8a1d00;
+    --color-on-tertiary: #5f1500;
+    --color-on-tertiary-container: #ffdad2;
+
+    --color-error: #ffb4ab;
+    --color-error-container: #93000a;
+    --color-on-error: #690005;
+    --color-on-error-container: #ffdad6;
+
+    --color-surface: #121316;
+    --color-surface-dim: #121316;
+    --color-surface-bright: #393b3d;
+    --color-surface-container-lowest: #0e0f12;
+    --color-surface-container-low: #1c1e21;
+    --color-surface-container: #20232a;
+    --color-surface-container-high: #2a2d33;
+    --color-surface-container-highest: #353940;
+    --color-surface-variant: #2a2d33;
+    --color-on-surface: #e1e2e5;
+    --color-on-surface-variant: #c4c5d9;
+
+    --color-background: #121316;
+    --color-on-background: #e1e2e5;
+
+    --color-outline: #8c8e99;
+    --color-outline-variant: #434656;
+    --color-inverse-surface: #e1e2e5;
+    --color-inverse-on-surface: #2e3133;
+    --color-inverse-primary: #0035be;
+
+    --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+    --shadow-button: 0 8px 15px -3px rgba(0, 0, 0, 0.45);
+    --shadow-cta: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+    --shadow-modal: 0 10px 30px -10px rgba(0, 0, 0, 0.55);
+    --shadow-modal-up: 0 -20px 60px -20px rgba(0, 0, 0, 0.55);
+    --shadow-fab: 0 8px 30px -4px rgba(0, 0, 0, 0.45);
+    --shadow-nav: 0 -4px 20px -4px rgba(0, 0, 0, 0.45);
+  }
 }
 
 @layer base {
@@ -123,14 +236,14 @@
   }
 
   html, body {
-    background-color: #ffffff;
+    background-color: var(--color-background);
   }
 
   body {
     font-family: var(--font-body);
     font-size: 14px;
     line-height: 21px;
-    color: #191c1e;
+    color: var(--color-on-background);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-tap-highlight-color: transparent;
@@ -185,6 +298,15 @@
   animation: slide-up 0.3s ease-out;
 }
 
+/* Honor prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* leaflet */
 .leaflet-control-attribution {

@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Icon } from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { Chip } from '../components/ui/Chip';
+import { NearbyFilterSheet } from '../components/filters/NearbyFilterSheet';
+import { useDemoState } from '../lib/demoState';
 
 interface NearbyScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -40,7 +46,7 @@ const demoCourts = [
   },
 ];
 
-const filters = ['Filters', 'Indoor', 'Public', 'Lighted', 'Available Now'];
+const QUICK_FILTERS = ['Indoor', 'Public', 'Lighted', 'Available Now'];
 
 // Fix Leaflet default marker icon issue with bundlers
 const markerIcon = new L.Icon({
@@ -70,7 +76,7 @@ function LocateButton() {
     <button
       onClick={() => map.locate({ setView: true, maxZoom: 14 })}
       className="absolute bottom-24 right-4 z-[1000] w-12 h-12 rounded-full bg-surface-container-lowest shadow-lg flex items-center justify-center active:scale-90 transition-all"
-      style={{ boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.15)' }}
+      style={{ boxShadow: 'var(--shadow-card)' }}
     >
       <Icon name="my_location" size={22} className="text-primary" />
     </button>
@@ -80,7 +86,19 @@ function LocateButton() {
 export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   const [activeTab, setActiveTab] = useState<'courts' | 'games'>('courts');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<string>>(new Set());
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
+
+  const toggleQuickFilter = (label: string) => {
+    setActiveQuickFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   const austinCenter: [number, number] = [30.2750, -97.7450];
 
@@ -112,20 +130,24 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
           </div>
 
           {/* Filter Chips */}
-          <div className="scrollbar-none flex gap-3 overflow-x-auto pb-2">
-            {filters.map((label, i) => (
-              <button
+          <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
+            <button
+              type="button"
+              onClick={() => setFilterSheetOpen(true)}
+              aria-label="Open filters"
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary-container text-on-primary-container px-4 py-2 text-label-sm font-bold transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <Icon name="tune" size={16} />
+              Filters
+            </button>
+            {QUICK_FILTERS.map((label) => (
+              <Chip
                 key={label}
-                onClick={() => {
-                  if (i === 0) onNavigate('nearby-filters');
-                }}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 whitespace-nowrap text-label-sm font-bold transition-all active:scale-95 ${
-                  i === 0 ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container-highest text-on-surface-variant'
-                }`}
+                selected={activeQuickFilters.has(label)}
+                onClick={() => toggleQuickFilter(label)}
               >
-                {i === 0 && <Icon name="tune" size={16} />}
                 {label}
-              </button>
+              </Chip>
             ))}
           </div>
 
@@ -145,8 +167,28 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
             </button>
           </div>
 
+          {/* State-aware content */}
+          {demoState === 'loading' && (
+            <LoadingSkeleton variant="card" count={4} />
+          )}
+          {demoState === 'error' && (
+            <ErrorState
+              title="Couldn't load courts"
+              message="We couldn't reach the courts directory or the map tiles. Pull down to retry."
+              onRetry={() => { /* no-op */ }}
+            />
+          )}
+          {demoState === 'empty' && (
+            <EmptyState
+              icon="location_off"
+              title="No courts within 5 miles"
+              description="Try a wider radius, or help the community by adding a court you know about."
+              action={{ label: 'Add a court', onPress: () => { /* no-op */ } }}
+            />
+          )}
+
           {/* Map View */}
-          {activeTab === 'courts' && viewMode === 'map' && (
+          {demoState === 'normal' && activeTab === 'courts' && viewMode === 'map' && (
             <div className="rounded-[14px] overflow-hidden" style={{ height: '60vh', minHeight: '400px', ...cardShadow }}>
               <MapContainer
                 center={austinCenter}
@@ -188,7 +230,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
           )}
 
           {/* List View */}
-          {activeTab === 'courts' && viewMode === 'list' && (
+          {demoState === 'normal' && activeTab === 'courts' && viewMode === 'list' && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 pb-4">
               {demoCourts.map((court) => (
                 <div
@@ -249,7 +291,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
           )}
 
           {/* Games Tab */}
-          {activeTab === 'games' && (
+          {demoState === 'normal' && activeTab === 'games' && (
             <div className="py-12 text-center space-y-4">
               <Icon name="sports_tennis" size={48} className="mx-auto text-outline-variant" />
               <p className="font-heading text-headline-md text-on-surface-variant">Finding live games near you...</p>
@@ -266,6 +308,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
 
         </main>
       </div>
+      <NearbyFilterSheet open={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} />
     </div>
   );
 }

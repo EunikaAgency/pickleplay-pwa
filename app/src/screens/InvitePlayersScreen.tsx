@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { DuprExplainerSheet } from '../components/ui/DuprExplainerSheet';
+import { tierForDupr } from '../lib/skillTiers';
 
 interface InvitePlayersScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -19,8 +21,9 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
   const [invited, setInvited] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState(false);
   const [inviteLink] = useState('pickleplay.app/game/7xk9m2');
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
   const [showToast, setShowToast] = useState(false);
+  const [duprSheetOpen, setDuprSheetOpen] = useState(false);
 
   const handleCopyLink = async () => {
     try {
@@ -61,7 +64,7 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
         <button
           onClick={() => onNavigate('game-details', { id: 'new' })}
           className="w-full max-w-sm bg-secondary-container text-on-secondary-container h-12 rounded-full font-heading text-body-lg font-bold active:scale-95 transition-all"
-          style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+          style={{ boxShadow: 'var(--shadow-button)' }}
         >
           View Game
         </button>
@@ -118,7 +121,16 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
                   )}
                   <div className="flex-1">
                     <p className="font-heading text-body-lg font-semibold">{player.name}</p>
-                    <p className="text-label-sm text-on-surface-variant">{player.skill} skill</p>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setDuprSheetOpen(true); }}
+                      className="inline-flex items-center gap-1 text-label-sm text-on-surface-variant hover:text-primary transition"
+                    >
+                      <span>{tierForDupr(Number(player.skill)).name}</span>
+                      <span className="text-outline">·</span>
+                      <span>DUPR {player.skill}</span>
+                      <Icon name="help" size={12} />
+                    </button>
                   </div>
                   <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
                     invited.has(player.name) ? 'bg-secondary-container text-on-secondary-container' : 'border-2 border-outline-variant'
@@ -141,7 +153,7 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
             onClick={handleSend}
             disabled={invited.size === 0}
             className="flex-1 h-12 rounded-full bg-secondary-container text-on-secondary-container font-bold active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+            style={{ boxShadow: 'var(--shadow-button)' }}
           >
             Send {invited.size > 0 && `(${invited.size})`}
             <Icon name="send" size={18} />
@@ -157,7 +169,8 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
       </div>
     )}
 
+    <DuprExplainerSheet open={duprSheetOpen} onClose={() => setDuprSheetOpen(false)} />
   </>
-    
+
   );
 }

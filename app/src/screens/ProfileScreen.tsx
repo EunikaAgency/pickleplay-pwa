@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { DuprExplainerSheet } from '../components/ui/DuprExplainerSheet';
 
 interface ProfileScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -12,7 +14,8 @@ const settingsItems = [
 ];
 
 export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const [duprSheetOpen, setDuprSheetOpen] = useState(false);
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -29,11 +32,18 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuC11Czoun2_lIi5sXUquwWrSH9zQHexFqKo-X4CDjUV4W0TL7Ht5NjTuHGxtUiIqAsPIlsUb6NFVrceAQUSshEaH2IvKc_VsIiCR3LjB3A1DBte9odfpGMbbh_Uts7mH-Cxzz2Xzpqx3BxZ7-TABXizUiXu13rRrLReBp2MpFNulK6pmDY5PFVwtMF3Bi904yH8k5L1bA7mpL9m42zbY-I9vMb3NYQo2KN7JxG9_ja4VPZJ1D0cBRvZLqConIzBzpJMdRFigaCD"
                 />
               </div>
-              <div className="absolute bottom-0 right-0 bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full font-bold text-label-sm shadow-sm">
+              <button
+                type="button"
+                onClick={() => setDuprSheetOpen(true)}
+                aria-label="What is DUPR?"
+                className="absolute bottom-0 right-0 flex items-center gap-1 bg-secondary-container text-on-secondary-container pl-4 pr-3 py-1 rounded-full font-bold text-label-sm shadow-sm transition active:scale-95 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
                 3.5 DUPR
-              </div>
+                <Icon name="help" size={14} />
+              </button>
             </div>
             <h2 className="font-heading text-headline-lg-mobile md:text-headline-lg mb-1">Riley Pickler</h2>
+            <p className="text-label-sm font-bold uppercase tracking-wider text-primary mb-1">Solid · DUPR 3.0 – 3.5</p>
             <p className="text-on-surface-variant text-body-md italic mb-4">"The dink master."</p>
 
             {/* Stats Row */}
@@ -101,6 +111,7 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
 
         </main>
       </div>
+      <DuprExplainerSheet open={duprSheetOpen} onClose={() => setDuprSheetOpen(false)} />
     </div>
   );
 }

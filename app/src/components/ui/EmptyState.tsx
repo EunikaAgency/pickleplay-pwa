@@ -19,7 +19,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         <button
           onClick={action.onPress}
           className="h-12 px-8 bg-secondary-container text-on-secondary-container font-heading text-body-lg font-bold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-all"
-          style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+          style={{ boxShadow: 'var(--shadow-button)' }}
         >
           {action.label}
         </button>

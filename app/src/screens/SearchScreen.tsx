@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { useDemoState } from '../lib/demoState';
 
 interface SearchScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -44,9 +48,16 @@ const typeColors: Record<string, string> = {
 
 export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
   const [query, setQuery] = useState('');
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
 
   const hasResults = query.length > 0;
+
+  const filteredCounts = Object.values(allResults).reduce(
+    (sum, list) => sum + list.filter((i) => i.name.toLowerCase().includes(query.toLowerCase())).length,
+    0,
+  );
+  const noMatch = hasResults && filteredCounts === 0;
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden bg-background">
@@ -78,7 +89,23 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
       </div>
 
       <div className="scrollbar-none overflow-y-auto flex-1 px-5">
-        {!hasResults ? (
+        {demoState === 'loading' && hasResults ? (
+          <div className="pt-2">
+            <LoadingSkeleton variant="list-row" count={5} />
+          </div>
+        ) : demoState === 'error' ? (
+          <ErrorState
+            title="Search is unavailable"
+            message="We couldn't reach the search index right now. Try again in a moment."
+            onRetry={() => { /* no-op */ }}
+          />
+        ) : (demoState === 'empty' && hasResults) || noMatch ? (
+          <EmptyState
+            icon="search_off"
+            title="No matches"
+            description={`Nothing found for "${query}". Try a different keyword or browse the tabs.`}
+          />
+        ) : !hasResults ? (
           /* Recent Searches */
           <div className="space-y-4 pt-2">
             <h2 className="font-heading text-headline-md text-on-surface">Recent</h2>

@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { DuprExplainerSheet } from '../components/ui/DuprExplainerSheet';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { ErrorState } from '../components/ui/ErrorState';
+import { EmptyState } from '../components/ui/EmptyState';
+import { useDemoState } from '../lib/demoState';
 
 interface GameDetailsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -10,7 +15,44 @@ interface GameDetailsScreenProps {
 export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const [duprSheetOpen, setDuprSheetOpen] = useState(false);
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
+
+  if (demoState === 'loading') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="mx-auto w-full max-w-xl px-5 pt-6 pb-28 space-y-4">
+          <LoadingSkeleton variant="block" count={1} />
+          <LoadingSkeleton variant="card" count={1} />
+          <LoadingSkeleton variant="list-row" count={4} />
+        </main>
+      </div>
+    );
+  }
+  if (demoState === 'error') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+        <ErrorState
+          title="Couldn't load this game"
+          message="We couldn't fetch this game's details. Pull down to retry or check back in a moment."
+          onRetry={() => { /* no-op */ }}
+        />
+      </div>
+    );
+  }
+  if (demoState === 'empty') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+        <EmptyState
+          icon="event_busy"
+          title="This game is no longer available"
+          description="The organizer may have cancelled or filled all the spots. Try another game nearby."
+          action={{ label: 'Find another game', onPress: () => onNavigate('games') }}
+        />
+      </div>
+    );
+  }
 
   const handleJoin = () => {
     setJoining(true);
@@ -25,13 +67,41 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
       <div className="scrollbar-none overflow-y-auto flex-1">
         <main className="max-w-xl mx-auto px-5 pt-6 pb-40 space-y-6">
 
+          {/* In-page section nav */}
+          <nav
+            aria-label="Game sections"
+            className="sticky top-0 -mx-5 px-5 pt-2 pb-3 bg-background/95 backdrop-blur z-10 flex gap-2 overflow-x-auto scrollbar-none"
+          >
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'players', label: 'Players' },
+              { id: 'chat', label: 'Chat' },
+            ].map((s) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className="inline-flex items-center rounded-full bg-surface-container-high px-4 py-1.5 text-label-sm font-bold text-on-surface-variant hover:bg-surface-container-highest transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                {s.label}
+              </a>
+            ))}
+          </nav>
+
           {/* Hero Section */}
-          <section className="space-y-4">
+          <section id="overview" className="space-y-4 scroll-mt-20">
             <h1 className="font-heading text-headline-lg-mobile md:text-headline-lg text-on-surface">Saturday Morning Mix-In</h1>
             <div className="flex flex-wrap gap-2">
               <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full font-bold text-label-sm">Beginners Welcome</span>
               <span className="bg-secondary-container text-on-secondary-container px-4 py-1.5 rounded-full font-bold text-label-sm">Open Play</span>
-              <span className="bg-surface-container-high text-on-surface-variant px-4 py-1.5 rounded-full font-bold text-label-sm">Skill: 2.5–3.5</span>
+              <button
+                type="button"
+                onClick={() => setDuprSheetOpen(true)}
+                aria-label="What does the skill range mean?"
+                className="inline-flex items-center gap-1 bg-surface-container-high text-on-surface-variant px-4 py-1.5 rounded-full font-bold text-label-sm transition active:scale-95 hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                Skill: 2.5–3.5
+                <Icon name="help" size={14} />
+              </button>
             </div>
 
             {/* Format & Details Row */}
@@ -122,7 +192,7 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
           </section>
 
           {/* Players */}
-          <section className="space-y-3">
+          <section id="players" className="space-y-3 scroll-mt-20">
             <div className="flex items-center justify-between">
               <h3 className="font-heading text-headline-md text-on-surface">Players (8/12)</h3>
               <button className="text-primary font-bold text-label-sm hover:underline" onClick={() => onNavigate('invite-players', { id: '1' })}>Invite</button>
@@ -159,7 +229,7 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
           </section>
 
           {/* Chat */}
-          <section className="space-y-3 pb-8">
+          <section id="chat" className="space-y-3 pb-8 scroll-mt-20">
             <h3 className="font-heading text-headline-md text-on-surface">Game Chat</h3>
             <div className="space-y-3">
               {[
@@ -196,6 +266,8 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
         </main>
       </div>
 
+      <DuprExplainerSheet open={duprSheetOpen} onClose={() => setDuprSheetOpen(false)} />
+
       {/* Fixed Action Bar */}
       <div className="fixed bottom-0 left-0 w-full bg-surface-container-lowest/80 backdrop-blur-md px-5 py-6 z-50 flex items-center justify-between border-t border-surface-container-high" style={cardShadow}>
         <div className="flex flex-col">
@@ -212,7 +284,7 @@ export function GameDetailsScreen({ onNavigate }: GameDetailsScreenProps) {
                 ? 'bg-primary text-white'
                 : 'bg-secondary-container text-on-secondary-container hover:brightness-105'
           }`}
-          style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+          style={{ boxShadow: 'var(--shadow-button)' }}
         >
           {joining ? (
             <>

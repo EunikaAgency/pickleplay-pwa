@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'PicklePlay',
-        short_name: 'PicklePlay',
-        description: 'Find pickleball games, meet players, and organize play.',
+        name: 'PickleBallers',
+        short_name: 'PickleBallers',
+        description: 'Find pickleball games near you, meet players at your skill level, and turn your local courts into a community.',
         theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',

@@ -1,4 +1,8 @@
 import { Icon } from '../components/ui/Icon';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { ErrorState } from '../components/ui/ErrorState';
+import { EmptyState } from '../components/ui/EmptyState';
+import { useDemoState } from '../lib/demoState';
 
 interface CourtDetailsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -7,7 +11,42 @@ interface CourtDetailsScreenProps {
 }
 
 export function CourtDetailsScreen({ onNavigate }: CourtDetailsScreenProps) {
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
+
+  if (demoState === 'loading') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="mx-auto w-full max-w-7xl px-5 pt-6 space-y-4">
+          <LoadingSkeleton variant="block" count={1} />
+          <LoadingSkeleton variant="card" count={2} />
+        </main>
+      </div>
+    );
+  }
+  if (demoState === 'error') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+        <ErrorState
+          title="Couldn't load this court"
+          message="We couldn't reach the court directory. Try again in a moment."
+          onRetry={() => { /* no-op */ }}
+        />
+      </div>
+    );
+  }
+  if (demoState === 'empty') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+        <EmptyState
+          icon="location_off"
+          title="This court is closed"
+          description="It may be temporarily unavailable. Try a different court nearby."
+          action={{ label: 'Find another court', onPress: () => onNavigate('nearby') }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">

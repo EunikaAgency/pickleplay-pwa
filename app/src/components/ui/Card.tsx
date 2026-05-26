@@ -1,20 +1,46 @@
-import { type HTMLAttributes } from 'react';
+import { type HTMLAttributes, type KeyboardEvent } from 'react';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-  padding?: boolean;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  elevation?: 'flat' | 'card';
+  interactive?: boolean;
 }
 
-export function Card({ padding = true, className = '', children, onClick, ...props }: CardProps) {
+const paddingClass = {
+  none: '',
+  sm: 'p-3',
+  md: 'p-4',
+  lg: 'p-5',
+} as const;
+
+export function Card({
+  padding = 'md',
+  elevation = 'card',
+  interactive,
+  className = '',
+  children,
+  onClick,
+  onKeyDown,
+  ...props
+}: CardProps) {
+  const isInteractive = interactive ?? Boolean(onClick);
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    onKeyDown?.(e);
+    if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick?.(e as unknown as React.MouseEvent<HTMLDivElement>);
+    }
+  };
+
   return (
     <div
-      className={`bg-surface-container-lowest rounded-[12px] ${padding ? 'p-[20px]' : ''}
-        ${onClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}
+      className={`rounded-[12px] bg-surface-container-lowest ${paddingClass[padding]} ${elevation === 'card' ? 'shadow-card' : ''}
+        ${isInteractive ? 'cursor-pointer transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40' : ''}
         ${className}`}
-      style={{ boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' }}
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => { if (e.key === 'Enter') onClick(e as unknown as React.MouseEvent<HTMLDivElement>); } : undefined}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      onKeyDown={isInteractive ? handleKeyDown : onKeyDown}
       {...props}
     >
       {children}

@@ -1,4 +1,8 @@
 import { Icon } from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { useDemoState } from '../lib/demoState';
 
 interface ClubsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -34,12 +38,41 @@ const discoverClubs = [
 ];
 
 export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
         <main className="mx-auto max-w-7xl px-5 pt-6 pb-28 space-y-8">
+
+          {demoState === 'loading' ? (
+            <>
+              <section className="space-y-3">
+                <div className="h-6 w-32 rounded bg-surface-container-high animate-pulse" />
+                <LoadingSkeleton variant="list-row" count={2} />
+              </section>
+              <section className="space-y-3">
+                <div className="h-6 w-40 rounded bg-surface-container-high animate-pulse" />
+                <LoadingSkeleton variant="block" count={1} />
+                <LoadingSkeleton variant="card" count={3} />
+              </section>
+            </>
+          ) : demoState === 'error' ? (
+            <ErrorState
+              title="Couldn't load clubs"
+              message="We couldn't reach the clubs directory. Pull down to retry or check back shortly."
+              onRetry={() => { /* no-op */ }}
+            />
+          ) : demoState === 'empty' ? (
+            <EmptyState
+              icon="groups"
+              title="No clubs in your city yet"
+              description="Be the first to start a community — PickleBallers grows when locals organize regular play."
+              action={{ label: 'Start a club', onPress: () => onNavigate('create-club') }}
+            />
+          ) : (
+          <>
 
           {/* My Clubs Section */}
           <section>
@@ -177,6 +210,9 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
               Start a Club
             </button>
           </section>
+
+          </>
+          )}
 
         </main>
       </div>

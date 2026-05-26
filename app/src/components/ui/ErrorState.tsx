@@ -18,7 +18,7 @@ export function ErrorState({ title = 'Something went wrong', message, onRetry }:
         <button
           onClick={onRetry}
           className="h-12 px-8 bg-primary text-on-primary font-heading text-body-lg font-bold rounded-full flex items-center justify-center gap-2 active:scale-95 transition-all"
-          style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+          style={{ boxShadow: 'var(--shadow-button)' }}
         >
           <Icon name="refresh" size={20} />
           Try Again

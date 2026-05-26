@@ -1,16 +1,26 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { Button } from '../components/ui/Button';
+import { FormField } from '../components/forms/FormField';
+import { useForm } from '../hooks/useForm';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
+  onBack?: () => void;
 }
 
-export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
-  const [email, setEmail] = useState('alex@example.com');
-  const [password, setPassword] = useState('password123');
+export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const loadingRef = useRef(false);
+
+  const form = useForm({
+    initial: { email: 'alex@example.com', password: 'password123' },
+    validators: {
+      email: (v) => (!v ? 'Email is required.' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v as string) ? 'Enter a valid email.' : undefined),
+      password: (v) => (!v ? 'Password is required.' : (v as string).length < 6 ? 'At least 6 characters.' : undefined),
+    },
+  });
 
   useEffect(() => {
     return () => {
@@ -20,6 +30,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (!form.isValid) return;
     setLoading(true);
     loadingRef.current = true;
     setTimeout(() => {
@@ -40,18 +51,30 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           </div>
           <div className="relative z-10 text-center text-on-primary">
             <Icon name="sports_tennis" size={80} filled className="mx-auto mb-6 opacity-95" />
-            <h1 className="font-heading text-headline-xl font-bold mb-3">PickleBaller</h1>
+            <h1 className="font-heading text-headline-xl font-bold mb-3">PickleBallers</h1>
+            <p className="text-body-lg opacity-90">Find games. Meet players. Play pickleball.</p>
             {/* <p className="text-body-lg opacity-85 italic">Enter the Kitchen.</p> */}
           </div>
         </div>
 
         {/* Form panel */}
         <main className="flex flex-1 flex-col justify-center px-5 py-8 md:py-12 mx-auto w-full max-w-sm md:max-w-md">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="mb-4 inline-flex items-center gap-1 self-start text-label-sm font-bold text-on-surface-variant hover:text-primary active:scale-95 transition"
+            >
+              <Icon name="arrow_back" size={16} />
+              <span>Back to home</span>
+            </button>
+          )}
+
           {/* Mobile brand header */}
           <div className="mb-8 md:hidden text-center">
             <div className="mb-2 flex items-center justify-center gap-2">
               <Icon name="sports_tennis" size={36} filled className="text-primary" />
-              <h2 className="font-heading text-headline-md font-bold text-primary">PickleBaller</h2>
+              <h2 className="font-heading text-headline-md font-bold text-primary">PickleBallers</h2>
             </div>
             {/* <p className="text-body-md italic text-on-surface-variant">Enter the Kitchen.</p> */}
           </div>
@@ -59,7 +82,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           {/* Login Card */}
           <div
             className="w-full rounded-[14px] bg-surface-container-lowest p-6 md:p-8 border border-surface-variant/30"
-            style={{ boxShadow: '0 10px 30px -10px rgba(0, 64, 224, 0.15)' }}
+            style={{ boxShadow: 'var(--shadow-modal)' }}
           >
             <div className="mb-6 md:mb-8">
               <h2 className="font-heading text-headline-lg-mobile text-on-surface mb-1">Welcome Back</h2>
@@ -67,52 +90,43 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-1">
-                <label className="block text-label-sm text-on-surface-variant ml-1 font-bold">EMAIL ADDRESS</label>
-                <div className="relative group">
-                  <Icon name="mail" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline transition-colors group-focus-within:text-primary" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    className="w-full h-12 pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
-                  />
-                </div>
-              </div>
+              <FormField
+                label="Email address"
+                type="email"
+                value={form.values.email}
+                onChange={(e) => form.setField('email', e.target.value)}
+                onBlur={() => form.setTouched('email')}
+                placeholder="you@example.com"
+                leadingIcon="mail"
+                error={form.touched.email ? form.errors.email : undefined}
+              />
 
-              <div className="space-y-1">
-                <div className="flex justify-between items-center px-1">
-                  <label className="block text-label-sm text-on-surface-variant font-bold">PASSWORD</label>
-                  <a href="#" className="text-primary text-label-sm font-bold hover:underline">Forgot?</a>
-                </div>
-                <div className="relative group">
-                  <Icon name="lock" size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-outline transition-colors group-focus-within:text-primary" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full h-12 pl-12 pr-12 bg-surface-container-low border border-outline-variant rounded-[12px] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-body-md"
-                  />
+              <FormField
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={form.values.password}
+                onChange={(e) => form.setField('password', e.target.value)}
+                onBlur={() => form.setTouched('password')}
+                placeholder="••••••••"
+                leadingIcon="lock"
+                error={form.touched.password ? form.errors.password : undefined}
+                trailingSlot={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-outline hover:text-on-surface transition-colors"
                   >
                     <Icon name={showPassword ? 'visibility_off' : 'visibility'} size={20} />
                   </button>
-                </div>
+                }
+              />
+
+              <div className="flex justify-end px-1 -mt-3">
+                <a href="#" className="text-primary text-label-sm font-bold hover:underline">Forgot password?</a>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading || !email || !password}
-                className="w-full h-12 bg-secondary-container text-on-secondary-container font-heading text-body-lg font-bold rounded-full flex items-center justify-center gap-2 transition-all active:scale-95 hover:brightness-105 disabled:opacity-50"
-                style={{ boxShadow: '0 10px 30px -10px rgba(0, 64, 224, 0.15)' }}
-              >
+              <Button type="submit" variant="primary" fullWidth disabled={loading || !form.isValid}>
                 {loading ? (
                   <>
                     <Icon name="sync" size={20} className="animate-spin" />
@@ -124,7 +138,7 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                     <Icon name="arrow_forward" size={20} />
                   </>
                 )}
-              </button>
+              </Button>
             </form>
 
             {/* Divider */}

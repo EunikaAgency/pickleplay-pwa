@@ -18,7 +18,7 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
   const [description, setDescription] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
   const inputClass = 'block h-12 w-full min-w-0 max-w-full rounded-[12px] border border-outline-variant bg-surface-container-lowest px-4 text-body-md transition-all focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
   const selectClass = `${inputClass} appearance-none`;
   const fieldClass = 'min-w-0 space-y-1';
@@ -203,7 +203,7 @@ export function CreateGameScreen({ onNavigate }: CreateGameScreenProps) {
               type="submit"
               disabled={!title || !location || !date || !time}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-secondary-container font-heading text-body-lg font-bold text-on-secondary-container transition-all hover:brightness-105 active:scale-95 disabled:opacity-50 md:col-span-2 md:mx-auto md:max-w-sm"
-              style={{ boxShadow: '0 8px 15px -3px rgba(0, 64, 224, 0.15)' }}
+              style={{ boxShadow: 'var(--shadow-button)' }}
             >
               Create Game
               <Icon name="bolt" size={20} />

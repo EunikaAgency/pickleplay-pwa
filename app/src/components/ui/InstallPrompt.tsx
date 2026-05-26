@@ -14,25 +14,26 @@ interface InstallPromptProps {
   hasBottomChrome?: boolean;
 }
 
+function detectInitialState() {
+  if (typeof window === 'undefined') return { standalone: false, ios: false };
+  const navigatorWithStandalone = window.navigator as NavigatorWithStandalone;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true;
+  const platform = window.navigator.platform || '';
+  const userAgent = window.navigator.userAgent || '';
+  const ios = /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
+  return { standalone, ios };
+}
+
 export function InstallPrompt({ hasBottomChrome = false }: InstallPromptProps) {
+  const initial = detectInitialState();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
+  const [installed, setInstalled] = useState(initial.standalone);
   const [dismissed, setDismissed] = useState(false);
-  const [showIosPrompt, setShowIosPrompt] = useState(false);
+  const [showIosPrompt] = useState(!initial.standalone && initial.ios);
 
   useEffect(() => {
-    const navigatorWithStandalone = window.navigator as NavigatorWithStandalone;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigatorWithStandalone.standalone === true;
-    if (isStandalone) return;
-
-    const platform = window.navigator.platform || '';
-    const userAgent = window.navigator.userAgent || '';
-    const isAppleTouchDevice = /iPad|iPhone|iPod/.test(userAgent) || (platform === 'MacIntel' && window.navigator.maxTouchPoints > 1);
-
-    if (isAppleTouchDevice) {
-      setShowIosPrompt(true);
-      return;
-    }
+    const { standalone, ios } = detectInitialState();
+    if (standalone || ios) return;
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -74,14 +75,14 @@ export function InstallPrompt({ hasBottomChrome = false }: InstallPromptProps) {
     >
       <div
         className="flex items-center gap-3 rounded-[14px] bg-surface-container-lowest p-4 border border-outline-variant/50"
-        style={{ boxShadow: '0 10px 30px -10px rgba(0, 64, 224, 0.15)' }}
+        style={{ boxShadow: 'var(--shadow-modal)' }}
       >
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
           <Icon name={showIosPrompt ? 'ios_share' : 'install_mobile'} size={24} className="text-primary" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-heading text-body-lg font-bold text-on-surface">
-            {showIosPrompt ? 'Add PickleBaller' : 'Install PickleBaller'}
+            {showIosPrompt ? 'Add PickleBallers' : 'Install PickleBallers'}
           </p>
           <p className="text-label-sm text-on-surface-variant">
             {showIosPrompt ? 'Tap Share, then Add to Home Screen' : 'Add to home screen for the best experience'}

@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { ErrorState } from '../components/ui/ErrorState';
+import { EmptyState } from '../components/ui/EmptyState';
+import { useDemoState } from '../lib/demoState';
 
 interface ClubDetailsScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -34,7 +38,41 @@ const chatMessages = [
 export function ClubDetailsScreen(_props: ClubDetailsScreenProps) {
   const [activeTab, setActiveTab] = useState<ClubTab>('about');
   const [message, setMessage] = useState('');
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
+
+  if (demoState === 'loading') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="mx-auto w-full max-w-7xl px-5 pt-6 space-y-4">
+          <LoadingSkeleton variant="block" count={1} />
+          <LoadingSkeleton variant="card" count={2} />
+        </main>
+      </div>
+    );
+  }
+  if (demoState === 'error') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+        <ErrorState
+          title="Couldn't load this club"
+          message="We couldn't fetch the club page. Pull down to retry or check back shortly."
+          onRetry={() => { /* no-op */ }}
+        />
+      </div>
+    );
+  }
+  if (demoState === 'empty') {
+    return (
+      <div className="flex w-full min-w-0 flex-1 items-center justify-center px-5">
+        <EmptyState
+          icon="group_off"
+          title="This club isn't accepting new members"
+          description="Try browsing other clubs in your area."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">

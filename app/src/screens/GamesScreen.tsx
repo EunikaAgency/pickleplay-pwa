@@ -1,5 +1,11 @@
 import { useState } from 'react';
 import { Icon } from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { Chip } from '../components/ui/Chip';
+import { GameFilterSheet } from '../components/filters/GameFilterSheet';
+import { useDemoState } from '../lib/demoState';
 
 interface GamesScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -107,12 +113,33 @@ function GameCard({ game, onClick, cardShadow }: { game: typeof myGames[0]; onCl
   );
 }
 
+const QUICK_FILTERS = ['Tonight', 'Tomorrow', 'This weekend', 'Beginner', '3.0–3.5', 'Within 5 mi'];
+
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const [activeTab, setActiveTab] = useState<GameTab>('my-games');
   const [selectedDate, setSelectedDate] = useState(0);
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<string>>(new Set());
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
+
+  const toggleQuickFilter = (label: string) => {
+    setActiveQuickFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   const currentGames = activeTab === 'my-games' ? myGames : activeTab === 'upcoming' ? upcomingGames : completedGames;
+  const showEmpty = demoState === 'empty' || (activeTab === 'completed' && completedGames.length === 0);
+
+  const emptyForTab = {
+    'my-games': { title: "You haven't joined any games yet", description: 'Browse upcoming games near you to get on the courts this week.' },
+    'upcoming': { title: 'No upcoming games match this date', description: 'Try a different date or remove your filters.' },
+    'completed': { title: 'No completed games yet', description: 'Your finished games will show up here once you play your first.' },
+  }[activeTab];
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -135,13 +162,27 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
               ))}
             </div>
             <button
-              onClick={() => onNavigate('game-filters')}
+              onClick={() => setFilterSheetOpen(true)}
+              aria-label="Open filters"
               className="flex items-center gap-1.5 rounded-full bg-surface-container-lowest px-4 py-2.5 text-label-sm font-bold text-on-surface-variant border border-outline-variant active:scale-95 transition-all"
               style={cardShadow}
             >
               <Icon name="tune" size={16} />
-              {/* Filters */}
             </button>
+          </div>
+
+          {/* Quick chip filters */}
+          <div className="scrollbar-none flex gap-2 overflow-x-auto pb-1">
+            {QUICK_FILTERS.map((label) => (
+              <Chip
+                key={label}
+                size="md"
+                selected={activeQuickFilters.has(label)}
+                onClick={() => toggleQuickFilter(label)}
+              >
+                {label}
+              </Chip>
+            ))}
           </div>
 
           {/* Date Chips */}
@@ -165,29 +206,40 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
             </div>
           )}
 
-          {/* Games List */}
-          <div className="space-y-3">
-            {currentGames.map((game) => (
-              <GameCard
-                key={game.id}
-                game={game}
-                cardShadow={cardShadow}
-                onClick={() => onNavigate('game-details', { id: game.id })}
-              />
-            ))}
-          </div>
-
-          {/* Empty state for Completed */}
-          {activeTab === 'completed' && completedGames.length === 0 && (
-            <div className="py-12 text-center space-y-4">
-              <Icon name="sports_tennis" size={48} className="mx-auto text-outline-variant" />
-              <p className="font-heading text-headline-md text-on-surface-variant">No completed games yet</p>
-              <p className="text-body-md text-on-surface-variant">Your finished games will show up here.</p>
+          {/* Games List with state handling */}
+          {demoState === 'loading' ? (
+            <LoadingSkeleton variant="card" count={4} />
+          ) : demoState === 'error' ? (
+            <ErrorState
+              title="Couldn't load games"
+              message="We couldn't reach the games feed. Pull down to retry or check again in a moment."
+              onRetry={() => { /* no-op */ }}
+            />
+          ) : showEmpty ? (
+            <EmptyState
+              icon="sports_tennis"
+              title={emptyForTab.title}
+              description={emptyForTab.description}
+              action={activeTab === 'my-games' || activeTab === 'upcoming'
+                ? { label: 'Browse games', onPress: () => setActiveTab('upcoming') }
+                : undefined}
+            />
+          ) : (
+            <div className="space-y-3">
+              {currentGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  cardShadow={cardShadow}
+                  onClick={() => onNavigate('game-details', { id: game.id })}
+                />
+              ))}
             </div>
           )}
 
         </main>
       </div>
+      <GameFilterSheet open={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} />
     </div>
   );
 }

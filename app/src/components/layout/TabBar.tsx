@@ -16,11 +16,11 @@ const tabs = [
 export function TabBar({ activeTab, onTabPress }: TabBarProps) {
   return (
     <nav
-      className="fixed bottom-0 left-0 z-[9999] w-full bg-surface-container-lowest px-2 py-2 rounded-t-[24px]"
+      className="fixed bottom-0 left-0 z-[9999] w-full bg-surface-container-lowest px-2 py-2 rounded-t-[24px] md:hidden"
       style={{
         bottom: 'calc(env(safe-area-inset-bottom) * -1)',
         paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))',
-        boxShadow: '0 -4px 20px -4px rgba(0, 64, 224, 0.1)',
+        boxShadow: 'var(--shadow-nav)',
       }}
     >
       <div className="flex w-full items-center justify-around">

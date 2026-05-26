@@ -1,5 +1,9 @@
 import { Icon } from '../components/ui/Icon';
 import { Avatar } from '../components/ui/Avatar';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
+import { useDemoState } from '../lib/demoState';
 
 interface HomeScreenProps {
   onNavigate: (screen: string, params?: Record<string, string>) => void;
@@ -41,7 +45,8 @@ const demoGames = [
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
   const firstName = 'Alex';
-  const cardShadow = { boxShadow: '0 10px 30px -5px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { state: demoState } = useDemoState();
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -76,10 +81,43 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             ))}
           </section>
 
+          {/* Greeting subhead with state-aware count */}
+          {demoState === 'empty' ? (
+            <section>
+              <EmptyState
+                icon="event_busy"
+                title="No open games near you tonight"
+                description="Be the first to post one — your neighbors are looking for partners."
+                action={{ label: 'Create a game', onPress: () => onNavigate('create-game') }}
+              />
+            </section>
+          ) : demoState === 'error' ? (
+            <section>
+              <ErrorState
+                title="Couldn't load games"
+                message="We couldn't reach the courts feed right now. Pull down to retry or check back in a moment."
+                onRetry={() => { /* no-op in prototype */ }}
+              />
+            </section>
+          ) : demoState === 'loading' ? (
+            <>
+              <section>
+                <LoadingSkeleton variant="block" count={1} />
+              </section>
+              <section className="space-y-4">
+                <div className="flex items-end justify-between">
+                  <h2 className="font-heading text-headline-lg text-on-surface">Discover Games</h2>
+                </div>
+                <LoadingSkeleton variant="card" count={3} />
+              </section>
+            </>
+          ) : (
+          <>
+
           {/* Upcoming Activity Card */}
           <section>
             <div
-              className="flex flex-col sm:flex-row sm:items-center overflow-hidden rounded-2xl bg-white"
+              className="flex flex-col sm:flex-row sm:items-center overflow-hidden rounded-2xl bg-surface-container-lowest"
               style={cardShadow}
             >
               {/* Image */}
@@ -150,7 +188,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
               {demoGames.map((game) => (
                 <div
                   key={game.id}
-                  className="min-w-[280px] overflow-hidden rounded-[14px] bg-white group cursor-pointer"
+                  className="min-w-[280px] overflow-hidden rounded-[14px] bg-surface-container-lowest group cursor-pointer"
                   style={cardShadow}
                   onClick={() => onNavigate('game-details', { id: game.id })}
                 >
@@ -204,6 +242,9 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
               </div>
             </div>
           </section>
+
+          </>
+          )}
 
         </main>
       </div>

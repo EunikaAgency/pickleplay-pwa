@@ -1,4 +1,6 @@
 import { Icon } from '../components/ui/Icon';
+import { Chip } from '../components/ui/Chip';
+import { useTheme, type ThemePreference } from '../hooks/useTheme';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -19,18 +21,54 @@ const settingsSections = [
     title: 'Support',
     items: [
       { id: 'help', label: 'Help & Support', icon: 'help' },
-      { id: 'about', label: 'About PickleBaller', icon: 'info' },
+      { id: 'about', label: 'About PickleBallers', icon: 'info' },
     ],
   },
 ];
 
+const themeOptions: { id: ThemePreference; label: string; icon: string }[] = [
+  { id: 'light', label: 'Light', icon: 'light_mode' },
+  { id: 'dark', label: 'Dark', icon: 'dark_mode' },
+  { id: 'system', label: 'System', icon: 'brightness_auto' },
+];
+
 export function SettingsScreen({ onLogout, onNavigate }: SettingsScreenProps) {
-  const cardShadow = { boxShadow: '0 4px 20px -2px rgba(0, 64, 224, 0.1)' } as const;
+  const cardShadow = { boxShadow: 'var(--shadow-card)' } as const;
+  const { theme, setTheme } = useTheme();
 
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden">
       <div className="scrollbar-none overflow-y-auto flex-1">
         <main className="mx-auto max-w-xl px-5 pt-6 pb-28 space-y-6">
+
+          {/* Appearance */}
+          <section>
+            <h2 className="font-heading text-headline-md text-on-surface mb-2">Appearance</h2>
+            <div
+              className="rounded-[12px] bg-surface-container-lowest p-4 space-y-3"
+              style={cardShadow}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Icon name="palette" size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-body-md font-semibold text-on-surface">Theme</div>
+                  <div className="text-label-sm text-on-surface-variant">
+                    Light, dark, or match your device.
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {themeOptions.map((opt) => (
+                  <Chip key={opt.id} selected={theme === opt.id} onClick={() => setTheme(opt.id)}>
+                    <Icon name={opt.icon} size={16} />
+                    {opt.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {settingsSections.map((section) => (
             <section key={section.title}>
