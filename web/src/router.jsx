@@ -1,6 +1,6 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
 import RootLayout from './shared/layouts/RootLayout.jsx';
-import UserLayout from './features/my/UserLayout.jsx';
+import UserLayout from './features/dashboard/UserLayout.jsx';
 import AdminLayout from './features/admin/AdminLayout.jsx';
 import HomePage from './features/marketing/HomePage.jsx';
 import NotFoundPage from './features/marketing/NotFoundPage.jsx';
@@ -13,16 +13,16 @@ import OpenPlayPage from './features/games/OpenPlayPage.jsx';
 import OpenPlayDetailPage from './features/games/OpenPlayDetailPage.jsx';
 import SearchPage from './features/venues/SearchPage.jsx';
 import DownloadPage from './features/marketing/DownloadPage.jsx';
-import MyBookingsPage from './features/my/MyBookingsPage.jsx';
-import MyGamesPage from './features/my/MyGamesPage.jsx';
-import MyProfilePage from './features/my/MyProfilePage.jsx';
-import MySettingsPage from './features/my/MySettingsPage.jsx';
-import MyFavoritesPage from './features/my/MyFavoritesPage.jsx';
-import MyGroupsPage from './features/my/MyGroupsPage.jsx';
-import MyWaitlistsPage from './features/my/MyWaitlistsPage.jsx';
-import MyPaymentsPage from './features/my/MyPaymentsPage.jsx';
-import MyEventsPage from './features/my/MyEventsPage.jsx';
-import MyMembershipPage from './features/my/MyMembershipPage.jsx';
+import MyBookingsPage from './features/dashboard/MyBookingsPage.jsx';
+import MyGamesPage from './features/dashboard/MyGamesPage.jsx';
+import MyProfilePage from './features/dashboard/MyProfilePage.jsx';
+import MySettingsPage from './features/dashboard/MySettingsPage.jsx';
+import MyFavoritesPage from './features/dashboard/MyFavoritesPage.jsx';
+import MyGroupsPage from './features/dashboard/MyGroupsPage.jsx';
+import MyWaitlistsPage from './features/dashboard/MyWaitlistsPage.jsx';
+import MyPaymentsPage from './features/dashboard/MyPaymentsPage.jsx';
+import MyEventsPage from './features/dashboard/MyEventsPage.jsx';
+import MyMembershipPage from './features/dashboard/MyMembershipPage.jsx';
 import BookingPage from './features/venues/BookingPage.jsx';
 import LeaguesPage from './features/games/LeaguesPage.jsx';
 import TournamentsPage from './features/games/TournamentsPage.jsx';
@@ -42,6 +42,14 @@ import AdminVenuesPage from './features/admin/AdminVenuesPage.jsx';
 import AdminUsersPage from './features/admin/AdminUsersPage.jsx';
 import AdminGamesPage from './features/admin/AdminGamesPage.jsx';
 import AdminAnalyticsPage from './features/admin/AdminAnalyticsPage.jsx';
+
+// Legacy /my/* paths used to be the dashboard root before 2026-05-28.
+// Forward them to /dashboard/* so existing bookmarks keep working.
+function MyRedirect() {
+  const params = useParams();
+  const sub = params['*'] || '';
+  return <Navigate to={`/dashboard${sub ? `/${sub}` : ''}`} replace />;
+}
 
 const router = createBrowserRouter([
   {
@@ -75,11 +83,13 @@ const router = createBrowserRouter([
       { path: '/about', element: <AboutPage /> },
       { path: '/roadmap', element: <RoadmapPage /> },
       { path: '/checkout', element: <CheckoutPage /> },
+      { path: '/my', element: <MyRedirect /> },
+      { path: '/my/*', element: <MyRedirect /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
   {
-    path: '/my',
+    path: '/dashboard',
     element: <UserLayout />,
     children: [
       { path: 'bookings', element: <MyBookingsPage /> },

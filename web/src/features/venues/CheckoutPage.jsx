@@ -48,7 +48,7 @@ export default function CheckoutPage() {
           </div>
           <h2 className="mt-6 font-heading text-headline-lg font-bold text-on-surface">Payment confirmed!</h2>
           <p className="mt-2 text-body-md text-on-surface-variant">Your booking is confirmed. Check your email for details.</p>
-          <Link to="/my/bookings" className="mt-6 inline-flex h-12 items-center rounded-full bg-secondary-container px-8 text-body-lg font-bold text-on-secondary-container no-underline shadow-sm active:scale-95">View Bookings</Link>
+          <Link to="/dashboard/bookings" className="mt-6 inline-flex h-12 items-center rounded-full bg-secondary-container px-8 text-body-lg font-bold text-on-secondary-container no-underline shadow-sm active:scale-95">View Bookings</Link>
         </div>
       )}
       </div>

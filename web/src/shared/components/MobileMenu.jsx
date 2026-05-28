@@ -86,7 +86,7 @@ export default function MobileMenu({ open, onClose, links, sections }) {
           {isLoggedIn ? (
             <>
               <Link
-                to="/my/profile"
+                to="/dashboard/profile"
                 onClick={onClose}
                 className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
               >
@@ -94,7 +94,7 @@ export default function MobileMenu({ open, onClose, links, sections }) {
                 {user.firstName} {user.lastName}
               </Link>
               <Link
-                to="/my/bookings"
+                to="/dashboard/bookings"
                 onClick={onClose}
                 className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
               >
@@ -102,7 +102,7 @@ export default function MobileMenu({ open, onClose, links, sections }) {
                 My Bookings
               </Link>
               <Link
-                to="/my/games"
+                to="/dashboard/games"
                 onClick={onClose}
                 className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
               >
@@ -110,7 +110,7 @@ export default function MobileMenu({ open, onClose, links, sections }) {
                 My Games
               </Link>
               <Link
-                to="/my/settings"
+                to="/dashboard/settings"
                 onClick={onClose}
                 className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
               >

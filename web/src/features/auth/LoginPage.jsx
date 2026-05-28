@@ -21,7 +21,7 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email.trim(), password);
-      const next = location.state?.from || '/my/profile';
+      const next = location.state?.from || '/dashboard/profile';
       navigate(next, { replace: true });
     } catch {
       /* error already surfaced in store */

@@ -30,7 +30,7 @@ export default function RegisterPage() {
         firstName,
         lastName,
       });
-      navigate('/my/profile', { replace: true });
+      navigate('/dashboard/profile', { replace: true });
     } catch {
       /* error already surfaced in store */
     }

@@ -73,7 +73,7 @@ export default function Header() {
           {isLoggedIn ? (
             <div className="flex items-center gap-2">
               <Link
-                to="/my/profile"
+                to="/dashboard/profile"
                 className="flex items-center gap-2 rounded-full px-3 py-1 text-body-md font-semibold text-on-surface no-underline hover:bg-surface-container-high"
               >
                 <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />

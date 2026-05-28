@@ -2,16 +2,16 @@ import { NavLink } from 'react-router-dom';
 import Icon from '../../shared/components/Icon.jsx';
 
 const SIDEBAR_ITEMS = [
-  { to: '/my/bookings', icon: 'event_available', label: 'My Bookings' },
-  { to: '/my/games', icon: 'sports_tennis', label: 'My Games' },
-  { to: '/my/events', icon: 'celebration', label: 'My Events' },
-  { to: '/my/payments', icon: 'receipt_long', label: 'Payments' },
-  { to: '/my/membership', icon: 'card_membership', label: 'Membership' },
-  { to: '/my/waitlists', icon: 'list_alt', label: 'Waitlists' },
-  { to: '/my/favorites', icon: 'favorite', label: 'Favorites' },
-  { to: '/my/groups', icon: 'group', label: 'Groups' },
-  { to: '/my/profile', icon: 'person', label: 'Profile' },
-  { to: '/my/settings', icon: 'settings', label: 'Settings' },
+  { to: '/dashboard/bookings', icon: 'event_available', label: 'My Bookings' },
+  { to: '/dashboard/games', icon: 'sports_tennis', label: 'My Games' },
+  { to: '/dashboard/events', icon: 'celebration', label: 'My Events' },
+  { to: '/dashboard/payments', icon: 'receipt_long', label: 'Payments' },
+  { to: '/dashboard/membership', icon: 'card_membership', label: 'Membership' },
+  { to: '/dashboard/waitlists', icon: 'list_alt', label: 'Waitlists' },
+  { to: '/dashboard/favorites', icon: 'favorite', label: 'Favorites' },
+  { to: '/dashboard/groups', icon: 'group', label: 'Groups' },
+  { to: '/dashboard/profile', icon: 'person', label: 'Profile' },
+  { to: '/dashboard/settings', icon: 'settings', label: 'Settings' },
 ];
 
 export default function UserSidebar() {

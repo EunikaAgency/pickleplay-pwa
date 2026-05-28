@@ -1,26 +1,35 @@
-import { Outlet, NavLink, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, NavLink, Navigate, useLocation } from 'react-router-dom';
 import Header from '../../shared/components/Header.jsx';
 import Icon from '../../shared/components/Icon.jsx';
 import useAuth from '../auth/authStore.js';
 
 const DASHBOARD_TABS = [
-  { to: '/my/profile', icon: 'person', label: 'Profile' },
-  { to: '/my/bookings', icon: 'event_available', label: 'Bookings' },
-  { to: '/my/games', icon: 'sports_tennis', label: 'Games' },
-  { to: '/my/events', icon: 'celebration', label: 'Events' },
-  { to: '/my/payments', icon: 'receipt_long', label: 'Payments' },
-  { to: '/my/membership', icon: 'card_membership', label: 'Membership' },
-  { to: '/my/waitlists', icon: 'list_alt', label: 'Waitlists' },
-  { to: '/my/favorites', icon: 'favorite', label: 'Favorites' },
-  { to: '/my/groups', icon: 'group', label: 'Groups' },
-  { to: '/my/settings', icon: 'settings', label: 'Settings' },
+  { to: '/dashboard/profile', icon: 'person', label: 'Profile' },
+  { to: '/dashboard/bookings', icon: 'event_available', label: 'Bookings' },
+  { to: '/dashboard/games', icon: 'sports_tennis', label: 'Games' },
+  { to: '/dashboard/events', icon: 'celebration', label: 'Events' },
+  { to: '/dashboard/payments', icon: 'receipt_long', label: 'Payments' },
+  { to: '/dashboard/membership', icon: 'card_membership', label: 'Membership' },
+  { to: '/dashboard/waitlists', icon: 'list_alt', label: 'Waitlists' },
+  { to: '/dashboard/favorites', icon: 'favorite', label: 'Favorites' },
+  { to: '/dashboard/groups', icon: 'group', label: 'Groups' },
+  { to: '/dashboard/settings', icon: 'settings', label: 'Settings' },
 ];
 
 export default function UserLayout() {
   const isLoggedIn = useAuth((s) => s.isLoggedIn);
+  const refreshMe = useAuth((s) => s.refreshMe);
+  const location = useLocation();
+
+  // Re-validate the cached session on every entry to /dashboard/*. Silently
+  // logs out if the stored token is no longer valid.
+  useEffect(() => {
+    if (isLoggedIn) refreshMe();
+  }, [isLoggedIn, refreshMe]);
 
   if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
   }
 
   return (
