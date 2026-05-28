@@ -42,6 +42,8 @@ import RequireRole from './features/auth/RequireRole.jsx';
 import AdminOverviewPage from './features/admin/AdminOverviewPage.jsx';
 import AdminVenuesPage from './features/admin/AdminVenuesPage.jsx';
 import AdminUsersPage from './features/admin/AdminUsersPage.jsx';
+import AdminCoachesPage from './features/admin/AdminCoachesPage.jsx';
+import AdminBookingsPage from './features/admin/AdminBookingsPage.jsx';
 import AdminGamesPage from './features/admin/AdminGamesPage.jsx';
 import AdminAnalyticsPage from './features/admin/AdminAnalyticsPage.jsx';
 
@@ -115,6 +117,8 @@ const router = createBrowserRouter([
       { path: 'venues', element: <AdminVenuesPage /> },
       { path: 'venues/:id/courts', element: <AdminVenuesPage /> },
       { path: 'venues/:id/bookings', element: <AdminVenuesPage /> },
+      { path: 'coaches', element: <AdminCoachesPage /> },
+      { path: 'bookings', element: <AdminBookingsPage /> },
       { path: 'games', element: <AdminGamesPage /> },
       { path: 'analytics', element: <AdminAnalyticsPage /> },
     ],

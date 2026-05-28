@@ -20,8 +20,13 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await login(email.trim(), password);
-      const next = location.state?.from || '/dashboard/profile';
+      const u = await login(email.trim(), password);
+      const fallback =
+        u?.role === 'admin' ? '/admin' :
+        u?.modePreference === 'coach' ? '/coach' :
+        u?.modePreference === 'owner' ? '/owner' :
+        '/dashboard/profile';
+      const next = location.state?.from || fallback;
       navigate(next, { replace: true });
     } catch {
       /* error already surfaced in store */
