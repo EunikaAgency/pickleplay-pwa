@@ -46,6 +46,11 @@ import AdminCoachesPage from './features/admin/AdminCoachesPage.jsx';
 import AdminBookingsPage from './features/admin/AdminBookingsPage.jsx';
 import AdminGamesPage from './features/admin/AdminGamesPage.jsx';
 import AdminAnalyticsPage from './features/admin/AdminAnalyticsPage.jsx';
+import ModerationDashboardPage from './features/admin/ModerationDashboardPage.jsx';
+import ReviewQueuePage from './features/admin/ReviewQueuePage.jsx';
+import ReviewReportsPage from './features/admin/ReviewReportsPage.jsx';
+import ClaimsQueuePage from './features/admin/ClaimsQueuePage.jsx';
+import SuggestedEditsPage from './features/admin/SuggestedEditsPage.jsx';
 
 // Legacy /my/* paths used to be the dashboard root before 2026-05-28.
 // Forward them to /dashboard/* so existing bookmarks keep working.
@@ -120,6 +125,11 @@ const router = createBrowserRouter([
       { path: 'coaches', element: <AdminCoachesPage /> },
       { path: 'bookings', element: <AdminBookingsPage /> },
       { path: 'games', element: <AdminGamesPage /> },
+      { path: 'moderation', element: <ModerationDashboardPage /> },
+      { path: 'moderation/reviews', element: <ReviewQueuePage /> },
+      { path: 'moderation/review-reports', element: <ReviewReportsPage /> },
+      { path: 'moderation/claims', element: <ClaimsQueuePage /> },
+      { path: 'moderation/suggested-edits', element: <SuggestedEditsPage /> },
       { path: 'analytics', element: <AdminAnalyticsPage /> },
     ],
   },
