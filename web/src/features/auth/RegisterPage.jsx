@@ -1,18 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import useAuth from '../auth/authStore.js';
+import useAuth from './authStore.js';
+import Icon from '../../shared/components/Icon.jsx';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const login = useAuth(s => s.login);
+  const register = useAuth(s => s.register);
+  const loading = useAuth(s => s.loading);
+  const error = useAuth(s => s.error);
+  const clearError = useAuth(s => s.clearError);
 
-  const handleSubmit = e => {
+  useEffect(() => { clearError(); }, [clearError]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    login(email || `${name.toLowerCase().replace(/\s/g, '.')}@pickleballer.xyz`);
-    navigate('/my/profile');
+    const displayName = name.trim();
+    if (!displayName) return;
+    const [firstName, ...rest] = displayName.split(/\s+/);
+    const lastName = rest.join(' ');
+    try {
+      await register({
+        email: email.trim(),
+        password,
+        displayName,
+        firstName,
+        lastName,
+      });
+      navigate('/my/profile', { replace: true });
+    } catch {
+      /* error already surfaced in store */
+    }
   };
+
+  const passwordTooShort = password.length > 0 && password.length < 6;
 
   return (
     <div>
@@ -33,24 +57,78 @@ export default function RegisterPage() {
             <p className="mt-2 text-on-surface-variant">Grab your paddle and let's go!</p>
           </div>
 
-          <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+          <form className="mt-8 space-y-4" onSubmit={handleSubmit} noValidate>
             <div>
-              <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Full Name</label>
-              <input type="text" placeholder="Alex Player" value={name} onChange={e => setName(e.target.value)}
-                className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
+              <label htmlFor="reg-name" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Full Name</label>
+              <input
+                id="reg-name"
+                type="text"
+                autoComplete="name"
+                required
+                placeholder="Alex Player"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={loading}
+                className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+              />
             </div>
             <div>
-              <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Email</label>
-              <input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)}
-                className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
+              <label htmlFor="reg-email" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Email</label>
+              <input
+                id="reg-email"
+                type="email"
+                autoComplete="email"
+                required
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+              />
             </div>
             <div>
-              <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Password</label>
-              <input type="password" placeholder="Min 8 characters"
-                className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
+              <label htmlFor="reg-password" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Password</label>
+              <div className="relative">
+                <input
+                  id="reg-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  minLength={6}
+                  placeholder="Min 6 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low pl-4 pr-12 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  tabIndex={-1}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                >
+                  <Icon name={showPassword ? 'visibility_off' : 'visibility'} size={20} />
+                </button>
+              </div>
+              {passwordTooShort && (
+                <p className="mt-1 text-base text-error">Use at least 6 characters.</p>
+              )}
             </div>
-            <button type="submit" className="h-14 w-full rounded-2xl bg-[#C1F100] text-base font-extrabold text-[#374D00] shadow-lg hover:scale-105 active:scale-95 transition-transform">
-              Create Account
+
+            {error && (
+              <div role="alert" className="rounded-xl bg-error-container px-4 py-3 text-base font-semibold text-on-error-container">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !name.trim() || !email || password.length < 6}
+              className="h-14 w-full rounded-2xl bg-[#C1F100] text-base font-extrabold text-[#374D00] shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-60 disabled:hover:scale-100"
+            >
+              {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
 
