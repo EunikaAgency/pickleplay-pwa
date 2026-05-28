@@ -418,7 +418,7 @@ The dashboard work slots into the existing 7-phase public roadmap rendered at ht
 | 4.4 — Reports & analytics | **Phase 5** + **Phase 7** | Polish & Guidance *(operator reports)* + Monetization *(revenue reports)* |
 | 4.5 — Polish & advanced | **Phase 5** | Polish & Guidance |
 
-The "4.x" numbering is purely an artifact of this doc — the 4 came from the web's own implementation phasing ([web/PLAN.md](web/PLAN.md) marks role-based dashboards as web Phase 4). When tagging roadmap commits, use the public roadmap's phase number (2/3/5/6/7), not the 4.x sub-number.
+The "4.x" numbering is purely an artifact of this doc — they correspond to the five concrete chunks of dashboard work. When tagging roadmap commits, use the public roadmap's phase number (2/3/5/6/7), not the 4.x sub-number.
 
 ### 4.1 — Admin foundation *(roadmap Phase 5 — Polish & Guidance)*
 **Goal:** the seeded admin (`info@eunika.agency`) can do their job.
@@ -493,6 +493,6 @@ These need owner sign-off before implementation:
 - [api/src/features/](api/src/features/) — backend feature implementations.
 - [web/src/features/dashboard/](web/src/features/dashboard/) — the existing **player** dashboard (do not modify per this spec).
 - [web/src/features/admin/](web/src/features/admin/) — existing scaffold; extend per [section 7](#7-admin-dashboard-spec).
-- [web/PLAN.md](web/PLAN.md) — historical admin route sketch (now superseded by this doc for admin scope).
+- (Historical: `web/PLAN.md` was consolidated into this file on 2026-05-28.)
 - [web/DESIGN.md](web/DESIGN.md) — design tokens shared across all role surfaces.
 - Public roadmap: https://pickleballer.eunika.xyz/roadmap — log every phase landing per the rule in [web/CLAUDE.md](web/CLAUDE.md).
