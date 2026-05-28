@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+
 import { news } from '../../shared/data/index.js';
 
 export default function NewsPage() {

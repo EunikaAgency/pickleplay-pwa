@@ -46,7 +46,7 @@ export default function AdminOverviewPage() {
       apiGet('/api/v1/coaches?limit=500', { signal: ctrl.signal }),
       apiGet('/api/v1/posts?limit=200', { signal: ctrl.signal }).catch(() => ({ data: [] })),
       fetchTables({ signal: ctrl.signal }).catch(() => null),
-    ]).then(([usersR, venuesR, coachesR, postsR, tablesR]) => {
+    ]).then(([usersR, venuesR, coachesR, , tablesR]) => {
       if (!alive) return;
 
       const users = usersR.status === 'fulfilled' ? usersR.value : [];

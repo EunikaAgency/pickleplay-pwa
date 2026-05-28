@@ -1,4 +1,3 @@
-import Icon from '../../shared/components/Icon.jsx';
 import { getPricingPlans } from '../../shared/data/index.js';
 
 export default function MyMembershipPage() {

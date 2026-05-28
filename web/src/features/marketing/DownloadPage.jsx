@@ -1,4 +1,3 @@
-import Icon from '../../shared/components/Icon.jsx';
 
 export default function DownloadPage() {
   return (

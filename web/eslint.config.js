@@ -17,5 +17,12 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Disabled: react-hooks 7 flags fetch-on-mount as a cascading-render
+      // anti-pattern, but for our typical "loading → fetch → set data"
+      // pages the perf cost is negligible and the refactor hurts readability
+      // more than it helps. Revisit when migrating to react-query.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

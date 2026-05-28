@@ -7,13 +7,16 @@ const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','
 
 export default function BookingPage() {
   const { slug } = useParams();
+  // Hooks must run in the same order on every render — call them BEFORE the
+  // not-found early return, then derive everything else from `venue`.
+  const [selectedCourt, setSelectedCourt] = useState(null);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+
   const venue = getVenue(slug);
   if (!venue) return <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-5 text-center"><div className="text-5xl">😕</div><h1 className="mt-4 font-heading text-3xl font-extrabold">Venue not found</h1><Link to="/venues" className="mt-4 font-bold text-primary no-underline hover:underline">Back to venues</Link></div>;
 
   const courts = getCourts(venue.id);
-  const [selectedCourt, setSelectedCourt] = useState(null);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
   const dates = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return d; });
 
   return (

@@ -1,4 +1,3 @@
-import Icon from '../../shared/components/Icon.jsx';
 import { getPayments } from '../../shared/data/index.js';
 import useAuth from '../auth/authStore.js';
 

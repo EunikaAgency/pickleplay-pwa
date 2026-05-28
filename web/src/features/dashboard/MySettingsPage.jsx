@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import Icon from '../../shared/components/Icon.jsx';
+
+function Toggle({ label, desc, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <div><p className="text-base font-bold">{label}</p><p className="text-base text-on-surface-variant">{desc}</p></div>
+      <button type="button" onClick={() => onChange(!checked)} className={`h-7 w-12 rounded-full transition-colors ${checked ? 'bg-primary' : 'bg-surface-variant'}`}>
+        <div className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform mt-0.5 ${checked ? 'ml-6' : 'ml-0.5'}`} />
+      </button>
+    </div>
+  );
+}
 
 export default function MySettingsPage() {
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [pushNotifs, setPushNotifs] = useState(true);
   const [gameReminders, setGameReminders] = useState(true);
-
-  const Toggle = ({ label, desc, checked, onChange }) => (
-    <div className="flex items-center justify-between py-3">
-      <div><p className="text-base font-bold">{label}</p><p className="text-base text-on-surface-variant">{desc}</p></div>
-      <button onClick={()=>onChange(!checked)} className={`h-7 w-12 rounded-full transition-colors ${checked?'bg-primary':'bg-surface-variant'}`}>
-        <div className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform mt-0.5 ${checked?'ml-6':'ml-0.5'}`} />
-      </button>
-    </div>
-  );
 
   return (
     <div>

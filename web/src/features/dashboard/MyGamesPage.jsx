@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import Icon from '../../shared/components/Icon.jsx';
 import { getGames } from '../../shared/data/index.js';
 import useAuth from '../auth/authStore.js';
 

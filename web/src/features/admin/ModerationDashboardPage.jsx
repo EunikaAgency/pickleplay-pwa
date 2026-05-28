@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import Icon from '../../shared/components/Icon.jsx';
 import StatCard from '../../shared/components/dashboard/StatCard.jsx';
 import { fetchAdminReviews, fetchReviewReports, fetchClaims, fetchSuggestedEdits } from './api.js';
 

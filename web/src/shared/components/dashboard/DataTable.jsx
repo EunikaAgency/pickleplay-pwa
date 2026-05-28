@@ -1,4 +1,3 @@
-import Icon from '../Icon.jsx';
 
 // Minimal sortable/searchable list table.
 // columns: [{ key, header, render?, sortable?, className? }]

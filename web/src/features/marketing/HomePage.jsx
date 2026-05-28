@@ -63,7 +63,7 @@ export default function HomePage() {
             { to: '/venues', icon: 'stadium', label: 'Courts', emoji: '🏟️', color: 'bg-[#0040E0]' },
             { to: '/leagues', icon: 'emoji_events', label: 'Leagues', emoji: '🏆', color: 'bg-[#0040E0]' },
             { to: '/clubs', icon: 'group', label: 'Clubs', emoji: '🤝', color: 'bg-[#2E5BFF]' },
-          ].map(({ to, icon, label, emoji, color }, i) => (
+          ].map(({ to, label, emoji, color }, i) => (
             <Link
               key={to}
               to={to}
