@@ -38,6 +38,8 @@ import RegisterPage from './features/auth/RegisterPage.jsx';
 import CreateGamePage from './features/games/CreateGamePage.jsx';
 import CreateClubPage from './features/clubs/CreateClubPage.jsx';
 import CityPage from './features/venues/CityPage.jsx';
+import RequireRole from './features/auth/RequireRole.jsx';
+import AdminOverviewPage from './features/admin/AdminOverviewPage.jsx';
 import AdminVenuesPage from './features/admin/AdminVenuesPage.jsx';
 import AdminUsersPage from './features/admin/AdminUsersPage.jsx';
 import AdminGamesPage from './features/admin/AdminGamesPage.jsx';
@@ -106,16 +108,14 @@ const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <AdminLayout />,
+    element: <RequireRole role="admin"><AdminLayout /></RequireRole>,
     children: [
+      { index: true, element: <AdminOverviewPage /> },
+      { path: 'users', element: <AdminUsersPage /> },
       { path: 'venues', element: <AdminVenuesPage /> },
       { path: 'venues/:id/courts', element: <AdminVenuesPage /> },
       { path: 'venues/:id/bookings', element: <AdminVenuesPage /> },
-      { path: 'users', element: <AdminUsersPage /> },
       { path: 'games', element: <AdminGamesPage /> },
-      { path: 'clubs', element: <AdminVenuesPage /> },
-      { path: 'content', element: <AdminVenuesPage /> },
-      { path: 'reports', element: <AdminVenuesPage /> },
       { path: 'analytics', element: <AdminAnalyticsPage /> },
     ],
   },
