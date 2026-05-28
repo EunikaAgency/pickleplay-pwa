@@ -1,0 +1,90 @@
+{
+  "plans": [
+    {
+      "id": "plan_free",
+      "name": "Free",
+      "price": 0,
+      "interval": "month",
+      "description": "Perfect for casual players",
+      "features": [
+        "Browse venues and courts",
+        "Join public games",
+        "Basic player profile",
+        "Community access",
+        "Game notifications"
+      ],
+      "highlight": false,
+      "cta": "Get Started"
+    },
+    {
+      "id": "plan_plus",
+      "name": "Plus",
+      "price": 9.99,
+      "interval": "month",
+      "description": "For regular players",
+      "features": [
+        "Everything in Free",
+        "Unlimited court bookings",
+        "Create games & events",
+        "Advanced player stats",
+        "Priority support",
+        "Ad-free experience"
+      ],
+      "highlight": true,
+      "cta": "Subscribe",
+      "popular": true
+    },
+    {
+      "id": "plan_pro",
+      "name": "Pro",
+      "price": 19.99,
+      "interval": "month",
+      "description": "For organizers and enthusiasts",
+      "features": [
+        "Everything in Plus",
+        "Create & manage clubs",
+        "Organize tournaments",
+        "Member management tools",
+        "Revenue analytics",
+        "Priority listing for venues",
+        "API access"
+      ],
+      "highlight": false,
+      "cta": "Subscribe"
+    },
+    {
+      "id": "plan_annual",
+      "name": "Pro Annual",
+      "price": 199.99,
+      "interval": "year",
+      "description": "Best value for dedicated players",
+      "features": [
+        "Everything in Pro",
+        "2 months free",
+        "Exclusive event access",
+        "Early bird tournament registration",
+        "Featured player profile"
+      ],
+      "highlight": false,
+      "cta": "Subscribe",
+      "badge": "Save 17%"
+    }
+  ],
+  "addOns": [
+    {
+      "name": "Extra Guest Pass",
+      "price": 4.99,
+      "description": "Add one additional guest to any booking"
+    },
+    {
+      "name": "Court Insurance",
+      "price": 1.99,
+      "description": "Cancel any booking with full refund up to 1 hour before"
+    },
+    {
+      "name": "Premium Profile Badge",
+      "price": 2.99,
+      "description": "Stand out with a verified premium badge on your profile"
+    }
+  ]
+}

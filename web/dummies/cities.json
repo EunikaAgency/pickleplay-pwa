@@ -1,0 +1,92 @@
+[
+  {
+    "name": "San Diego",
+    "state": "California",
+    "slug": "san-diego-california",
+    "venueCount": 1
+  },
+  {
+    "name": "Makati",
+    "state": "Metro Manila",
+    "slug": "makati-metro-manila",
+    "venueCount": 1
+  },
+  {
+    "name": "Long Beach",
+    "state": "California",
+    "slug": "long-beach-california",
+    "venueCount": 1
+  },
+  {
+    "name": "Laguna",
+    "state": "Philippines",
+    "slug": "laguna-philippines",
+    "venueCount": 1
+  },
+  {
+    "name": "San Francisco",
+    "state": "California",
+    "slug": "san-francisco-california",
+    "venueCount": 1
+  },
+  {
+    "name": "Cebu City",
+    "state": "Philippines",
+    "slug": "cebu-city-philippines",
+    "venueCount": 1
+  },
+  {
+    "name": "Phoenix",
+    "state": "Arizona",
+    "slug": "phoenix-arizona",
+    "venueCount": 1
+  },
+  {
+    "name": "Taguig",
+    "state": "Metro Manila",
+    "slug": "taguig-metro-manila",
+    "venueCount": 1
+  },
+  {
+    "name": "Denver",
+    "state": "Colorado",
+    "slug": "denver-colorado",
+    "venueCount": 1
+  },
+  {
+    "name": "Davao City",
+    "state": "Philippines",
+    "slug": "davao-city-philippines",
+    "venueCount": 1
+  },
+  {
+    "name": "Austin",
+    "state": "Texas",
+    "slug": "austin-texas",
+    "venueCount": 1
+  },
+  {
+    "name": "Manila",
+    "state": "Philippines",
+    "slug": "manila-philippines",
+    "venueCount": 1
+  },
+  {
+    "name": "Chicago",
+    "state": "Illinois",
+    "slug": "chicago-illinois",
+    "venueCount": 1
+  },
+  {
+    "name": "Laoag",
+    "state": "Ilocos Norte",
+    "slug": "laoag-ilocos-norte",
+    "venueCount": 1
+  },
+  {
+    "name": "New York",
+    "state": "New York",
+    "slug": "new-york-new-york",
+    "venueCount": 1
+  }
+]
