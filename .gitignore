@@ -27,5 +27,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-# Nested repos managed independently
-api/
+# Nested repos managed independently (top-level only — don't match
+# any directory called "api" deeper in the tree like web/src/shared/api/).
+/api/

@@ -91,6 +91,19 @@ Current features:
 - The API base URL will be `https://pickleballer-api.eunika.xyz` in prod, `http://localhost:9002` in dev.
 - Domain types are implicit in the JSON shapes today; if you add a `src/shared/types/` directory, document it here.
 
+## Keeping the public roadmap current
+
+The product's public progress page lives at **https://pickleballer.eunika.xyz/roadmap** and is rendered from `/var/public/pickleplay/web/src/features/marketing/RoadmapPage.jsx`. **Whenever you finish a meaningful task — new feature, removed feature, big refactor, infrastructure change — you must update the roadmap as part of the same work**:
+
+1. Edit `/var/public/pickleplay/web/src/features/marketing/RoadmapPage.jsx`.
+2. Update the `Last updated:` string in the hero (look for the `<Badge label="Living Document" ...>` block, ~line 81) to today's date.
+3. Prepend a new entry at the top of the Change Log array (~line 970): `{ date: 'YYYY-MM-DD', change: '…' }`.
+4. If the task moves a phase status (e.g. Phase 2 going from `status="active"` to `status="done"`), update the relevant `TimelineItem` props and badges too.
+5. If you added or removed routes/pages, update the matching `Section` tables (Existing Screens, Core Features, etc.) so the surface inventory stays truthful.
+6. Run `npm run build` and reload the page in the browser to confirm.
+
+Skipping the roadmap update is treated like skipping a test: the work isn't done.
+
 ### Game-type pages — distinct purposes (do NOT merge)
 
 All four pages pull from `games.json` but serve different use cases:

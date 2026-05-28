@@ -33,31 +33,79 @@ Custom screen-stack system in `App.tsx`. Each screen is a discriminated union `S
 
 The cold-start entry point is **LandingScreen** (a marketing/welcome surface). Tapping "Get Started" or "Sign In" navigates to **LoginScreen**. Logout returns to LandingScreen, not LoginScreen.
 
-### Folder structure
+### Architecture — feature-based vertical slices
+
+Code is organised by **feature**, not by technical layer. Every feature owns its screens and any feature-specific UI (filter sheets, forms). Cross-feature UI primitives, hooks, types, and the global stylesheet live in `shared/`.
+
 ```
 src/
-  App.tsx              # Root: nav + chrome (TabBar only) + DemoStateProvider + InstallPrompt + OfflineBanner
-  main.tsx             # Entry point
-  index.css            # Tailwind directives + global styles + design tokens
-  pwaUpdate.ts         # Service-worker auto-update registration
-  screens/             # Page components (one per Screen id)
-  components/
-    layout/            # TabBar only (TopBar, FAB, Sidebar removed in redesign)
-    ui/                # Icon, Avatar, Button, Card, Chip, BottomSheet, CourtIllustration,
-                       # DemoStateControl, DuprExplainerSheet, EmptyState, ErrorState,
-                       # GameRow, InstallPrompt, LoadingSkeleton, OfflineBanner, Segmented, Toast
-    filters/           # NearbyFilterSheet, GameFilterSheet (bottom-sheet replacements for
-                       # the old NearbyFiltersScreen / GameFiltersScreen)
-    forms/             # FormField, FormSelect, FormTierPicker
-  hooks/
-    useForm.ts                  # Generic form state + validation helper
-    usePrefersReducedMotion.ts  # Respects OS reduce-motion preference
-    useTheme.ts                 # Theme application
-  lib/
-    types.ts           # Court, User, Game, Club, Message interfaces
-    demoState.tsx      # DemoStateProvider + useDemoState (normal/empty/loading/error/offline modes)
-    skillTiers.ts      # Skill-tier definitions and helpers
+  App.tsx                          # Composition root: screen-stack nav + chrome wiring
+  main.tsx                         # Entry point
+  pwaUpdate.ts                     # Service-worker auto-update registration
+
+  features/
+    auth/                          # Unauthenticated/cold-start flow
+      LandingScreen.tsx
+      LoginScreen.tsx
+      OnboardingScreen.tsx
+    home/
+      HomeScreen.tsx
+    games/
+      GamesScreen.tsx
+      GameDetailsScreen.tsx
+      CreateGameScreen.tsx
+      InvitePlayersScreen.tsx
+      GameFilterSheet.tsx
+    venues/                        # "Nearby" tab + court detail (matches web/'s naming)
+      NearbyScreen.tsx
+      CourtDetailsScreen.tsx
+      NearbyFilterSheet.tsx
+    clubs/
+      ClubsScreen.tsx
+      ClubDetailsScreen.tsx
+      CreateClubScreen.tsx
+    profile/                       # User dashboard (analog of web/'s `my/`)
+      ProfileScreen.tsx
+      EditProfileScreen.tsx
+      SettingsScreen.tsx
+      NotificationsScreen.tsx
+    search/
+      SearchScreen.tsx
+
+  shared/
+    components/
+      layout/                      # TabBar (mobile), Sidebar (desktop)
+      ui/                          # Icon, Avatar, Button, Card, Chip, BottomSheet,
+                                   # CourtIllustration, DemoStateControl, DuprExplainerSheet,
+                                   # EmptyState, ErrorState, GameRow, InstallPrompt,
+                                   # LoadingSkeleton, OfflineBanner, Segmented, Toast
+      forms/                       # FormField, FormSelect, FormTierPicker
+    hooks/
+      useForm.ts                   # Generic form state + validation helper
+      usePrefersReducedMotion.ts   # Respects OS reduce-motion preference
+      useTheme.ts                  # Theme application
+    lib/
+      types.ts                     # Court, User, Game, Club, Message interfaces
+      demoState.tsx                # DemoStateProvider + useDemoState
+      skillTiers.ts                # Skill-tier definitions and helpers
+    styles/
+      index.css                    # Tailwind directives + global styles + design tokens
 ```
+
+#### Adding a new screen or feature — checklist
+
+1. **Pick the slice.** If it belongs to an existing feature, add `<NewName>Screen.tsx` inside `src/features/<feature>/`. Otherwise create `src/features/<new-feature>/` and put it there.
+2. **Mount it in [src/App.tsx](src/App.tsx)** — the composition root. Add the screen to the `Screen` discriminated union, import it as `'./features/<feature>/<NewName>Screen'`, and add the `case` to `renderScreen()`.
+3. **Cross-feature imports go via the shared layer:**
+   - UI primitives: `'../../shared/components/ui/Icon'`, `'../../shared/components/ui/Button'`, etc.
+   - Layout chrome: `'../../shared/components/layout/TabBar'`.
+   - Forms: `'../../shared/components/forms/FormField'`.
+   - Hooks: `'../../shared/hooks/useForm'`.
+   - Types: `'../../shared/lib/types'`.
+4. **Feature-specific UI stays in the feature.** Filter sheets, feature-only components, and feature-scoped hooks live next to the screens that use them and import as `'./<Sibling>'`.
+5. **No deep relative paths** like `'../../../...'`. Three `..`s means a layer should be crossed via `shared/`.
+6. **Don't reintroduce `src/screens/`, `src/components/`, `src/hooks/`, or `src/lib/`** at the top level — those flat dirs were removed during the vertical-slice migration.
+7. **`npm run build` must stay clean.** Run it after structural changes to catch broken imports.
 
 ### Data types
 Defined in `src/lib/types.ts`: `Court`, `User`, `Game`, `Club`, `Message`. These represent the domain model used across screens. No actual API client or store exists yet — data is currently inline/demo content. Integration gaps are tracked in [`docs/pickleplay-integration-gaps.csv`](./docs/pickleplay-integration-gaps.csv).
@@ -77,10 +125,26 @@ The visual source of truth for the latest mobile redesign lives under [`app/Rede
 
 ---
 
+## Keeping the public roadmap current
+
+The product's public progress page lives at **https://pickleballer.eunika.xyz/roadmap** and is rendered from `/var/public/pickleplay/web/src/features/marketing/RoadmapPage.jsx` in the sibling web/ project. **Whenever you finish a meaningful task in this PWA — new screen, removed screen, big refactor, lifecycle change — you must update that roadmap as part of the same work**:
+
+1. Edit `/var/public/pickleplay/web/src/features/marketing/RoadmapPage.jsx`.
+2. Update the `Last updated:` string in the hero (~line 81) to today's date.
+3. Prepend a new entry at the top of the Change Log array (~line 970): `{ date: 'YYYY-MM-DD', change: '…' }`.
+4. If the task touches the screen inventory (added/removed/renamed screens or sheets), update the relevant Section tables (Existing Screens, Screen list — before vs after, etc.) so the roadmap stays truthful.
+5. If a phase status changes (e.g. Phase 2 going from `status="active"` to `status="done"`), update the relevant `TimelineItem`.
+6. The web project is in the same git remote as this one (parent monorepo `EunikaAgency/pickleplay-pwa`), so a single commit at the parent level can include both your app/ change and the roadmap update.
+
+Skipping the roadmap update is treated like skipping a test: the work isn't done.
+
+---
+
 ## Change History
 
 | Date | Change |
 |---|---|
+| 2026-05-28 | Restructured `app/src/` into feature-based vertical slices (`features/{auth,home,games,venues,clubs,profile,search}` + `shared/{components,hooks,lib,styles}`), mirroring the `web/` convention. Pure file-move + import-update refactor — no behavior changes. Filter sheets co-located with their owning feature (`GameFilterSheet` → `features/games/`, `NearbyFilterSheet` → `features/venues/`). |
 | 2026-05-27 | Commit `c4ceec6` — Removed `TopBar`, `Sidebar`, and `FAB` from `components/layout/`. Create action moved into `TabBar.onCreate`. Added `CourtIllustration`, `GameRow`, `Segmented`, `Toast` UI primitives. Polished all major screens. |
 | 2026-05-27 | Commit `0e32861` — Added `LandingScreen` as new cold-start entry. Added `components/filters/` (bottom sheets replacing routed filter screens), `components/forms/` (FormField/Select/TierPicker), `hooks/` (useForm, usePrefersReducedMotion, useTheme), `lib/demoState.tsx`, `lib/skillTiers.ts`. Replaced `LoadingSpinner` with `LoadingSkeleton`. Added `BottomSheet`, `DuprExplainerSheet`, `OfflineBanner`, `DemoStateControl`. Included `Redesign/` reference assets. |
 | 2026-05-26 | Commit `16acf6c` — Added PWA install/update support (`pwaUpdate.ts`, install prompt, OpenStreetMap tile runtime caching) and PWA asset icons. Generated structured app inventory under [`docs/`](./docs/). |

@@ -78,7 +78,7 @@ export default function RoadmapPage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex items-center gap-2">
             <Badge label="Living Document" tone="mvp" />
-            <span className="text-sm text-white/60">Last updated: May 27, 2026</span>
+            <span className="text-sm text-white/60">Last updated: May 28, 2026</span>
           </div>
           <h1 className="mt-3 font-heading text-4xl font-extrabold text-white">Project Roadmap</h1>
           <p className="mt-3 max-w-2xl text-lg text-white/70">
@@ -968,6 +968,18 @@ export default function RoadmapPage() {
           <Card>
             <div className="space-y-4 text-body-md">
               {[
+                { date: '2026-05-28', change: 'Venue photos live. New `npm run db:download-images` script fetches the Google Drive image URLs from venues.csv (238/244 = 97.5% success) into real-data/handoff/images/, which the importer then mirrors to api/uploads/. The API serves them at /images/venues/<slug>/<file>.jpg via Hono serveStatic, and the wired Venues + Coaches pages on the web now render real photos.' },
+                { date: '2026-05-28', change: 'First live-API surfaces on the web. VenuesPage, VenueDetailPage, and CoachesPage now read from pickleballer-api.eunika.xyz (179 real venues, 32 coaches). Added shared/api/client.js + per-feature api.js modules with normalised view-models, plus graceful fallback when image payloads are missing.' },
+                { date: '2026-05-28', change: 'CORS allowlist fixed (was treating the comma-separated env var as a single literal — silently broken). API now reflects each whitelisted origin and rejects others. Loosened Cross-Origin-Resource-Policy to "cross-origin" so browser fetches from sibling subdomains succeed.' },
+                { date: '2026-05-28', change: 'Seeded admin account (Eunika Agency, info@eunika.agency) directly into MongoDB with bcrypt-hashed password and roleDefault: "admin". Login returns a JWT with role=admin.' },
+                { date: '2026-05-28', change: 'Image-serving pipeline wired in API. Importer mirrors real-data/handoff/images/** → uploads/images/** (no-op if payload missing); /images/* mounted via serveStatic.' },
+                { date: '2026-05-28', change: 'Seeded 69 dummy user accounts from randomuser.me across all roles — 32 coach users (each claims one of the imported coach profiles bidirectionally via User.coachId ↔ Coach.userId, claimStatus → "claimed"), 12 venue owner users (assigned to venues via Venue.ownerUserId), and 25 player users with random skill levels. New idempotent script: `npm run db:seed:users`. Seeded accounts use @example.com emails and password "password123"; re-runs cleanly unlink and replace prior dummies without touching the admin account.' },
+                { date: '2026-05-28', change: 'app/ PWA restructured to feature-based vertical slices: src/features/{auth,home,games,venues,clubs,profile,search}/ + src/shared/{components,hooks,lib,styles}/. 18 screens moved into feature folders; filter sheets co-located with their owning feature; src/screens/, src/components/, src/hooks/, src/lib/ removed.' },
+                { date: '2026-05-28', change: 'Roadmap update process formalized — added a "Keeping the public roadmap current" rule to api/, app/, and web/ CLAUDE.md. Every meaningful task must now append a Change Log entry here and bump the Last Updated date.' },
+                { date: '2026-05-28', change: 'API /lists, /, and /health endpoints converted to HTML pages with dark theme, clickable nav links, and color-coded method badges. Dropped /sitemap.xml entirely (premature SEO, wrong default host).' },
+                { date: '2026-05-28', change: 'web/ frontend restructured to feature-based vertical slices: src/features/{admin,auth,clubs,coaches,games,marketing,my,venues}/ + src/shared/{components,layouts,data}/. 41 pages moved; src/pages/, src/components/, src/layouts/, src/stores/ removed.' },
+                { date: '2026-05-28', change: 'API restructured to vertical slices: src/features/<f>/{controller,routes,model}.ts + src/shared/{db,lib,middleware}/. CoachReviews folded into coaches/, VenueManagement into venues/. Added api/CLAUDE.md with the structural rules.' },
+                { date: '2026-05-28', change: 'Pickleballers API stood up on port 9002 (pickleballer-api.eunika.xyz) via PM2 with autostart. Real handoff data imported into local MongoDB: 179 venues, 70 cities, 815 venue hours, 185 pricing blocks, 32 coaches.' },
                 { date: '2026-05-27', change: 'Added "Recent App Redesign" section with side-by-side before/after for entry screen, chrome (TopBar/FAB/Sidebar removed), filters (screens → bottom sheets), loading (spinner → skeleton), and demo/offline review modes. Previous state preserved for reference.' },
                 { date: '2026-05-27', change: 'Roadmap updated against latest /app git history: mobile redesign, bottom-sheet filters, install/update lifecycle, offline banner, demo states, and integration-gap documentation' },
                 { date: '2026-05-27', change: 'Commit c4ceec6 — refined mobile redesign across App.tsx, TabBar, filter sheets, UI primitives, and all major screen files. New LandingScreen became the entry point; TopBar/FAB/Sidebar removed' },
@@ -1002,7 +1014,7 @@ export default function RoadmapPage() {
             <ol className="mt-3 space-y-2 text-body-md text-on-surface">
               <li className="flex items-start gap-2">
                 <span className="font-semibold text-primary">1.</span>
-                Edit <code className="rounded bg-surface-container-low px-1.5 py-0.5 text-sm">web/src/pages/RoadmapPage.jsx</code>
+                Edit <code className="rounded bg-surface-container-low px-1.5 py-0.5 text-sm">/var/public/pickleplay/web/src/features/marketing/RoadmapPage.jsx</code>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-semibold text-primary">2.</span>

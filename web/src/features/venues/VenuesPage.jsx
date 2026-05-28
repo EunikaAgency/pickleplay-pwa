@@ -1,21 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from '../../shared/components/Icon.jsx';
-import { getVenues } from '../../shared/data/index.js';
 import VenueMap from '../../shared/components/VenueMap.jsx';
+import { fetchVenues } from './api.js';
 
 export default function VenuesPage() {
   const [viewMode, setViewMode] = useState('list');
   const [accessFilter, setAccessFilter] = useState('All');
   const [surfaceFilter, setSurfaceFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const [allVenues, setAllVenues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  let venues = getVenues();
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setLoading(true);
+    fetchVenues({ signal: ctrl.signal })
+      .then((data) => { setAllVenues(data); setError(null); })
+      .catch((e) => { if (e.name !== 'AbortError') setError(e); })
+      .finally(() => setLoading(false));
+    return () => ctrl.abort();
+  }, []);
+
+  let venues = allVenues;
   if (accessFilter !== 'All') venues = venues.filter(v => v.accessType === accessFilter.toLowerCase());
-  if (surfaceFilter !== 'All') venues = venues.filter(v => v.surface === surfaceFilter);
+  if (surfaceFilter !== 'All') venues = venues.filter(v => (v.surface || '').toLowerCase().includes(surfaceFilter.toLowerCase().replace(' court', '')));
   if (search.trim()) {
     const q = search.toLowerCase();
-    venues = venues.filter(v => v.name.toLowerCase().includes(q) || v.city.toLowerCase().includes(q));
+    venues = venues.filter(v => (v.name || '').toLowerCase().includes(q) || (v.city || '').toLowerCase().includes(q));
   }
 
   return (
@@ -25,7 +38,9 @@ export default function VenuesPage() {
         <div className="mx-auto max-w-6xl">
           <p className="text-base font-bold uppercase tracking-wider text-[#C1F100]">Where to play</p>
           <h1 className="mt-1 font-heading text-4xl font-extrabold text-white">Courts near you</h1>
-          <p className="mt-2 text-white/70">{venues.length} venues ready for your next game</p>
+          <p className="mt-2 text-white/70">
+            {loading ? 'Loading venues…' : error ? 'Could not reach the API' : `${venues.length} venues ready for your next game`}
+          </p>
         </div>
       </section>
 
@@ -61,21 +76,26 @@ export default function VenuesPage() {
               <Link key={venue.id} to={`/venues/${venue.slug}`}
                 className="group overflow-hidden rounded-2xl bg-white shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl no-underline"
                 style={{ animation: `slide-up 0.3s ease-out ${i * 0.05}s both` }}>
-                <div className="relative h-44 overflow-hidden">
-                  <img src={venue.heroImage} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
+                <div className="relative h-44 overflow-hidden bg-gradient-to-br from-[#0040E0] to-[#2E5BFF]">
+                  {venue.heroImage ? (
+                    <img src={venue.heroImage} alt="" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-white/60"><Icon name="sports_tennis" size={48} /></div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-3 left-3 flex gap-1.5">
-                    {venue.isPartner && <span className="rounded-full bg-[#C1F100] px-2.5 py-0.5 text-base font-extrabold uppercase text-[#374D00]">Partner</span>}
+                    {venue.isPartner && <span className="rounded-full bg-[#C1F100] px-2.5 py-0.5 text-base font-extrabold uppercase text-[#374D00]">Verified</span>}
                     {venue.isIndoor && <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-base font-extrabold uppercase text-on-surface">Indoor</span>}
                   </div>
                 </div>
                 <div className="p-4">
                   <h3 className="font-heading text-lg font-bold text-on-surface">{venue.name}</h3>
-                  <p className="mt-0.5 flex items-center gap-1 text-base text-on-surface-variant"><Icon name="location_on" size={14} />{venue.city}</p>
+                  <p className="mt-0.5 flex items-center gap-1 text-base text-on-surface-variant"><Icon name="location_on" size={14} />{venue.city || venue.region}</p>
                   <div className="mt-2 flex items-center gap-3 text-base">
-                    <span className="flex items-center gap-1 font-bold"><Icon name="star" size={14} filled className="text-[#2E5BFF]" />{venue.rating}</span>
+                    {venue.rating != null && <span className="flex items-center gap-1 font-bold"><Icon name="star" size={14} filled className="text-[#2E5BFF]" />{venue.rating}</span>}
                     <span className="text-on-surface-variant">{venue.courtCount} courts</span>
-                    <span className="text-on-surface-variant">{venue.surface}</span>
+                    {venue.surface && <span className="text-on-surface-variant">{venue.surface}</span>}
                   </div>
                 </div>
               </Link>
@@ -87,8 +107,14 @@ export default function VenuesPage() {
           </div>
         )}
 
-        {venues.length === 0 && (
+        {!loading && !error && venues.length === 0 && (
           <div className="mt-16 text-center">🔍<p className="mt-3 text-lg font-bold text-on-surface-variant">No venues found. Try adjusting your filters.</p></div>
+        )}
+        {loading && (
+          <div className="mt-16 text-center text-on-surface-variant">Loading venues from the API…</div>
+        )}
+        {error && (
+          <div className="mt-16 text-center text-error">Could not reach the API ({error.status || ''}). Try again in a moment.</div>
         )}
       </div>
     </div>
