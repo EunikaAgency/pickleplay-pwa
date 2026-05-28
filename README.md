@@ -1,12 +1,14 @@
-# PicklePlay PWA
+# PickleBallers PWA
 
-PicklePlay is a mobile-first pickleball product workspace. It includes a React PWA implementation, a static clickable mockup, product documentation, and comparative research from related sports/community apps.
+PickleBallers is a mobile-first pickleball product workspace. It includes a React PWA implementation, a static clickable mockup, product documentation, and comparative research from related sports/community apps.
+
+> The repository folder is still named `pickleplay/` for legacy reasons; the product brand is **PickleBallers**.
 
 ## What Is In This Repo
 
 - `app/` contains the React + TypeScript + Vite PWA prototype.
 - `mockup/` contains the production-style static multi-page HTML mockup.
-- `docs/` contains the PicklePlay product, navigation, data, design, and UX documentation.
+- `docs/` contains the PickleBallers product, navigation, data, design, and UX documentation.
 - `pickleheads/`, `PlayByPoint/`, `Playtomic/`, and `ReClub/` contain source screenshots and reverse-engineered app research docs.
 - `COMPARATIVE-ANALYSIS.md` summarizes competitive product insights.
 - `README-APPS.md` indexes the app research documentation sets.
@@ -47,7 +49,7 @@ The mockup uses real page URLs instead of a single iframe/blob shell. The entry 
 
 ## Documentation
 
-Core PicklePlay docs:
+Core PickleBallers docs:
 
 - [Product Spec](docs/PRODUCT-SPEC.md)
 - [Sitemap](docs/SITEMAP.md)
@@ -61,7 +63,7 @@ Core PicklePlay docs:
 
 Mockup design doc:
 
-- [PicklePlay Static Mockup Design](mockup/pickleball_social_play/DESIGN.md)
+- [PickleBallers Static Mockup Design](mockup/pickleball_social_play/DESIGN.md)
 
 Research documentation:
 
