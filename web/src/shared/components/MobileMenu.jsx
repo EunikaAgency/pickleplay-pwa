@@ -85,38 +85,71 @@ export default function MobileMenu({ open, onClose, links, sections }) {
 
           {isLoggedIn ? (
             <>
-              <Link
-                to="/dashboard/profile"
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
-              >
-                <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
-                {user.firstName} {user.lastName}
-              </Link>
-              <Link
-                to="/dashboard/bookings"
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
-              >
-                <Icon name="event_available" size={24} />
-                My Bookings
-              </Link>
-              <Link
-                to="/dashboard/games"
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
-              >
-                <Icon name="sports_tennis" size={24} />
-                My Games
-              </Link>
-              <Link
-                to="/dashboard/settings"
-                onClick={onClose}
-                className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
-              >
-                <Icon name="settings" size={24} />
-                Settings
-              </Link>
+              {user?.role === 'admin' ? (
+                // Admin: only show the admin console link + sign out — no player-dashboard links.
+                <>
+                  <Link
+                    to="/admin"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tertiary-container text-on-tertiary-container">
+                      <Icon name="admin_panel_settings" size={18} />
+                    </span>
+                    <span className="flex-1">{user?.firstName || user?.displayName || 'Admin'}</span>
+                    <span className="rounded-full bg-tertiary-container px-2 py-0.5 text-label-sm font-bold uppercase text-on-tertiary-container">Admin</span>
+                  </Link>
+                  <Link
+                    to="/admin"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
+                  >
+                    <Icon name="dashboard" size={24} />
+                    Admin console
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/dashboard/profile"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
+                  >
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+                    ) : (
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+                        <Icon name="person" size={18} />
+                      </span>
+                    )}
+                    {user?.firstName || ''} {user?.lastName || ''}
+                  </Link>
+                  <Link
+                    to="/dashboard/bookings"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
+                  >
+                    <Icon name="event_available" size={24} />
+                    My Bookings
+                  </Link>
+                  <Link
+                    to="/dashboard/games"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
+                  >
+                    <Icon name="sports_tennis" size={24} />
+                    My Games
+                  </Link>
+                  <Link
+                    to="/dashboard/settings"
+                    onClick={onClose}
+                    className="flex items-center gap-3 rounded-full px-5 py-3 text-body-lg font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high"
+                  >
+                    <Icon name="settings" size={24} />
+                    Settings
+                  </Link>
+                </>
+              )}
               <button
                 type="button"
                 onClick={handleLogout}

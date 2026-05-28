@@ -73,11 +73,20 @@ export default function Header() {
           {isLoggedIn ? (
             <div className="flex items-center gap-2">
               <Link
-                to="/dashboard/profile"
+                to={user?.role === 'admin' ? '/admin' : '/dashboard/profile'}
                 className="flex items-center gap-2 rounded-full px-3 py-1 text-body-md font-semibold text-on-surface no-underline hover:bg-surface-container-high"
               >
-                <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
-                {user.firstName}
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="" className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+                    <Icon name={user?.role === 'admin' ? 'admin_panel_settings' : 'person'} size={18} />
+                  </span>
+                )}
+                {user?.firstName || user?.displayName || (user?.role === 'admin' ? 'Admin' : 'Profile')}
+                {user?.role === 'admin' && (
+                  <span className="rounded-full bg-tertiary-container px-1.5 py-0.5 text-label-sm font-bold uppercase text-on-tertiary-container">Admin</span>
+                )}
               </Link>
               <button
                 type="button"

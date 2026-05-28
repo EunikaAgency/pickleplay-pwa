@@ -112,10 +112,6 @@ export default function AdminSidebar() {
             <p className="truncate text-label-sm text-on-surface-variant">{user?.email}</p>
           </div>
         </div>
-        <Link to="/dashboard/profile" className="flex items-center gap-3 rounded-lg px-4 py-2 text-base font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high">
-          <Icon name="person" size={18} />
-          My profile
-        </Link>
         <Link to="/" className="flex items-center gap-3 rounded-lg px-4 py-2 text-base font-semibold text-on-surface-variant no-underline hover:bg-surface-container-high">
           <Icon name="arrow_back" size={18} />
           Back to site

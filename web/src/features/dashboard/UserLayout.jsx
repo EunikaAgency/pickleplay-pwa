@@ -19,6 +19,7 @@ const DASHBOARD_TABS = [
 
 export default function UserLayout() {
   const isLoggedIn = useAuth((s) => s.isLoggedIn);
+  const user = useAuth((s) => s.user);
   const refreshMe = useAuth((s) => s.refreshMe);
   const location = useLocation();
 
@@ -30,6 +31,12 @@ export default function UserLayout() {
 
   if (!isLoggedIn) {
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
+  }
+
+  // /dashboard/* is the player surface. Admins have their own console at
+  // /admin and don't share the player navigation — bounce them.
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
   }
 
   return (
