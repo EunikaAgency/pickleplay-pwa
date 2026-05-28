@@ -4,6 +4,7 @@
 PicklePlay PWA
 │
 ├── Public (pre-auth)
+│   ├── Landing  ← cold-start entry (welcome + Get Started / Sign In)
 │   ├── Login
 │   ├── Register
 │   └── Forgot Password
@@ -142,3 +143,19 @@ PicklePlay PWA
     ├── Message list
     └── Composer
 ```
+
+## Chrome notes
+
+- Tab screens (Home, Nearby, Games, Clubs, Profile) show only the **TabBar** at the bottom. The center tab fires the create action (no separate FAB).
+- All non-tab screens render their own header (back arrow + title) — there is no global TopBar.
+- Filters (`NearbyFilterSheet`, `GameFilterSheet`), invite flow, and the DUPR explainer are **bottom sheets**, not routed screens.
+
+---
+
+## Change History
+
+| Date | Change |
+|---|---|
+| 2026-05-27 | Added **Landing** as cold-start entry (pre-auth). Login is now reached via Landing CTAs. |
+| 2026-05-27 | Clarified that filters are bottom sheets (not routed screens). Added "Chrome notes" section. |
+
