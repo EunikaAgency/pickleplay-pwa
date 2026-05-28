@@ -125,6 +125,9 @@ function AppInner() {
   // Tab bar is shown only on tab screens (matches Redesign behaviour).
   const hideChrome = ['landing', 'onboarding', 'login'].includes(screen.id);
   const showTabBar = isLoggedIn && isTabScreen(screen.id) && !hideChrome;
+  // Landing is the only marketing-style screen that benefits from a wider
+  // multi-column layout; login/onboarding stay in the standard column.
+  const frame = screen.id === 'landing' ? 'wide' : 'standard';
 
   const renderScreen = () => {
     if (!isLoggedIn) {
@@ -175,7 +178,7 @@ function AppInner() {
   };
 
   return (
-    <div className="app">
+    <div className="app" data-frame={frame}>
       {/* Offline banner */}
       <div style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 9999, paddingTop: 'env(safe-area-inset-top)' }}>
         <OfflineBanner forceShow={demoState === 'offline'} />

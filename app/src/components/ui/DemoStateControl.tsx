@@ -16,6 +16,7 @@ export function DemoStateControl() {
 
   return (
     <div
+      className="demo-control"
       style={{
         position: 'fixed',
         right: 16,

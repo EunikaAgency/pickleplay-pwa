@@ -172,6 +172,16 @@
 .t-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
 /* ─── App shell ─── */
+/* The app is mobile-first. On tablet/desktop it becomes a centered column
+   ("app frame"), with a soft branded backdrop filling the rest of the
+   viewport. Marketing-style screens (landing/login/onboarding) opt into a
+   wider frame via `[data-frame="wide"]`. The frame width is exposed as
+   `--app-w` so fixed chrome (tabbar, sticky CTAs, sheets) can align to it. */
+:root {
+  --app-w: 100vw;
+  --app-pad: 16px;
+}
+
 .app {
   width: 100%;
   height: 100dvh;
@@ -560,6 +570,19 @@
   transition: transform .15s ease;
 }
 .tabbar .fab:active { transform: translateY(-12px) scale(0.92); }
+
+/* ─── Sticky bottom action bar (multi-step screens) ─── */
+.app-action-bar {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 0.5px solid var(--hairline);
+  max-width: 480px;
+  margin: 0 auto;
+}
 
 /* ─── Sticky CTA ─── */
 .sticky-cta {
@@ -1252,3 +1275,205 @@
 
 /* Leaflet */
 .leaflet-control-attribution { display: none; }
+
+/* ============================================================
+   Responsive — tablet & desktop polish
+   Strategy: the app is mobile-first. On wider viewports we
+   centre the app as a polished column ("app frame") and fill the
+   surrounding stage with a soft branded backdrop. Marketing-style
+   screens (landing/login/onboarding) opt into a wider frame via
+   `data-frame="wide"`. Fixed chrome (tabbar, sticky CTAs, sheets,
+   install prompt) reads the frame width from `--app-w` so it
+   always aligns with the column.
+   ============================================================ */
+
+/* Tablet — first breakpoint that gets a centred frame.
+   App becomes a 560px column; marketing screens go to 920px. */
+@media (min-width: 640px) {
+  :root { --app-w: 560px; --app-pad: 20px; }
+
+  body {
+    background:
+      radial-gradient(900px 600px at 8% 8%, rgba(0, 64, 224, 0.10), transparent 60%),
+      radial-gradient(800px 600px at 100% 100%, rgba(193, 241, 0, 0.16), transparent 60%),
+      var(--bg);
+  }
+
+  #root {
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .app {
+    width: 100%;
+    max-width: var(--app-w);
+    height: 100dvh;
+    box-shadow: 0 30px 80px -30px rgba(0, 64, 224, 0.25),
+                0 8px 30px -10px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+  }
+
+  .app[data-frame="wide"] { --app-w: 920px; }
+}
+
+/* Small desktop — give the standard frame a bit more breathing room
+   and let marketing screens stretch toward a real two-column feel. */
+@media (min-width: 1024px) {
+  :root { --app-w: 640px; }
+  .app { max-width: var(--app-w); }
+  .app[data-frame="wide"] { --app-w: 1080px; }
+}
+
+/* Large desktop — slightly wider standard column, marketing maxes out. */
+@media (min-width: 1440px) {
+  :root { --app-w: 680px; }
+  .app[data-frame="wide"] { --app-w: 1180px; }
+}
+
+/* ─── Fixed chrome: align to the app frame ───
+   The tabbar, sticky CTAs, sheets and install prompt are
+   position:fixed to the viewport. Reading width from --app-w keeps
+   them centred over the app column instead of getting marooned in
+   the middle of a big screen. */
+@media (min-width: 640px) {
+  .tabbar,
+  .sticky-cta {
+    max-width: min(var(--app-w), calc(100vw - 24px));
+  }
+
+  .sheet {
+    max-width: var(--app-w);
+    border-radius: 28px 28px 0 0;
+  }
+
+  /* Action bars that screens render inline (CreateGame, CreateClub,
+     InvitePlayers). They already use `left:0; right:0; margin: 0 auto`,
+     so bumping `max-width` to the frame is all that's needed for them
+     to centre over the column instead of being stranded at 480px. */
+  .app-action-bar { max-width: var(--app-w); }
+
+  /* Install prompt: same trick — its inline styles already set
+     `left:12; right:12; margin: 0 auto` so it centres within whatever
+     `max-width` we give it. */
+  .install-prompt {
+    max-width: min(var(--app-w), calc(100vw - 24px)) !important;
+  }
+
+  /* Demo state widget: tuck against the right edge of the centred frame
+     rather than the viewport edge. */
+  .demo-control {
+    right: max(16px, calc((100vw - var(--app-w)) / 2 + 16px)) !important;
+  }
+}
+
+
+/* ─── Content: expand grids & rails on bigger screens ─── */
+@media (min-width: 640px) {
+  /* Headings get a little more presence in the wider column. */
+  .greet-name { font-size: 24px; }
+  .hd-display { font-size: 34px; }
+  .hd-1 { font-size: 28px; }
+
+  /* Players grid: 4 → 6 columns so big screens don't feel sparse. */
+  .players-grid { grid-template-columns: repeat(6, 1fr); gap: 14px; }
+
+  /* Quick-actions: gain breathing room (still 4 col). */
+  .qa-row { gap: 12px; }
+  .qa { padding: 14px 6px; }
+
+  /* Tonight rail: bigger cards on a wider stage. */
+  .tonight-card { width: 220px; height: 260px; }
+  .tonight-card .img { height: 150px; }
+
+  /* Calendar day pills get a touch larger. */
+  .cal-strip .day { width: 60px; height: 76px; }
+
+  /* Detail-hero gets a bit more height & space on desktop. */
+  .detail-hero { height: 360px; }
+
+  /* Time grid: 3 → 4 cols when there's room. */
+  .time-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 1024px) {
+  /* Players grid: 6 → 8 columns on desktop. */
+  .players-grid { grid-template-columns: repeat(8, 1fr); }
+
+  /* Quick-actions can grow now that we have more width. */
+  .qa { padding: 16px 8px; }
+  .qa .label { font-size: 11px; }
+
+  /* Tonight cards a touch larger again. */
+  .tonight-card { width: 240px; height: 280px; }
+  .tonight-card .img { height: 160px; }
+
+  /* Detail hero & headings continue to scale up gracefully. */
+  .detail-hero { height: 400px; }
+  .detail-hero .info h1 { font-size: 32px; }
+
+  /* Wider time grid for create-game step pickers. */
+  .time-grid { grid-template-columns: repeat(6, 1fr); }
+}
+
+/* Map screen: the bottom sheet should align to the frame on desktop.
+   It originally has `left:0; right:0`, so it already spans the
+   `.map-screen` container which fills the (already-centred) `.app`. */
+@media (min-width: 640px) {
+  .map-sheet { border-radius: 26px 26px 0 0; }
+}
+
+/* ─── Marketing screens (landing/login/onboarding) ─── */
+/* These opt into the wide frame and become true multi-column layouts on
+   tablet+. Below this breakpoint they keep the existing mobile shape. */
+@media (min-width: 768px) {
+  .marketing-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 32px;
+    padding: 32px 32px 16px !important;
+  }
+  .marketing-hero .marketing-visual {
+    margin: 0 !important;
+    min-height: 320px !important;
+  }
+  .marketing-grid-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px !important;
+    flex-direction: row !important;
+  }
+  .marketing-section {
+    padding: 40px 32px 0 !important;
+  }
+  .marketing-cta {
+    padding: 48px 32px 32px !important;
+  }
+  .marketing-cta-card {
+    padding: 36px 32px !important;
+  }
+  .marketing-header {
+    padding: calc(20px + env(safe-area-inset-top)) 32px 16px !important;
+  }
+
+  /* Login & onboarding card stays a sensible width within the wider frame. */
+  .auth-card {
+    max-width: 460px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+/* On larger desktops, marketing pages get a touch more padding. */
+@media (min-width: 1024px) {
+  .marketing-hero { gap: 48px; padding: 48px 48px 24px !important; }
+  .marketing-section { padding: 56px 48px 0 !important; }
+  .marketing-cta { padding: 64px 48px 40px !important; }
+  .marketing-header { padding: calc(20px + env(safe-area-inset-top)) 48px 16px !important; }
+}
+
+/* Ensure no screen accidentally exceeds the app frame width. */
+.scroll img,
+.scroll video,
+.scroll svg { max-width: 100%; }

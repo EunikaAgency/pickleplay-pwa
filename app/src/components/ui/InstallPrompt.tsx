@@ -67,6 +67,7 @@ export function InstallPrompt({ hasBottomChrome = false }: InstallPromptProps) {
 
   return (
     <div
+      className="install-prompt"
       style={{
         position: 'fixed',
         left: 12,

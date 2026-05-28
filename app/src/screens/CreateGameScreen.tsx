@@ -272,19 +272,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
         </>
       )}
 
-      <div
-        style={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          padding: '12px 20px calc(20px + env(safe-area-inset-bottom))',
-          background: 'var(--bg)',
-          borderTop: '0.5px solid var(--hairline)',
-          maxWidth: 480,
-          margin: '0 auto',
-        }}
-      >
+      <div className="app-action-bar">
         <button
           onClick={next}
           className="btn-primary"

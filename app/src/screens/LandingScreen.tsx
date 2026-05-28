@@ -40,6 +40,7 @@ export function LandingScreen({ onGetStarted, onSignIn }: LandingScreenProps) {
       }}
     >
       <header
+        className="marketing-header"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -77,69 +78,82 @@ export function LandingScreen({ onGetStarted, onSignIn }: LandingScreenProps) {
         </button>
       </header>
 
-      <section style={{ padding: '20px 20px 8px' }}>
-        <span
+      <section className="marketing-hero" style={{ padding: '20px 20px 8px' }}>
+        <div>
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '4px 10px',
+              borderRadius: 999,
+              background: 'var(--lime-soft)',
+              color: 'var(--lime-ink)',
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 600,
+              fontSize: 11,
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}
+          >
+            For recreational players
+          </span>
+          <h1 className="hd-display" style={{ marginTop: 12, fontSize: 32, lineHeight: 1.1 }}>
+            Find your next pickleball game in two taps.
+          </h1>
+          <p className="t-body" style={{ marginTop: 12 }}>
+            Discover open games near you, meet players at your skill level, and turn your local courts into a community.
+          </p>
+
+          <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button className="btn-primary" style={{ margin: 0, width: '100%' }} onClick={onGetStarted}>
+              Get started — it's free <Icon name="forward" size={16} />
+            </button>
+            <button className="btn-primary outline" style={{ margin: 0, width: '100%' }} onClick={onSignIn}>
+              I have an account
+            </button>
+          </div>
+          <p className="t-sm" style={{ marginTop: 10 }}>No credit card. Works on iOS, Android, and the web.</p>
+        </div>
+
+        {/* Hero visual */}
+        <div
+          className="marketing-visual"
           style={{
-            display: 'inline-block',
-            padding: '4px 10px',
-            borderRadius: 999,
-            background: 'var(--lime-soft)',
-            color: 'var(--lime-ink)',
-            fontFamily: 'var(--font-heading)',
-            fontWeight: 600,
-            fontSize: 11,
-            letterSpacing: 0.6,
-            textTransform: 'uppercase',
+            position: 'relative',
+            margin: '24px 0 0',
+            borderRadius: 28,
+            overflow: 'hidden',
+            minHeight: 220,
+            background: 'linear-gradient(135deg, var(--primary) 0%, #6c83ff 100%)',
+            boxShadow: 'var(--shadow-pop)',
           }}
         >
-          For recreational players
-        </span>
-        <h1 className="hd-display" style={{ marginTop: 12, fontSize: 32, lineHeight: 1.1 }}>
-          Find your next pickleball game in two taps.
-        </h1>
-        <p className="t-body" style={{ marginTop: 12 }}>
-          Discover open games near you, meet players at your skill level, and turn your local courts into a community.
-        </p>
-
-        <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <button className="btn-primary" style={{ margin: 0, width: '100%' }} onClick={onGetStarted}>
-            Get started — it's free <Icon name="forward" size={16} />
-          </button>
-          <button className="btn-primary outline" style={{ margin: 0, width: '100%' }} onClick={onSignIn}>
-            I have an account
-          </button>
-        </div>
-        <p className="t-sm" style={{ marginTop: 10 }}>No credit card. Works on iOS, Android, and the web.</p>
-      </section>
-
-      {/* Hero visual */}
-      <section style={{ position: 'relative', margin: '24px 16px 0', borderRadius: 28, overflow: 'hidden', minHeight: 220, background: 'linear-gradient(135deg, var(--primary) 0%, #6c83ff 100%)', boxShadow: 'var(--shadow-pop)' }}>
-        <div style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.95 }}>
-          <CourtIllustration width={200} />
-        </div>
-        <div style={{ position: 'relative', padding: 20, color: 'white' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ display: 'inline-flex', width: 8, height: 8, borderRadius: 999, background: '#ff5a4d', boxShadow: '0 0 0 4px rgba(255,90,77,0.25)' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', opacity: 0.9 }}>
-              Live in 12 cities
-            </span>
+          <div style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.95 }}>
+            <CourtIllustration width={200} />
           </div>
-          <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 24, marginTop: 10, maxWidth: '70%' }}>
-            Tonight: 12 open games near you
-          </h2>
-          <p style={{ marginTop: 8, fontSize: 13, opacity: 0.9, maxWidth: '70%' }}>
-            From beginner mix-ins to competitive doubles.
-          </p>
+          <div style={{ position: 'relative', padding: 20, color: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'inline-flex', width: 8, height: 8, borderRadius: 999, background: '#ff5a4d', boxShadow: '0 0 0 4px rgba(255,90,77,0.25)' }} />
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', opacity: 0.9 }}>
+                Live in 12 cities
+              </span>
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 24, marginTop: 10, maxWidth: '70%' }}>
+              Tonight: 12 open games near you
+            </h2>
+            <p style={{ marginTop: 8, fontSize: 13, opacity: 0.9, maxWidth: '70%' }}>
+              From beginner mix-ins to competitive doubles.
+            </p>
+          </div>
         </div>
       </section>
 
       {/* Features */}
-      <section style={{ padding: '32px 16px 0' }}>
+      <section className="marketing-section" style={{ padding: '32px 16px 0' }}>
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <span className="t-eyebrow">Why PickleBallers</span>
           <h2 className="hd-1" style={{ marginTop: 6 }}>Everything you need to play more.</h2>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="marketing-grid-3" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {FEATURES.map((f) => (
             <div
               key={f.title}
@@ -173,12 +187,12 @@ export function LandingScreen({ onGetStarted, onSignIn }: LandingScreenProps) {
       </section>
 
       {/* How it works */}
-      <section style={{ padding: '32px 16px 0' }}>
+      <section className="marketing-section" style={{ padding: '32px 16px 0' }}>
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <span className="t-eyebrow">How it works</span>
           <h2 className="hd-1" style={{ marginTop: 6 }}>Get into a game tonight.</h2>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="marketing-grid-3" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {STEPS.map((s) => (
             <div
               key={s.number}
@@ -218,8 +232,9 @@ export function LandingScreen({ onGetStarted, onSignIn }: LandingScreenProps) {
       </section>
 
       {/* Final CTA */}
-      <section style={{ padding: '36px 16px 24px' }}>
+      <section className="marketing-cta" style={{ padding: '36px 16px 24px' }}>
         <div
+          className="marketing-cta-card"
           style={{
             position: 'relative',
             overflow: 'hidden',

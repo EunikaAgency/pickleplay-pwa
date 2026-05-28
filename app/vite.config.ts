@@ -56,9 +56,14 @@ export default defineConfig({
   server: {
     port: 9000,
     host: '0.0.0.0',
-    allowedHosts: ['pickleplay-pwa.eunika.xyz'],
+    allowedHosts: ['pickleballer-pwa.eunika.xyz', 'pickleplay-pwa.eunika.xyz', '.eunika.xyz'],
     proxy: {
-      '/api': 'http://localhost:3001',
+      '/api': 'http://localhost:9002',
     },
+  },
+  preview: {
+    port: 9000,
+    host: '0.0.0.0',
+    allowedHosts: ['pickleballer-pwa.eunika.xyz', 'pickleplay-pwa.eunika.xyz', '.eunika.xyz'],
   },
 })

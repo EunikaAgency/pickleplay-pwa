@@ -190,21 +190,7 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
         </div>
       </div>
 
-      <div
-        style={{
-          position: 'fixed',
-          left: 0,
-          right: 0,
-          bottom: 0,
-          padding: '12px 20px calc(20px + env(safe-area-inset-bottom))',
-          background: 'var(--bg)',
-          borderTop: '0.5px solid var(--hairline)',
-          maxWidth: 480,
-          margin: '0 auto',
-          display: 'flex',
-          gap: 10,
-        }}
-      >
+      <div className="app-action-bar" style={{ display: 'flex', gap: 10 }}>
         <button className="btn-primary outline" style={{ margin: 0, width: '100%', flex: 1 }} onClick={onBack}>
           Skip
         </button>
