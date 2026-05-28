@@ -19,33 +19,77 @@ npm run preview  # Preview production build
 
 ## Project Status
 
-Greenfield responsive website in `web/`. Currently only contains design/plan docs — no source code scaffolded yet. The companion PWA prototype (different codebase) lives in `app/` and is the visual source of truth for design tokens.
+Greenfield responsive website in `web/`. Companion PWA prototype lives in `app/` (different codebase, mobile-first). The API lives in the sibling `api/` repo (Hono + MongoDB, port 9002 / `pickleballer-api.eunika.xyz`).
 
 ## Tech Stack
 
-- React 19 + TypeScript 6 + Vite 8
+- React 19 + Vite 8 (JSX, not TSX yet)
 - Tailwind CSS 4 (via `@tailwindcss/vite` plugin)
-- shadcn/ui (Radix-based, Tailwind-native, zero bundle cost)
 - react-router-dom 7 for routing
 - Zustand 5 for state management
 - Leaflet + react-leaflet for map views
 - Lucide React for icons
 - date-fns for date formatting
 
-## Architecture (from PLAN.md)
+## Architecture — feature-based vertical slices
 
-Three-tier route structure:
+Code is organised by **feature**, not by technical layer. Every feature owns its pages, feature-specific components/layouts, and any feature-scoped store.
 
-| Tier | Routes | Layout |
+```
+src/
+  features/
+    <feature>/
+      <Feature>Page.jsx          # one or more page components
+      <Feature>Layout.jsx        # if the feature owns a layout
+      <feature>Store.js          # if the feature owns Zustand state
+  shared/
+    components/        # cross-feature UI: Header, Footer, MegaMenu, MobileMenu, Icon, VenueMap
+    layouts/           # cross-feature layouts: RootLayout
+    data/              # dummy-data accessor (index.js → ../../../dummies/*.json)
+  App.jsx              # RouterProvider
+  router.jsx           # composition root — imports from features/* and shared/*
+  main.jsx
+  index.css
+```
+
+Current features:
+
+| Feature | Owns |
+|---|---|
+| `admin` | AdminVenuesPage, AdminUsersPage, AdminGamesPage, AdminAnalyticsPage, AdminLayout, AdminSidebar |
+| `auth` | LoginPage, RegisterPage, AuthGuard, **authStore.js** (Zustand) |
+| `clubs` | ClubsPage, ClubDetailPage, CreateClubPage, CommunityPage |
+| `coaches` | CoachesPage |
+| `games` | OpenPlayPage, OpenPlayDetailPage, LeaguesPage, TournamentsPage, CreateGamePage |
+| `marketing` | HomePage, AboutPage, DownloadPage, LearnPage, NewsPage, RoadmapPage, PricingPage, NotFoundPage |
+| `my` (user dashboard) | MyBookings/MyGames/MyEvents/MyPayments/MyMembership/MyWaitlists/MyFavorites/MyGroups/MyProfile/MySettingsPage, UserLayout, UserSidebar |
+| `venues` | VenuesPage, VenueDetailPage, CityPage, SearchPage, BookingPage, CheckoutPage |
+
+### Route tree (three layouts)
+
+| Tier | Layout file | Mounted routes |
 |---|---|---|
-| **Public** | `/`, `/venues`, `/games`, `/clubs`, `/players`, `/search`, `/login`, `/register`, `/download`, `/city/:slug`, etc. | `RootLayout` |
-| **User** (auth required) | `/my/bookings`, `/my/games`, `/my/profile`, `/my/settings`, etc. | `UserLayout` |
-| **Admin** (admin role) | `/admin/venues`, `/admin/users`, `/admin/analytics`, etc. | `AdminLayout` |
+| **Public** | `shared/layouts/RootLayout.jsx` | `/`, `/venues`, `/venues/:slug`, `/venues/:slug/book`, `/clubs`, `/clubs/:slug`, `/open-play`, `/games/create`, `/clubs/create`, `/search`, `/download`, `/city/:slug`, `/pricing`, `/leagues`, `/tournaments`, `/learn`, `/community`, `/coaches`, `/news`, `/about`, `/roadmap`, `/checkout`, `/login`, `/register` |
+| **User** (auth) | `features/my/UserLayout.jsx` | `/my/bookings`, `/my/games`, `/my/events`, `/my/payments`, `/my/membership`, `/my/waitlists`, `/my/favorites`, `/my/groups`, `/my/profile`, `/my/settings` |
+| **Admin** | `features/admin/AdminLayout.jsx` | `/admin/venues`, `/admin/users`, `/admin/games`, `/admin/analytics`, etc. |
+
+### Adding a new page or feature — checklist
+
+1. **Pick the slice.** If it belongs to an existing feature, add `<NewName>Page.jsx` inside `src/features/<feature>/`. Otherwise create `src/features/<new-feature>/` and put it there.
+2. **Mount it in [src/router.jsx](src/router.jsx)** — the central composition root. Import as `'./features/<feature>/<NewName>Page.jsx'`, then add a route entry under the correct layout block (`RootLayout` / `UserLayout` / `AdminLayout`).
+3. **Cross-feature imports** go via the shared layer or sibling feature paths:
+   - UI primitives: `'../../shared/components/Icon.jsx'`, `'../../shared/components/VenueMap.jsx'`, etc.
+   - Dummy data: `'../../shared/data/index.js'`.
+   - Auth store: `'../auth/authStore.js'` (or `'./authStore.js'` if you're inside auth/).
+   - Layouts: `'./AdminLayout.jsx'` (own feature) or `'../my/UserLayout.jsx'` (sibling feature).
+4. **No deep relative paths** like `'../../../components/...'`. If you need three `..`s you're crossing a layer that should go through `shared/`.
+5. **Don't reintroduce `src/pages/`, `src/components/`, `src/layouts/`, or `src/stores/`** — those flat dirs were removed during the vertical-slice migration. Putting a new page in `src/pages/` will break the convention.
+6. **`npm run build` must stay clean.** Run it after structural changes to catch broken imports.
 
 ### Data layer
-- No API client yet. All data is demo/dummy content from JSON files in `dummies/`
-- Zustand stores abstract data access — swapping to a real API later is a store-only change
-- Core domain types defined in `src/lib/types.ts`: `Court`, `User`, `Game`, `Club`, `Message`, `Venue`, `Booking`, `Review`, `NewsArticle`, `League`, `Tournament`, `Group`, `Coach`, `Notification`, `Payment`, `PricingPlan`
+- No API client yet. All reads go through `src/shared/data/index.js`, which imports `dummies/*.json` from the project root. When wiring to the real API, **swap the function bodies** in that one file — call sites don't change.
+- The API base URL will be `https://pickleballer-api.eunika.xyz` in prod, `http://localhost:9002` in dev.
+- Domain types are implicit in the JSON shapes today; if you add a `src/shared/types/` directory, document it here.
 
 ### Game-type pages — distinct purposes (do NOT merge)
 

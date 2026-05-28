@@ -261,7 +261,7 @@ export default function RoadmapPage() {
                 Mobile redesigned prototype with 17 routed screens, 2 bottom-sheet filters, custom app navigation, PWA install/update support, offline banner, and demo loading/error/empty states. Next work is backend integration and persistence.
               </p>
               <p className="mt-1 text-body-md text-on-surface-variant">
-                Runs at <code className="rounded bg-surface-container px-1 text-sm">pickleplay-pwa.eunika.xyz</code>
+                Runs at <code className="rounded bg-surface-container px-1 text-sm">pickleballer-pwa.eunika.xyz</code>
               </p>
             </Card>
             <Card>
