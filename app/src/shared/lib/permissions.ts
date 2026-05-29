@@ -10,6 +10,9 @@ export const ALL_PERMISSIONS = [
   'owner.venues.create',
   'owner.venues.manage',
   'owner.reviews.manage',
+  'organizer.access',
+  'organizer.games.manage',
+  'organizer.events.manage',
   'coach.profile.manage',
   'player.dashboard.access',
   'player.games.create',
@@ -19,7 +22,7 @@ export const ALL_PERMISSIONS = [
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
-export type Role = 'admin' | 'moderator' | 'owner' | 'coach' | 'player';
+export type Role = 'admin' | 'moderator' | 'owner' | 'organizer' | 'coach' | 'player';
 
 const PLAYER_PERMISSIONS: Permission[] = [
   'player.dashboard.access',
@@ -38,6 +41,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.venues.create',
     'owner.venues.manage',
     'owner.reviews.manage',
+  ],
+  organizer: [
+    ...PLAYER_PERMISSIONS,
+    'organizer.access',
+    'organizer.games.manage',
+    'organizer.events.manage',
   ],
   moderator: ['admin.access', 'admin.moderation.manage', 'admin.reports.view'],
   admin: [...ALL_PERMISSIONS],
