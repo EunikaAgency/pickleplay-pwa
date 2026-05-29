@@ -32,13 +32,13 @@ commit it and don't let it accumulate in root.
 
 ## Git remotes and pushing
 
-This workspace is **three independent git repos**, each with its own remotes.
+This workspace is **three independent git repos**, each with its own remote.
 When you finish a meaningful change, **commit *and* push** it — don't leave work
 sitting unpushed.
 
 | Local path | What it is | Push to |
 |---|---|---|
-| `/` (this monorepo) | `pickleplay` | **both** `origin` → `EunikaAgency/pickleplay-pwa` **and** `jhonivancuaco` → `jhonivancuaco/pickleballers` |
+| `/` (this monorepo) | `pickleplay` | `origin` → `EunikaAgency/pickleplay-pwa` |
 | `api/` | API (Hono + MongoDB) | `origin` → `jhonivancuaco/pickleballers-api` |
 | `web/` | Responsive website | `origin` → `jhonivancuaco/pickleballers-web` |
 
@@ -47,10 +47,10 @@ here (see `/api/` and `/web/` in `.gitignore`) so the monorepo never
 double-tracks them.
 
 ### Which GitHub account
-- **jhonivancuaco** repos (`pickleballers`, `pickleballers-api`,
-  `pickleballers-web`) are owned by you — push them with the **jhonivancuaco**
-  account: `gh auth switch -u jhonivancuaco`.
-- The **EunikaAgency** mirror (`pickleplay-pwa`) → push with the
+- **jhonivancuaco** repos (`pickleballers-api`, `pickleballers-web`) are owned
+  by you — push them with the **jhonivancuaco** account:
+  `gh auth switch -u jhonivancuaco`.
+- The **EunikaAgency** monorepo (`pickleplay-pwa`) → push with the
   **EunikaAgency** account.
 
 Both accounts are already authenticated through `gh` (credentials live in the
