@@ -23,8 +23,18 @@ import { InstallPrompt } from './shared/components/ui/InstallPrompt';
 import { OfflineBanner } from './shared/components/ui/OfflineBanner';
 import { DemoStateControl } from './shared/components/ui/DemoStateControl';
 import { DemoStateProvider, useDemoState } from './shared/lib/demoState';
+import { createAppUser, userHasPermission, type AppUser, type Permission } from './shared/lib/permissions';
 import { useTheme } from './shared/hooks/useTheme';
 import { tabScreens, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
+
+const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
+  'create-game': 'player.games.create',
+  'create-club': 'player.clubs.create',
+  'edit-profile': 'player.profile.manage',
+  settings: 'player.profile.manage',
+  notifications: 'user.notifications.manage',
+  'invite-players': 'player.games.create',
+};
 
 function isTabScreen(id: ScreenId): id is TabId {
   return (tabScreens as readonly string[]).includes(id);
@@ -42,12 +52,16 @@ function AppInner() {
   const { state: demoState } = useDemoState();
   useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(true);
   const [screen, setScreen] = useState<Screen>({ id: 'landing' });
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [history, setHistory] = useState<Screen[]>([]);
 
   const navigate = ((id: ScreenId, params?: { id: string }) => {
+    const requiredPermission = SCREEN_PERMISSIONS[id];
+    if (requiredPermission && !userHasPermission(currentUser, requiredPermission)) return;
+
     setHistory((prev) => [...prev, screen]);
     if (isTabScreen(id)) {
       setActiveTab(id);
@@ -73,6 +87,7 @@ function AppInner() {
   };
 
   const handleLoginSuccess = () => {
+    setCurrentUser(createAppUser('player'));
     setIsLoggedIn(true);
     if (needsOnboarding) {
       setScreen({ id: 'onboarding' });
@@ -91,6 +106,7 @@ function AppInner() {
   };
 
   const handleLogout = () => {
+    setCurrentUser(null);
     setIsLoggedIn(false);
     setScreen({ id: 'landing' });
     setHistory([]);
@@ -99,7 +115,10 @@ function AppInner() {
   const goToLogin = () => setScreen({ id: 'login' });
   const goToLanding = () => setScreen({ id: 'landing' });
 
-  const handleCreate = () => navigate('create-game');
+  const canCreateGame = userHasPermission(currentUser, 'player.games.create');
+  const handleCreate = () => {
+    if (canCreateGame) navigate('create-game');
+  };
 
   // `hideChrome` matters for screens reachable while logged in — i.e. `onboarding`, which runs after login success.
   const hideChrome = ['landing', 'onboarding', 'login'].includes(screen.id);
@@ -163,13 +182,13 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canCreateGame} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canCreateGame} />
       )}
 
       {isLoggedIn && !hideChrome && <InstallPrompt hasBottomChrome={showTabBar} />}

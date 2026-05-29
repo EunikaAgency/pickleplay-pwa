@@ -6,6 +6,7 @@ interface SidebarProps {
   activeTab: TabId;
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
+  canCreate: boolean;
 }
 
 interface SideTab {
@@ -23,7 +24,7 @@ const tabs: SideTab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate }: SidebarProps) {
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-brand">
@@ -52,7 +53,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate }: SidebarProps) {
         })}
       </nav>
 
-      <button className="side-create" onClick={onCreate}>
+      <button className="side-create disabled:cursor-not-allowed disabled:opacity-50" onClick={onCreate} disabled={!canCreate}>
         <Icon name="plus" size={18} /> Create game
       </button>
 

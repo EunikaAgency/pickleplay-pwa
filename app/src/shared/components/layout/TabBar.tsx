@@ -5,6 +5,7 @@ interface TabBarProps {
   activeTab: TabId;
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
+  canCreate: boolean;
 }
 
 type Tab =
@@ -19,13 +20,19 @@ const tabs: Tab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function TabBar({ activeTab, onTabPress, onCreate }: TabBarProps) {
+export function TabBar({ activeTab, onTabPress, onCreate, canCreate }: TabBarProps) {
   return (
     <nav className="tabbar" aria-label="Primary navigation">
       {tabs.map((t) => {
         if (t.isFab) {
           return (
-            <button key="fab" className="fab" onClick={onCreate} aria-label="Create game">
+            <button
+              key="fab"
+              className="fab disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={onCreate}
+              disabled={!canCreate}
+              aria-label="Create game"
+            >
               <Icon name="plus" size={22} />
             </button>
           );
