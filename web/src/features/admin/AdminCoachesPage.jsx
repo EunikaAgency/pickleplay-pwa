@@ -13,7 +13,6 @@ export default function AdminCoachesPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     fetchCoaches({ limit: 500, signal: ctrl.signal })
       .then((data) => { setCoaches(data); setError(null); })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
@@ -45,9 +44,9 @@ export default function AdminCoachesPage() {
       render: (c) => (
         <div className="flex items-center gap-3">
           {c.avatar ? (
-            <img src={c.avatar} alt="" className="h-9 w-9 rounded-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img src={c.avatar} alt="" className="size-9 rounded-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-tertiary-container text-on-tertiary-container">
+            <div className="flex size-9 items-center justify-center rounded-full bg-tertiary-container text-on-tertiary-container">
               <Icon name="sports" size={18} />
             </div>
           )}
@@ -61,12 +60,12 @@ export default function AdminCoachesPage() {
     {
       key: 'verified',
       header: 'Verified',
-      render: (c) => c.isVerified ? <Icon name="verified" size={20} className="text-primary" /> : <span className="text-on-surface-variant">—</span>,
+      render: (c) => c.isVerified ? <Icon name="verified" size={20} className="text-primary" /> : <span className="text-on-surface-variant">·</span>,
     },
     {
       key: 'rateFrom',
       header: 'Rate',
-      render: (c) => c.rateFrom != null ? <span className="tabular-nums">{c.priceCurrency} {c.rateFrom}+</span> : <span className="text-on-surface-variant">—</span>,
+      render: (c) => c.rateFrom != null ? <span className="tabular-nums">{c.priceCurrency} {c.rateFrom}+</span> : <span className="text-on-surface-variant">·</span>,
     },
     {
       key: 'rating',
@@ -78,7 +77,7 @@ export default function AdminCoachesPage() {
     {
       key: 'yearsExperience',
       header: 'Years',
-      render: (c) => c.yearsExperience != null ? <span className="tabular-nums">{c.yearsExperience}</span> : <span className="text-on-surface-variant">—</span>,
+      render: (c) => c.yearsExperience != null ? <span className="tabular-nums">{c.yearsExperience}</span> : <span className="text-on-surface-variant">·</span>,
     },
   ];
 
@@ -96,6 +95,7 @@ export default function AdminCoachesPage() {
           <Icon name="search" size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
           <input
             type="search"
+            aria-label="Search coaches"
             placeholder="Search by name, location, or slug…"
             value={q}
             onChange={(e) => setQ(e.target.value)}

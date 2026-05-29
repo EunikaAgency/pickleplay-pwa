@@ -18,7 +18,6 @@ export default function MyPaymentsPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     fetchMyPayments({ signal: ctrl.signal })
       .then((data) => { setPayments(data); setError(null); })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
@@ -56,7 +55,7 @@ export default function MyPaymentsPage() {
             return (
               <div key={p._id} className="flex items-center justify-between rounded-2xl bg-white p-5 shadow-md">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-container-high text-xl">💳</div>
+                  <div className="flex size-12 items-center justify-center rounded-xl bg-surface-container-high text-xl">💳</div>
                   <div className="min-w-0">
                     <p className="font-bold text-on-surface truncate">
                       {p.method ? `${p.method} payment` : 'Payment'} {p.bookingId ? `· booking ${p.bookingId.slice(-6)}` : ''}

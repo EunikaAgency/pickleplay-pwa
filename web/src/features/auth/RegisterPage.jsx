@@ -107,7 +107,7 @@ export default function RegisterPage() {
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   aria-pressed={showPassword}
                   tabIndex={-1}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex size-10 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
                 >
                   <Icon name={showPassword ? 'visibility_off' : 'visibility'} size={20} />
                 </button>

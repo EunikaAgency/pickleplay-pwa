@@ -20,7 +20,6 @@ export default function AdminVenuesPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     fetchVenues({ limit: 500, signal: ctrl.signal })
       .then((data) => { setVenues(data); setError(null); })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
@@ -64,9 +63,9 @@ export default function AdminVenuesPage() {
       render: (v) => (
         <div className="flex items-center gap-3">
           {v.heroImage ? (
-            <img src={v.heroImage} alt="" className="h-10 w-10 rounded-lg object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img src={v.heroImage} alt="" className="size-10 rounded-lg object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-container text-on-primary-container">
+            <div className="flex size-10 items-center justify-center rounded-lg bg-primary-container text-on-primary-container">
               <Icon name="stadium" size={18} />
             </div>
           )}
@@ -96,12 +95,12 @@ export default function AdminVenuesPage() {
       header: 'Rating',
       render: (v) => v.rating != null ? (
         <span className="flex items-center gap-1"><Icon name="star" size={14} filled className="text-[#2E5BFF]" />{v.rating} <span className="text-label-sm text-on-surface-variant">({v.reviewCount || 0})</span></span>
-      ) : <span className="text-on-surface-variant">—</span>,
+      ) : <span className="text-on-surface-variant">·</span>,
     },
     {
       key: 'priceFrom',
       header: 'Price',
-      render: (v) => v.priceFrom != null ? <span className="tabular-nums">{v.pricingCurrency} {v.priceFrom}</span> : <span className="text-on-surface-variant">—</span>,
+      render: (v) => v.priceFrom != null ? <span className="tabular-nums">{v.pricingCurrency} {v.priceFrom}</span> : <span className="text-on-surface-variant">·</span>,
     },
     {
       key: 'actions',
@@ -130,6 +129,7 @@ export default function AdminVenuesPage() {
           <Icon name="search" size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
           <input
             type="search"
+            aria-label="Search venues"
             placeholder="Search by name, city, or slug…"
             value={q}
             onChange={(e) => setQ(e.target.value)}

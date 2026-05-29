@@ -9,7 +9,6 @@ export default function CoachesPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     fetchCoaches({ signal: ctrl.signal })
       .then((data) => { setCoaches(data); setError(null); })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
@@ -37,10 +36,10 @@ export default function CoachesPage() {
           <div key={c.id} className="rounded-[14px] bg-surface-container-lowest p-5 shadow-card">
             <div className="flex items-center gap-4">
               {c.avatar ? (
-                <img src={c.avatar} alt={c.name} className="h-14 w-14 rounded-full object-cover" loading="lazy"
+                <img src={c.avatar} alt={c.name} className="size-14 rounded-full object-cover" loading="lazy"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
+                <div className="flex size-14 items-center justify-center rounded-full bg-primary-fixed text-on-primary-fixed">
                   <Icon name="person" size={28} />
                 </div>
               )}
@@ -74,7 +73,7 @@ export default function CoachesPage() {
                 Contact
               </a>
             ) : (
-              <button disabled className="mt-4 h-11 w-full rounded-full bg-surface-container-high text-body-md font-bold text-on-surface-variant">No contact</button>
+              <button type="button" disabled className="mt-4 h-11 w-full rounded-full bg-surface-container-high text-body-md font-bold text-on-surface-variant">No contact</button>
             )}
           </div>
         ))}

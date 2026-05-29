@@ -19,7 +19,7 @@ export default function AdminGamesPage() {
                 <td className="p-4"><span className="rounded-full bg-secondary-fixed px-2.5 py-0.5 text-label-sm font-bold uppercase text-on-secondary-fixed">{g.eventType}</span></td>
                 <td className="p-4 text-on-surface-variant">{new Date(g.gameDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                 <td className="p-4"><span className={`rounded-full px-2.5 py-0.5 text-label-sm font-bold uppercase ${g.status === 'upcoming' ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-surface-container-high text-on-surface-variant'}`}>{g.status}</span></td>
-                <td className="p-4"><button className="font-semibold text-primary hover:underline">Edit</button></td>
+                <td className="p-4"><button type="button" className="font-semibold text-primary hover:underline">Edit</button></td>
               </tr>
             ))}
           </tbody>

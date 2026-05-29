@@ -13,7 +13,6 @@ export default function HomePage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     Promise.allSettled([
       fetchVenues({ limit: 6, signal: ctrl.signal }),
       apiGet('/api/v1/open-play?limit=6', { signal: ctrl.signal }).catch(() => ({ data: [] })),
@@ -31,22 +30,22 @@ export default function HomePage() {
       {/* ---- HERO ---- */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#0040E0] to-[#2E5BFF] px-5 py-20 md:py-28">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="animate-float absolute left-[10%] top-[20%] h-16 w-16 rounded-full bg-white/10" />
-          <div className="animate-float absolute left-[70%] top-[10%] h-10 w-10 rounded-full bg-[#C1F100]/20" style={{ animationDelay: '0.5s' }} />
-          <div className="animate-float absolute left-[50%] top-[60%] h-12 w-12 rounded-full bg-white/10" style={{ animationDelay: '1s' }} />
-          <div className="animate-float absolute left-[25%] top-[70%] h-8 w-8 rounded-full bg-[#B8C3FF]/20" style={{ animationDelay: '1.5s' }} />
-          <div className="animate-float absolute left-[80%] top-[50%] h-14 w-14 rounded-full bg-[#C1F100]/15" style={{ animationDelay: '0.8s' }} />
+          <div className="animate-float absolute left-[10%] top-[20%] size-16 rounded-full bg-white/10" />
+          <div className="animate-float absolute left-[70%] top-[10%] size-10 rounded-full bg-[#C1F100]/20" style={{ animationDelay: '0.5s' }} />
+          <div className="animate-float absolute left-[50%] top-[60%] size-12 rounded-full bg-white/10" style={{ animationDelay: '1s' }} />
+          <div className="animate-float absolute left-[25%] top-[70%] size-8 rounded-full bg-[#B8C3FF]/20" style={{ animationDelay: '1.5s' }} />
+          <div className="animate-float absolute left-[80%] top-[50%] size-14 rounded-full bg-[#C1F100]/15" style={{ animationDelay: '0.8s' }} />
         </div>
 
         <div className="relative mx-auto max-w-2xl text-center">
-          <span className="inline-block animate-bounce-in rounded-full bg-[#C1F100] px-5 py-2 text-label-sm font-bold uppercase tracking-wider text-[#374D00]">
+          <span className="inline-block animate-[bounce_2s_cubic-bezier(0.16,1,0.3,1)_infinite] rounded-full bg-[#C1F100] px-5 py-2 text-label-sm font-bold uppercase tracking-wider text-[#374D00]">
             Let's Play!
           </span>
           <h1 className="mt-6 font-heading text-5xl font-extrabold leading-tight text-white md:text-6xl">
             Find your <span className="inline-block animate-wiggle text-[#C1F100]">pickle</span> crew
           </h1>
           <p className="mt-4 text-lg text-white/80">
-            Courts, games, new friends — all the fun, zero boring stuff.
+            Courts, games, new friends. All the fun, zero boring stuff.
           </p>
           <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link to="/venues" className="inline-flex h-14 items-center rounded-full bg-[#C1F100] px-10 text-lg font-extrabold text-[#374D00] no-underline shadow-lg active:scale-95">
@@ -120,7 +119,7 @@ export default function HomePage() {
                 style={{ animation: `slide-up 0.4s ease-out ${i * 0.1}s both` }}
               >
                 <div className="flex items-center gap-4 bg-gradient-to-r from-[#0040E0] to-[#2E5BFF] p-4 text-white">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-2xl">🏓</div>
+                  <div className="flex size-12 items-center justify-center rounded-full bg-white/20 text-2xl">🏓</div>
                   <div className="min-w-0">
                     <p className="truncate font-heading text-base font-bold">{session.title || 'Open Play Session'}</p>
                     <p className="text-base text-white/70">{session.levelLabel || session.organizerName || 'All levels'}</p>
@@ -218,10 +217,10 @@ export default function HomePage() {
               style={{ animation: `slide-up 0.4s ease-out ${i * 0.1}s both` }}
             >
               {coach.avatar ? (
-                <img src={apiImageUrl(coach.avatar)} alt="" className="h-16 w-16 rounded-2xl object-cover shadow-sm" loading="lazy"
+                <img src={apiImageUrl(coach.avatar)} alt="" className="size-16 rounded-2xl object-cover shadow-sm" loading="lazy"
                   onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-tertiary-container text-on-tertiary-container shadow-sm">
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-tertiary-container text-on-tertiary-container shadow-sm">
                   <Icon name="sports" size={28} />
                 </div>
               )}

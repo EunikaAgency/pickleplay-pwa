@@ -9,7 +9,7 @@ export default function OpenPlayDetailPage() {
 
   const venue = getVenue(session.venueId);
   const organizer = getUser(session.organizerId);
-  const participants = session.participantIds.map(getUser).filter(Boolean);
+  const participants = session.participantIds.flatMap(id => { const u = getUser(id); return u ? [u] : []; });
   const spotsLeft = session.playerLimit - session.participantCount;
 
   return (
@@ -23,7 +23,7 @@ export default function OpenPlayDetailPage() {
             {!session.fee && <span className="rounded-full bg-[#C1F100]/30 px-2.5 py-0.5 text-base font-extrabold uppercase">Free!</span>}
           </div>
           <h1 className="mt-3 font-heading text-3xl font-extrabold">{session.title}</h1>
-          {organizer && <div className="mt-3 flex items-center gap-3"><img src={organizer.avatar} alt="" className="h-10 w-10 rounded-full border-2 border-white object-cover" /><span className="text-base font-bold">Hosted by {organizer.firstName} {organizer.lastName}</span></div>}
+          {organizer && <div className="mt-3 flex items-center gap-3"><img src={organizer.avatar} alt="" className="size-10 rounded-full border-2 border-white object-cover" /><span className="text-base font-bold">Hosted by {organizer.firstName} {organizer.lastName}</span></div>}
         </div>
       </section>
 
@@ -42,11 +42,11 @@ export default function OpenPlayDetailPage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {participants.map(p => (
                   <div key={p.id} className="flex items-center gap-2 rounded-full border-2 border-surface-variant px-3 py-1.5">
-                    <img src={p.avatar} alt="" className="h-8 w-8 rounded-full object-cover" /><span className="text-base font-bold">{p.firstName}</span><span className="text-base text-on-surface-variant">{p.skillLabel}</span>
+                    <img src={p.avatar} alt="" className="size-8 rounded-full object-cover" /><span className="text-base font-bold">{p.firstName}</span><span className="text-base text-on-surface-variant">{p.skillLabel}</span>
                   </div>
                 ))}
                 {spotsLeft > 0 && Array.from({length: Math.min(spotsLeft, 3)}).map((_, i) => (
-                  <div key={`open-${i}`} className="flex items-center gap-2 rounded-full border-2 border-dashed border-surface-variant px-3 py-1.5"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-high">🏓</div><span className="text-base text-on-surface-variant">Open spot</span></div>
+                  <div key={`open-${i}`} className="flex items-center gap-2 rounded-full border-2 border-dashed border-surface-variant px-3 py-1.5"><div className="flex size-8 items-center justify-center rounded-full bg-surface-container-high">🏓</div><span className="text-base text-on-surface-variant">Open spot</span></div>
                 ))}
               </div>
             </div>
@@ -54,7 +54,7 @@ export default function OpenPlayDetailPage() {
           <aside className="space-y-4">
             <div className="rounded-2xl bg-white p-6 shadow-lg text-center">
               <p className="text-lg font-extrabold">{spotsLeft>0?`${spotsLeft} spot${spotsLeft!==1?'s':''} left`:'Full!'}</p>
-              <button disabled={spotsLeft===0} className="mt-4 h-14 w-full rounded-2xl bg-[#C1F100] text-base font-extrabold text-[#374D00] shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-50">
+              <button type="button" disabled={spotsLeft===0} className="mt-4 h-14 w-full rounded-2xl bg-[#C1F100] text-base font-extrabold text-[#374D00] shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-50">
                 {spotsLeft>0?'Join Session 🎉':'Join Waitlist'}
               </button>
               {!session.fee ? <p className="mt-3 text-base">Free to join!</p> : <p className="mt-3 font-extrabold text-primary">${session.fee}</p>}

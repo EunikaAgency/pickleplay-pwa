@@ -19,7 +19,6 @@ export default function MyFavoritesPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     fetchMyFavorites({ signal: ctrl.signal })
       .then((data) => { setFavorites(data); setError(null); })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
@@ -91,7 +90,7 @@ export default function MyFavoritesPage() {
                   onClick={() => handleRemove(f._id)}
                   disabled={busy}
                   aria-label="Remove from favorites"
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high disabled:opacity-50"
+                  className="flex size-10 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high disabled:opacity-50"
                 >
                   <Icon name="heart_minus" size={20} />
                 </button>

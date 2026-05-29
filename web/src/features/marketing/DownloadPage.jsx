@@ -7,8 +7,8 @@ export default function DownloadPage() {
           <h1 className="font-heading text-4xl font-extrabold text-white">Get the App</h1>
           <p className="mt-2 text-white/70">Take pickleBaller everywhere. Free on iOS and Android.</p>
           <div className="mt-6 flex justify-center gap-4">
-            <a href="#" className="inline-flex h-14 items-center rounded-2xl bg-white px-8 text-base font-extrabold text-on-surface no-underline shadow-lg active:scale-95">App Store</a>
-            <a href="#" className="inline-flex h-14 items-center rounded-2xl bg-[#C1F100] px-8 text-base font-extrabold text-[#374D00] no-underline shadow-lg active:scale-95">Google Play</a>
+            <button type="button" className="inline-flex h-14 items-center rounded-2xl bg-white px-8 text-base font-extrabold text-on-surface no-underline shadow-lg active:scale-95">App Store</button>
+            <button type="button" className="inline-flex h-14 items-center rounded-2xl bg-[#C1F100] px-8 text-base font-extrabold text-[#374D00] no-underline shadow-lg active:scale-95">Google Play</button>
           </div>
         </div>
       </section>
@@ -35,7 +35,7 @@ export default function DownloadPage() {
 
       <section className="mx-auto mt-16 mb-16 max-w-md px-5 text-center">
         <div className="rounded-3xl bg-white p-10 shadow-xl">
-          <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl bg-surface-container-high text-6xl">📷</div>
+          <div className="mx-auto flex size-40 items-center justify-center rounded-2xl bg-surface-container-high text-6xl">📷</div>
           <p className="mt-4 font-bold">Scan to download</p>
         </div>
       </section>

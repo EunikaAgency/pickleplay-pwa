@@ -25,22 +25,22 @@ export default function CreateGamePage() {
 
       <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
         <div>
-          <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Title</label>
-          <input type="text" placeholder="Friday Night Dinks" value={form.title} onChange={e => handleChange('title', e.target.value)} required
+          <label htmlFor="game-title" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Title</label>
+          <input id="game-title" type="text" placeholder="Friday Night Dinks" value={form.title} onChange={e => handleChange('title', e.target.value)} required
             className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Event Type</label>
-            <select value={form.eventType} onChange={e => handleChange('eventType', e.target.value)}
+            <label htmlFor="game-eventType" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Event Type</label>
+            <select id="game-eventType" value={form.eventType} onChange={e => handleChange('eventType', e.target.value)}
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10">
               {['Open Play','Clinic','Round Robin','Tournament'].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Format</label>
-            <select value={form.format} onChange={e => handleChange('format', e.target.value)}
+            <label htmlFor="game-format" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Format</label>
+            <select id="game-format" value={form.format} onChange={e => handleChange('format', e.target.value)}
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10">
               {['doubles','singles','open_play','mixed'].map(o => <option key={o}>{o.replace('_',' ')}</option>)}
             </select>
@@ -48,67 +48,67 @@ export default function CreateGamePage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Venue</label>
-          <select value={form.venueId} onChange={e => handleChange('venueId', e.target.value)} required
+          <label htmlFor="game-venue" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Venue</label>
+          <select id="game-venue" value={form.venueId} onChange={e => handleChange('venueId', e.target.value)} required
             className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10">
             <option value="">Select a venue</option>
-            {venues.map(v => <option key={v.id} value={v.id}>{v.name} — {v.city}</option>)}
+            {venues.map(v => <option key={v.id} value={v.id}>{v.name}, {v.city}</option>)}
           </select>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Date</label>
-            <input type="date" value={form.gameDate} onChange={e => handleChange('gameDate', e.target.value)} required
+            <label htmlFor="game-date" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Date</label>
+            <input id="game-date" type="date" value={form.gameDate} onChange={e => handleChange('gameDate', e.target.value)} required
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Start</label>
-            <input type="time" value={form.startTime} onChange={e => handleChange('startTime', e.target.value)} required
+            <label htmlFor="game-startTime" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Start</label>
+            <input id="game-startTime" type="time" value={form.startTime} onChange={e => handleChange('startTime', e.target.value)} required
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">End</label>
-            <input type="time" value={form.endTime} onChange={e => handleChange('endTime', e.target.value)} required
+            <label htmlFor="game-endTime" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">End</label>
+            <input id="game-endTime" type="time" value={form.endTime} onChange={e => handleChange('endTime', e.target.value)} required
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Min Skill</label>
-            <input type="number" step="0.5" min="1" max="10" value={form.skillMin} onChange={e => handleChange('skillMin', e.target.value)}
+            <label htmlFor="game-skillMin" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Min Skill</label>
+            <input id="game-skillMin" type="number" step="0.5" min="1" max="10" value={form.skillMin} onChange={e => handleChange('skillMin', e.target.value)}
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Max Skill</label>
-            <input type="number" step="0.5" min="1" max="10" value={form.skillMax} onChange={e => handleChange('skillMax', e.target.value)}
+            <label htmlFor="game-skillMax" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Max Skill</label>
+            <input id="game-skillMax" type="number" step="0.5" min="1" max="10" value={form.skillMax} onChange={e => handleChange('skillMax', e.target.value)}
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Max Players</label>
-            <input type="number" min="2" max="64" value={form.playerLimit} onChange={e => handleChange('playerLimit', e.target.value)}
+            <label htmlFor="game-playerLimit" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Max Players</label>
+            <input id="game-playerLimit" type="number" min="2" max="64" value={form.playerLimit} onChange={e => handleChange('playerLimit', e.target.value)}
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Description</label>
-          <textarea rows={4} value={form.description} onChange={e => handleChange('description', e.target.value)}
+          <label htmlFor="game-description" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Description</label>
+          <textarea id="game-description" rows={4} value={form.description} onChange={e => handleChange('description', e.target.value)}
             placeholder="What should players know about this game?"
             className="w-full rounded-xl border border-outline-variant bg-white px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Fee ($)</label>
-            <input type="number" min="0" step="1" placeholder="0 = free" value={form.fee} onChange={e => handleChange('fee', e.target.value)}
+            <label htmlFor="game-fee" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Fee ($)</label>
+            <input id="game-fee" type="number" min="0" step="1" placeholder="0 = free" value={form.fee} onChange={e => handleChange('fee', e.target.value)}
               className="h-12 w-full rounded-xl border border-outline-variant bg-white px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10" />
           </div>
           <div className="flex items-end pb-1">
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={form.beginnerFriendly} onChange={e => handleChange('beginnerFriendly', e.target.checked)}
-                className="h-5 w-5 rounded accent-primary" />
+                className="size-5 rounded accent-primary" />
               <span className="text-base font-bold text-on-surface">Beginner friendly</span>
             </label>
           </div>

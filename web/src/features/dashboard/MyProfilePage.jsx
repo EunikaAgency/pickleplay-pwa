@@ -43,13 +43,11 @@ export default function MyProfilePage() {
   // could be stale if another tab made changes).
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     apiGet('/api/v1/auth/me')
       .then((res) => { if (alive) { applyUser(res?.data); setError(null); } })
-      .catch((e) => { if (alive) { setError(e); applyUser(user); } })
+      .catch((e) => { if (alive) { setError(e); applyUser(useAuth.getState().user); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e) {
@@ -82,10 +80,10 @@ export default function MyProfilePage() {
       <div className="rounded-2xl bg-gradient-to-r from-[#0040E0] to-[#2E5BFF] p-6 text-white">
         <div className="flex items-center gap-4">
           {user?.avatar ? (
-            <img src={user.avatar} alt="" className="h-20 w-20 rounded-2xl border-4 border-white/30 object-cover shadow-lg"
+            <img src={user.avatar} alt="" className="size-20 rounded-2xl border-4 border-white/30 object-cover shadow-lg"
               onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-white/30 bg-white/10 text-white shadow-lg">
+            <div className="flex size-20 items-center justify-center rounded-2xl border-4 border-white/30 bg-white/10 text-white shadow-lg">
               <Icon name="person" size={36} />
             </div>
           )}
@@ -110,43 +108,43 @@ export default function MyProfilePage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">First Name</label>
-            <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading || saving}
+            <label htmlFor="profile-firstName" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">First Name</label>
+            <input id="profile-firstName" type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={loading || saving}
               className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Last Name</label>
-            <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading || saving}
+            <label htmlFor="profile-lastName" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Last Name</label>
+            <input id="profile-lastName" type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={loading || saving}
               className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Display Name</label>
-            <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} disabled={loading || saving}
+            <label htmlFor="profile-displayName" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Display Name</label>
+            <input id="profile-displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} disabled={loading || saving}
               placeholder="How others see you"
               className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
           </div>
           <div>
-            <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Phone</label>
-            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={loading || saving}
+            <label htmlFor="profile-phone" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Phone</label>
+            <input id="profile-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={loading || saving}
               placeholder="+63 9xx xxx xxxx"
               className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Skill Level</label>
-          <select value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} disabled={loading || saving}
+          <label htmlFor="profile-skillLevel" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Skill Level</label>
+          <select id="profile-skillLevel" value={skillLevel} onChange={(e) => setSkillLevel(e.target.value)} disabled={loading || saving}
             className="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60">
             {SKILL_OPTIONS.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
           </select>
         </div>
 
         <div>
-          <label className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Bio</label>
-          <textarea rows={4} value={bio} onChange={(e) => setBio(e.target.value)} disabled={loading || saving}
+          <label htmlFor="profile-bio" className="mb-1 block text-base font-extrabold uppercase tracking-wider text-on-surface-variant">Bio</label>
+          <textarea id="profile-bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} disabled={loading || saving}
             placeholder="Tell players about yourself…"
             className="w-full rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3 text-base focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60" />
         </div>

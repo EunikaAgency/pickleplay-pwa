@@ -60,8 +60,8 @@ export default function AdminSidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">
-        {SECTIONS.map((section, i) => (
-          <div key={i} className="mb-4">
+        {SECTIONS.map((section) => (
+          <div key={section.label ?? 'overview'} className="mb-4">
             {section.label && (
               <p className="px-4 pb-1 pt-2 text-label-sm font-bold uppercase tracking-wider text-on-surface-variant/70">
                 {section.label}
@@ -104,7 +104,7 @@ export default function AdminSidebar() {
 
       <div className="border-t border-surface-variant p-3">
         <div className="mb-2 flex items-center gap-2 px-2 py-1 text-base">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+          <div className="flex size-8 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
             <Icon name="admin_panel_settings" size={18} />
           </div>
           <div className="min-w-0 flex-1">

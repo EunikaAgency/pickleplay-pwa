@@ -19,7 +19,6 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    setLoading(true);
     fetchAdminUsers({ limit: 500, signal: ctrl.signal })
       .then((data) => { setUsers(data); setError(null); })
       .catch((e) => { if (e.name !== 'AbortError') setError(e); })
@@ -54,7 +53,7 @@ export default function AdminUsersPage() {
       header: 'User',
       render: (u) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+          <div className="flex size-9 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
             {u.avatarUrl ? <img src={u.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" /> : <Icon name="person" size={18} />}
           </div>
           <div className="min-w-0">
@@ -75,17 +74,17 @@ export default function AdminUsersPage() {
     {
       key: 'isVerified',
       header: 'Verified',
-      render: (u) => u.isVerified ? <Icon name="verified" size={20} className="text-primary" /> : <span className="text-on-surface-variant">—</span>,
+      render: (u) => u.isVerified ? <Icon name="verified" size={20} className="text-primary" /> : <span className="text-on-surface-variant">·</span>,
     },
     {
       key: 'lastLoginAt',
       header: 'Last login',
-      render: (u) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : <span className="text-on-surface-variant">—</span>,
+      render: (u) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : <span className="text-on-surface-variant">·</span>,
     },
     {
       key: 'createdAt',
       header: 'Joined',
-      render: (u) => u.createdAt ? new Date(u.createdAt).toLocaleDateString() : <span className="text-on-surface-variant">—</span>,
+      render: (u) => u.createdAt ? new Date(u.createdAt).toLocaleDateString() : <span className="text-on-surface-variant">·</span>,
     },
   ];
 
@@ -105,6 +104,7 @@ export default function AdminUsersPage() {
           <Icon name="search" size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
           <input
             type="search"
+            aria-label="Search users"
             placeholder="Search by name or email…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
