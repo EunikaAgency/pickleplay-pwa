@@ -1,54 +1,33 @@
 import { useState } from 'react';
-import { LandingScreen } from './screens/LandingScreen';
-import { LoginScreen } from './screens/LoginScreen';
-import { OnboardingScreen } from './screens/OnboardingScreen';
-import { HomeScreen } from './screens/HomeScreen';
-import { NearbyScreen } from './screens/NearbyScreen';
-import { GamesScreen } from './screens/GamesScreen';
-import { ClubsScreen } from './screens/ClubsScreen';
-import { GameDetailsScreen } from './screens/GameDetailsScreen';
-import { CourtDetailsScreen } from './screens/CourtDetailsScreen';
-import { ClubDetailsScreen } from './screens/ClubDetailsScreen';
-import { CreateGameScreen } from './screens/CreateGameScreen';
-import { CreateClubScreen } from './screens/CreateClubScreen';
-import { ProfileScreen } from './screens/ProfileScreen';
-import { EditProfileScreen } from './screens/EditProfileScreen';
-import { SettingsScreen } from './screens/SettingsScreen';
-import { SearchScreen } from './screens/SearchScreen';
-import { InvitePlayersScreen } from './screens/InvitePlayersScreen';
-import { NotificationsScreen } from './screens/NotificationsScreen';
-import { TabBar } from './components/layout/TabBar';
-import { InstallPrompt } from './components/ui/InstallPrompt';
-import { OfflineBanner } from './components/ui/OfflineBanner';
-import { DemoStateControl } from './components/ui/DemoStateControl';
-import { DemoStateProvider, useDemoState } from './lib/demoState';
-import { useTheme } from './hooks/useTheme';
+import { LandingScreen } from './features/auth/LandingScreen';
+import { LoginScreen } from './features/auth/LoginScreen';
+import { OnboardingScreen } from './features/auth/OnboardingScreen';
+import { HomeScreen } from './features/home/HomeScreen';
+import { NearbyScreen } from './features/venues/NearbyScreen';
+import { GamesScreen } from './features/games/GamesScreen';
+import { ClubsScreen } from './features/clubs/ClubsScreen';
+import { GameDetailsScreen } from './features/games/GameDetailsScreen';
+import { CourtDetailsScreen } from './features/venues/CourtDetailsScreen';
+import { ClubDetailsScreen } from './features/clubs/ClubDetailsScreen';
+import { CreateGameScreen } from './features/games/CreateGameScreen';
+import { CreateClubScreen } from './features/clubs/CreateClubScreen';
+import { ProfileScreen } from './features/profile/ProfileScreen';
+import { EditProfileScreen } from './features/profile/EditProfileScreen';
+import { SettingsScreen } from './features/profile/SettingsScreen';
+import { SearchScreen } from './features/search/SearchScreen';
+import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
+import { NotificationsScreen } from './features/profile/NotificationsScreen';
+import { TabBar } from './shared/components/layout/TabBar';
+import { Sidebar } from './shared/components/layout/Sidebar';
+import { InstallPrompt } from './shared/components/ui/InstallPrompt';
+import { OfflineBanner } from './shared/components/ui/OfflineBanner';
+import { DemoStateControl } from './shared/components/ui/DemoStateControl';
+import { DemoStateProvider, useDemoState } from './shared/lib/demoState';
+import { useTheme } from './shared/hooks/useTheme';
+import { tabScreens, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
 
-type Screen =
-  | { id: 'landing' }
-  | { id: 'login' }
-  | { id: 'onboarding' }
-  | { id: 'home' }
-  | { id: 'nearby' }
-  | { id: 'games' }
-  | { id: 'clubs' }
-  | { id: 'profile' }
-  | { id: 'game-details'; params?: Record<string, string> }
-  | { id: 'court-details'; params?: Record<string, string> }
-  | { id: 'club-details'; params?: Record<string, string> }
-  | { id: 'create-game' }
-  | { id: 'create-club' }
-  | { id: 'edit-profile' }
-  | { id: 'settings' }
-  | { id: 'search' }
-  | { id: 'invite-players'; params?: Record<string, string> }
-  | { id: 'notifications' };
-
-const tabScreens = ['home', 'nearby', 'games', 'clubs', 'profile'] as const;
-type TabId = (typeof tabScreens)[number];
-
-function isTabScreen(id: string): id is TabId {
-  return tabScreens.includes(id as TabId);
+function isTabScreen(id: ScreenId): id is TabId {
+  return (tabScreens as readonly string[]).includes(id);
 }
 
 export default function App() {
@@ -68,7 +47,7 @@ function AppInner() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [history, setHistory] = useState<Screen[]>([]);
 
-  const navigate = (id: string, params?: Record<string, string>) => {
+  const navigate = ((id: ScreenId, params?: { id: string }) => {
     setHistory((prev) => [...prev, screen]);
     if (isTabScreen(id)) {
       setActiveTab(id);
@@ -76,21 +55,21 @@ function AppInner() {
     } else {
       setScreen({ id, params } as Screen);
     }
-  };
+  }) as Navigate;
 
   const goBack = () => {
     const prev = history[history.length - 1];
     if (prev) {
       setHistory((h) => h.slice(0, -1));
-      if (isTabScreen(prev.id)) setActiveTab(prev.id as TabId);
+      if (isTabScreen(prev.id)) setActiveTab(prev.id);
       setScreen(prev);
     }
   };
 
-  const handleTabPress = (tab: string) => {
+  const handleTabPress = (tab: TabId) => {
     setHistory((prev) => [...prev, screen]);
-    setActiveTab(tab as TabId);
-    setScreen({ id: tab } as Screen);
+    setActiveTab(tab);
+    setScreen({ id: tab });
   };
 
   const handleLoginSuccess = () => {
@@ -120,13 +99,12 @@ function AppInner() {
   const goToLogin = () => setScreen({ id: 'login' });
   const goToLanding = () => setScreen({ id: 'landing' });
 
-  const handleFabClick = () => navigate('create-game');
+  const handleCreate = () => navigate('create-game');
 
-  // Tab bar is shown only on tab screens (matches Redesign behaviour).
+  // `hideChrome` matters for screens reachable while logged in — i.e. `onboarding`, which runs after login success.
   const hideChrome = ['landing', 'onboarding', 'login'].includes(screen.id);
-  const showTabBar = isLoggedIn && isTabScreen(screen.id) && !hideChrome;
-  // Landing is the only marketing-style screen that benefits from a wider
-  // multi-column layout; login/onboarding stay in the standard column.
+  const showTabBar = isLoggedIn && isTabScreen(screen.id);
+  const showSidebar = isLoggedIn && !hideChrome;
   const frame = screen.id === 'landing' ? 'wide' : 'standard';
 
   const renderScreen = () => {
@@ -153,11 +131,11 @@ function AppInner() {
       case 'profile':
         return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
-        return <GameDetailsScreen onNavigate={navigate} onBack={goBack} gameId={screen.params?.id} />;
+        return <GameDetailsScreen onNavigate={navigate} onBack={goBack} />;
       case 'court-details':
-        return <CourtDetailsScreen onNavigate={navigate} onBack={goBack} courtId={screen.params?.id} />;
+        return <CourtDetailsScreen onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
-        return <ClubDetailsScreen onNavigate={navigate} onBack={goBack} clubId={screen.params?.id} />;
+        return <ClubDetailsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
         return <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
@@ -169,7 +147,7 @@ function AppInner() {
       case 'search':
         return <SearchScreen onNavigate={navigate} onBack={goBack} />;
       case 'invite-players':
-        return <InvitePlayersScreen onNavigate={navigate} onBack={goBack} gameId={screen.params?.id} />;
+        return <InvitePlayersScreen onNavigate={navigate} onBack={goBack} />;
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
       default:
@@ -180,14 +158,18 @@ function AppInner() {
   return (
     <div className="app" data-frame={frame}>
       {/* Offline banner */}
-      <div style={{ position: 'fixed', left: 0, right: 0, top: 0, zIndex: 9999, paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="fixed left-0 right-0 top-0 z-[9999] pt-[env(safe-area-inset-top)]">
         <OfflineBanner forceShow={demoState === 'offline'} />
       </div>
 
-      {renderScreen()}
+      {showSidebar && (
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} />
+      )}
+
+      <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleFabClick} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} />
       )}
 
       {isLoggedIn && !hideChrome && <InstallPrompt hasBottomChrome={showTabBar} />}

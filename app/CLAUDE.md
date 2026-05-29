@@ -11,7 +11,7 @@ npm run lint     # ESLint all source
 npm run preview  # Preview production build
 ```
 
-The app runs at `http://localhost:9000`. API requests to `/api/*` are proxied to `http://localhost:3001`.
+The app runs at `http://localhost:9000`. API requests to `/api/*` are proxied to `http://localhost:9002` (the sibling Hono/MongoDB API at `/var/public/pickleplay/api`).
 
 ## Architecture
 
@@ -20,10 +20,9 @@ The app runs at `http://localhost:9000`. API requests to `/api/*` are proxied to
 ### Stack
 - React 19 + TypeScript 6 + Vite 8
 - Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- Zustand 5 for state management
-- react-router-dom 7 (installed but not used — navigation is custom)
+- Zustand 5 listed as a dep but not yet used — state is local `useState` in `App.tsx` and per screen
 - Leaflet / react-leaflet for map views
-- Lucide React icons (installed) alongside Google Material Symbols Outlined (used in practice)
+- Google Material Symbols Outlined for icons (loaded as a Google Font; wrapped by `shared/components/ui/Icon`)
 - vite-plugin-pwa with Workbox (map tile runtime caching) + custom `pwaUpdate.ts` for service-worker auto-update
 - Fonts: Fredoka (headings), Nunito Sans (body) via Google Fonts
 - PM2 ecosystem config for production process management
@@ -76,9 +75,11 @@ src/
     components/
       layout/                      # TabBar (mobile), Sidebar (desktop)
       ui/                          # Icon, Avatar, Button, Card, Chip, BottomSheet,
-                                   # CourtIllustration, DemoStateControl, DuprExplainerSheet,
-                                   # EmptyState, ErrorState, GameRow, InstallPrompt,
-                                   # LoadingSkeleton, OfflineBanner, Segmented, Toast
+                                   # CompletionScreen, CourtIllustration, DemoBranch,
+                                   # DemoStateControl, DuprExplainerSheet, EmptyState,
+                                   # ErrorState, GameRow, InstallPrompt, LoadingSkeleton,
+                                   # OfflineBanner, ProgressBar, ScreenHeader, Segmented,
+                                   # Toast
       forms/                       # FormField, FormSelect, FormTierPicker
     hooks/
       useForm.ts                   # Generic form state + validation helper
@@ -108,7 +109,7 @@ src/
 7. **`npm run build` must stay clean.** Run it after structural changes to catch broken imports.
 
 ### Data types
-Defined in `src/lib/types.ts`: `Court`, `User`, `Game`, `Club`, `Message`. These represent the domain model used across screens. No actual API client or store exists yet — data is currently inline/demo content. Integration gaps are tracked in [`docs/pickleplay-integration-gaps.csv`](./docs/pickleplay-integration-gaps.csv).
+Defined in [`src/shared/lib/types.ts`](src/shared/lib/types.ts): `Court`, `User`, `Game`, `Club`, `Message`. These represent the domain model used across screens. No actual API client or store exists yet — data is currently inline/demo content per screen.
 
 ### Key patterns
 - Screens receive `onNavigate` for navigation and `onBack` for going back. A few also accept entity IDs as props (e.g. `gameId`, `courtId`, `clubId`).
@@ -147,4 +148,5 @@ Skipping the roadmap update is treated like skipping a test: the work isn't done
 | 2026-05-28 | Restructured `app/src/` into feature-based vertical slices (`features/{auth,home,games,venues,clubs,profile,search}` + `shared/{components,hooks,lib,styles}`), mirroring the `web/` convention. Pure file-move + import-update refactor — no behavior changes. Filter sheets co-located with their owning feature (`GameFilterSheet` → `features/games/`, `NearbyFilterSheet` → `features/venues/`). |
 | 2026-05-27 | Commit `c4ceec6` — Removed `TopBar`, `Sidebar`, and `FAB` from `components/layout/`. Create action moved into `TabBar.onCreate`. Added `CourtIllustration`, `GameRow`, `Segmented`, `Toast` UI primitives. Polished all major screens. |
 | 2026-05-27 | Commit `0e32861` — Added `LandingScreen` as new cold-start entry. Added `components/filters/` (bottom sheets replacing routed filter screens), `components/forms/` (FormField/Select/TierPicker), `hooks/` (useForm, usePrefersReducedMotion, useTheme), `lib/demoState.tsx`, `lib/skillTiers.ts`. Replaced `LoadingSpinner` with `LoadingSkeleton`. Added `BottomSheet`, `DuprExplainerSheet`, `OfflineBanner`, `DemoStateControl`. Included `Redesign/` reference assets. |
-| 2026-05-26 | Commit `16acf6c` — Added PWA install/update support (`pwaUpdate.ts`, install prompt, OpenStreetMap tile runtime caching) and PWA asset icons. Generated structured app inventory under [`docs/`](./docs/). |
+| 2026-05-28 | Removed the stale `docs/pickleplay-*` inventory (markdown, CSVs, xlsx). They were written against the pre-migration `src/screens/`-`src/components/` layout and the old "PicklePlay" brand, and had drifted far enough to mislead. Future inventory should be regenerated from current code rather than maintained by hand. |
+| 2026-05-26 | Commit `16acf6c` — Added PWA install/update support (`pwaUpdate.ts`, install prompt, OpenStreetMap tile runtime caching) and PWA asset icons. |
