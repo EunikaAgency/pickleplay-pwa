@@ -30,6 +30,24 @@ Move tracked files with `git mv` so history is preserved.
 and is safe to delete anytime — it regenerates when playwright-mcp runs. Don't
 commit it and don't let it accumulate in root.
 
+## Keep the API endpoint catalogue (`/lists`) current
+
+The API self-documents every route at
+**https://pickleballer-api.eunika.xyz/lists** — the single authoritative
+endpoint catalogue, rendered from
+`api/src/features/root/root.controller.ts` → `listEndpoints()`.
+
+**Whenever you add, remove, or change an API route — new path, new method, new
+sub-resource, changed auth requirement, changed prefix — you must update the
+`endpoints` array in `listEndpoints()` as part of the same change** so `/lists`
+never drifts from what the API actually exposes. Then restart the API
+(`npm run pm2:restart` in `api/`) so the live page reflects it. Skipping the
+`/lists` update is treated like skipping a test: the work isn't done.
+
+This applies to every agent in every repo here — if your work touches an API
+endpoint, keep `/lists` in sync. The `api/` repo's `CLAUDE.md` carries the full
+checklist; this is the all-agents reminder so the rule is visible everywhere.
+
 ## Git remotes and pushing
 
 This workspace is **three independent git repos**, each with its own remote.

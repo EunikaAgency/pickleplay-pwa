@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp *)",
+      "Bash(find /var/public/pickleplay/app/src/features/home -type f 2>/dev/null; echo \"--- features dir ---\"; ls /var/public/pickleplay/app/src/features/ 2>/dev/null; echo \"--- mcp list config ---\"; cat ~/.claude.json 2>/dev/null | head -50; echo \"--- check existing mcp ---\"; ls ~/.config/claude* 2>/dev/null)",
+      "Read(//home/eunika-blue/**)",
+      "Read(//home/eunika-blue/.config/**)",
+      "Bash(command -v claude node npm npx 2>&1; echo \"---\"; ls -la ~/.claude/local/ 2>/dev/null; echo \"---npmglobal---\"; ls ~/.npm-global/bin 2>/dev/null; ls /usr/local/bin 2>/dev/null | head)",
+      "Read(//usr/local/bin/**)",
+      "Bash(/tmp/stitch.sh tool *)",
+      "Bash(STITCH_TIMEOUT=60 /tmp/stitch.sh tool 11 create_project '{\"title\":\"PickleBallers Home layout\"}')",
+      "Bash(STITCH_TIMEOUT=30 /tmp/stitch.sh tool 10 list_projects '{}')",
+      "Bash(cp /tmp/stitch_home_refined.png docs/screenshots/stitch-home-refined-layout.png)",
+      "Bash(cp /tmp/stitch_home.png docs/screenshots/stitch-home-alt-quick-actions.png)",
+      "Bash(cp /tmp/home-mobile-new.png docs/screenshots/home-refined-mobile.png)",
+      "Bash(cp /tmp/home-desktop-new.png docs/screenshots/home-refined-desktop.png)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(find src *)",
+      "Bash(cat src/vite-env.d.ts)",
+      "Bash(node -e \"console.log\\(require\\('zustand/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(typeof require\\('zustand'\\).create\\)\")"
+    ]
+  }
+}

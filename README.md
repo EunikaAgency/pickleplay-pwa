@@ -10,8 +10,8 @@ PickleBallers is a mobile-first pickleball product workspace. It includes a Reac
 - `mockup/` contains the production-style static multi-page HTML mockup.
 - `docs/` contains the PickleBallers product, navigation, data, design, and UX documentation.
 - `pickleheads/`, `PlayByPoint/`, `Playtomic/`, and `ReClub/` contain source screenshots and reverse-engineered app research docs.
-- `COMPARATIVE-ANALYSIS.md` summarizes competitive product insights.
-- `README-APPS.md` indexes the app research documentation sets.
+- `docs/COMPARATIVE-ANALYSIS.md` summarizes competitive product insights.
+- `docs/README-APPS.md` indexes the app research documentation sets.
 
 ## Run The React PWA
 
@@ -67,7 +67,7 @@ Mockup design doc:
 
 Research documentation:
 
-- [Multi-App Documentation Index](README-APPS.md)
+- [Multi-App Documentation Index](docs/README-APPS.md)
 - [Pickleheads Docs](pickleheads/README-DOCS.md)
 - [PlayByPoint Docs](PlayByPoint/md/README-DOCS.md)
 - [Playtomic Docs](Playtomic/md/README-DOCS.md)
