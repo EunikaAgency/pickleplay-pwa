@@ -7,6 +7,8 @@ import { GameRow } from '../../shared/components/ui/GameRow';
 import { CourtIllustration } from '../../shared/components/ui/CourtIllustration';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import type { Navigate } from '../../shared/lib/navigation';
+import { firstNameOf } from '../../shared/lib/permissions';
+import { useAuthStore } from '../../shared/lib/authStore';
 
 interface HomeScreenProps {
   onNavigate: Navigate;
@@ -71,12 +73,14 @@ const CALENDAR = (() => {
 })();
 
 export function HomeScreen({ onNavigate }: HomeScreenProps) {
+  const currentUser = useAuthStore((s) => s.user);
+  const firstName = firstNameOf(currentUser);
   return (
     <div className="scroll safe-top safe-bottom">
       {/* Header */}
       <div className="app-header">
         <div>
-          <div className="greet-name">Hey Riley 👋</div>
+          <div className="greet-name">{firstName ? `Hey ${firstName} 👋` : 'Hey there 👋'}</div>
           <div className="greet-sub">12 open games near you tonight</div>
         </div>
         <div className="flex gap-2 items-center">
@@ -89,7 +93,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--coral)] border-2 border-[var(--surface)]" />
           </button>
           <button onClick={() => onNavigate('profile')} aria-label="Open profile" className="relative">
-            <Avatar name="Riley Pickler" size={40} />
+            <Avatar src={currentUser?.avatarUrl} name={currentUser?.displayName ?? 'Guest'} size={40} />
           </button>
         </div>
       </div>

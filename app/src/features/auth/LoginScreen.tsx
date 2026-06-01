@@ -3,6 +3,8 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { FormField } from '../../shared/components/forms/FormField';
 import { useForm } from '../../shared/hooks/useForm';
+import { ApiError } from '../../shared/lib/api';
+import { useAuthStore } from '../../shared/lib/authStore';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -10,11 +12,13 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
+  const login = useAuthStore((s) => s.login);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const form = useForm({
-    initial: { email: 'alex@example.com', password: 'password123' },
+    initial: { email: '', password: '' },
     validators: {
       email: (v) =>
         !v ? 'Email is required.' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v as string) ? 'Enter a valid email.' : undefined,
@@ -22,14 +26,24 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
     },
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.isValid) return;
+    if (!form.isValid || loading) return;
+    setSubmitError(null);
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await login(form.values.email.trim(), form.values.password);
       onLoginSuccess();
-    }, 600);
+    } catch (err) {
+      setSubmitError(
+        err instanceof ApiError && err.status === 401
+          ? 'Incorrect email or password.'
+          : err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+      );
+      setLoading(false);
+    }
   };
 
   return (
@@ -104,6 +118,18 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
               Forgot password?
             </a>
           </div>
+
+          {submitError && (
+            <div
+              role="alert"
+              className="mx-5 mt-4 flex items-center gap-2 rounded-xl bg-[var(--coral-soft)] px-3 py-2.5 text-[13px] font-semibold text-[var(--coral)]"
+            >
+              <span className="flex-none w-5 h-5 rounded-full bg-[var(--coral)] text-white font-heading text-[13px] leading-none flex items-center justify-center">
+                !
+              </span>
+              {submitError}
+            </div>
+          )}
 
           <div className="px-5 mt-4">
             <Button type="submit" fullWidth disabled={loading || !form.isValid}>

@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
+import { getInitials } from '../../shared/lib/initials';
 import { DuprExplainerSheet } from '../../shared/components/ui/DuprExplainerSheet';
 import type { Navigate } from '../../shared/lib/navigation';
+import { tierForDupr } from '../../shared/lib/skillTiers';
+import { useAuthStore } from '../../shared/lib/authStore';
 
 interface ProfileScreenProps {
   onNavigate: Navigate;
@@ -16,7 +19,15 @@ const ACHIEVEMENTS = [
 ] as const;
 
 export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
+  const currentUser = useAuthStore((s) => s.user);
   const [duprOpen, setDuprOpen] = useState(false);
+
+  const name = currentUser?.displayName ?? 'Your profile';
+  const initials = getInitials(currentUser?.displayName) || '··';
+  const tier = currentUser?.skillLevel != null ? tierForDupr(currentUser.skillLevel) : null;
+  const tierLine = tier
+    ? `${tier.name.toUpperCase()} · ${tier.dupr}`
+    : (currentUser?.skillLevelLabel?.toUpperCase() ?? 'UNRATED PLAYER');
 
   const pct = 66;
   const r = 36;
@@ -37,22 +48,28 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
       </div>
 
       <div className="profile-hero">
-        <div className="avatar-xl w-[112px]! h-[112px]!">
-          <div className="text-[42px]">RP</div>
+        <div className="avatar-xl w-[112px]! h-[112px]! overflow-hidden">
+          {currentUser?.avatarUrl ? (
+            <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="text-[42px]">{initials}</div>
+          )}
           <button
             type="button"
             onClick={() => setDuprOpen(true)}
             className="dupr-pill -bottom-2.5! right-auto! left-1/2! -translate-x-1/2"
             aria-label="What is DUPR?"
           >
-            <Icon name="bolt" size={11} /> 3.5 DUPR
+            <Icon name="bolt" size={11} /> {currentUser?.skillLevel != null ? `${currentUser.skillLevel} DUPR` : 'DUPR'}
           </button>
         </div>
-        <h2 className="mt-[22px]">Riley Pickler</h2>
-        <div className="tier">SOLID PLAYER · 3.0–3.5 RANGE</div>
-        <div className="mt-2.5 text-[13px] text-[var(--muted)] italic">
-          "The dink master 🥒"
-        </div>
+        <h2 className="mt-[22px]">{name}</h2>
+        <div className="tier">{tierLine}</div>
+        {currentUser?.bio && (
+          <div className="mt-2.5 text-[13px] text-[var(--muted)] italic">
+            "{currentUser.bio}"
+          </div>
+        )}
       </div>
 
       {/* Win-rate ring + stats — wrapped so we can lay it side-by-side

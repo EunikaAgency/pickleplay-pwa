@@ -73,7 +73,7 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
             type="text"
             value={link}
             readOnly
-            className="flex-1 h-11 px-3.5 rounded-[14px] bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] text-[var(--ink)] text-[13px] outline-none"
+            className="flex-1 h-11 px-3.5 rounded-[14px] bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] text-[var(--ink)] text-[16px] outline-none"
           />
           <button
             onClick={copy}

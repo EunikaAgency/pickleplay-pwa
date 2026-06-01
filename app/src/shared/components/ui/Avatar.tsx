@@ -1,14 +1,5 @@
 import type { CSSProperties } from 'react';
-
-function getInitials(name?: string): string {
-  if (!name) return '';
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { getInitials } from '../../lib/initials';
 
 type AvatarVariant = 'blue' | 'lime' | 'coral';
 

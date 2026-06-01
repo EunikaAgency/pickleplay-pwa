@@ -6,21 +6,27 @@ import { useForm } from '../../shared/hooks/useForm';
 import { tierForDupr, type SkillTier } from '../../shared/lib/skillTiers';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { Button } from '../../shared/components/ui/Button';
+import { getInitials } from '../../shared/lib/initials';
+import { useAuthStore } from '../../shared/lib/authStore';
 
 interface EditProfileScreenProps {
   onBack: () => void;
 }
 
 export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
+  const currentUser = useAuthStore((s) => s.user);
   const [saved, setSaved] = useState(false);
+
+  const nameParts = (currentUser?.displayName ?? '').trim().split(/\s+/).filter(Boolean);
+  const initialTier = currentUser?.skillLevel != null ? tierForDupr(currentUser.skillLevel).id : 'solid';
 
   const form = useForm({
     initial: {
-      firstName: 'Riley',
-      lastName: 'Pickler',
-      bio: 'The dink master.',
-      location: 'Austin, TX',
-      tier: tierForDupr(3.5).id as SkillTier['id'],
+      firstName: currentUser?.firstName?.trim() || nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' '),
+      bio: currentUser?.bio ?? '',
+      location: '',
+      tier: initialTier as SkillTier['id'],
     },
     validators: {
       firstName: (v) => (!v || !(v as string).trim() ? 'First name is required.' : undefined),
@@ -40,8 +46,12 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       <ScreenHeader onBack={onBack} eyebrow="Profile" title="Edit your profile" />
 
       <div className="flex flex-col items-center mb-[18px]">
-        <div className="avatar-xl w-24 h-24">
-          <div>RP</div>
+        <div className="avatar-xl w-24 h-24 overflow-hidden">
+          {currentUser?.avatarUrl ? (
+            <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div>{getInitials(currentUser?.displayName) || '··'}</div>
+          )}
           <button
             type="button"
             aria-label="Change photo"

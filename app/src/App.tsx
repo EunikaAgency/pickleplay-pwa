@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
-import { HomeScreen } from './features/home/HomeScreen';
+import { HomeScreenSwitch } from './features/home/HomeScreenSwitch';
 import { NearbyScreen } from './features/venues/NearbyScreen';
 import { GamesScreen } from './features/games/GamesScreen';
 import { ClubsScreen } from './features/clubs/ClubsScreen';
@@ -21,9 +21,11 @@ import { TabBar } from './shared/components/layout/TabBar';
 import { Sidebar } from './shared/components/layout/Sidebar';
 import { InstallPrompt } from './shared/components/ui/InstallPrompt';
 import { OfflineBanner } from './shared/components/ui/OfflineBanner';
+import { AuthPromptSheet } from './shared/components/ui/AuthPromptSheet';
 import { DemoStateControl } from './shared/components/ui/DemoStateControl';
 import { DemoStateProvider, useDemoState } from './shared/lib/demoState';
-import { createAppUser, userHasPermission, type AppUser, type Permission } from './shared/lib/permissions';
+import { userHasPermission, type Permission } from './shared/lib/permissions';
+import { useAuthStore } from './shared/lib/authStore';
 import { useTheme } from './shared/hooks/useTheme';
 import { tabScreens, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
 
@@ -34,6 +36,17 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   settings: 'player.profile.manage',
   notifications: 'user.notifications.manage',
   'invite-players': 'player.games.create',
+};
+
+// Human-readable verb phrases for the guest auth prompt ("You'll need an
+// account to <intent>"). Used when a guest hits a permission-gated screen.
+const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
+  'create-game': 'create a game',
+  'create-club': 'start a club',
+  'invite-players': 'invite players',
+  'edit-profile': 'manage your profile',
+  settings: 'manage your settings',
+  notifications: 'see your notifications',
 };
 
 function isTabScreen(id: ScreenId): id is TabId {
@@ -51,16 +64,36 @@ export default function App() {
 function AppInner() {
   const { state: demoState } = useDemoState();
   useTheme();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const currentUser = useAuthStore((s) => s.user);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const restoreSession = useAuthStore((s) => s.restore);
+  const logout = useAuthStore((s) => s.logout);
   const [needsOnboarding, setNeedsOnboarding] = useState(true);
-  const [screen, setScreen] = useState<Screen>({ id: 'landing' });
+  // Cold start drops guests straight onto the home tab so they can browse.
+  const [screen, setScreen] = useState<Screen>({ id: 'home' });
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [history, setHistory] = useState<Screen[]>([]);
+  // When set, the soft auth-gate sheet is shown; the string is the verb phrase
+  // describing the action the guest tried to take ("join this game", …).
+  const [authIntent, setAuthIntent] = useState<string | null>(null);
+
+  // Soft auth gate: returns true if the action may proceed, otherwise opens the
+  // "create an account" sheet and returns false. Guests can browse freely — we
+  // only gate the commit actions (join / create / find a match).
+  const requireAuth = (intent: string): boolean => {
+    if (isLoggedIn) return true;
+    setAuthIntent(intent);
+    return false;
+  };
 
   const navigate = ((id: ScreenId, params?: { id: string }) => {
     const requiredPermission = SCREEN_PERMISSIONS[id];
-    if (requiredPermission && !userHasPermission(currentUser, requiredPermission)) return;
+    if (requiredPermission && !userHasPermission(currentUser, requiredPermission)) {
+      // A guest hit a gated screen — prompt them to sign up instead of silently
+      // dropping the tap. Logged-in users lacking the permission still no-op.
+      if (!isLoggedIn) setAuthIntent(SCREEN_AUTH_INTENT[id] ?? 'do that');
+      return;
+    }
 
     setHistory((prev) => [...prev, screen]);
     if (isTabScreen(id)) {
@@ -81,14 +114,28 @@ function AppInner() {
   };
 
   const handleTabPress = (tab: TabId) => {
+    // The "You" tab is personal — guests get prompted to sign up instead.
+    if (tab === 'profile' && !requireAuth('view your profile')) return;
     setHistory((prev) => [...prev, screen]);
     setActiveTab(tab);
     setScreen({ id: tab });
   };
 
+  // Restore a session on cold start: the store validates any stored token
+  // against /me and rehydrates the user. A returning user skips onboarding; a
+  // stale/invalid token just falls back to guest browsing (tokens cleared).
+  useEffect(() => {
+    let cancelled = false;
+    restoreSession().then((restored) => {
+      if (!cancelled && restored) setNeedsOnboarding(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [restoreSession]);
+
+  // Called by LoginScreen after the store's `login` action has set the user.
   const handleLoginSuccess = () => {
-    setCurrentUser(createAppUser('player'));
-    setIsLoggedIn(true);
     if (needsOnboarding) {
       setScreen({ id: 'onboarding' });
     } else {
@@ -106,41 +153,55 @@ function AppInner() {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
-    setIsLoggedIn(false);
-    setScreen({ id: 'landing' });
+    // Store clears the user + tokens (best-effort server logout).
+    logout();
+    // Logout returns to guest browsing on the home tab, not the landing page.
+    setScreen({ id: 'home' });
+    setActiveTab('home');
     setHistory([]);
   };
 
-  const goToLogin = () => setScreen({ id: 'login' });
-  const goToLanding = () => setScreen({ id: 'landing' });
+  // Enter the sign-in / sign-up flow from a guest screen, remembering where we
+  // were so the back arrow returns to browsing. Also dismisses the auth sheet.
+  const goToLogin = () => {
+    setHistory((prev) => [...prev, screen]);
+    setScreen({ id: 'login' });
+    setAuthIntent(null);
+  };
 
   const canCreateGame = userHasPermission(currentUser, 'player.games.create');
   const handleCreate = () => {
+    if (!requireAuth('create a game')) return;
     if (canCreateGame) navigate('create-game');
   };
+  // Guests see an enabled create button (it opens the auth prompt); logged-in
+  // users see it enabled only when their role can actually create games.
+  const canShowCreate = !isLoggedIn || canCreateGame;
 
-  // `hideChrome` matters for screens reachable while logged in — i.e. `onboarding`, which runs after login success.
+  // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
   const hideChrome = ['landing', 'onboarding', 'login'].includes(screen.id);
-  const showTabBar = isLoggedIn && isTabScreen(screen.id);
-  const showSidebar = isLoggedIn && !hideChrome;
+  // Guests get the full chrome while browsing — that's how they roam the app.
+  const showTabBar = !hideChrome && isTabScreen(screen.id);
+  const showSidebar = !hideChrome;
   const frame = screen.id === 'landing' ? 'wide' : 'standard';
 
   const renderScreen = () => {
-    if (!isLoggedIn) {
-      if (screen.id === 'login') {
-        return <LoginScreen onLoginSuccess={handleLoginSuccess} onBack={goToLanding} />;
-      }
+    // Auth + onboarding surfaces render full-bleed regardless of login state.
+    if (screen.id === 'login') {
+      return <LoginScreen onLoginSuccess={handleLoginSuccess} onBack={goBack} />;
+    }
+    if (screen.id === 'landing') {
       return <LandingScreen onGetStarted={goToLogin} onSignIn={goToLogin} />;
     }
-
     if (screen.id === 'onboarding') {
       return <OnboardingScreen onComplete={handleOnboardingComplete} />;
     }
 
+    // Everything below is browsable as a guest; commit actions inside each
+    // screen call back through `navigate`/`requireAuth` to trigger the gate.
     switch (screen.id) {
       case 'home':
-        return <HomeScreen onNavigate={navigate} />;
+        return <HomeScreenSwitch onNavigate={navigate} />;
       case 'nearby':
         return <NearbyScreen onNavigate={navigate} />;
       case 'games':
@@ -150,9 +211,9 @@ function AppInner() {
       case 'profile':
         return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
-        return <GameDetailsScreen onNavigate={navigate} onBack={goBack} />;
+        return <GameDetailsScreen onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'court-details':
-        return <CourtDetailsScreen onNavigate={navigate} onBack={goBack} />;
+        return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
         return <ClubDetailsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
@@ -170,7 +231,7 @@ function AppInner() {
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
       default:
-        return <HomeScreen onNavigate={navigate} />;
+        return <HomeScreenSwitch onNavigate={navigate} />;
     }
   };
 
@@ -182,16 +243,24 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canCreateGame} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canCreateGame} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} />
       )}
 
-      {isLoggedIn && !hideChrome && <InstallPrompt hasBottomChrome={showTabBar} />}
+      {!hideChrome && <InstallPrompt hasBottomChrome={showTabBar} />}
+
+      <AuthPromptSheet
+        open={authIntent !== null}
+        intent={authIntent ?? ''}
+        onClose={() => setAuthIntent(null)}
+        onContinue={goToLogin}
+      />
+
       <DemoStateControl />
     </div>
   );

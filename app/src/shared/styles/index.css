@@ -158,7 +158,8 @@
   }
   button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; padding: 0; }
   img { display: block; max-width: 100%; }
-  input, textarea, select { font: inherit; }
+  /* font-size must be >= 16px or iOS Safari auto-zooms the page on focus. */
+  input, textarea, select { font: inherit; font-size: 16px; }
   #root { display: flex; flex-direction: column; }
 }
 
@@ -267,7 +268,7 @@
   outline: none;
   background: transparent;
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: 16px; /* >= 16px avoids iOS focus auto-zoom */
   color: var(--ink);
 }
 .searchbar input::placeholder { color: var(--muted); }
@@ -1023,7 +1024,7 @@
 
 /* Settings list */
 .set-list {
-  margin: 0 16px;
+  margin: 0;
   background: var(--surface);
   border-radius: 18px;
   overflow: hidden;
@@ -1107,7 +1108,7 @@
   border-radius: 14px;
   border: 0.5px solid var(--hairline);
   padding: 14px 16px;
-  font-size: 15px;
+  font-size: 16px; /* >= 16px avoids iOS focus auto-zoom */
   width: 100%;
   outline: none;
   font-family: inherit;
@@ -1621,3 +1622,39 @@
 .scroll img,
 .scroll video,
 .scroll svg { max-width: 100%; }
+
+/* ============================================================
+   Refined Home layout (HomeScreenRefined) — the "new homepage".
+   It is built from Tailwind utilities + CSS variables inline in the
+   component. To match the supplied design system (Pickleball Social) we
+   re-point those variables — font + palette — ONLY inside `.home-refined`,
+   so the classic HomeScreen and the rest of the app keep the PickleBallers
+   brand tokens. The switch pill and app chrome live outside `.home-refined`
+   and are unaffected.
+   ============================================================ */
+.home-refined {
+  /* Plus Jakarta Sans for both heading and body (the design uses one family,
+     varying weight). Cascades into `.hd-2`/`.hd-3`/`font-heading` because they
+     resolve `var(--font-heading)` from this inherited scope. */
+  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: var(--font-body);
+
+  /* Exact design palette (overrides the brand tokens within this screen). */
+  --primary: #003cce;       /* primary — text, links, blue Join */
+  --primary-deep: #0036bb;  /* on-primary-fixed-variant — badge text */
+  --primary-soft: #dde1ff;  /* primary-fixed — skill badge bg */
+  --lime: #baf603;          /* secondary-fixed — pickle green */
+  --lime-ink: #151f00;      /* on-secondary-fixed */
+  --lime-soft: #e9ff8a;     /* soft green surface */
+  --coral: #ff5b4a;         /* urgency */
+  --ink: #191b24;           /* on-surface — text */
+  --ink-2: #434656;         /* on-surface-variant */
+  --muted: #737b8c;         /* muted-gray — metadata */
+  --hairline: #e8ebf2;      /* light-gray — borders/dividers */
+  --surface: #ffffff;       /* card-white */
+  --surface-3: #e8ebf2;     /* light chip bg */
+}
+/* The design uses heavier heading weights than Fredoka's 600. */
+.home-refined .hd-2 { font-weight: 800; }
+.home-refined .hd-3 { font-weight: 700; }

@@ -55,9 +55,22 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 export interface AppUser {
   id: string;
   displayName: string;
+  /** Optional profile display fields, populated from the API user payload. */
+  firstName?: string;
+  avatarUrl?: string;
+  skillLevel?: number;
+  skillLevelLabel?: string;
+  bio?: string;
   roleDefault: Role;
   roles: Role[];
   permissions: Permission[];
+}
+
+/** First name for greetings; falls back to the first word of displayName. */
+export function firstNameOf(user: AppUser | null | undefined): string | null {
+  if (!user) return null;
+  const first = user.firstName?.trim() || user.displayName?.trim().split(/\s+/)[0];
+  return first || null;
 }
 
 export function normalizeRole(role?: string | null): Role {
@@ -72,17 +85,6 @@ export function resolveRolePermissions(roles: Array<Role | string | null | undef
     }
   }
   return [...permissions];
-}
-
-export function createAppUser(role: Role = 'player'): AppUser {
-  const roles = [role];
-  return {
-    id: 'demo-user',
-    displayName: 'Riley Pickler',
-    roleDefault: role,
-    roles,
-    permissions: resolveRolePermissions(roles),
-  };
 }
 
 export function userHasPermission(user: AppUser | null | undefined, permission: Permission): boolean {

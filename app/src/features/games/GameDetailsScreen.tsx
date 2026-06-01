@@ -12,6 +12,8 @@ import type { Navigate } from '../../shared/lib/navigation';
 interface GameDetailsScreenProps {
   onNavigate: Navigate;
   onBack: () => void;
+  /** Soft auth gate — returns false (and prompts sign-up) for guests. */
+  onRequireAuth?: (intent: string) => boolean;
 }
 
 const PLAYERS = [
@@ -25,13 +27,15 @@ const PLAYERS = [
   { name: 'You',        v: 'lime' as const, you: true },
 ];
 
-export function GameDetailsScreen({ onNavigate, onBack }: GameDetailsScreenProps) {
+export function GameDetailsScreen({ onNavigate, onBack, onRequireAuth }: GameDetailsScreenProps) {
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
   const [duprOpen, setDuprOpen] = useState(false);
 
   const handleJoin = () => {
     if (joined || joining) return;
+    // Browsing the game is free; committing to it requires an account.
+    if (onRequireAuth && !onRequireAuth('join this game')) return;
     setJoining(true);
     setTimeout(() => {
       setJoining(false);

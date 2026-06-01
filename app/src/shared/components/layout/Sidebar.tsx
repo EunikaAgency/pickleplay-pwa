@@ -1,6 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { Avatar } from '../ui/Avatar';
 import type { TabId } from '../../lib/navigation';
+import { useAuthStore } from '../../lib/authStore';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -25,6 +26,13 @@ const tabs: SideTab[] = [
 ];
 
 export function Sidebar({ activeTab, onTabPress, onCreate, canCreate }: SidebarProps) {
+  const currentUser = useAuthStore((s) => s.user);
+  const footName = currentUser?.displayName ?? 'Guest';
+  const footSub = currentUser
+    ? currentUser.skillLevel != null
+      ? `DUPR ${currentUser.skillLevel}`
+      : currentUser.skillLevelLabel ?? 'Player'
+    : 'Browsing as guest';
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-brand">
@@ -60,10 +68,10 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate }: SidebarP
       <div className="sidebar-spacer" />
 
       <div className="sidebar-foot">
-        <Avatar name="Riley Pickler" size={36} />
+        <Avatar src={currentUser?.avatarUrl} name={footName} size={36} />
         <div className="meta">
-          <div className="name">Riley Pickler</div>
-          <div className="sub">DUPR 3.5 · Austin</div>
+          <div className="name">{footName}</div>
+          <div className="sub">{footSub}</div>
         </div>
       </div>
     </aside>
