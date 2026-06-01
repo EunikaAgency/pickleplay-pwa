@@ -15,12 +15,24 @@ interface HomeScreenRefinedProps {
 
 // Quick-access shortcuts (layout from the provided "new homepage" design,
 // rendered with the existing PickleBallers icons + tokens).
-const QUICK: { label: string; icon: string; lime?: boolean; go: (n: Navigate) => void }[] = [
+type QuickAction = { label: string; icon: string; lime?: boolean; go: (n: Navigate) => void };
+
+const QUICK: QuickAction[] = [
   { label: 'Join game', icon: 'paddle', lime: true, go: (n) => n('games') },
   { label: 'Book court', icon: 'calendar', go: (n) => n('nearby') },
   { label: 'Create match', icon: 'plus', go: (n) => n('create-game') },
   { label: 'Find players', icon: 'groups', go: (n) => n('search') },
 ];
+
+// Guests get a sign-up shortcut as the leading action; it drops into the
+// login / join flow. The lime highlight moves onto it so the row keeps a
+// single primary CTA (Join game falls back to a plain tile for guests).
+const GUEST_QUICK: QuickAction = {
+  label: 'Create an Account',
+  icon: 'user',
+  lime: true,
+  go: (n) => n('login'),
+};
 
 const OPEN_GAMES = [
   {
@@ -73,6 +85,11 @@ const OPEN_GREEN = '#4c6700'; // design "secondary" green for positive status
 export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
   const currentUser = useAuthStore((s) => s.user);
   const firstName = firstNameOf(currentUser);
+  // Guests see "Create an Account" up front; the rest stay, minus Join game's
+  // lime accent so the new sign-up tile is the only highlighted action.
+  const quick: QuickAction[] = currentUser
+    ? QUICK
+    : [GUEST_QUICK, ...QUICK.map((q) => ({ ...q, lime: false }))];
   return (
     <div className="scroll safe-top safe-bottom home-refined">
       {/* Header: avatar + greeting (left), bell (right) */}
@@ -127,8 +144,8 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
         </button>
 
         {/* Quick access row */}
-        <div className="flex justify-between lg:justify-start gap-3 lg:gap-5 overflow-x-auto scrollbar-none pb-1">
-          {QUICK.map((q) => (
+        <div className="flex justify-start gap-3 lg:gap-5 overflow-x-auto scrollbar-none pb-1">
+          {quick.map((q) => (
             <button
               key={q.label}
               onClick={() => q.go(onNavigate)}
@@ -143,7 +160,7 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
               >
                 <Icon name={q.icon} size={26} />
               </div>
-              <span className="text-[10px] font-extrabold tracking-[0.06em] uppercase text-[var(--ink-2)]">
+              <span className="w-16 text-center text-[10px] font-extrabold tracking-[0.06em] uppercase leading-tight text-[var(--ink-2)]">
                 {q.label}
               </span>
             </button>

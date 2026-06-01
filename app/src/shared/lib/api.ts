@@ -244,6 +244,11 @@ export interface ApiVenue {
   phone?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** Present in the list projection so owners can filter to their own venues. */
+  ownerUserId?: string | null;
+  /** Claim lifecycle: 'claimed' | 'unclaimed'. */
+  state?: string | null;
+  isVerified?: boolean | null;
 }
 
 export interface ApiCourt {
@@ -275,6 +280,8 @@ export interface ListVenuesParams {
   pageSize?: number;
   /** Opaque cursor from a previous page's `cursor`; omit for the first page. */
   cursor?: string;
+  /** Server-side filter to a single owner's venues (used by the owner console). */
+  ownerUserId?: string;
 }
 
 /** One page of venues plus the cursor for the next page (null when exhausted). */
@@ -301,4 +308,266 @@ export async function listVenues(params: ListVenuesParams = {}): Promise<VenuePa
 /** Fetch a single venue by `_id` or `slug`, with hours/courts/gallery/image. */
 export async function getVenue(idOrSlug: string): Promise<ApiVenueDetail> {
   return request<ApiVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`);
+}
+
+/* ─── Owner (venue management) ──────────────────────────────── */
+//
+// Everything below is gated server-side by `requireVenueOwner()` (owner-of-venue
+// OR admin) except the read endpoints, which are public. The same endpoints back
+// the web owner console (web/src/features/owner/api.js). All writes pass
+// `auth: true` so the Bearer token rides along.
+
+const COURTS_PREFIX = '/api/v1/courts';
+const FAQS_PREFIX = '/api/v1/faqs';
+const CLOSURES_PREFIX = '/api/v1/holiday-closures';
+const REVIEWS_PREFIX = '/api/v1/reviews';
+
+/** Read a Mongo doc id whether the API serialises it as `id` or `_id`. */
+export function entityId(doc: { id?: string | null; _id?: string | null }): string {
+  return String(doc.id ?? doc._id ?? '');
+}
+
+/**
+ * The full editable venue document. The get-by-id endpoint returns far more than
+ * the public `ApiVenueDetail` projection declares (pricing tiers, social URLs,
+ * the full amenity set, raw media paths, claim state) — the owner editors read
+ * those, so they're typed here. Everything is optional: real data is sparse.
+ */
+export interface OwnerVenueDetail extends ApiVenueDetail {
+  _id?: string;
+  ownerUserId?: string | null;
+  // contact + socials
+  phonePrimary?: string | null;
+  phoneSecondary?: string | null;
+  email?: string | null;
+  facebookUrl?: string | null;
+  instagramUrl?: string | null;
+  viberUrl?: string | null;
+  // pricing (display-only, PHP)
+  peakPrice?: number | string | null;
+  offPeakPrice?: number | string | null;
+  openPlayPrice?: number | string | null;
+  equipmentRentalPrice?: number | string | null;
+  priceNotes?: string | null;
+  // curated chip arrays
+  bestFor?: string[] | null;
+  whatPlayersLike?: string[] | null;
+  thingsToKnow?: string[] | null;
+  // amenity booleans not on the public ApiVenue projection
+  hasCourtRental?: boolean | null;
+  hasCoaching?: boolean | null;
+  // raw media paths (the resolved `image`/`gallery` URLs are what we display)
+  mainImageUrl?: string | null;
+  galleryImageUrls?: string[] | null;
+}
+
+export interface OwnerCourt extends ApiCourt {
+  _id?: string;
+  isActive?: boolean | null;
+}
+
+/** A weekly-hours row. `dayOfWeek` is 0=Sunday (the API convention). */
+export interface OwnerHourEntry {
+  dayOfWeek: number;
+  isClosed: boolean;
+  openTime?: string;
+  closeTime?: string;
+}
+
+export interface OwnerClosure {
+  id?: string;
+  _id?: string;
+  closureDate: string;
+  reason?: string | null;
+  isClosedAllDay?: boolean;
+}
+
+export interface OwnerFaq {
+  id?: string;
+  _id?: string;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+}
+
+export interface OwnerReview {
+  id?: string;
+  _id?: string;
+  rating: number;
+  text?: string | null;
+  visitDate?: string | null;
+  status?: string | null;
+}
+
+export interface OwnerReviews {
+  items: OwnerReview[];
+  rating: number | null;
+  count: number;
+}
+
+export interface ApiCity {
+  id: string;
+  name: string;
+  region: string;
+}
+
+export interface GeocodeHit {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+export interface UploadedMedia {
+  url?: string;
+  id?: string;
+  _id?: string;
+}
+
+/* --- My venues ------------------------------------------------------------ */
+
+/**
+ * The venues this owner owns. The list endpoint applies the `ownerUserId` filter
+ * server-side; we keep a defensive client-side filter (the list projection
+ * carries `ownerUserId`) in case the param is ever ignored.
+ */
+export async function listOwnerVenues(ownerUserId: string): Promise<ApiVenue[]> {
+  const page = await listVenues({ ownerUserId, pageSize: 100 });
+  return page.items.filter((v) => String(v.ownerUserId ?? '') === String(ownerUserId));
+}
+
+/** The full editable venue document (more fields than the public detail). */
+export async function getOwnerVenue(idOrSlug: string): Promise<OwnerVenueDetail> {
+  return request<OwnerVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`);
+}
+
+/** Patch listing fields. `courtCount` is server-derived — never send it. */
+export async function updateVenue(venueId: string, body: Record<string, unknown>): Promise<OwnerVenueDetail> {
+  return request<OwnerVenueDetail>(`${VENUES_PREFIX}/${venueId}`, { method: 'PATCH', body, auth: true });
+}
+
+/** Create a new owner-owned venue (live immediately, state='claimed'). */
+export async function createVenue(body: Record<string, unknown>): Promise<OwnerVenueDetail> {
+  return request<OwnerVenueDetail>(VENUES_PREFIX, { method: 'POST', body, auth: true });
+}
+
+/* --- Create-form helpers -------------------------------------------------- */
+
+export async function fetchCities(): Promise<ApiCity[]> {
+  const env = await rawRequest<Array<{ id?: string; _id?: string; name: string; region?: string }>>(
+    `/api/v1/cities${toQuery({ limit: 300 })}`,
+  );
+  return (env.data ?? []).map((c) => ({ id: entityId(c), name: c.name, region: c.region ?? '' }));
+}
+
+/** Forward-geocode a place/address to coordinates (API proxies OSM Nominatim). */
+export async function geocodePlace(query: string, country?: string): Promise<GeocodeHit | null> {
+  const q = query.trim();
+  if (!q) return null;
+  return request<GeocodeHit | null>(`/api/v1/geocode${toQuery({ q, country })}`);
+}
+
+/* --- Courts --------------------------------------------------------------- */
+
+export async function listCourts(venueId: string): Promise<OwnerCourt[]> {
+  return (await request<OwnerCourt[]>(`${VENUES_PREFIX}/${venueId}/courts`)) ?? [];
+}
+export async function createCourt(venueId: string, body: Record<string, unknown>): Promise<OwnerCourt> {
+  return request<OwnerCourt>(`${VENUES_PREFIX}/${venueId}/courts`, { method: 'POST', body, auth: true });
+}
+export async function updateCourt(courtId: string, body: Record<string, unknown>): Promise<OwnerCourt> {
+  return request<OwnerCourt>(`${COURTS_PREFIX}/${courtId}`, { method: 'PATCH', body, auth: true });
+}
+export async function deleteCourt(courtId: string): Promise<void> {
+  await request<void>(`${COURTS_PREFIX}/${courtId}`, { method: 'DELETE', auth: true });
+}
+
+/* --- Operating hours (full-replace weekly grid) --------------------------- */
+
+export async function getHours(venueId: string): Promise<OwnerHourEntry[]> {
+  return (await request<OwnerHourEntry[]>(`${VENUES_PREFIX}/${venueId}/hours`)) ?? [];
+}
+export async function putHours(venueId: string, entries: OwnerHourEntry[]): Promise<OwnerHourEntry[]> {
+  return (await request<OwnerHourEntry[]>(`${VENUES_PREFIX}/${venueId}/hours`, { method: 'PUT', body: entries, auth: true })) ?? [];
+}
+
+/* --- Holiday closures ----------------------------------------------------- */
+
+export async function getClosures(venueId: string): Promise<OwnerClosure[]> {
+  return (await request<OwnerClosure[]>(`${VENUES_PREFIX}/${venueId}/holiday-closures`)) ?? [];
+}
+export async function createClosure(
+  venueId: string,
+  body: { closureDate: string; reason?: string; isClosedAllDay?: boolean },
+): Promise<OwnerClosure> {
+  return request<OwnerClosure>(`${VENUES_PREFIX}/${venueId}/holiday-closures`, { method: 'POST', body, auth: true });
+}
+export async function deleteClosure(closureId: string): Promise<void> {
+  await request<void>(`${CLOSURES_PREFIX}/${closureId}`, { method: 'DELETE', auth: true });
+}
+
+/* --- FAQs ----------------------------------------------------------------- */
+
+export async function listFaqs(venueId: string): Promise<OwnerFaq[]> {
+  return (await request<OwnerFaq[]>(`${VENUES_PREFIX}/${venueId}/faqs`)) ?? [];
+}
+export async function createFaq(venueId: string, body: { question: string; answer: string; sortOrder?: number }): Promise<OwnerFaq> {
+  return request<OwnerFaq>(`${VENUES_PREFIX}/${venueId}/faqs`, { method: 'POST', body, auth: true });
+}
+export async function updateFaq(faqId: string, body: { question: string; answer: string }): Promise<OwnerFaq> {
+  return request<OwnerFaq>(`${FAQS_PREFIX}/${faqId}`, { method: 'PATCH', body, auth: true });
+}
+export async function deleteFaq(faqId: string): Promise<void> {
+  await request<void>(`${FAQS_PREFIX}/${faqId}`, { method: 'DELETE', auth: true });
+}
+
+/* --- Reviews + owner replies ---------------------------------------------- */
+
+export async function getReviews(venueId: string): Promise<OwnerReviews> {
+  const data = await request<{ items?: OwnerReview[]; rating?: number | null; count?: number } | OwnerReview[]>(
+    `${VENUES_PREFIX}/${venueId}/reviews`,
+  );
+  if (Array.isArray(data)) return { items: data, rating: null, count: data.length };
+  return {
+    items: data?.items ?? [],
+    rating: data?.rating ?? null,
+    count: data?.count ?? data?.items?.length ?? 0,
+  };
+}
+export async function createReviewReply(reviewId: string, text: string): Promise<unknown> {
+  return request<unknown>(`${REVIEWS_PREFIX}/${reviewId}/reply`, { method: 'POST', body: { text }, auth: true });
+}
+export async function updateReviewReply(reviewId: string, text: string): Promise<unknown> {
+  return request<unknown>(`${REVIEWS_PREFIX}/${reviewId}/reply`, { method: 'PATCH', body: { text }, auth: true });
+}
+export async function deleteReviewReply(reviewId: string): Promise<void> {
+  await request<void>(`${REVIEWS_PREFIX}/${reviewId}/reply`, { method: 'DELETE', auth: true });
+}
+
+/* --- Media upload --------------------------------------------------------- */
+
+/**
+ * Upload a venue photo. Multipart, so it bypasses the JSON `request()` wrapper
+ * and sets the Authorization header manually. Note: there's no owner endpoint to
+ * attach the upload as hero / reorder / delete yet — this only creates the Media
+ * record (same gap as the web console).
+ */
+export async function uploadVenueMedia(venueId: string, file: File): Promise<UploadedMedia | null> {
+  const fd = new FormData();
+  fd.append('file', file);
+  const token = getAccessToken();
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}/api/v1/media/upload${toQuery({ ownerType: 'venue', ownerId: venueId })}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+  } catch {
+    throw new ApiError('Network error — could not upload.', 'NETWORK', 0);
+  }
+  const json = (await res.json().catch(() => null)) as Envelope<UploadedMedia> | null;
+  if (!res.ok) {
+    throw new ApiError(json?.error?.message || `Upload failed (${res.status})`, json?.error?.code || 'ERROR', res.status);
+  }
+  return json?.data ?? null;
 }

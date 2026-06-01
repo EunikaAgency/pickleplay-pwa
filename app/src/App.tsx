@@ -17,6 +17,9 @@ import { SettingsScreen } from './features/profile/SettingsScreen';
 import { SearchScreen } from './features/search/SearchScreen';
 import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
 import { NotificationsScreen } from './features/profile/NotificationsScreen';
+import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
+import { OwnerVenueScreen } from './features/owner/OwnerVenueScreen';
+import { OwnerNewVenueScreen } from './features/owner/OwnerNewVenueScreen';
 import { TabBar } from './shared/components/layout/TabBar';
 import { Sidebar } from './shared/components/layout/Sidebar';
 import { InstallPrompt } from './shared/components/ui/InstallPrompt';
@@ -36,6 +39,9 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   settings: 'player.profile.manage',
   notifications: 'user.notifications.manage',
   'invite-players': 'player.games.create',
+  'owner-venues': 'owner.access',
+  'owner-venue': 'owner.venues.manage',
+  'owner-new-venue': 'owner.venues.create',
 };
 
 // Human-readable verb phrases for the guest auth prompt ("You'll need an
@@ -47,6 +53,9 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'edit-profile': 'manage your profile',
   settings: 'manage your settings',
   notifications: 'see your notifications',
+  'owner-venues': 'manage your venues',
+  'owner-venue': 'manage your venue',
+  'owner-new-venue': 'add a venue',
 };
 
 function isTabScreen(id: ScreenId): id is TabId {
@@ -114,8 +123,12 @@ function AppInner() {
   };
 
   const handleTabPress = (tab: TabId) => {
-    // The "You" tab is personal — guests get prompted to sign up instead.
-    if (tab === 'profile' && !requireAuth('view your profile')) return;
+    // The "You" tab is personal — for guests it reads "Login" and goes straight
+    // to the sign-in / join flow instead of opening the profile.
+    if (tab === 'profile' && !isLoggedIn) {
+      goToLogin();
+      return;
+    }
     setHistory((prev) => [...prev, screen]);
     setActiveTab(tab);
     setScreen({ id: tab });
@@ -230,6 +243,12 @@ function AppInner() {
         return <InvitePlayersScreen onNavigate={navigate} onBack={goBack} />;
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-venues':
+        return <OwnerVenuesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-venue':
+        return <OwnerVenueScreen key={screen.params.id} venueId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
+      case 'owner-new-venue':
+        return <OwnerNewVenueScreen onNavigate={navigate} onBack={goBack} />;
       default:
         return <HomeScreenSwitch onNavigate={navigate} />;
     }
@@ -243,13 +262,13 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} />
       )}
 
       {!hideChrome && <InstallPrompt hasBottomChrome={showTabBar} />}

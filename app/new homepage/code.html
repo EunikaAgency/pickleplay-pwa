@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PickleConnect - Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F5F6FA;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .court-pattern {
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.1) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#a3d800",
+                      "coral": "#FF5B4A",
+                      "background": "#fbf8ff",
+                      "on-surface-variant": "#434656",
+                      "on-primary-container": "#e1e4ff",
+                      "on-primary": "#ffffff",
+                      "surface-container-highest": "#e2e1ee",
+                      "on-surface": "#191b24",
+                      "on-error-container": "#93000a",
+                      "primary-container": "#2455f4",
+                      "card-white": "#FFFFFF",
+                      "secondary": "#4c6700",
+                      "surface": "#fbf8ff",
+                      "secondary-fixed": "#baf603",
+                      "primary-fixed": "#dde1ff",
+                      "outline-variant": "#c4c5d8",
+                      "on-tertiary": "#ffffff",
+                      "surface-container": "#ededfa",
+                      "on-secondary-fixed": "#151f00",
+                      "on-tertiary-fixed": "#191b23",
+                      "light-gray": "#E8EBF2",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "inverse-on-surface": "#f0effd",
+                      "surface-bright": "#fbf8ff",
+                      "tertiary-fixed-dim": "#c4c6d0",
+                      "surface-tint": "#134bec",
+                      "error-container": "#ffdad6",
+                      "secondary-container": "#b7f300",
+                      "on-secondary": "#ffffff",
+                      "app-bg": "#F5F6FA",
+                      "on-primary-fixed": "#001354",
+                      "on-tertiary-fixed-variant": "#44474f",
+                      "primary-fixed-dim": "#b8c4ff",
+                      "inverse-surface": "#2e303a",
+                      "inverse-primary": "#b8c4ff",
+                      "on-secondary-fixed-variant": "#384e00",
+                      "outline": "#747687",
+                      "surface-dim": "#d9d9e6",
+                      "error": "#ba1a1a",
+                      "tertiary-container": "#64666f",
+                      "surface-container-low": "#f3f2ff",
+                      "on-secondary-container": "#506c00",
+                      "on-tertiary-container": "#e3e5ef",
+                      "on-primary-fixed-variant": "#0036bb",
+                      "tertiary-fixed": "#e0e2ec",
+                      "primary": "#003cce",
+                      "on-background": "#191b24",
+                      "lavender": "#DDE2FF",
+                      "lime-soft": "#E9FF8A",
+                      "tertiary": "#4c4e57",
+                      "surface-variant": "#e2e1ee",
+                      "surface-container-high": "#e7e7f4",
+                      "muted-gray": "#737B8C"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "md": "12px",
+                      "xs": "4px",
+                      "xl": "24px",
+                      "lg": "20px",
+                      "sm": "8px",
+                      "base": "16px",
+                      "xxl": "32px"
+              },
+              "fontFamily": {
+                      "h2": ["Plus Jakarta Sans"],
+                      "body": ["Plus Jakarta Sans"],
+                      "metadata": ["Plus Jakarta Sans"],
+                      "h3": ["Plus Jakarta Sans"],
+                      "h1": ["Plus Jakarta Sans"],
+                      "display": ["Plus Jakarta Sans"],
+                      "label-caps": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "h2": ["20px", {"lineHeight": "28px", "fontWeight": "800"}],
+                      "body": ["15px", {"lineHeight": "22px", "fontWeight": "500"}],
+                      "metadata": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                      "h3": ["17px", {"lineHeight": "24px", "fontWeight": "700"}],
+                      "h1": ["24px", {"lineHeight": "32px", "fontWeight": "800"}],
+                      "display": ["30px", {"lineHeight": "38px", "fontWeight": "800"}],
+                      "label-caps": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "800"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-app-bg pb-32">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-on-surface w-full top-0 sticky flex justify-between items-center px-base h-20 w-full z-40">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold ring-2 ring-primary-fixed-dim active:scale-95 transition-transform duration-200">
+                RP
+            </div>
+<div>
+<h1 class="font-h1 text-[20px] text-primary dark:text-primary-fixed-dim leading-tight">Hey Riley 👋</h1>
+<p class="font-metadata text-metadata text-muted-gray">Find a game in seconds</p>
+</div>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm hover:opacity-80 transition-opacity active:scale-95">
+<span class="material-symbols-outlined text-on-surface">notifications</span>
+</button>
+</header>
+<main class="px-base space-y-xl mt-4">
+<!-- Hero Section -->
+<section class="relative bg-gradient-to-br from-[#2455f4] to-[#5F7CFF] rounded-[28px] p-base overflow-hidden min-h-[220px] flex flex-col justify-between shadow-[0_8px_24px_rgba(36,85,244,0.25)]">
+<div class="court-pattern absolute inset-0 pointer-events-none opacity-20"></div>
+<div class="relative z-10">
+<h2 class="font-h1 text-white text-[26px]">Ready to play?</h2>
+<p class="font-body text-white/90 text-sm mt-1 max-w-[200px]">Open courts and games near you</p>
+</div>
+<div class="flex gap-sm relative z-10 mt-6">
+<button class="bg-secondary-fixed h-12 px-6 rounded-full text-on-secondary-fixed font-extrabold flex items-center shadow-[0_8px_18px_rgba(185,245,0,0.35)] active:scale-95 transition-all">
+                    Find a Game
+                </button>
+<button class="bg-white/20 backdrop-blur-md border border-white/30 h-12 px-6 rounded-full text-white font-extrabold flex items-center active:scale-95 transition-all">
+                    Book Court
+                </button>
+</div>
+<!-- Decorative Illustration -->
+<div class="absolute -right-4 top-1/2 -translate-y-1/2 w-40 h-40 opacity-40 pointer-events-none">
+<div class="border-4 border-white/30 rounded-lg w-full h-full transform -rotate-12 flex items-center justify-center">
+<div class="w-full h-0.5 bg-white/30"></div>
+</div>
+</div>
+</section>
+<!-- Quick Access Row -->
+<section class="flex justify-between gap-md overflow-x-auto pb-2 scrollbar-hide">
+<button class="flex-shrink-0 flex flex-col items-center gap-2 group">
+<div class="w-16 h-16 rounded-2xl bg-secondary-container flex items-center justify-center shadow-sm group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-on-secondary-container text-3xl" style="font-variation-settings: 'FILL' 1;">sports_tennis</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">JOIN GAME</span>
+</button>
+<button class="flex-shrink-0 flex flex-col items-center gap-2 group">
+<div class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-sm group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">calendar_today</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">BOOK COURT</span>
+</button>
+<button class="flex-shrink-0 flex flex-col items-center gap-2 group">
+<div class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-sm group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">add_box</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">CREATE MATCH</span>
+</button>
+<button class="flex-shrink-0 flex flex-col items-center gap-2 group">
+<div class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-sm group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary text-3xl">group</span>
+</div>
+<span class="font-label-caps text-label-caps text-on-surface">FIND PLAYERS</span>
+</button>
+</section>
+<!-- Nearby Games Section -->
+<section class="space-y-md">
+<div class="flex justify-between items-center">
+<h3 class="font-h2 text-h2 text-on-surface">Open games near you</h3>
+<a class="font-metadata text-primary font-bold" href="#">View all</a>
+</div>
+<!-- Game Card 1 -->
+<div class="bg-card-white rounded-[24px] p-base shadow-[0_6px_18px_rgba(16,19,26,0.06)] flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<span class="inline-block px-3 py-1 rounded-full bg-secondary-container/30 text-on-secondary-container font-label-caps text-[10px]">BEGINNER</span>
+<h4 class="font-h3 text-on-surface">Beginner Open Play</h4>
+</div>
+<div class="text-right">
+<span class="font-h3 text-primary block">7:00 PM</span>
+<span class="font-metadata text-muted-gray">Central Hub</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-light-gray/50">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-muted-gray">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="text-metadata">0.8 mi</span>
+</div>
+<div class="flex items-center gap-1 text-secondary font-bold">
+<span class="material-symbols-outlined text-sm">person</span>
+<span class="text-metadata">4 spots open</span>
+</div>
+</div>
+<button class="bg-secondary-fixed text-on-secondary-fixed font-extrabold px-6 py-2 rounded-full text-sm shadow-[0_4px_12px_rgba(185,245,0,0.2)] active:scale-95 transition-transform">
+                        Join
+                    </button>
+</div>
+</div>
+<!-- Game Card 2 -->
+<div class="bg-card-white rounded-[24px] p-base shadow-[0_6px_18px_rgba(16,19,26,0.06)] flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<span class="inline-block px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-label-caps text-[10px]">3.0 - 3.5</span>
+<h4 class="font-h3 text-on-surface">Friday Night Dinks</h4>
+</div>
+<div class="text-right">
+<span class="font-h3 text-primary block">6:30 PM</span>
+<span class="font-metadata text-muted-gray">Riverside Courts</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-2 border-t border-light-gray/50">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-muted-gray">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="text-metadata">1.2 mi</span>
+</div>
+<div class="flex items-center gap-1 text-coral font-bold">
+<span class="material-symbols-outlined text-sm">person</span>
+<span class="text-metadata">2 spots open</span>
+</div>
+</div>
+<button class="bg-primary text-white font-extrabold px-6 py-2 rounded-full text-sm active:scale-95 transition-transform">
+                        Join
+                    </button>
+</div>
+</div>
+</section>
+<!-- Social Activity Card -->
+<section>
+<div class="bg-secondary-container/20 rounded-2xl p-base flex items-center gap-base">
+<div class="relative">
+<div class="flex -space-x-2">
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="Close up portrait of a friendly young man with short brown hair and a bright smile against a soft neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCd-sx8hPwjHDsuW40jrdClKsCqTQA7G8kowDh5uI6qwL87sAJKsxXNiArzDliI6BbTGT7rOsTQD5gAXAaYDmQik3jzBORsBaWNNjyHs5QjPyocBegRkCJrzVK3Ln9BnxWuMRkaZuPvW4BHl9GP77L-eDjJPgn6CXGxqA_JxUIJkqMK62CPPWgOb6mkO5sTuTFxpyOpvhGeF22nnbT9_3h6Tz__KdsxY9XSXp8HRKqZIlm3aLS57g8Y-ICJUCd0AEMv8ib_FIoODymM"/>
+<img class="w-8 h-8 rounded-full border-2 border-white" data-alt="Portrait of a woman with a joyful expression and long dark hair in a bright, modern studio setting with clean lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAOUBypWX8jLo0yScSsHxxStzHJkY58MuumCy_AfGe66cwl_--W3YLf9pmvG9YDoH8GSWS_UohU_6Np6djQh3IZ_f1beZQZ66hUm_Dhax7ZMhixCdlq0wyR7ASQf364m8WsSpu2lc8b0bVfffu1WIZLo2RVLN27VYvgYMOzRzlAvCbZk8plDv3RxNrQGL28V531_PWajRzYWdPPOxP3NtkWjkGTCc5dYFXK2Mpqeun9zFdb_PGdS50ZjVCp0z1H3QVgSdM-SepuluOZ"/>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-light-gray flex items-center justify-center text-[10px] font-bold">+3</div>
+</div>
+<div class="absolute -bottom-1 -right-1 w-3 h-3 bg-secondary-fixed-dim rounded-full border-2 border-white animate-pulse"></div>
+</div>
+<p class="font-body text-sm text-on-surface leading-tight">
+<span class="font-bold">5 players</span> checked in at Riverside Courts
+                </p>
+</div>
+</section>
+<!-- Court Availability Section -->
+<section class="space-y-md">
+<h3 class="font-h2 text-h2 text-on-surface">Courts available now</h3>
+<div class="space-y-sm">
+<!-- Court Card 1 -->
+<div class="bg-card-white rounded-xl p-md shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A professional outdoor pickleball court featuring bright blue surfacing and pristine white lines under clear sunny skies." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDv4z-TnTGLDkbQP6NDKu3PZOOE_biaeI-zzXnYcvmIxeA3XPHqfYFHS_f5vAwYcua2RaFERD81yh7_JcROZUm43CzPTi2bEhtTtIj4IO4KhyuaXo3uUDRTUwpAIBWIHo_JsYIGrnS5DbpcN24AZHy00RXpom5LXDwB9DM7Wbmj-r7K5xPQ93-RSZakQh6fbkCotutVpygapDyzvI7n3FsOEHMYMdqatoA6ifWyowZSZZcJHFKY6xrPf_Dko95wkvMcwTVStuEzGtL2"/>
+</div>
+<div>
+<h4 class="font-h3 text-on-surface text-[15px]">Riverside Courts</h4>
+<div class="flex items-center gap-2">
+<span class="font-metadata text-muted-gray">1.2 mi</span>
+<span class="w-1 h-1 rounded-full bg-outline"></span>
+<span class="font-metadata text-secondary font-bold">3 Open</span>
+</div>
+</div>
+</div>
+<button class="border border-outline-variant px-4 py-2 rounded-full font-bold text-sm text-on-surface hover:bg-light-gray">Book</button>
+</div>
+<!-- Court Card 2 -->
+<div class="bg-card-white rounded-xl p-md shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A modern indoor athletic complex with high-quality flooring and professional sports lighting designed for competitive play." src="https://lh3.googleusercontent.com/aida-public/AB6AXuADVwZzbQjQ6QuwrRkbPQKFJDhjhFYXDV5o3w8SQ29BrAXGy80KtMt7WLnd1V_NVOuNnk7q7gMgJg1YToD5VPtyeeyem6OaDv7z3F8iRGpOerrRqm9osvVEG3rj9MT-UZ2S5GMkk3Ric--9dNB1rCSVq74xgBp9WPZ9Gq1KjQH2aNP6sZ40cQvpjRLFVk_19AhHziFV5hbeVpaaH5qT4Z_OfZTrL8jyjmIKUjr28Rj7-PYEviSt3Xr4_U4WY4MyW5-vByaYr2575qJB"/>
+</div>
+<div>
+<h4 class="font-h3 text-on-surface text-[15px]">Central Hub</h4>
+<div class="flex items-center gap-2">
+<span class="font-metadata text-muted-gray">0.8 mi</span>
+<span class="w-1 h-1 rounded-full bg-outline"></span>
+<span class="font-metadata text-coral font-bold">1 Open</span>
+</div>
+</div>
+</div>
+<button class="border border-outline-variant px-4 py-2 rounded-full font-bold text-sm text-on-surface hover:bg-light-gray">Book</button>
+</div>
+</div>
+</section>
+<!-- Streak Card -->
+<section>
+<div class="bg-inverse-surface rounded-[24px] p-base flex justify-between items-center overflow-hidden relative">
+<div class="space-y-1 relative z-10">
+<span class="font-label-caps text-secondary-fixed text-[10px]">THIS WEEK</span>
+<h4 class="text-white font-h2 text-lg leading-tight">You’re on a 4-game streak 🔥</h4>
+<p class="font-metadata text-white/60">Keep it going today</p>
+</div>
+<div class="bg-secondary-fixed/10 p-3 rounded-full relative z-10">
+<span class="material-symbols-outlined text-secondary-fixed text-4xl" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+</div>
+<!-- Subtle background flourish -->
+<div class="absolute -bottom-6 -right-6 w-32 h-32 bg-secondary-fixed/5 rounded-full blur-2xl"></div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full h-[84px] z-50 flex items-center justify-around px-4 pb-4">
+<div class="bg-surface-container-lowest dark:bg-inverse-surface w-full h-full rounded-t-[28px] shadow-[0_-8px_24px_rgba(16,19,26,0.10)] flex justify-around items-center px-4">
+<button class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim font-extrabold active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="font-label-caps text-label-caps mt-1">Today</span>
+</button>
+<button class="flex flex-col items-center justify-center text-muted-gray dark:text-outline-variant active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">sports_tennis</span>
+<span class="font-label-caps text-label-caps mt-1">Games</span>
+</button>
+<!-- Prominent Center Plus Button -->
+<div class="-mt-12 flex items-center justify-center">
+<button class="w-16 h-16 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center shadow-[0_8px_18px_rgba(185,245,0,0.4)] ring-8 ring-app-bg active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined text-4xl font-bold">add</span>
+</button>
+</div>
+<button class="flex flex-col items-center justify-center text-muted-gray dark:text-outline-variant active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">map</span>
+<span class="font-label-caps text-label-caps mt-1">Courts</span>
+</button>
+<button class="flex flex-col items-center justify-center text-muted-gray dark:text-outline-variant active:scale-90 transition-transform duration-150">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-caps text-label-caps mt-1">You</span>
+</button>
+</div>
+</nav>
+<script>
+        // Simple micro-interaction for active states
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.classList.add('opacity-80');
+            });
+            btn.addEventListener('touchend', function() {
+                this.classList.remove('opacity-80');
+            });
+        });
+    </script>
+</body></html>

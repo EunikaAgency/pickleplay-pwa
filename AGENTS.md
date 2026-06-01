@@ -10,9 +10,11 @@
 ## Keep the workspace root clean
 
 The repository root must stay tidy. Do **not** drop loose files there. The only
-files allowed directly in the root are `README.md`, `AGENTS.md`, and `CLAUDE.md`
-(plus tooling config and the top-level project directories like `app/`, `api/`,
-`web/`, `docs/`, `mockup/`, `scripts/`).
+files allowed directly in the root are `README.md`, `AGENTS.md`, `CLAUDE.md`,
+and `FILEMAP.md` (plus tooling config and the top-level project directories like
+`app/`, `api/`, `web/`, `docs/`, `mockup/`, `scripts/`). Each area (`app/`,
+`api/`, `web/`) likewise keeps its own `FILEMAP.md` — see "Keep the file-map
+(`FILEMAP.md`) current" below.
 
 When you create or generate a new file, put it in the right place from the start
 instead of dropping it in root:
@@ -29,6 +31,48 @@ Move tracked files with `git mv` so history is preserved.
 `.playwright-mcp/` is gitignored scratch output (console logs + page snapshots)
 and is safe to delete anytime — it regenerates when playwright-mcp runs. Don't
 commit it and don't let it accumulate in root.
+
+## Keep the file-map (`FILEMAP.md`) current
+
+Each area has a **`FILEMAP.md`** — a short index you skim before grepping or
+scanning the tree, so you (and the next agent) don't re-read the whole codebase
+every task.
+
+| Area | File-map |
+|---|---|
+| root (this monorepo) | `FILEMAP.md` |
+| `app/` (PWA) | `app/FILEMAP.md` |
+| `api/` (Hono API) | `api/FILEMAP.md` |
+| `web/` (website) | `web/FILEMAP.md` |
+
+**Read the relevant `FILEMAP.md` first.** It points you straight at the right
+folder/file. If it doesn't answer your question, that's usually a sign it's
+stale — fix it as part of your change.
+
+**You must update the area's `FILEMAP.md` in the same change whenever you:**
+
+1. **Add** a file or folder whose purpose isn't already implied by the map.
+2. **Remove** a file or folder the map names or implies.
+3. **Rename or move** a file or folder.
+4. **Change a file's or folder's primary responsibility** (e.g. a "formatters"
+   file starts owning booking logic; a feature slice gains a sub-resource).
+
+Update only what your change touched — the directory tree's `# purpose`
+comments, the key-modules list, and the "Where to look first, by task" table.
+Keep edits minimal and truthful. Maps are **per folder/feature**, not per file.
+
+**Do NOT touch the map for logic-only edits** that don't change what a file is
+for (a bug fix, a tweak, adding a function to a file that already owns that
+job). The map indexes *responsibilities and locations*, not line-level changes —
+keep churn low. You only ever update *your own area's* map (this keeps you in
+your lane — see "Stay in your lane" below).
+
+`api/` and `web/` are independent git repos (see "Git remotes and pushing"), so
+their `FILEMAP.md` edits commit and push to *their own* remotes, in the same
+change as the code. The root `FILEMAP.md` lives in the monorepo.
+
+Skipping the file-map update is treated like skipping a test: the work isn't
+done. A map is only useful if it's true.
 
 ## Keep the API endpoint catalogue (`/lists`) current
 
@@ -88,6 +132,32 @@ Checklist when adding a feature:
 This keeps the permission catalogue in lockstep with the product's features, so
 every new capability is governable from one place. Skipping it is treated like
 skipping a test: the work isn't done.
+
+## Stay in your lane — the two frontends are isolated
+
+There are two independent frontends and one shared backend:
+
+- `app/` (mobile-first PWA) and `web/` (desktop-first website) are **separate
+  products** — separate codebases, separate git remotes.
+- `api/` (Hono + MongoDB) is the **shared backend** both consume.
+
+**When you work on `app/`, touch only `app/` and `api/`. When you work on
+`web/`, touch only `web/` and `api/`. The two frontends never edit each other's
+feature code** — an app task must not change web files, and a web task must not
+change app files. `api/` is fair game from either side because both depend on it
+(and any route change still updates `/lists`).
+
+**The only sanctioned cross-frontend edits** are the two shared registries that
+the rules above already require you to keep in lockstep:
+
+1. The **public roadmap** — `web/src/features/marketing/RoadmapPage.jsx` (only
+   `web` can render it), per the roadmap-update rule in each repo's `CLAUDE.md`.
+2. The **permission catalogue** — the three synced `permissions` copies
+   (`api/src/shared/lib/permissions.ts`, `web/src/features/auth/permissions.js`,
+   `app/src/shared/lib/permissions.ts`), per "Gate every new user-facing feature
+   with a permission" above.
+
+Nothing else crosses between the two frontends.
 
 ## Git remotes and pushing
 

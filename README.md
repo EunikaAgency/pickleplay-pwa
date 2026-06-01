@@ -4,6 +4,8 @@ PickleBallers is a mobile-first pickleball product workspace. It includes a Reac
 
 > The repository folder is still named `pickleplay/` for legacy reasons; the product brand is **PickleBallers**.
 
+> 🗺️ **New here?** Skim [FILEMAP.md](FILEMAP.md) first — it's the repo map (what lives where, plus each area's own file-map). Repo-wide agent conventions live in [AGENTS.md](AGENTS.md).
+
 ## What Is In This Repo
 
 - `app/` contains the React + TypeScript + Vite PWA prototype.

@@ -5,6 +5,7 @@ import { DuprExplainerSheet } from '../../shared/components/ui/DuprExplainerShee
 import type { Navigate } from '../../shared/lib/navigation';
 import { tierForDupr } from '../../shared/lib/skillTiers';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 
 interface ProfileScreenProps {
   onNavigate: Navigate;
@@ -21,6 +22,7 @@ const ACHIEVEMENTS = [
 export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [duprOpen, setDuprOpen] = useState(false);
+  const isOwner = userHasPermission(currentUser, 'owner.access');
 
   const name = currentUser?.displayName ?? 'Your profile';
   const initials = getInitials(currentUser?.displayName) || '··';
@@ -164,6 +166,24 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
           ))}
         </div>
       </div>
+
+      {/* Owner console entry — only for users with venue-owner access. */}
+      {isOwner && (
+        <div className="section">
+          <div className="set-list">
+            <button className="row" onClick={() => onNavigate('owner-venues')}>
+              <div className="ic" style={{ background: 'var(--primary)' }}>
+                <Icon name="storefront" size={16} />
+              </div>
+              <div className="body">
+                <div className="name">My venues</div>
+                <div className="desc">Manage listings, hours, courts & reviews</div>
+              </div>
+              <Icon name="chevron" size={16} className="chev" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Settings list */}
       <div className="section">

@@ -6,6 +6,7 @@ interface TabBarProps {
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
   canCreate: boolean;
+  isLoggedIn: boolean;
 }
 
 type Tab =
@@ -20,7 +21,7 @@ const tabs: Tab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function TabBar({ activeTab, onTabPress, onCreate, canCreate }: TabBarProps) {
+export function TabBar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn }: TabBarProps) {
   return (
     <nav className="tabbar" aria-label="Primary navigation">
       {tabs.map((t) => {
@@ -38,6 +39,8 @@ export function TabBar({ activeTab, onTabPress, onCreate, canCreate }: TabBarPro
           );
         }
         const isActive = activeTab === t.id;
+        // Guests see the "You" tab as "Login" — tapping it sends them to sign in.
+        const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
         return (
           <button
             key={t.id}
@@ -46,7 +49,7 @@ export function TabBar({ activeTab, onTabPress, onCreate, canCreate }: TabBarPro
             aria-current={isActive ? 'page' : undefined}
           >
             <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={22} />
-            {t.label && <span className="label">{t.label}</span>}
+            {label && <span className="label">{label}</span>}
           </button>
         );
       })}

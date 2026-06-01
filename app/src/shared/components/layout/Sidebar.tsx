@@ -8,6 +8,7 @@ interface SidebarProps {
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
   canCreate: boolean;
+  isLoggedIn: boolean;
 }
 
 interface SideTab {
@@ -25,7 +26,7 @@ const tabs: SideTab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
@@ -45,6 +46,8 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate }: SidebarP
       <nav className="flex flex-col gap-1">
         {tabs.map((t) => {
           const isActive = activeTab === t.id;
+          // Guests see the "You" tab as "Login" — tapping it sends them to sign in.
+          const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
           return (
             <button
               key={t.id}
@@ -55,7 +58,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate }: SidebarP
               <span className="ico">
                 <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
               </span>
-              {t.label}
+              {label}
             </button>
           );
         })}

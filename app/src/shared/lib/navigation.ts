@@ -16,7 +16,10 @@ export type Screen =
   | { id: 'settings' }
   | { id: 'search' }
   | { id: 'invite-players'; params: { id: string } }
-  | { id: 'notifications' };
+  | { id: 'notifications' }
+  | { id: 'owner-venues' }
+  | { id: 'owner-venue'; params: { id: string } }
+  | { id: 'owner-new-venue' };
 
 export type ScreenId = Screen['id'];
 

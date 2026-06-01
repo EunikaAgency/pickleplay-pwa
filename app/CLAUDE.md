@@ -20,7 +20,7 @@ The app runs at `http://localhost:9000`. API requests to `/api/*` are proxied to
 ### Stack
 - React 19 + TypeScript 6 + Vite 8
 - Tailwind CSS v4 (via `@tailwindcss/vite` plugin)
-- Zustand 5 listed as a dep but not yet used — state is local `useState` in `App.tsx` and per screen
+- Zustand 5 — used for auth/session state (`shared/lib/authStore.ts`); everything else is local `useState` in `App.tsx` and per screen
 - Leaflet / react-leaflet for map views
 - Google Material Symbols Outlined for icons (loaded as a Google Font; wrapped by `shared/components/ui/Icon`)
 - vite-plugin-pwa with Workbox (map tile runtime caching) + custom `pwaUpdate.ts` for service-worker auto-update
@@ -87,6 +87,12 @@ src/
       useTheme.ts                  # Theme application
     lib/
       types.ts                     # Court, User, Game, Club, Message interfaces
+      authStore.ts                 # Zustand auth/session store (user, login/logout/restore)
+      api.ts                       # API client: auth (+token storage, toAppUser) + venues/courts
+      venueDisplay.ts              # Venue formatters: price/location/tags/amenities/mapsUrl
+      permissions.ts               # Roles → permissions, AppUser, userHasPermission, firstNameOf
+      navigation.ts                # Screen union, ScreenId, tabScreens, Navigate
+      initials.ts                  # getInitials(name) helper
       demoState.tsx                # DemoStateProvider + useDemoState
       skillTiers.ts                # Skill-tier definitions and helpers
     styles/
@@ -109,7 +115,12 @@ src/
 7. **`npm run build` must stay clean.** Run it after structural changes to catch broken imports.
 
 ### Data types
-Defined in [`src/shared/lib/types.ts`](src/shared/lib/types.ts): `Court`, `User`, `Game`, `Club`, `Message`. These represent the domain model used across screens. No actual API client or store exists yet — data is currently inline/demo content per screen.
+Defined in [`src/shared/lib/types.ts`](src/shared/lib/types.ts): `Court`, `User`, `Game`, `Club`, `Message`. These represent the domain model used across screens. Most screen data is still inline/demo content. The wired-to-API exceptions are **auth** (see the next section) and **venues/courts** (the "Courts" tab): `NearbyScreen` and `CourtDetailsScreen` fetch from `/api/v1/venues` via `api.ts` (`listVenues`/`getVenue` → `ApiVenue`/`ApiVenueDetail`), with formatting in `venueDisplay.ts`. Real venue data is sparse (lat/lng, ratings, amenities are often null), so both screens degrade gracefully and own their loading/error/empty states (DemoBranch still overrides for reviewer modes). The list **paginates** with the API's cursor — 20 per page via a "Load more" button (`listVenues` returns `{ items, cursor }`; pass `cursor` for the next page). Venue **images** come from the API's media-derived `image` field (list + detail); only ~20 seeded venues have one, so cards fall back to a gradient. Court detail screens are mounted with `key={id}` so they remount per venue. The on-detail "Games this week" list is still demo — games aren't wired.
+
+### Auth & the current user
+- **`shared/lib/api.ts`** is the auth API client: `login`/`logout`/`fetchCurrentUser` hit `POST|GET /api/v1/auth/*`, tokens are stored in `localStorage` (`pb-access-token`/`pb-refresh-token`), and `toAppUser()` maps the API payload onto the app's `AppUser`. Base URL is relative in dev (Vite proxies `/api` → `:9002`); set `VITE_API_BASE_URL` for prod.
+- **`shared/lib/authStore.ts`** is a Zustand store holding `user` + `isLoggedIn` and the `login`/`logout`/`restore` actions. **Screens read the current user directly** via `useAuthStore((s) => s.user)` — do not pass the user through props. `App.tsx` calls `restore()` on mount and still owns navigation + permission gating (`userHasPermission(currentUser, …)`).
+- Identity fields (name, avatar, skill/DUPR, bio) render from the real user; profile **stats** (win rate, games, streak, achievements) are still demo data because the API doesn't expose them. `EditProfileScreen` prefills from the user but its save is not yet wired to `PATCH /me`.
 
 ### Key patterns
 - Screens receive `onNavigate` for navigation and `onBack` for going back. A few also accept entity IDs as props (e.g. `gameId`, `courtId`, `clubId`).
@@ -139,12 +150,42 @@ The product's public progress page lives at **https://pickleballer.eunika.xyz/ro
 
 Skipping the roadmap update is treated like skipping a test: the work isn't done.
 
+> Editing the web-repo roadmap from `app/` is the **single sanctioned exception**
+> to the frontend-isolation rule (`../AGENTS.md` → "Stay in your lane") — only
+> `web` can render it. Don't touch any other `web` file from an app task.
+
+---
+
+## Keeping the API endpoint catalogue (`/lists`) current
+
+If your work adds, removes, or changes an API route (in the sibling `api/`
+repo), you must also update the endpoint catalogue at
+**https://pickleballer-api.eunika.xyz/lists** so it never drifts from what the
+API exposes. Source: `api/src/features/root/root.controller.ts` →
+`listEndpoints()`; see `api/CLAUDE.md` for the full checklist. Skipping it is
+treated like skipping a test: the work isn't done.
+
+---
+
+## Keeping the file-map (`FILEMAP.md`) current
+
+[`FILEMAP.md`](FILEMAP.md) is this repo's file-map — skim it before scanning
+`src/`. **Whenever you add, remove, rename, or move a file/folder, or change a
+file's primary responsibility, update it in the same change** (the directory
+tree comments, the key-modules list, and the "Where to look first" table). Don't
+touch it for logic-only edits that don't change what a file is for. Full rule +
+rationale: [`../AGENTS.md`](../AGENTS.md) → "Keep the file-map (`FILEMAP.md`)
+current". Skipping it is treated like skipping a test: the work isn't done.
+
 ---
 
 ## Change History
 
 | Date | Change |
 |---|---|
+| 2026-05-29 | Courts tab: added cursor **pagination** (20/page, "Load more") and venue **images** on list cards. `listVenues` now returns `{ items, cursor }` and accepts a `cursor` param; `ApiVenue` gained `image`. API change (sibling `api/`): `listVenues` controller attaches a media-derived `image` per venue via one batched `Media` lookup (mirrors the get-by-id `image`). Cards render the image with a gradient fallback. |
+| 2026-05-29 | Wired the "Courts" tab to the live API. `NearbyScreen` lists venues from `GET /api/v1/venues` and `CourtDetailsScreen` loads a venue via `GET /api/v1/venues/:id` (by slug or `_id`). Added `listVenues`/`getVenue` + `ApiVenue`/`ApiVenueDetail` to `api.ts` and a `venueDisplay.ts` formatter module (price/location/tags/amenities/mapsUrl). Both screens fetch on mount with real loading/error/empty(not-found) states; detail screens remount per id via `key`. Real data is sparse, so all fields degrade gracefully. Games-on-venue section remains demo. |
+| 2026-05-29 | Wired login to the live API and made the current-user UI dynamic. Added `shared/lib/api.ts` (auth client + token storage) and `shared/lib/authStore.ts` (Zustand auth store — first real use of the Zustand dep). `LoginScreen` now calls `useAuthStore().login()` → `POST /api/v1/auth/login`; `App.tsx` restores the session via `/me` on mount. The greeting, profile page, edit-profile prefill, sidebar, and nearby header now read the user from the store (no prop-threading) instead of the hardcoded "Riley Pickler". Profile stats remain demo data; edit-profile save not yet wired to `PATCH /me`. Extracted `getInitials` to `shared/lib/initials.ts`. |
 | 2026-05-28 | Restructured `app/src/` into feature-based vertical slices (`features/{auth,home,games,venues,clubs,profile,search}` + `shared/{components,hooks,lib,styles}`), mirroring the `web/` convention. Pure file-move + import-update refactor — no behavior changes. Filter sheets co-located with their owning feature (`GameFilterSheet` → `features/games/`, `NearbyFilterSheet` → `features/venues/`). |
 | 2026-05-27 | Commit `c4ceec6` — Removed `TopBar`, `Sidebar`, and `FAB` from `components/layout/`. Create action moved into `TabBar.onCreate`. Added `CourtIllustration`, `GameRow`, `Segmented`, `Toast` UI primitives. Polished all major screens. |
 | 2026-05-27 | Commit `0e32861` — Added `LandingScreen` as new cold-start entry. Added `components/filters/` (bottom sheets replacing routed filter screens), `components/forms/` (FormField/Select/TierPicker), `hooks/` (useForm, usePrefersReducedMotion, useTheme), `lib/demoState.tsx`, `lib/skillTiers.ts`. Replaced `LoadingSpinner` with `LoadingSkeleton`. Added `BottomSheet`, `DuprExplainerSheet`, `OfflineBanner`, `DemoStateControl`. Included `Redesign/` reference assets. |
