@@ -48,6 +48,47 @@ This applies to every agent in every repo here — if your work touches an API
 endpoint, keep `/lists` in sync. The `api/` repo's `CLAUDE.md` carries the full
 checklist; this is the all-agents reminder so the rule is visible everywhere.
 
+## Gate every new user-facing feature with a permission
+
+The product uses permission-based access control. Permissions are
+**code-defined** capability strings (`domain.resource.action`, e.g.
+`player.games.create`, `owner.venues.manage`); the roles that hold them are a
+**fixed set** (`admin`, `moderator`, `owner`, `organizer`, `coach`, `player`)
+whose permission sets are editable from the admin **Roles & permissions** page.
+
+**Whenever you build a new user-facing feature or capability in `app/` or
+`web/` — a new screen, action, or area a user can reach — add a matching
+permission and gate the feature with it, as part of the same change.** Treat it
+like the `/lists` rule: a feature isn't done until its permission exists and
+gates it. Do this every time, automatically, without being asked.
+
+Checklist when adding a feature:
+
+1. **Name the permission** `domain.resource.action`, following the existing
+   entries (look at `ALL_PERMISSIONS`).
+2. **Add the string to `ALL_PERMISSIONS` in all three copies, kept in sync:**
+   - `api/src/shared/lib/permissions.ts` (source of truth)
+   - `web/src/features/auth/permissions.js`
+   - `app/src/shared/lib/permissions.ts`
+3. **Describe it for the admin UI** — add a `{ key, group, label, description }`
+   entry to `PERMISSION_CATALOGUE` in `api/src/shared/lib/permissions.ts` so it
+   appears in the Roles & permissions matrix. Keep its order aligned with
+   `ALL_PERMISSIONS`.
+4. **Set sensible role defaults** — add the permission to the roles that should
+   have it in `ROLE_PERMISSIONS` (all three copies).
+5. **Gate the feature** with `userHasPermission(user, '<perm>')` in the web/app
+   UI, and with `hasPermission(user, '<perm>')` on any API route that needs
+   protection.
+6. **Grant it on the live DB.** Role→permission mappings live in Mongo and are
+   seeded **insert-only** (`$setOnInsert`), so a new code default does **not**
+   reach already-seeded roles. Toggle the permission onto the relevant roles via
+   the admin Roles & permissions page (or update the role docs). It then takes
+   effect for each affected user on their next login / token refresh.
+
+This keeps the permission catalogue in lockstep with the product's features, so
+every new capability is governable from one place. Skipping it is treated like
+skipping a test: the work isn't done.
+
 ## Git remotes and pushing
 
 This workspace is **three independent git repos**, each with its own remote.
