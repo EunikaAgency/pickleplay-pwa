@@ -6,7 +6,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import type { Navigate } from '../../shared/lib/navigation';
 import { getVenue, ApiError, type ApiVenueDetail } from '../../shared/lib/api';
-import { indoorLabel, priceLabel, locationLine, venueAmenities, mapsUrl } from '../../shared/lib/venueDisplay';
+import { indoorLabel, priceLabel, locationLine, venueAmenities, mapsUrl, venueImage } from '../../shared/lib/venueDisplay';
 
 interface CourtDetailsScreenProps {
   courtId: string;
@@ -100,7 +100,7 @@ function CourtDetail({
   onNavigate: Navigate;
   onBack: () => void;
 }) {
-  const heroImage = venue.image && /^https?:\/\//.test(venue.image) ? venue.image : null;
+  const heroImage = venueImage(venue);
   const io = indoorLabel(venue);
   const courtsTotal = venue.courts?.length || venue.courtCount || 0;
   const price = priceLabel(venue);

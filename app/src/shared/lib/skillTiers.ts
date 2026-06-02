@@ -47,3 +47,17 @@ export function tierForDupr(dupr: number): SkillTier {
   if (dupr < 3.5) return skillTiers[2];
   return skillTiers[3];
 }
+
+// A representative DUPR for each tier — the midpoint of the tier's range — used
+// when we only have a tier (onboarding / edit-profile picker) but the account
+// stores a numeric `skillLevel`. Chosen so `tierForDupr(duprForTier(id)) === id`.
+const TIER_DUPR: Record<SkillTier['id'], number> = {
+  new: 2.0,
+  improving: 2.75,
+  solid: 3.25,
+  competitive: 3.75,
+};
+
+export function duprForTier(id: SkillTier['id']): number {
+  return TIER_DUPR[id];
+}

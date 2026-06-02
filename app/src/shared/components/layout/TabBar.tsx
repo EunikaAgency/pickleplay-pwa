@@ -17,7 +17,7 @@ const tabs: Tab[] = [
   { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
   { id: 'games',   label: 'Games',  icon: 'calendar', iconFill: 'calendar_fill' },
   { id: 'fab',     label: '',       icon: 'plus',     isFab: true },
-  { id: 'nearby',  label: 'Courts', icon: 'map_pin',  iconFill: 'map_pin_fill' },
+  { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 

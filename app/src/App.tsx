@@ -77,7 +77,6 @@ function AppInner() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const restoreSession = useAuthStore((s) => s.restore);
   const logout = useAuthStore((s) => s.logout);
-  const [needsOnboarding, setNeedsOnboarding] = useState(true);
   // Cold start drops guests straight onto the home tab so they can browse.
   const [screen, setScreen] = useState<Screen>({ id: 'home' });
   const [activeTab, setActiveTab] = useState<TabId>('home');
@@ -135,21 +134,19 @@ function AppInner() {
   };
 
   // Restore a session on cold start: the store validates any stored token
-  // against /me and rehydrates the user. A returning user skips onboarding; a
+  // against /me and rehydrates the user (incl. their `hasOnboarded` flag). A
   // stale/invalid token just falls back to guest browsing (tokens cleared).
   useEffect(() => {
-    let cancelled = false;
-    restoreSession().then((restored) => {
-      if (!cancelled && restored) setNeedsOnboarding(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    restoreSession();
   }, [restoreSession]);
 
   // Called by LoginScreen after the store's `login` action has set the user.
+  // Only first-time users (who haven't onboarded on this account yet) see the
+  // onboarding flow; everyone else lands straight on home. Read the freshly
+  // logged-in user from the store — this render's `currentUser` is still stale.
   const handleLoginSuccess = () => {
-    if (needsOnboarding) {
+    const user = useAuthStore.getState().user;
+    if (user && !user.hasOnboarded) {
       setScreen({ id: 'onboarding' });
     } else {
       setScreen({ id: 'home' });
@@ -158,8 +155,9 @@ function AppInner() {
     setHistory([]);
   };
 
+  // Onboarding persists the `hasOnboarded` flag to the account itself (see
+  // OnboardingScreen → completeOnboarding), so it's remembered across sessions.
   const handleOnboardingComplete = () => {
-    setNeedsOnboarding(false);
     setScreen({ id: 'home' });
     setActiveTab('home');
     setHistory([]);

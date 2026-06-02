@@ -10,14 +10,18 @@ export const ALL_PERMISSIONS = [
   'owner.venues.create',
   'owner.venues.manage',
   'owner.reviews.manage',
+  'owner.coaches.manage',
   'organizer.access',
   'organizer.games.manage',
   'organizer.events.manage',
   'coach.profile.manage',
+  'coach.venues.view',
+  'coach.applications.manage',
   'player.dashboard.access',
   'player.games.create',
   'player.clubs.create',
   'player.profile.manage',
+  'player.venues.locate',
   'user.notifications.manage',
 ] as const;
 
@@ -29,18 +33,20 @@ const PLAYER_PERMISSIONS: Permission[] = [
   'player.games.create',
   'player.clubs.create',
   'player.profile.manage',
+  'player.venues.locate',
   'user.notifications.manage',
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   player: PLAYER_PERMISSIONS,
-  coach: [...PLAYER_PERMISSIONS, 'coach.profile.manage'],
+  coach: [...PLAYER_PERMISSIONS, 'coach.profile.manage', 'coach.venues.view', 'coach.applications.manage'],
   owner: [
     ...PLAYER_PERMISSIONS,
     'owner.access',
     'owner.venues.create',
     'owner.venues.manage',
     'owner.reviews.manage',
+    'owner.coaches.manage',
   ],
   organizer: [
     ...PLAYER_PERMISSIONS,
@@ -61,6 +67,8 @@ export interface AppUser {
   skillLevel?: number;
   skillLevelLabel?: string;
   bio?: string;
+  /** Whether the user has finished (or skipped) first-run onboarding. */
+  hasOnboarded?: boolean;
   roleDefault: Role;
   roles: Role[];
   permissions: Permission[];

@@ -10,8 +10,25 @@ import { normalizeRole, resolveRolePermissions, type AppUser } from './permissio
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const AUTH_PREFIX = '/api/v1/auth';
 
+// Image/asset files (e.g. "/images/venues/<slug>/court.jpg") are served by the
+// API itself and are NOT proxied at the app's own origin (only `/api` is), so a
+// relative path would 404 against the PWA. Resolve them against the API host —
+// preferring VITE_API_BASE_URL, else the prod API origin (mirrors web's client).
+const ASSET_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://pickleballer-api.eunika.xyz').replace(/\/+$/, '');
+
+/** Resolve an API image path to an absolute URL; passes absolute URLs through, '' when empty. */
+export function apiImageUrl(path?: string | null): string {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${ASSET_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 const ACCESS_TOKEN_KEY = 'pb-access-token';
 const REFRESH_TOKEN_KEY = 'pb-refresh-token';
+// The mapped AppUser is cached alongside the tokens so a page refresh can
+// rehydrate the logged-in UI synchronously (no flash of guest/fallback state
+// while /me revalidates in the background). Cleared whenever tokens are.
+const USER_KEY = 'pb-user';
 
 /* ─── Token storage ─────────────────────────────────────────── */
 
@@ -45,6 +62,7 @@ export function clearTokens() {
   try {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
   } catch {
     // ignore
   }
@@ -53,6 +71,31 @@ export function clearTokens() {
 /** Whether a stored access token exists — used to attempt session restore. */
 export function hasStoredSession(): boolean {
   return getAccessToken() !== null;
+}
+
+/** Cache the mapped user for synchronous rehydration on the next cold start. */
+function storeUser(user: AppUser) {
+  try {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch {
+    // localStorage may be unavailable; we just lose the optimistic rehydrate.
+  }
+}
+
+/**
+ * The last-known user from a prior session, or null. Used to seed the auth store
+ * on cold start so the logged-in UI renders immediately; `restore()` then
+ * revalidates against /me and corrects/clears it. Only trusted when a token is
+ * also present (the two are written and cleared together).
+ */
+export function getStoredUser(): AppUser | null {
+  if (!hasStoredSession()) return null;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as AppUser) : null;
+  } catch {
+    return null;
+  }
 }
 
 /* ─── Errors ────────────────────────────────────────────────── */
@@ -75,6 +118,8 @@ interface RequestOptions {
   body?: unknown;
   /** Attach `Authorization: Bearer <accessToken>`. */
   auth?: boolean;
+  /** Internal: set once a request has already been retried after a token refresh. */
+  _retried?: boolean;
 }
 
 interface Envelope<T> {
@@ -85,7 +130,7 @@ interface Envelope<T> {
 
 // Core fetch: returns the full response envelope (so list callers can read
 // `meta.cursor` for pagination). Throws ApiError on network failure or !ok.
-async function rawRequest<T>(path: string, { method = 'GET', body, auth = false }: RequestOptions = {}): Promise<Envelope<T>> {
+async function rawRequest<T>(path: string, { method = 'GET', body, auth = false, _retried = false }: RequestOptions = {}): Promise<Envelope<T>> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth) {
@@ -102,6 +147,14 @@ async function rawRequest<T>(path: string, { method = 'GET', body, auth = false 
     });
   } catch {
     throw new ApiError('Network error — could not reach the server.', 'NETWORK', 0);
+  }
+
+  // Access token expired (15m TTL): transparently refresh using the stored
+  // refresh token (valid 7d) and retry the original request once. This is what
+  // keeps a session alive across reloads instead of dropping to logged-out.
+  if (res.status === 401 && auth && !_retried) {
+    const refreshed = await refreshSession();
+    if (refreshed) return rawRequest<T>(path, { method, body, auth, _retried: true });
   }
 
   const json = (await res.json().catch(() => null)) as Envelope<T> | null;
@@ -140,6 +193,8 @@ export interface ApiUser {
   skillLevel?: number | null;
   skillLevelLabel?: string | null;
   bio?: string | null;
+  /** Whether the user has finished (or skipped) first-run onboarding. */
+  hasOnboarded?: boolean | null;
 }
 
 interface AuthTokens {
@@ -164,6 +219,7 @@ export function toAppUser(api: ApiUser): AppUser {
     skillLevel: typeof api.skillLevel === 'number' ? api.skillLevel : undefined,
     skillLevelLabel: api.skillLevelLabel ?? undefined,
     bio: api.bio ?? undefined,
+    hasOnboarded: api.hasOnboarded ?? false,
     roleDefault: normalizeRole(api.roleDefault ?? api.role),
     roles,
     permissions: resolveRolePermissions(roles),
@@ -179,13 +235,69 @@ export async function login(email: string, password: string): Promise<AppUser> {
     body: { email, password },
   });
   setTokens(data.accessToken, data.refreshToken);
-  return toAppUser(data.user);
+  const user = toAppUser(data.user);
+  storeUser(user);
+  return user;
+}
+
+/**
+ * Exchange the stored refresh token for a fresh token pair. Returns true on
+ * success. A 401 means the refresh token itself is invalid/expired → clear the
+ * session; any other failure (network/server) is transient and leaves the
+ * tokens in place so a later retry can still succeed. Declared as a hoisted
+ * function so `rawRequest` can call it for its 401-retry.
+ */
+export async function refreshSession(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  try {
+    const data = await request<AuthTokens>(`${AUTH_PREFIX}/refresh`, {
+      method: 'POST',
+      body: { refreshToken },
+    });
+    if (data?.accessToken && data?.refreshToken) {
+      setTokens(data.accessToken, data.refreshToken);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) clearTokens();
+    return false;
+  }
 }
 
 /** Fetch the current user using the stored access token (for session restore). */
 export async function fetchCurrentUser(): Promise<AppUser> {
-  const user = await request<ApiUser>(`${AUTH_PREFIX}/me`, { auth: true });
-  return toAppUser(user);
+  const apiUser = await request<ApiUser>(`${AUTH_PREFIX}/me`, { auth: true });
+  const user = toAppUser(apiUser);
+  storeUser(user);
+  return user;
+}
+
+/**
+ * The subset of profile fields the PWA lets a user edit on their own account.
+ * `skillLevel` is sent as a string because the API's update schema declares it
+ * as a string (the User model then coerces it back to a Number on save).
+ */
+export interface ProfileUpdate {
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  bio?: string;
+  skillLevel?: string;
+  skillLevelLabel?: string;
+  hasOnboarded?: boolean;
+}
+
+/**
+ * Persist profile edits to the account (`PATCH /me`) and return the updated,
+ * mapped user. Refreshes the cached user so a reload shows the saved values.
+ */
+export async function updateMe(patch: ProfileUpdate): Promise<AppUser> {
+  const apiUser = await request<ApiUser>(`${AUTH_PREFIX}/me`, { method: 'PATCH', body: patch, auth: true });
+  const user = toAppUser(apiUser);
+  storeUser(user);
+  return user;
 }
 
 /** Best-effort server logout; always clears local tokens. */
@@ -217,7 +329,10 @@ export interface ApiVenue {
   region?: string | null;
   city?: string | null;
   fullAddress?: string | null;
+  /** Media-derived primary image (often empty — only ~20 venues have Media rows). */
   image?: string | null;
+  /** Stored hero-image path (e.g. "/images/venues/<slug>/<file>.jpg"), served by the API. */
+  mainImageUrl?: string | null;
   indoorOutdoor?: string | null;
   surfaceType?: string | null;
   courtCount?: number | null;
@@ -303,6 +418,22 @@ function toQuery(params: Record<string, unknown>): string {
 export async function listVenues(params: ListVenuesParams = {}): Promise<VenuePage> {
   const env = await rawRequest<ApiVenue[]>(`${VENUES_PREFIX}${toQuery({ pageSize: 20, ...params })}`);
   return { items: env.data ?? [], cursor: env.meta?.cursor ?? null };
+}
+
+/**
+ * Fetch every venue across all pages, following the cursor. The Courts map
+ * needs them all at once (it plots markers, which isn't tied to the list's
+ * "Load more" paging); the dataset is small, so this is a couple of requests.
+ */
+export async function listAllVenues(params: ListVenuesParams = {}): Promise<ApiVenue[]> {
+  const all: ApiVenue[] = [];
+  let cursor: string | undefined = params.cursor;
+  do {
+    const page = await listVenues({ ...params, pageSize: 100, cursor });
+    all.push(...page.items);
+    cursor = page.cursor ?? undefined;
+  } while (cursor);
+  return all;
 }
 
 /** Fetch a single venue by `_id` or `slug`, with hours/courts/gallery/image. */

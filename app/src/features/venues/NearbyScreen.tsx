@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
@@ -7,11 +7,14 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { NearbyFilterSheet } from './NearbyFilterSheet';
+import { makeDefaultFilters, matchesFilters, countActiveFilters, milesToKm, type VenueFilters } from './venueFilters';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import type { Navigate } from '../../shared/lib/navigation';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { listVenues, type ApiVenue } from '../../shared/lib/api';
-import { priceLabel, indoorLabel, locationLine, venueTags } from '../../shared/lib/venueDisplay';
+import { userHasPermission } from '../../shared/lib/permissions';
+import { listVenues, listAllVenues, type ApiVenue } from '../../shared/lib/api';
+import { priceLabel, indoorLabel, locationLine, venueTags, venueCoords, venueImage } from '../../shared/lib/venueDisplay';
+import { haversineKm, formatDistance, getCurrentLocation, type LatLng } from '../../shared/lib/geo';
 
 interface NearbyScreenProps {
   onNavigate: Navigate;
@@ -25,8 +28,22 @@ interface VenueCard {
   location: string;
   label: string;
   tags: string[];
-  lat: number | null;
-  lng: number | null;
+  /** Distance from the user in km, or null (no user location / no coords). */
+  distanceKm: number | null;
+}
+
+// A venue resolved to a map point. Coords come from the venue's lat/lng or,
+// failing that, from its Google Maps URL (see venueCoords).
+interface MapMarker {
+  id: string;
+  name: string;
+  image: string | null;
+  rating: number | null;
+  location: string;
+  label: string;
+  lat: number;
+  lng: number;
+  distanceKm: number | null;
 }
 
 // Venues fetched per page. Small enough to keep the backend query light; the
@@ -44,15 +61,6 @@ const ROW_GRADIENTS = [
   'linear-gradient(135deg, #404756, #1a1d24)',
 ];
 
-// Fixed decorative positions for the stylized (non-Leaflet) map pins.
-const PIN_POSITIONS = [
-  { left: '22%', top: '38%' },
-  { left: '42%', top: '52%' },
-  { left: '55%', top: '40%' },
-  { left: '32%', top: '70%' },
-  { left: '70%', top: '62%' },
-];
-
 const markerIcon = new L.Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -63,11 +71,84 @@ const markerIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-function FlyToUser() {
+// Shared mapping of an API venue → list-card fields (distance is layered on by
+// the caller, which knows whether a user location is set).
+function toVenueCard(v: ApiVenue): Omit<VenueCard, 'distanceKm'> {
+  return {
+    id: v.slug || v.id,
+    name: v.displayName,
+    image: venueImage(v),
+    rating: v.googleRating ?? null,
+    location: locationLine(v) || '—',
+    label: priceLabel(v) ?? indoorLabel(v) ?? 'Courts',
+    tags: venueTags(v),
+  };
+}
+
+// Client-side name/area match — used over the full venue set when filtering or
+// distance-sorting (the server's paged, name-sorted `search` no longer applies).
+function matchesQuery(v: ApiVenue, q: string): boolean {
+  if (!q) return true;
+  return `${v.displayName} ${locationLine(v)}`.toLowerCase().includes(q);
+}
+
+function toMapMarker(v: ApiVenue, coords: [number, number], distanceKm: number | null): MapMarker {
+  return {
+    id: v.slug || v.id,
+    name: v.displayName,
+    image: venueImage(v),
+    rating: v.googleRating ?? null,
+    location: locationLine(v) || '—',
+    label: priceLabel(v) ?? indoorLabel(v) ?? 'Courts',
+    lat: coords[0],
+    lng: coords[1],
+    distanceKm,
+  };
+}
+
+// A locatable venue kept for the "near me" view, with its coords + distance.
+interface NearbyRow {
+  v: ApiVenue;
+  coords: [number, number];
+  distanceKm: number;
+}
+
+// When the radius excludes every court (e.g. the user is far from all of them),
+// fall back to this many nearest courts so "Near me" never shows a blank list.
+const NEAREST_FALLBACK = 20;
+
+// Build the "near me" list: keep *locatable* venues passing the attribute filters
+// + search, rank nearest-first, then keep only those within the chosen radius
+// (the actual "show courts near me" step the user asked for). Coordless venues
+// can't be placed, so they're left out. Falls back to the nearest few if the
+// radius is empty so the list never goes blank.
+function resolveNearby(source: ApiVenue[], userLoc: LatLng, filters: VenueFilters, search: string): NearbyRow[] {
+  const q = search.toLowerCase();
+  const rows: NearbyRow[] = source.flatMap((v) => {
+    if (!matchesQuery(v, q) || !matchesFilters(v, filters)) return [];
+    const coords = venueCoords(v);
+    if (!coords) return [];
+    return [{ v, coords, distanceKm: haversineKm(userLoc, coords) }];
+  });
+  rows.sort((a, b) => a.distanceKm - b.distanceKm);
+  const capKm = milesToKm(filters.maxDistanceMi);
+  const within = rows.filter((r) => r.distanceKm <= capKm);
+  return within.length ? within : rows.slice(0, NEAREST_FALLBACK);
+}
+
+// Frame the map around the given points. The seeded data is sparse and spread
+// nationwide, so fitting to the pins (and the user, once located) is what
+// actually surfaces courts. Refits whenever the point set changes.
+function FitToMarkers({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    map.locate({ setView: true, maxZoom: 14 });
-  }, [map]);
+    if (points.length === 0) return;
+    if (points.length === 1) {
+      map.setView(points[0], 14);
+      return;
+    }
+    map.fitBounds(points, { padding: [56, 56], maxZoom: 15 });
+  }, [map, points]);
   return null;
 }
 
@@ -75,14 +156,41 @@ type SheetState = 'collapsed' | 'expanded';
 
 export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  // Distance search is a browse aid — guests use it freely (like the rest of
+  // the tab). For signed-in users it's still governed by the permission, so an
+  // admin can revoke it per role (mirrors `!isLoggedIn || canX` in App.tsx).
+  const canLocate = !isLoggedIn || userHasPermission(currentUser, 'player.venues.locate');
   const [active, setActive] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [useRealMap, setUseRealMap] = useState(false);
   const [sheet, setSheet] = useState<SheetState>('collapsed');
+  const [query, setQuery] = useState('');
   const [venues, setVenues] = useState<ApiVenue[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [loadingMore, setLoadingMore] = useState(false);
+  // True while re-fetching for a changed search query (a lightweight indicator
+  // that, unlike `status`, doesn't tear the whole screen down to a skeleton).
+  const [searching, setSearching] = useState(false);
+  // All venues, for the map's markers — independent of the list's paging so the
+  // map shows every locatable court at once, not just the first list page. Also
+  // the source the distance sort ranks (the server can't sort by proximity).
+  const [mapVenues, setMapVenues] = useState<ApiVenue[]>([]);
+  // The user's coordinates once they share them; null = distance sort is off.
+  const [userLoc, setUserLoc] = useState<LatLng | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
+  // Applied Courts filters (the chip row + the filter sheet both edit these).
+  const [filters, setFilters] = useState<VenueFilters>(makeDefaultFilters);
+
+  const search = query.trim();
+  const activeFilterCount = countActiveFilters(filters);
+  const filtering = activeFilterCount > 0;
+  // Filters and distance sort both need the full venue set, not the server's
+  // name-sorted page (client-side filtering a single page would hide matches on
+  // pages we haven't fetched). Outside both, the paged directory is unchanged.
+  const fullSetMode = userLoc != null || filtering;
+  const didMount = useRef(false);
 
   // First page on mount; state is only committed in the async callbacks (never
   // synchronously in the effect) and skipped if the screen unmounted mid-flight.
@@ -103,9 +211,56 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
     };
   }, []);
 
+  // Re-run the search when the (debounced) query changes — but not on the
+  // initial mount, which the effect above already covers. Uses `searching`, not
+  // `status`, so the map + search bar stay on screen while results refresh.
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      listVenues({ pageSize: PAGE_SIZE, sortBy: 'displayName', search: search || undefined })
+        .then((page) => {
+          if (cancelled) return;
+          setVenues(page.items);
+          setCursor(page.cursor);
+          setStatus('ready');
+        })
+        .catch(() => {
+          /* keep the prior results visible rather than blanking the screen */
+        })
+        .finally(() => {
+          if (!cancelled) setSearching(false);
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search]);
+
+  // Load every venue for the map markers (all pages). Independent of the list
+  // fetch above; a failure here just means fewer pins, not a screen error.
+  useEffect(() => {
+    let cancelled = false;
+    listAllVenues({ sortBy: 'displayName' })
+      .then((items) => {
+        if (!cancelled) setMapVenues(items);
+      })
+      .catch(() => {
+        /* leave the map empty; the list still works */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const retry = () => {
     setStatus('loading');
-    listVenues({ pageSize: PAGE_SIZE, sortBy: 'displayName' })
+    listVenues({ pageSize: PAGE_SIZE, sortBy: 'displayName', search: search || undefined })
       .then((page) => {
         setVenues(page.items);
         setCursor(page.cursor);
@@ -118,7 +273,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   const loadMore = () => {
     if (!cursor || loadingMore) return;
     setLoadingMore(true);
-    listVenues({ pageSize: PAGE_SIZE, sortBy: 'displayName', cursor })
+    listVenues({ pageSize: PAGE_SIZE, sortBy: 'displayName', search: search || undefined, cursor })
       .then((page) => {
         setVenues((prev) => [...prev, ...page.items]);
         setCursor(page.cursor);
@@ -129,27 +284,94 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
       .finally(() => setLoadingMore(false));
   };
 
-  const cards = useMemo<VenueCard[]>(
-    () =>
-      venues.map((v) => ({
-        id: v.slug || v.id,
-        name: v.displayName,
-        image: v.image || null,
-        rating: v.googleRating ?? null,
-        location: locationLine(v) || '—',
-        label: priceLabel(v) ?? indoorLabel(v) ?? 'Courts',
-        tags: venueTags(v),
-        lat: v.lat ?? null,
-        lng: v.lng ?? null,
-      })),
-    [venues],
+  // Ask for the user's location, then sort courts by distance. Open to guests;
+  // a signed-in user whose role lacks the permission just no-ops. Tapping again
+  // recenters the map.
+  const handleLocate = () => {
+    if (locating) return;
+    if (!canLocate) return;
+    setLocating(true);
+    setLocError(null);
+    getCurrentLocation()
+      .then((loc) => setUserLoc(loc))
+      .catch((err: Error) => setLocError(err.message))
+      .finally(() => setLocating(false));
+  };
+
+  // Turn distance sort back off and return to the A–Z directory.
+  const clearLocation = () => {
+    setUserLoc(null);
+    setLocError(null);
+  };
+
+  // Quick-chip toggles — each flips one corner of the same filter state the
+  // sheet edits, so chips and sheet stay in sync.
+  const toggleCourtType = (t: 'Indoor' | 'Outdoor') =>
+    setFilters((f) => ({ ...f, courtType: f.courtType === t ? 'All' : t }));
+  const toggleFree = () => setFilters((f) => ({ ...f, price: f.price === 'Free' ? 'Any' : 'Free' }));
+  const toggleOpenPlay = () => setFilters((f) => ({ ...f, openPlay: !f.openPlay }));
+  const toggleAmenity = (key: string) =>
+    setFilters((f) => {
+      const amenities = new Set(f.amenities);
+      if (amenities.has(key)) amenities.delete(key);
+      else amenities.add(key);
+      return { ...f, amenities };
+    });
+
+  // The resolved "near me" list once located: attribute-filtered, search-matched,
+  // ranked nearest-first, and limited to the chosen radius (with a nearest-few
+  // fallback). Shared by the list and the map so both show the same courts.
+  const nearby = useMemo<NearbyRow[] | null>(
+    () => (userLoc ? resolveNearby(mapVenues.length ? mapVenues : venues, userLoc, filters, search) : null),
+    [userLoc, mapVenues, venues, filters, search],
   );
 
-  const mapCards = useMemo(
-    () => cards.filter((c): c is VenueCard & { lat: number; lng: number } => c.lat != null && c.lng != null),
-    [cards],
+  const cards = useMemo<VenueCard[]>(() => {
+    // Located: show the courts near the user (already filtered + ranked + capped).
+    if (nearby) return nearby.map((r) => ({ ...toVenueCard(r.v), distanceKm: r.distanceKm }));
+    // Filtering without a location: narrow the full set (the paged list could
+    // hide matches on pages we haven't fetched), keeping the name order.
+    if (filtering) {
+      const q = search.toLowerCase();
+      const source = mapVenues.length ? mapVenues : venues;
+      return source.flatMap((v) =>
+        matchesQuery(v, q) && matchesFilters(v, filters) ? [{ ...toVenueCard(v), distanceKm: null }] : [],
+      );
+    }
+    // Default: the server-paged directory, unchanged.
+    return venues.map((v) => ({ ...toVenueCard(v), distanceKm: null }));
+  }, [nearby, filtering, search, venues, mapVenues, filters]);
+
+  // Map pins. Located → exactly the nearby courts with coords (pins match the
+  // list). Filtering → the filtered full set. Otherwise → an active search's
+  // paged matches, else every locatable court.
+  const mapCards = useMemo<MapMarker[]>(() => {
+    if (nearby) {
+      return nearby.map((r) => toMapMarker(r.v, r.coords, r.distanceKm));
+    }
+    const q = search.toLowerCase();
+    if (filtering) {
+      const source = mapVenues.length ? mapVenues : venues;
+      return source.flatMap((v) => {
+        if (!matchesQuery(v, q) || !matchesFilters(v, filters)) return [];
+        const coords = venueCoords(v);
+        return coords ? [toMapMarker(v, coords, null)] : [];
+      });
+    }
+    const source = search ? venues : mapVenues;
+    return source.flatMap((v) => {
+      const coords = venueCoords(v);
+      return coords ? [toMapMarker(v, coords, null)] : [];
+    });
+  }, [nearby, filtering, search, venues, mapVenues, filters]);
+
+  const mapPoints = useMemo<[number, number][]>(() => mapCards.map((c) => [c.lat, c.lng]), [mapCards]);
+  // Frame the user + nearby pins when located, otherwise just the pins.
+  const fitPoints = useMemo<[number, number][]>(
+    () => (userLoc ? [userLoc, ...mapPoints] : mapPoints),
+    [userLoc, mapPoints],
   );
-  const mapCenter: [number, number] = mapCards[0] ? [mapCards[0].lat, mapCards[0].lng] : MAP_FALLBACK_CENTER;
+  const mapCenter: [number, number] = userLoc ?? (mapCards[0] ? [mapCards[0].lat, mapCards[0].lng] : MAP_FALLBACK_CENTER);
 
   const isCollapsed = sheet === 'collapsed';
   // Sheet sits at bottom:0 with 92px padding-bottom for the floating tab bar.
@@ -189,86 +411,137 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
         loadingUI
       ) : status === 'error' ? (
         errorUI
-      ) : cards.length === 0 ? (
+      ) : cards.length === 0 && !search && !filtering ? (
         emptyUI
       ) : (
         <div className="map-screen">
-          {useRealMap ? (
-            <div className="absolute inset-0">
-              <MapContainer center={mapCenter} zoom={12} className="w-full h-full" zoomControl={false}>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          <div className="absolute inset-0">
+            <MapContainer center={mapCenter} zoom={12} className="w-full h-full" zoomControl={false}>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <FitToMarkers points={fitPoints} />
+              {userLoc && (
+                <CircleMarker
+                  center={userLoc}
+                  radius={8}
+                  pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#0040e0', fillOpacity: 1 }}
                 />
-                <FlyToUser />
-                {mapCards.map((c) => (
-                  <Marker key={c.id} position={[c.lat, c.lng]} icon={markerIcon}>
-                    <Popup>
+              )}
+              {mapCards.map((c) => (
+                <Marker key={c.id} position={[c.lat, c.lng]} icon={markerIcon}>
+                  <Popup className="venue-popup" minWidth={224} maxWidth={224}>
+                    <button
+                      type="button"
+                      className="venue-popup-card"
+                      onClick={() => onNavigate('court-details', { id: c.id })}
+                    >
                       <div
-                        className="min-w-[180px] cursor-pointer"
-                        onClick={() => onNavigate('court-details', { id: c.id })}
+                        className="venue-popup-img"
+                        style={c.image ? { backgroundImage: `url(${c.image})` } : undefined}
                       >
-                        <div className="flex items-center gap-1.5 mb-1">
-                          <Icon name="location" size={14} />
-                          <strong>{c.name}</strong>
+                        {!c.image && <Icon name="paddle" size={28} />}
+                      </div>
+                      <div className="venue-popup-body">
+                        <div className="venue-popup-title">{c.name}</div>
+                        <div className="venue-popup-meta">
+                          {c.distanceKm != null && (
+                            <>
+                              <span className="font-extrabold text-[var(--primary)]">{formatDistance(c.distanceKm)}</span>
+                              <span className="opacity-40">·</span>
+                            </>
+                          )}
+                          {c.rating != null && (
+                            <>
+                              <Icon name="star" size={12} className="text-[#c89000]" /> {c.rating}
+                              <span className="opacity-40">·</span>
+                            </>
+                          )}
+                          <span className="truncate min-w-0">{c.location}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-[12px] text-[#666]">
-                          {c.rating != null && <><Icon name="star" size={12} /> {c.rating} · </>}
-                          {c.location}
+                        <div className="venue-popup-foot">
+                          <span className="venue-popup-price">{c.label}</span>
+                          <span className="venue-popup-cta">
+                            View <Icon name="chevron" size={12} />
+                          </span>
                         </div>
                       </div>
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
-            </div>
-          ) : (
-            <div className="map-canvas">
-              <div className="road" style={{ left: 0, top: '30%', width: '100%', height: 6 }} />
-              <div className="road" style={{ left: 0, top: '60%', width: '100%', height: 4 }} />
-              <div className="road" style={{ left: 0, top: '85%', width: '100%', height: 5 }} />
-              <div className="road" style={{ left: '30%', top: 0, width: 4, height: '100%' }} />
-              <div className="road" style={{ left: '65%', top: 0, width: 5, height: '100%' }} />
-              <div className="park" style={{ left: '8%', top: '50%', width: 100, height: 80 }} />
-              <div className="park" style={{ left: '70%', top: '20%', width: 90, height: 70 }} />
-              <div className="water" style={{ left: '-10%', top: '20%', width: 160, height: 90 }} />
-              <div className="water" style={{ left: '60%', top: '78%', width: 200, height: 80 }} />
-
-              {cards.slice(0, PIN_POSITIONS.length).map((c, i) => (
-                <button
-                  key={c.id}
-                  className={`map-pin ${i === active ? 'active' : ''}`}
-                  style={{ ...PIN_POSITIONS[i], position: 'absolute' }}
-                  onClick={() => setActive(i)}
-                >
-                  <span className="pinwrap">
-                    <Icon name="paddle" size={12} />
-                    {c.label}
-                  </span>
-                </button>
+                    </button>
+                  </Popup>
+                </Marker>
               ))}
+            </MapContainer>
+          </div>
 
-              {/* You-are-here marker */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#3b82f6] border-[3px] border-white shadow-[0_0_0_4px_rgba(59,130,246,0.25),0_2px_8px_rgba(0,0,0,0.2)]" />
-            </div>
-          )}
-
-          {/* Search — clickable, opens SearchScreen */}
-          <button type="button" className="map-search" onClick={() => onNavigate('search')}>
+          {/* Search — live court search; filters the list + map markers */}
+          <div className="map-search">
             <Icon name="search" size={16} />
-            <span className="text">Find courts near you</span>
-            <Avatar src={currentUser?.avatarUrl} name={currentUser?.displayName ?? 'Guest'} size={32} />
-          </button>
+            <input
+              type="text"
+              className="map-search-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setSheet('expanded')}
+              placeholder="Find courts near you"
+              aria-label="Search courts by name or area"
+            />
+            {query ? (
+              <button
+                type="button"
+                className="map-search-clear"
+                onClick={() => setQuery('')}
+                aria-label="Clear search"
+              >
+                <Icon name="close" size={14} />
+              </button>
+            ) : (
+              <Avatar src={currentUser?.avatarUrl} name={currentUser?.displayName ?? 'Guest'} size={32} />
+            )}
+          </div>
 
-          {/* Chip row */}
+          {/* Chip row — "Near me" toggles distance sort; the rest are filters */}
           <div className="map-chip-row">
+            <button
+              className={`chip ${userLoc ? 'active' : ''}`}
+              onClick={userLoc ? clearLocation : handleLocate}
+              disabled={locating}
+              aria-pressed={!!userLoc}
+            >
+              <Icon name={locating ? 'spinner' : 'navigate'} size={12} className={locating ? 'animate-spin' : ''} />
+              {locating ? 'Locating…' : 'Near me'}
+            </button>
             <button className="chip lime">
               <Icon name="paddle" size={12} /> Courts
             </button>
-            <button className="chip">Games here</button>
-            <button className="chip">Indoor</button>
-            <button className="chip">Free</button>
-            <button className="chip">Lighted</button>
+            <button
+              className={`chip ${filters.openPlay ? 'active' : ''}`}
+              aria-pressed={filters.openPlay}
+              onClick={toggleOpenPlay}
+            >
+              Games here
+            </button>
+            <button
+              className={`chip ${filters.courtType === 'Indoor' ? 'active' : ''}`}
+              aria-pressed={filters.courtType === 'Indoor'}
+              onClick={() => toggleCourtType('Indoor')}
+            >
+              Indoor
+            </button>
+            <button
+              className={`chip ${filters.price === 'Free' ? 'active' : ''}`}
+              aria-pressed={filters.price === 'Free'}
+              onClick={toggleFree}
+            >
+              Free
+            </button>
+            <button
+              className={`chip ${filters.amenities.has('hasLighting') ? 'active' : ''}`}
+              aria-pressed={filters.amenities.has('hasLighting')}
+              onClick={() => toggleAmenity('hasLighting')}
+            >
+              Lighted
+            </button>
           </div>
 
           {/* Floating control stack — always visible above the sheet */}
@@ -277,21 +550,17 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
             style={{ bottom: sheetHeight + 12 }}
           >
             <button
-              aria-label={useRealMap ? 'Show stylized map' : 'Show real map'}
-              onClick={() => setUseRealMap((v) => !v)}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] backdrop-blur-[14px] [-webkit-backdrop-filter:blur(14px)] ${
-                useRealMap
-                  ? 'bg-[var(--lime)] text-[var(--lime-ink)]'
-                  : 'bg-white/95 text-[var(--primary)]'
+              aria-label={userLoc ? 'Recenter on my location' : 'Use my location to sort courts'}
+              aria-pressed={!!userLoc}
+              onClick={handleLocate}
+              disabled={locating}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center border-[0.5px] shadow-[var(--shadow-card)] backdrop-blur-[14px] [-webkit-backdrop-filter:blur(14px)] disabled:opacity-70 ${
+                userLoc
+                  ? 'bg-[var(--lime)] text-[var(--lime-ink)] border-transparent'
+                  : 'bg-white/95 text-[var(--primary)] border-[var(--hairline)]'
               }`}
             >
-              <Icon name="layers" size={18} />
-            </button>
-            <button
-              aria-label="Locate me"
-              className="w-11 h-11 rounded-xl bg-white/95 text-[var(--primary)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] backdrop-blur-[14px] [-webkit-backdrop-filter:blur(14px)]"
-            >
-              <Icon name="navigate" size={18} />
+              <Icon name={locating ? 'spinner' : 'navigate'} size={18} className={locating ? 'animate-spin' : ''} />
             </button>
           </div>
 
@@ -318,15 +587,56 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
             </button>
             <div className="head">
               <div>
-                <div className="t-eyebrow">Nearby · {cards.length} courts</div>
-                <div className="hd-2 mt-0.5">Courts directory</div>
+                <div className="t-eyebrow">
+                  {searching
+                    ? 'Searching…'
+                    : userLoc
+                      ? `${cards.length} court${cards.length === 1 ? '' : 's'} near you`
+                      : search
+                        ? `${cards.length} result${cards.length === 1 ? '' : 's'}`
+                        : filtering
+                          ? `Filtered · ${cards.length} court${cards.length === 1 ? '' : 's'}`
+                          : `Nearby · ${cards.length} courts`}
+                </div>
+                <div className="hd-2 mt-0.5">
+                  {search
+                    ? `“${query.trim()}”`
+                    : userLoc
+                      ? 'Courts near you'
+                      : filtering
+                        ? 'Filtered courts'
+                        : 'Courts directory'}
+                </div>
               </div>
-              <button className="chip bg-[var(--surface-2)]!" onClick={() => setFilterOpen(true)}>
-                <Icon name="sliders" size={12} /> Filter
+              <button
+                className={`chip ${activeFilterCount ? 'active' : 'bg-[var(--surface-2)]!'}`}
+                onClick={() => setFilterOpen(true)}
+              >
+                <Icon name="sliders" size={12} /> Filter{activeFilterCount ? ` · ${activeFilterCount}` : ''}
               </button>
             </div>
+
+            {locError && (
+              <div className="mx-4 mb-2 px-3 py-2.5 rounded-xl bg-[var(--coral-soft)] text-[var(--coral)] text-[12px] font-semibold flex items-center gap-2">
+                <Icon name="location" size={14} />
+                <span className="flex-1">{locError}</span>
+                <button type="button" onClick={() => setLocError(null)} aria-label="Dismiss">
+                  <Icon name="close" size={14} />
+                </button>
+              </div>
+            )}
+
             <div className="list">
-              {cards.map((c, i) => (
+              {cards.length === 0 ? (
+                <div className="py-8 px-3 text-center text-[var(--muted)] text-[13px] leading-relaxed">
+                  {search
+                    ? `No courts match “${query.trim()}”${filtering ? ' with those filters' : ''}.`
+                    : 'No courts match those filters.'}
+                  <br />
+                  Try widening your search or filters.
+                </div>
+              ) : (
+                cards.map((c, i) => (
                 <button
                   key={c.id}
                   className={`court-row ${
@@ -352,6 +662,12 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
                   <div className="body">
                     <div className="title">{c.name}</div>
                     <div className="row1">
+                      {c.distanceKm != null && (
+                        <>
+                          <span className="font-extrabold text-[var(--primary)]">{formatDistance(c.distanceKm)}</span>
+                          <span className="opacity-50">·</span>
+                        </>
+                      )}
                       {c.rating != null && (
                         <>
                           <Icon name="star" size={11} className="text-[#c89000]" /> {c.rating}
@@ -374,9 +690,10 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
                     <Icon name="directions" size={14} />
                   </div>
                 </button>
-              ))}
+                ))
+              )}
 
-              {cursor && (
+              {!fullSetMode && cursor && (
                 <button
                   type="button"
                   onClick={loadMore}
@@ -389,7 +706,14 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
             </div>
           </div>
 
-          <NearbyFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} />
+          <NearbyFilterSheet
+            open={filterOpen}
+            onClose={() => setFilterOpen(false)}
+            filters={filters}
+            onChange={setFilters}
+            resultCount={cards.length}
+            located={userLoc != null}
+          />
         </div>
       )}
     </DemoBranch>

@@ -4,10 +4,14 @@
 
 import { create } from 'zustand';
 import {
+  ApiError,
   fetchCurrentUser,
+  getStoredUser,
   hasStoredSession,
   login as apiLogin,
   logout as apiLogout,
+  updateMe,
+  type ProfileUpdate,
 } from './api';
 import type { AppUser } from './permissions';
 
@@ -25,25 +29,55 @@ interface AuthState {
   /** Log in with credentials; stores tokens + user. Throws (ApiError) on failure. */
   login: (email: string, password: string) => Promise<AppUser>;
 
+  /**
+   * Persist profile edits to the account (`PATCH /me`) and update the store so
+   * the new values render everywhere immediately. Throws (ApiError) on failure
+   * so the caller can surface it.
+   */
+  updateProfile: (patch: ProfileUpdate) => Promise<AppUser>;
+
+  /**
+   * Mark first-run onboarding as done on the account (so the user is never
+   * re-onboarded), optionally saving the skill level they picked. Best-effort:
+   * swallows errors so a transient failure never traps the user in onboarding.
+   */
+  completeOnboarding: (data?: { skillLevel?: number; skillLevelLabel?: string }) => Promise<void>;
+
   /** Best-effort server logout; always clears the local session. */
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isLoggedIn: false,
+// Seed synchronously from the cached session so a refresh renders the logged-in
+// UI immediately (no flash to guest); `restore()` then revalidates against /me.
+const cachedUser = getStoredUser();
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: cachedUser,
+  isLoggedIn: cachedUser !== null,
 
   restore: async () => {
-    if (!hasStoredSession()) return false;
+    if (!hasStoredSession()) {
+      // No token: make sure we aren't showing a stale optimistic user.
+      set({ user: null, isLoggedIn: false });
+      return false;
+    }
     try {
+      // fetchCurrentUser auto-refreshes a 15m-expired access token via the
+      // stored refresh token (see rawRequest), so this only throws 401 when the
+      // refresh token is *also* gone/expired — i.e. the session is truly over.
       const user = await fetchCurrentUser();
       set({ user, isLoggedIn: true });
       return true;
-    } catch {
-      // Invalid/expired token — clear it so we fall back to guest browsing.
-      apiLogout();
-      set({ user: null, isLoggedIn: false });
-      return false;
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        // Genuinely unauthenticated — clear the session, fall back to guest.
+        apiLogout();
+        set({ user: null, isLoggedIn: false });
+        return false;
+      }
+      // Network/server hiccup: keep the optimistic cached session rather than
+      // logging the user out over a transient failure. Revalidates next time.
+      return get().isLoggedIn;
     }
   },
 
@@ -51,6 +85,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     const user = await apiLogin(email, password);
     set({ user, isLoggedIn: true });
     return user;
+  },
+
+  updateProfile: async (patch) => {
+    const user = await updateMe(patch);
+    set({ user, isLoggedIn: true });
+    return user;
+  },
+
+  completeOnboarding: async (data) => {
+    const patch: ProfileUpdate = { hasOnboarded: true };
+    if (data?.skillLevel != null) {
+      patch.skillLevel = String(data.skillLevel);
+      if (data.skillLevelLabel) patch.skillLevelLabel = data.skillLevelLabel;
+    }
+    try {
+      const user = await updateMe(patch);
+      set({ user, isLoggedIn: true });
+    } catch {
+      // Best-effort: don't block the user on a transient save failure — they'll
+      // simply be asked to onboard again on a future login.
+    }
   },
 
   logout: () => {

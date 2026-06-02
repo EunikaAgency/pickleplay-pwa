@@ -3,10 +3,11 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { FormField } from '../../shared/components/forms/FormField';
 import { FormTierPicker } from '../../shared/components/forms/FormTierPicker';
 import { useForm } from '../../shared/hooks/useForm';
-import { tierForDupr, type SkillTier } from '../../shared/lib/skillTiers';
+import { duprForTier, skillTiers, tierForDupr, type SkillTier } from '../../shared/lib/skillTiers';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { getInitials } from '../../shared/lib/initials';
+import { ApiError } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 
 interface EditProfileScreenProps {
@@ -15,7 +16,10 @@ interface EditProfileScreenProps {
 
 export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const nameParts = (currentUser?.displayName ?? '').trim().split(/\s+/).filter(Boolean);
   const initialTier = currentUser?.skillLevel != null ? tierForDupr(currentUser.skillLevel).id : 'solid';
@@ -34,11 +38,31 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
     },
   });
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!form.isValid) return;
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (!form.isValid || saving) return;
+    setError(null);
+    setSaving(true);
+    const firstName = form.values.firstName.trim();
+    const lastName = form.values.lastName.trim();
+    const tierName = skillTiers.find((t) => t.id === form.values.tier)?.name;
+    try {
+      await updateProfile({
+        firstName,
+        lastName,
+        // Keep the visible name in sync with the edited first/last name.
+        displayName: `${firstName} ${lastName}`.trim(),
+        bio: form.values.bio.trim(),
+        skillLevel: String(duprForTier(form.values.tier)),
+        skillLevelLabel: tierName,
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save your changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -113,9 +137,28 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
           />
         </div>
 
+        {error && (
+          <div
+            role="alert"
+            className="mx-5 mt-4 flex items-center gap-2 rounded-xl bg-[var(--coral-soft)] px-3 py-2.5 text-[13px] font-semibold text-[var(--coral)]"
+          >
+            <span className="flex-none w-5 h-5 rounded-full bg-[var(--coral)] text-white font-heading text-[13px] leading-none flex items-center justify-center">
+              !
+            </span>
+            {error}
+          </div>
+        )}
+
         <div className="px-5 mt-4">
-          <Button type="submit" fullWidth disabled={!form.isValid}>
-            {saved ? (
+          <Button type="submit" fullWidth disabled={!form.isValid || saving}>
+            {saving ? (
+              <>
+                <span className="inline-flex animate-spin">
+                  <Icon name="spinner" size={18} />
+                </span>
+                Saving…
+              </>
+            ) : saved ? (
               <>
                 <Icon name="check" size={18} /> Saved!
               </>

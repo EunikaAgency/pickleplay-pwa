@@ -1,35 +1,25 @@
-import { useState } from 'react';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Button } from '../../shared/components/ui/Button';
 import { Chip } from '../../shared/components/ui/Chip';
+import { AMENITY_OPTIONS, MIN_DISTANCE_MI, MAX_DISTANCE_MI, makeDefaultFilters, type VenueFilters } from './venueFilters';
 
 interface NearbyFilterSheetProps {
   open: boolean;
   onClose: () => void;
+  filters: VenueFilters;
+  onChange: (next: VenueFilters) => void;
+  /** Count of courts matching the current filters — shown on the apply button. */
+  resultCount: number;
+  /** Whether the user has shared their location (enables the distance cap). */
+  located: boolean;
 }
 
-const AMENITIES = ['Restrooms', 'Lighted', 'Pro Shop', 'Water', 'Seating', 'Parking'];
-
-export function NearbyFilterSheet({ open, onClose }: NearbyFilterSheetProps) {
-  const [courtType, setCourtType] = useState('All');
-  const [access, setAccess] = useState('Any');
-  const [distance, setDistance] = useState(5);
-  const [amenities, setAmenities] = useState<Set<string>>(new Set());
-
-  const toggle = (a: string) => {
-    setAmenities((prev) => {
-      const next = new Set(prev);
-      if (next.has(a)) next.delete(a);
-      else next.add(a);
-      return next;
-    });
-  };
-
-  const reset = () => {
-    setCourtType('All');
-    setAccess('Any');
-    setDistance(5);
-    setAmenities(new Set());
+export function NearbyFilterSheet({ open, onClose, filters, onChange, resultCount, located }: NearbyFilterSheetProps) {
+  const toggleAmenity = (key: string) => {
+    const amenities = new Set(filters.amenities);
+    if (amenities.has(key)) amenities.delete(key);
+    else amenities.add(key);
+    onChange({ ...filters, amenities });
   };
 
   return (
@@ -41,11 +31,11 @@ export function NearbyFilterSheet({ open, onClose }: NearbyFilterSheetProps) {
       height="74dvh"
       footer={
         <div className="flex gap-2.5">
-          <Button variant="outline" fullWidth className="flex-1" onClick={reset}>
+          <Button variant="outline" fullWidth className="flex-1" onClick={() => onChange(makeDefaultFilters())}>
             Reset
           </Button>
           <Button variant="dark" fullWidth className="flex-[2]" onClick={onClose}>
-            Show results
+            Show {resultCount} court{resultCount === 1 ? '' : 's'}
           </Button>
         </div>
       }
@@ -53,42 +43,62 @@ export function NearbyFilterSheet({ open, onClose }: NearbyFilterSheetProps) {
       <div className="field">
         <div className="lbl">Court type</div>
         <div className="flex gap-2 flex-wrap">
-          {['All', 'Indoor', 'Outdoor'].map((o) => (
-            <Chip key={o} selected={courtType === o} onClick={() => setCourtType(o)}>{o}</Chip>
+          {(['All', 'Indoor', 'Outdoor'] as const).map((o) => (
+            <Chip key={o} selected={filters.courtType === o} onClick={() => onChange({ ...filters, courtType: o })}>
+              {o}
+            </Chip>
           ))}
         </div>
       </div>
 
       <div className="field">
-        <div className="lbl">Access</div>
+        <div className="lbl">Price</div>
         <div className="flex gap-2 flex-wrap">
-          {['Any', 'Public', 'Membership', 'Fee Required'].map((o) => (
-            <Chip key={o} selected={access === o} onClick={() => setAccess(o)}>{o}</Chip>
+          {(['Any', 'Free', 'Paid'] as const).map((o) => (
+            <Chip key={o} selected={filters.price === o} onClick={() => onChange({ ...filters, price: o })}>
+              {o}
+            </Chip>
           ))}
         </div>
       </div>
 
       <div className="field">
-        <div className="lbl">Max distance · {distance} mi</div>
+        <div className="lbl">Open play</div>
+        <div className="flex gap-2 flex-wrap">
+          <Chip selected={filters.openPlay} onClick={() => onChange({ ...filters, openPlay: !filters.openPlay })}>
+            Hosts games / open play
+          </Chip>
+        </div>
+      </div>
+
+      <div className="field">
+        <div className="lbl">Within {filters.maxDistanceMi} mi</div>
         <input
           type="range"
-          min="1"
-          max="25"
-          value={distance}
-          onChange={(e) => setDistance(+e.target.value)}
+          min={MIN_DISTANCE_MI}
+          max={MAX_DISTANCE_MI}
+          value={filters.maxDistanceMi}
+          onChange={(e) => onChange({ ...filters, maxDistanceMi: +e.target.value })}
           className="w-full [accent-color:var(--primary)]"
         />
         <div className="flex justify-between text-[11px] text-[var(--muted)] font-bold">
-          <span>1 mi</span>
-          <span>25 mi</span>
+          <span>{MIN_DISTANCE_MI} mi</span>
+          <span>{MAX_DISTANCE_MI} mi</span>
+        </div>
+        <div className="mt-1 text-[11px] text-[var(--muted)] font-semibold">
+          {located
+            ? 'Showing courts within this radius of you.'
+            : 'Tap “Near me” to use your location and this radius.'}
         </div>
       </div>
 
       <div className="field">
         <div className="lbl">Amenities</div>
         <div className="flex gap-2 flex-wrap">
-          {AMENITIES.map((a) => (
-            <Chip key={a} selected={amenities.has(a)} onClick={() => toggle(a)}>{a}</Chip>
+          {AMENITY_OPTIONS.map((a) => (
+            <Chip key={a.key} selected={filters.amenities.has(a.key)} onClick={() => toggleAmenity(a.key)}>
+              {a.label}
+            </Chip>
           ))}
         </div>
       </div>

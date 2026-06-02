@@ -48,7 +48,7 @@ src/
     auth/              # LandingScreen, LoginScreen, OnboardingScreen
     home/              # HomeScreenSwitch (picks ↓), HomeScreenRefined (default "New"), HomeScreen (Classic)
     games/             # Games, GameDetails, CreateGame, InvitePlayers, GameFilterSheet
-    venues/            # Nearby (= "Courts" tab), CourtDetails, NearbyFilterSheet
+    venues/            # Nearby (the "Nearby" tab), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
     clubs/             # Clubs, ClubDetails, CreateClub
     profile/           # Profile, EditProfile, Settings, Notifications
     search/            # SearchScreen
@@ -63,7 +63,7 @@ src/
     components/forms/   # FormField, FormSelect, FormTierPicker
     hooks/              # useForm, useTheme, usePrefersReducedMotion
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
-                        # demoState.tsx, skillTiers.ts, initials.ts, types.ts
+                        # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts
     styles/index.css    # Tailwind + all design tokens (--primary, --lime, --coral, shadows…)
 ```
 
@@ -72,8 +72,9 @@ src/
 - **`shared/lib/navigation.ts`** — `Screen` union, `ScreenId`, `tabScreens`, `Navigate`.
 - **`shared/lib/permissions.ts`** — roles → permissions, `AppUser`, `userHasPermission`, `firstNameOf`.
 - **`shared/lib/authStore.ts`** — Zustand store: `user`, `isLoggedIn`, and the
-  `login`/`logout`/`restore` actions. Read it directly with `useAuthStore((s) => s.user)`
-  instead of threading the user through props. Wraps `api.ts`.
+  `login`/`logout`/`restore`/`updateProfile`/`completeOnboarding` actions. Read it directly
+  with `useAuthStore((s) => s.user)` instead of threading the user through props. Wraps `api.ts`
+  (`updateProfile`/`completeOnboarding` → `PATCH /me`).
 - **`shared/lib/api.ts`** — the API client. Auth (login/logout/`/me`) with token storage in
   `localStorage` + `toAppUser`, **and** venues/courts (`listVenues`/`getVenue` →
   `ApiVenue`/`ApiVenueDetail`). Talks to the Hono API (relative in dev via the Vite proxy;
@@ -97,14 +98,25 @@ src/
 - **Login is live against the API:** `LoginScreen` calls `useAuthStore().login()` →
   `POST /api/v1/auth/login`, stores tokens, and the user populates the greeting, profile,
   sidebar, etc. On cold start `App.tsx` calls `authStore.restore()` to revalidate a stored
-  token via `/me`. Profile *stats* (win rate, streak, achievements) are still demo data —
-  only identity fields come from the API.
-- **Courts tab is live:** `NearbyScreen` lists venues and `CourtDetailsScreen` loads one
+  token via `/me`. **Profile edits save to the account** (`EditProfileScreen` → `updateProfile`
+  → `PATCH /me`) and **onboarding is remembered** via a `hasOnboarded` flag on the user
+  (set by `completeOnboarding`); `App.tsx` only onboards when `!user.hasOnboarded`. Profile
+  *stats* (win rate, streak, achievements) are still demo data — only identity fields come from the API.
+- **Nearby tab is live** (the tab labelled "Nearby"; `nearby` screen id): `NearbyScreen` lists venues and `CourtDetailsScreen` loads one
   from `/api/v1/venues` (see `api.ts`/`venueDisplay.ts`). Both own their loading/error/empty
   states. The list **paginates** (20/page via "Load more" using the API cursor) and shows
-  venue **images** (media-derived) with a gradient fallback. Real data is sparse
-  (ratings/coords often null) so fields degrade gracefully; the on-detail "Games this week"
-  list is still demo.
+  venue **images** (media-derived) with a gradient fallback. **Near me:** the "Near me"
+  chip / locate button asks for the user's location (`shared/lib/geo.ts`) and shows the
+  courts *near them* — locatable venues only, ranked nearest-first and capped to a radius
+  (default 25 mi, adjustable in the sheet; `resolveNearby`), with a nearest-few fallback —
+  not the whole directory. **Open to guests** (browse aid); `player.venues.locate` only governs signed-in
+  users (`!isLoggedIn || userHasPermission(...)`). **Filters narrow the list too:** the quick
+  chips (Games here / Indoor / Free / Lighted) and the `NearbyFilterSheet` (court type, price,
+  open play, distance cap, amenities) edit one `VenueFilters` state applied via `matchesFilters`
+  (`venueFilters.ts`). Filtering or locating switches the list to the full set (so a filter
+  can't hide matches on unfetched pages); otherwise it stays the server-paged directory. Real
+  data is sparse (ratings/coords often null) so fields degrade gracefully; the on-detail
+  "Games this week" list is still demo.
 - **Owner console:** users with `owner.access` see a **"My venues"** row in the Profile
   ("You") tab → `owner-venues`. `OwnerVenuesScreen` lists their venues (live, via
   `listOwnerVenues`); `OwnerVenueScreen` is a single screen with an in-screen tab strip
@@ -132,7 +144,7 @@ src/
 |---|---|
 | Navigation / new screen / auth-or-guest flow | `App.tsx`, `shared/lib/navigation.ts` |
 | Login / current user / session | `shared/lib/authStore.ts`, `shared/lib/api.ts`, `LoginScreen.tsx` |
-| Courts / venues (list + detail) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `shared/lib/venueDisplay.ts` |
+| Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |

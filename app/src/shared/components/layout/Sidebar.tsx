@@ -21,7 +21,7 @@ interface SideTab {
 const tabs: SideTab[] = [
   { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
   { id: 'games',   label: 'Games',  icon: 'calendar', iconFill: 'calendar_fill' },
-  { id: 'nearby',  label: 'Courts', icon: 'map_pin',  iconFill: 'map_pin_fill' },
+  { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'clubs',   label: 'Clubs',  icon: 'groups' },
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];

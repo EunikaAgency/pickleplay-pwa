@@ -3,18 +3,34 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { DuprExplainerSheet } from '../../shared/components/ui/DuprExplainerSheet';
 import { FormTierPicker } from '../../shared/components/forms/FormTierPicker';
-import type { SkillTier } from '../../shared/lib/skillTiers';
+import { duprForTier, skillTiers, type SkillTier } from '../../shared/lib/skillTiers';
+import { useAuthStore } from '../../shared/lib/authStore';
 
 interface OnboardingScreenProps {
   onComplete: () => void;
 }
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
+  const completeOnboarding = useAuthStore((s) => s.completeOnboarding);
   const [step, setStep] = useState(1);
   const [location, setLocation] = useState('');
   const [locating, setLocating] = useState(false);
   const [tier, setTier] = useState<SkillTier['id'] | null>(null);
   const [duprOpen, setDuprOpen] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+
+  // Remember onboarding on the account (so the user is never re-onboarded),
+  // saving the skill tier they picked when there is one, then leave the flow.
+  // `completeOnboarding` is best-effort, so we always proceed via onComplete.
+  const finish = async (chosenTier: SkillTier['id'] | null) => {
+    if (finishing) return;
+    setFinishing(true);
+    const tierName = chosenTier ? skillTiers.find((t) => t.id === chosenTier)?.name : undefined;
+    await completeOnboarding(
+      chosenTier ? { skillLevel: duprForTier(chosenTier), skillLevelLabel: tierName } : undefined,
+    );
+    onComplete();
+  };
 
   const useMyLocation = () => {
     if (!('geolocation' in navigator)) {
@@ -59,7 +75,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             <Button fullWidth onClick={() => setStep(2)}>
               Get started <Icon name="forward" size={16} />
             </Button>
-            <button onClick={onComplete} className="text-[13px] text-[var(--muted)] font-bold">
+            <button onClick={() => finish(null)} disabled={finishing} className="text-[13px] text-[var(--muted)] font-bold disabled:opacity-60">
               Skip setup
             </button>
           </div>
@@ -145,12 +161,23 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
 
             <Button
               fullWidth
-              onClick={onComplete}
-              disabled={!tier}
+              onClick={() => finish(tier)}
+              disabled={!tier || finishing}
             >
-              <Icon name="bolt" size={18} /> Let's play!
+              {finishing ? (
+                <>
+                  <span className="inline-flex animate-spin">
+                    <Icon name="spinner" size={18} />
+                  </span>
+                  Setting up…
+                </>
+              ) : (
+                <>
+                  <Icon name="bolt" size={18} /> Let's play!
+                </>
+              )}
             </Button>
-            <button onClick={onComplete} className="text-[13px] text-[var(--muted)] font-bold self-center">
+            <button onClick={() => finish(tier)} disabled={finishing} className="text-[13px] text-[var(--muted)] font-bold self-center disabled:opacity-60">
               I'll pick later
             </button>
           </div>
