@@ -10,6 +10,7 @@ import type { Navigate } from '../../shared/lib/navigation';
 import { tierForDupr } from '../../shared/lib/skillTiers';
 
 interface InvitePlayersScreenProps {
+  gameId: string;
   onNavigate: Navigate;
   onBack: () => void;
 }
@@ -22,12 +23,12 @@ const SUGGESTED = [
   { name: 'Casey W.',   skill: '3.5', v: 'blue'  as const },
 ];
 
-export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenProps) {
+export function InvitePlayersScreen({ gameId, onNavigate, onBack }: InvitePlayersScreenProps) {
   const [invited, setInvited] = useState<Set<string>>(new Set());
   const [sent, setSent] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [duprOpen, setDuprOpen] = useState(false);
-  const link = 'pickleballers.app/game/7xk9m2';
+  const link = `pickleballers.app/game/${gameId}`;
 
   const toggle = (name: string) => {
     setInvited((prev) => {
@@ -55,14 +56,14 @@ export function InvitePlayersScreen({ onNavigate, onBack }: InvitePlayersScreenP
         iconSize={36}
         title="Invites sent!"
         description={`${invited.size} player${invited.size !== 1 ? 's' : ''} invited. They'll get a notification.`}
-        actions={[{ label: 'View game', onClick: () => onNavigate('game-details', { id: 'new' }) }]}
+        actions={[{ label: 'View game', onClick: () => onNavigate('game-details', { id: gameId }) }]}
       />
     );
   }
 
   return (
     <div className="scroll pb-[100px] pt-[calc(20px+env(safe-area-inset-top))]">
-      <ScreenHeader onBack={onBack} eyebrow="Invite players" title="Saturday Morning Mix-In" />
+      <ScreenHeader onBack={onBack} eyebrow="Invite players" title="Share your game" />
 
       <div className="section mt-1!">
         <div className="section-head">

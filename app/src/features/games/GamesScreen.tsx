@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
@@ -7,6 +7,8 @@ import { GameRow } from '../../shared/components/ui/GameRow';
 import { Segmented } from '../../shared/components/ui/Segmented';
 import { GameFilterSheet } from './GameFilterSheet';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
+import { listGames, type ApiGame } from '../../shared/lib/api';
+import { dayParts, gameThumb, gameTitle, timeLine, gameLocation } from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface GamesScreenProps {
@@ -14,6 +16,14 @@ interface GamesScreenProps {
 }
 
 type GamesView = 'browse' | 'mine';
+
+/** Local YYYY-MM-DD (matches how the API computes a game's `date`). */
+function localYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const CALENDAR = (() => {
   const today = new Date();
@@ -24,7 +34,7 @@ const CALENDAR = (() => {
     return {
       wd: i === 0 ? 'TODAY' : i === 1 ? 'TOM' : wdays[d.getDay()],
       dn: d.getDate(),
-      has: [0, 1, 3, 6].includes(i),
+      iso: localYMD(d),
       key: i,
     };
   });
@@ -32,25 +42,33 @@ const CALENDAR = (() => {
 
 const QUICK_CHIPS = ['Tonight', 'Beginner', '3.0–3.5', 'Within 5 mi', 'Doubles'];
 
-const BROWSE_GAMES = [
-  { day: 'TODAY', num: '26', thumb: 'lime',  title: 'Rookie Rally Round',    time: '5:30 PM',  loc: 'Central Hub · 1.2 mi' },
-  { day: 'TODAY', num: '26', thumb: 'coral', title: 'Friday Night Dinks',    time: '6:30 PM',  loc: 'Riverside · 1.2 mi' },
-  { day: 'TODAY', num: '26', thumb: 'blue',  title: 'Beginner Open Play',    time: '7:00 PM',  loc: 'Central Hub · 0.8 mi' },
-  { day: 'TOM',   num: '27', thumb: 'lime',  title: 'Saturday Morning Mix',  time: '9:00 AM',  loc: 'Riverside · 1.2 mi' },
-  { day: 'SAT',   num: '28', thumb: 'coral', title: 'Competitive Singles',   time: '10:00 AM', loc: 'The Kitchen · 3.5 mi' },
-  { day: 'SUN',   num: '29', thumb: 'blue',  title: 'Social Mixer & Drinks', time: '4:00 PM',  loc: 'Sky Courts · 0.8 mi' },
-] as const;
-
-const MINE_GAMES = [
-  { day: 'SAT', num: '14', thumb: 'lime', title: 'Saturday Morning Mix-In', time: '9:00 AM', loc: 'Riverside · 1.2 mi', joined: true },
-  { day: 'TUE', num: '17', thumb: 'blue', title: 'Weekly Doubles League',   time: '6:30 PM', loc: 'Central Hub · 0.8 mi', joined: true },
-] as const;
-
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const [view, setView] = useState<GamesView>('browse');
-  const [activeDay, setActiveDay] = useState(0);
+  // null = all upcoming days; a calendar index narrows browse to that date.
+  const [activeDay, setActiveDay] = useState<number | null>(null);
   const [activeChips, setActiveChips] = useState<Set<string>>(new Set(['Tonight']));
   const [filterOpen, setFilterOpen] = useState(false);
+
+  const [games, setGames] = useState<ApiGame[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const dateFilter = view === 'browse' && activeDay !== null ? CALENDAR[activeDay].iso : undefined;
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    const params = view === 'mine' ? { mine: true } : { status: 'published', date: dateFilter };
+    listGames(params)
+      .then((rows) => { if (alive) setGames(rows); })
+      .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load games.'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [view, dateFilter, reloadKey]);
+
+  const refetch = () => setReloadKey((k) => k + 1);
 
   const toggle = (c: string) => {
     setActiveChips((prev) => {
@@ -61,14 +79,13 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
     });
   };
 
-  const games: ReadonlyArray<typeof BROWSE_GAMES[number] | typeof MINE_GAMES[number]> =
-    view === 'mine' ? MINE_GAMES : BROWSE_GAMES;
+  const tapDay = (i: number) => setActiveDay((prev) => (prev === i ? null : i));
 
   const emptyState = (
     <EmptyState
       icon="paddle"
       title={view === 'mine' ? "You haven't joined any games yet" : 'No games found'}
-      description={view === 'mine' ? 'Browse upcoming games near you to get on the courts.' : 'Try a different date or remove some filters.'}
+      description={view === 'mine' ? 'Browse upcoming games near you to get on the courts.' : 'Try a different date or check back soon.'}
       action={view === 'mine' ? { label: 'Browse games', onPress: () => setView('browse') } : undefined}
     />
   );
@@ -79,7 +96,7 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
         <div>
           <div className="greet-name">Games</div>
           <div className="greet-sub">
-            {games.length} games {view === 'mine' ? 'you joined' : 'this week'}
+            {games.length} {games.length === 1 ? 'game' : 'games'} {view === 'mine' ? "you're in" : 'available'}
           </div>
         </div>
         <button
@@ -88,9 +105,6 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
           className="relative w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)]"
         >
           <Icon name="sliders" size={18} />
-          <span className="absolute top-1 right-1 bg-[var(--coral)] text-white text-[9px] font-extrabold min-w-[14px] h-[14px] rounded-[7px] flex items-center justify-center px-1 border-2 border-[var(--surface)]">
-            2
-          </span>
         </button>
       </div>
 
@@ -113,20 +127,22 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
         />
       </div>
 
-      <div className="section mt-4!">
-        <div className="cal-strip">
-          {CALENDAR.map((d, i) => (
-            <button
-              key={d.key}
-              className={`day ${activeDay === i ? 'active' : ''} ${d.has ? 'has' : ''}`}
-              onClick={() => setActiveDay(i)}
-            >
-              <span className="wd">{d.wd}</span>
-              <span className="dn">{d.dn}</span>
-            </button>
-          ))}
+      {view === 'browse' && (
+        <div className="section mt-4!">
+          <div className="cal-strip">
+            {CALENDAR.map((d, i) => (
+              <button
+                key={d.key}
+                className={`day ${activeDay === i ? 'active' : ''}`}
+                onClick={() => tapDay(i)}
+              >
+                <span className="wd">{d.wd}</span>
+                <span className="dn">{d.dn}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="section mt-3.5!">
         <div className="scroll-x flex gap-2 pb-1">
@@ -145,26 +161,36 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
             <ErrorState
               title="Couldn't load games"
               message="We couldn't reach the games feed. Pull down to retry."
-              onRetry={() => {}}
+              onRetry={refetch}
             />
           }
           empty={emptyState}
         >
-          {games.length === 0 ? emptyState : (
+          {loading ? (
+            <LoadingSkeleton variant="card" count={4} />
+          ) : error ? (
+            <ErrorState title="Couldn't load games" message={error} onRetry={refetch} />
+          ) : games.length === 0 ? (
+            emptyState
+          ) : (
             <div className="games-grid flex flex-col gap-2.5">
-              {games.map((g, i) => (
-                <GameRow
-                  key={i}
-                  day={g.day}
-                  num={g.num}
-                  thumb={g.thumb}
-                  title={g.title}
-                  time={g.time}
-                  loc={g.loc}
-                  joined={'joined' in g ? g.joined : false}
-                  onTap={() => onNavigate('game-details', { id: `g${i + 1}` })}
-                />
-              ))}
+              {games.map((g) => {
+                const { day, num } = dayParts(g);
+                return (
+                  <GameRow
+                    key={g.id}
+                    day={day}
+                    num={num}
+                    thumb={gameThumb(g)}
+                    title={gameTitle(g)}
+                    time={timeLine(g)}
+                    loc={gameLocation(g)}
+                    joined={view === 'mine'}
+                    showRsvp={false}
+                    onTap={() => onNavigate('game-details', { id: g.id })}
+                  />
+                );
+              })}
             </div>
           )}
         </DemoBranch>

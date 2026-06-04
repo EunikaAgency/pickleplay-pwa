@@ -222,7 +222,7 @@ function AppInner() {
       case 'profile':
         return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
-        return <GameDetailsScreen onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
+        return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'court-details':
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
@@ -238,7 +238,7 @@ function AppInner() {
       case 'search':
         return <SearchScreen onNavigate={navigate} onBack={goBack} />;
       case 'invite-players':
-        return <InvitePlayersScreen onNavigate={navigate} onBack={goBack} />;
+        return <InvitePlayersScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-venues':

@@ -47,7 +47,8 @@ src/
   features/<slice>/    # vertical slices; each owns its screens + slice-only UI (filter sheets)
     auth/              # LandingScreen, LoginScreen, OnboardingScreen
     home/              # HomeScreenSwitch (picks ↓), HomeScreenRefined (default "New"), HomeScreen (Classic)
-    games/             # Games, GameDetails, CreateGame, InvitePlayers, GameFilterSheet
+    games/             # Games, GameDetails, CreateGame, InvitePlayers, GameFilterSheet, gameDisplay
+                       #   (API-wired: create/list/detail/join; chat + invite-send still demo)
     venues/            # Nearby (the "Nearby" tab), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
     clubs/             # Clubs, ClubDetails, CreateClub
     profile/           # Profile, EditProfile, Settings, Notifications
@@ -64,6 +65,7 @@ src/
     hooks/              # useForm, useTheme, usePrefersReducedMotion
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
                         # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts
+                        # (games formatters live in features/games/gameDisplay.ts, next to the screens)
     styles/index.css    # Tailwind + all design tokens (--primary, --lime, --coral, shadows…)
 ```
 
@@ -81,7 +83,9 @@ src/
   `VITE_API_BASE_URL` in prod). `shared/lib/venueDisplay.ts` holds the venue formatters
   (price/location/tags/amenities/`mapsUrl`). Also carries the **owner** endpoints
   (`listOwnerVenues`/`getOwnerVenue`/`updateVenue`/`createVenue`, courts/hours/closures/faqs/
-  reviews CRUD, `uploadVenueMedia`, `fetchCities`/`geocodePlace`) + their `Owner*` types.
+  reviews CRUD, `uploadVenueMedia`, `fetchCities`/`geocodePlace`) + their `Owner*` types, **and
+  the games endpoints** (`listGames`/`getGame`/`createGame`/`joinGame`/`leaveGame` → `ApiGame`);
+  `features/games/gameDisplay.ts` holds the game formatters (day/time/location/title/spots).
 - **`shared/lib/demoState.tsx`** — `DemoStateProvider`/`useDemoState`; lets reviewers flip
   normal/empty/loading/error/offline. Screens branch on it via `DemoBranch`.
 - **`shared/styles/index.css`** — design tokens + most component classes (`.avatar`,
@@ -117,6 +121,18 @@ src/
   can't hide matches on unfetched pages); otherwise it stays the server-paged directory. Real
   data is sparse (ratings/coords often null) so fields degrade gracefully; the on-detail
   "Games this week" list is still demo.
+- **Games tab is live:** `GamesScreen` lists games from `/api/v1/games` (Browse = public
+  published; **My Games** = games you created or joined), `GameDetailsScreen` loads one via
+  `getGame` and **Join** calls `joinGame` (soft-gated by `onRequireAuth`; spots/roster are
+  server-derived). `CreateGameScreen` posts via `createGame`: its **when** step has `Custom`
+  date/start-time/duration inputs (explicit `date` to the API), and its **court** step asks for
+  the user's location (`geo.ts`), ranks **real venues** (`listAllVenues`) nearest-first with
+  photos, has a **name/area search**, and shows a **Leaflet map** (pins + you-are-here dot, tap
+  to pick; search narrows both list + pins) — storing a real `venueId`; on success it routes to
+  the real game id.
+  Gated by `player.games.create` (`SCREEN_PERMISSIONS`). The Browse **calendar strip** filters
+  by date (server `date` param); the quick chips, search box, `GameFilterSheet`, and the
+  Game-Details **chat** are still cosmetic/demo (no endpoints yet).
 - **Owner console:** users with `owner.access` see a **"My venues"** row in the Profile
   ("You") tab → `owner-venues`. `OwnerVenuesScreen` lists their venues (live, via
   `listOwnerVenues`); `OwnerVenueScreen` is a single screen with an in-screen tab strip
@@ -145,6 +161,7 @@ src/
 | Navigation / new screen / auth-or-guest flow | `App.tsx`, `shared/lib/navigation.ts` |
 | Login / current user / session | `shared/lib/authStore.ts`, `shared/lib/api.ts`, `LoginScreen.tsx` |
 | Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` |
+| Games tab (browse/mine, create, detail, join) | `features/games/{GamesScreen,GameDetailsScreen,CreateGameScreen}.tsx`, `gameDisplay.ts`; games endpoints in `shared/lib/api.ts` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |

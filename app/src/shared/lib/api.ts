@@ -702,3 +702,98 @@ export async function uploadVenueMedia(venueId: string, file: File): Promise<Upl
   }
   return json?.data ?? null;
 }
+
+/* ─── Games (open-play) ─────────────────────────────────────── */
+//
+// Player-created open-play games. Browse + detail are public (guests can
+// window-shop); create/join/leave require auth. The server derives `spotsLeft`
+// and `participantCount`, so the app never computes capacity itself.
+
+const GAMES_PREFIX = '/api/v1/games';
+
+export interface ApiGamePerson {
+  id: string;
+  displayName?: string;
+  avatarUrl?: string | null;
+}
+
+export interface ApiGameVenue {
+  id: string;
+  displayName?: string;
+  slug?: string;
+  area?: string | null;
+  city?: string | null;
+}
+
+export interface ApiGame {
+  id: string;
+  title?: string | null;
+  gameType?: string | null;        // 'singles' | 'doubles' | 'open'
+  skillLabel?: string | null;
+  whenLabel?: string | null;
+  timeLabel?: string | null;
+  durationLabel?: string | null;
+  date?: string | null;            // YYYY-MM-DD (best-effort)
+  capacity?: number | null;
+  spotsLeft?: number | null;
+  participantCount?: number | null;
+  participants?: ApiGamePerson[];
+  creator?: ApiGamePerson | null;
+  creatorId?: string | null;
+  venue?: ApiGameVenue | null;
+  venueId?: string | null;
+  venueName?: string | null;       // free-text fallback when no venue link
+  visibility?: string | null;
+  status?: string | null;          // 'published' | 'full' | 'cancelled'
+}
+
+export interface ListGamesParams {
+  status?: string;
+  venueId?: string;
+  date?: string;
+  /** "My Games" — games the current user created or joined (needs auth). */
+  mine?: boolean;
+}
+
+export interface CreateGamePayload {
+  title?: string;
+  venueId?: string;
+  venueName?: string;
+  gameType: 'singles' | 'doubles' | 'open';
+  skillLabel?: string;
+  whenLabel?: string;
+  timeLabel?: string;
+  durationLabel?: string;
+  /** Explicit YYYY-MM-DD from the "Custom" date picker; overrides the derived date. */
+  date?: string;
+  capacity: number;
+  visibility: 'public' | 'invite';
+}
+
+/** List games — public browse, or the current user's games via `mine`. */
+export async function listGames(params: ListGamesParams = {}): Promise<ApiGame[]> {
+  // `mine` needs the token; for plain browse we still send it (optionalAuth)
+  // so the server can resolve join-state, but it's harmless when absent.
+  const env = await rawRequest<ApiGame[]>(`${GAMES_PREFIX}${toQuery({ ...params })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Fetch a single game with creator, participants, venue, and spots-left. */
+export async function getGame(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { auth: true });
+}
+
+/** Create (post) a game; the creator is auto-added as the first participant. */
+export async function createGame(body: CreateGamePayload): Promise<ApiGame> {
+  return request<ApiGame>(GAMES_PREFIX, { method: 'POST', body, auth: true });
+}
+
+/** Join a game — server enforces capacity + one-per-player. */
+export async function joinGame(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/join`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Leave a game (re-opens it if it was full). */
+export async function leaveGame(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
+}
