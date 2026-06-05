@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
-import { OwnerSection } from './OwnerSection';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { OwnerSection } from '../components/OwnerSection';
 import {
   listFaqs,
   createFaq,
@@ -8,7 +8,7 @@ import {
   deleteFaq,
   entityId,
   type OwnerFaq,
-} from '../../shared/lib/api';
+} from '../../../shared/lib/api';
 
 interface FaqsEditorTabProps {
   venueId: string;

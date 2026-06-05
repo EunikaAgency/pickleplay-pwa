@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
-import { Button } from '../../shared/components/ui/Button';
-import { Toast } from '../../shared/components/ui/Toast';
-import { OwnerSection } from './OwnerSection';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { Button } from '../../../shared/components/ui/Button';
+import { Toast } from '../../../shared/components/ui/Toast';
+import { OwnerSection } from '../components/OwnerSection';
 import {
   getHours,
   putHours,
@@ -12,7 +12,7 @@ import {
   entityId,
   type OwnerHourEntry,
   type OwnerClosure,
-} from '../../shared/lib/api';
+} from '../../../shared/lib/api';
 
 interface HoursEditorTabProps {
   venueId: string;

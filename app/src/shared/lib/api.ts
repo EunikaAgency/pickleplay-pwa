@@ -797,3 +797,143 @@ export async function joinGame(id: string): Promise<ApiGame> {
 export async function leaveGame(id: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
 }
+
+/* ─── Bookings + checkout ───────────────────────────────────── */
+//
+// A booking is a court reservation. It is created `pending_approval`; paying for
+// it via checkout (test mode) flips it to `confirmed`. All endpoints require auth.
+
+const BOOKINGS_PREFIX = '/api/v1/bookings';
+const PAYMENTS_PREFIX = '/api/v1/payments';
+
+export interface ApiBooking {
+  id: string;
+  venueId?: string | null;
+  venueName?: string | null;
+  venueSlug?: string | null;
+  courtId?: string | null;
+  date?: string | null;            // YYYY-MM-DD
+  startTime?: string | null;       // "18:30"
+  endTime?: string | null;
+  playerCount?: number | null;
+  amount?: number | null;
+  status?: string | null;          // 'pending_approval' | 'confirmed' | 'paid' | 'cancelled'
+  paymentMethod?: string | null;
+  cancellationReason?: string | null;
+  createdAt?: string | null;
+  userName?: string | null;        // populated by the owner bookings endpoint only
+}
+
+export interface CreateBookingPayload {
+  venueId: string;
+  courtId?: string;
+  date: string;                    // YYYY-MM-DD
+  startTime?: string;              // "18:30"
+  endTime?: string;
+  playerCount?: number;
+  amount: number;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+/** The current user's bookings, newest first (optionally filtered by status). */
+export async function listBookings(params: { status?: string } = {}): Promise<ApiBooking[]> {
+  const env = await rawRequest<ApiBooking[]>(`${BOOKINGS_PREFIX}${toQuery({ ...params })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Create a booking (starts as pending_approval). */
+export async function createBooking(body: CreateBookingPayload): Promise<ApiBooking> {
+  return request<ApiBooking>(BOOKINGS_PREFIX, { method: 'POST', body, auth: true });
+}
+
+/** Fetch a single booking. */
+export async function getBooking(id: string): Promise<ApiBooking> {
+  return request<ApiBooking>(`${BOOKINGS_PREFIX}/${encodeURIComponent(id)}`, { auth: true });
+}
+
+/** Cancel a booking. */
+export async function cancelBooking(id: string, cancellationReason?: string): Promise<ApiBooking> {
+  return request<ApiBooking>(`${BOOKINGS_PREFIX}/${id}/cancel`, { method: 'POST', body: { cancellationReason }, auth: true });
+}
+
+/* ─── Owner: bookings inbox + analytics ─────────────────────────── */
+//
+// Owner-gated views over a venue the current user owns. `getVenueBookings`
+// returns every booking for the venue (newest first, capped server-side) with
+// the player's `userName` populated; `updateBookingStatus` drives the inbox
+// actions; `getVenueAnalytics` returns aggregated business metrics for the
+// dashboard. All require auth + venue ownership (or admin).
+
+export type BookingStatus = 'confirmed' | 'cancelled' | 'paid';
+
+/** All bookings for a venue the user owns (optionally filtered by status). */
+export async function getVenueBookings(venueId: string, status?: string): Promise<ApiBooking[]> {
+  const env = await rawRequest<ApiBooking[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/bookings${toQuery({ status })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Confirm / cancel / mark-paid a booking on a venue the user owns. */
+export async function updateBookingStatus(
+  venueId: string,
+  bookingId: string,
+  body: { status: BookingStatus; cancellationReason?: string },
+): Promise<ApiBooking> {
+  return request<ApiBooking>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/bookings/${encodeURIComponent(bookingId)}`, { method: 'PATCH', body, auth: true });
+}
+
+export interface OwnerAnalytics {
+  kpis: {
+    revenue: { today: number; week: number; month: number; prevMonth: number; momChangePct: number };
+    bookings: { today: number; pending: number; upcoming: number; week: number; prevWeek: number };
+    occupancyPct: { week: number; prevWeek: number };
+  };
+  revenueDaily: { date: string; amount: number; bookings: number }[];
+  bookingsDaily: { date: string; confirmed: number; paid: number; pending: number; cancelled: number }[];
+  byCourt: { courtId: string; courtNumber: string | number; amount: number; bookings: number }[];
+  peakHours: { dayOfWeek: number; hour: number; bookings: number }[];
+  topCustomers: { userId: string; name: string; bookings: number; spend: number }[];
+}
+
+/** Aggregated business analytics for a venue the user owns (default 90-day window). */
+export async function getVenueAnalytics(venueId: string, days?: number): Promise<OwnerAnalytics> {
+  return request<OwnerAnalytics>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/analytics${toQuery({ days })}`, { auth: true });
+}
+
+export interface CheckoutCard {
+  number?: string;
+  expiry?: string;
+  cvc?: string;
+}
+
+export interface CheckoutPayload {
+  bookingId?: string;
+  amount: number;
+  currency?: string;
+  method?: string;
+  card?: CheckoutCard;
+}
+
+export interface CheckoutResult {
+  payment: { id: string; status?: string | null; amount?: number | null };
+  booking: ApiBooking | null;
+  /** Whether the server processed this in demo (no-charge) mode. */
+  testMode: boolean;
+}
+
+/** Pay for a booking. In test mode this completes instantly and confirms it. */
+export async function checkout(body: CheckoutPayload): Promise<CheckoutResult> {
+  return request<CheckoutResult>(`${PAYMENTS_PREFIX}/checkout`, { method: 'POST', body, auth: true });
+}
+
+/* ─── App settings (payment mode) ───────────────────────────── */
+
+export interface AppSettings {
+  paymentTestMode: boolean;
+  testCard: { number: string; expiry: string; cvc: string };
+}
+
+/** Public app settings — used by checkout to decide test vs live card UI. */
+export async function getSettings(): Promise<AppSettings> {
+  return request<AppSettings>('/api/v1/settings');
+}

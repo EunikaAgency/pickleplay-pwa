@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
-import { OwnerSection } from './OwnerSection';
-import { uploadVenueMedia, ApiError, type OwnerVenueDetail } from '../../shared/lib/api';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { OwnerSection } from '../components/OwnerSection';
+import { uploadVenueMedia, ApiError, type OwnerVenueDetail } from '../../../shared/lib/api';
 
 interface PhotosTabProps {
   venue: OwnerVenueDetail;

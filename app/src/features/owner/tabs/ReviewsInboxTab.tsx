@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
-import { OwnerStat } from './OwnerStat';
-import { OwnerSection } from './OwnerSection';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { OwnerStat } from '../components/OwnerStat';
+import { OwnerSection } from '../components/OwnerSection';
 import {
   getReviews,
   createReviewReply,
@@ -11,7 +11,7 @@ import {
   ApiError,
   type OwnerReview,
   type OwnerReviews,
-} from '../../shared/lib/api';
+} from '../../../shared/lib/api';
 
 interface ReviewsInboxTabProps {
   venueId: string;

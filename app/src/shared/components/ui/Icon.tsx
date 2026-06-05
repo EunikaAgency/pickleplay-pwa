@@ -72,6 +72,10 @@ const ICONS: Record<string, IconRenderer> = {
     `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="currentColor"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1a5.5 5.5 0 00-7.8 7.8L12 21.4l8.8-8.9a5.5 5.5 0 000-7.8z"/></svg>`,
   heart_o: (s) =>
     `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1a5.5 5.5 0 00-7.8 7.8L12 21.4l8.8-8.9a5.5 5.5 0 000-7.8z"/></svg>`,
+  eye: (s) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  eye_off: (s) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.4 10.4 0 0112 20c-7 0-11-8-11-8a18.4 18.4 0 015.1-5.9m3.3-1.6A10.5 10.5 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.2 3.2m-6.7-1.1a3 3 0 01-4.2-4.2"/><path d="M1 1l22 22"/></svg>`,
   trophy: (s) =>
     `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h10v2h3a1 1 0 011 1v2a4 4 0 01-4 4h-.3a5 5 0 01-3.7 3.9V19h3a1 1 0 010 2H8a1 1 0 010-2h3v-2.1A5 5 0 017.3 13H7a4 4 0 01-4-4V7a1 1 0 011-1h3V4zm0 4H5v1a2 2 0 002 2V8zm10 0v3a2 2 0 002-2V8h-2z"/></svg>`,
   send: (s) =>

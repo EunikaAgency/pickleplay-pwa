@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
-import { Chip } from '../../shared/components/ui/Chip';
-import { OwnerSection } from './OwnerSection';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { Chip } from '../../../shared/components/ui/Chip';
+import { OwnerSection } from '../components/OwnerSection';
 import {
   listCourts,
   createCourt,
@@ -9,7 +9,7 @@ import {
   deleteCourt,
   entityId,
   type OwnerCourt,
-} from '../../shared/lib/api';
+} from '../../../shared/lib/api';
 
 interface CourtsEditorTabProps {
   venueId: string;

@@ -10,6 +10,8 @@ import { GameDetailsScreen } from './features/games/GameDetailsScreen';
 import { CourtDetailsScreen } from './features/venues/CourtDetailsScreen';
 import { ClubDetailsScreen } from './features/clubs/ClubDetailsScreen';
 import { CreateGameScreen } from './features/games/CreateGameScreen';
+import { BookCourtScreen } from './features/bookings/BookCourtScreen';
+import { MyBookingsScreen } from './features/bookings/MyBookingsScreen';
 import { CreateClubScreen } from './features/clubs/CreateClubScreen';
 import { ProfileScreen } from './features/profile/ProfileScreen';
 import { EditProfileScreen } from './features/profile/EditProfileScreen';
@@ -18,6 +20,11 @@ import { SearchScreen } from './features/search/SearchScreen';
 import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
 import { NotificationsScreen } from './features/profile/NotificationsScreen';
 import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
+import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
+import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
+import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
+import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
+import { OwnerNearbyScreen } from './features/owner/OwnerNearbyScreen';
 import { OwnerVenueScreen } from './features/owner/OwnerVenueScreen';
 import { OwnerNewVenueScreen } from './features/owner/OwnerNewVenueScreen';
 import { TabBar } from './shared/components/layout/TabBar';
@@ -34,6 +41,7 @@ import { tabScreens, type Navigate, type Screen, type ScreenId, type TabId } fro
 
 const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'create-game': 'player.games.create',
+  'book-court': 'player.bookings.create',
   'create-club': 'player.clubs.create',
   'edit-profile': 'player.profile.manage',
   settings: 'player.profile.manage',
@@ -42,12 +50,16 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-venues': 'owner.access',
   'owner-venue': 'owner.venues.manage',
   'owner-new-venue': 'owner.venues.create',
+  'owner-bookings': 'owner.bookings.manage',
+  'owner-insights': 'owner.analytics.view',
 };
 
 // Human-readable verb phrases for the guest auth prompt ("You'll need an
 // account to <intent>"). Used when a guest hits a permission-gated screen.
 const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'create-game': 'create a game',
+  'book-court': 'book a court',
+  'my-bookings': 'see your bookings',
   'create-club': 'start a club',
   'invite-players': 'invite players',
   'edit-profile': 'manage your profile',
@@ -56,6 +68,8 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-venues': 'manage your venues',
   'owner-venue': 'manage your venue',
   'owner-new-venue': 'add a venue',
+  'owner-bookings': 'see your bookings',
+  'owner-insights': 'see your insights',
 };
 
 function isTabScreen(id: ScreenId): id is TabId {
@@ -212,11 +226,23 @@ function AppInner() {
     // screen call back through `navigate`/`requireAuth` to trigger the gate.
     switch (screen.id) {
       case 'home':
-        return <HomeScreenSwitch onNavigate={navigate} />;
+        // Owners get their dashboard on the Home tab (in the homepage design);
+        // players/guests get the normal player home.
+        return userHasPermission(currentUser, 'owner.access')
+          ? <OwnerHomeScreen onNavigate={navigate} />
+          : <HomeScreenSwitch onNavigate={navigate} />;
       case 'nearby':
-        return <NearbyScreen onNavigate={navigate} />;
+        // Owners get a local market map (their venues vs nearby competitors);
+        // players/guests get the normal discover-courts-near-me view.
+        return userHasPermission(currentUser, 'owner.market.view')
+          ? <OwnerNearbyScreen onNavigate={navigate} />
+          : <NearbyScreen onNavigate={navigate} />;
       case 'games':
-        return <GamesScreen onNavigate={navigate} />;
+        // Owners get "Your courts" (games + bookings at their venues); players
+        // get the normal browse/join games view.
+        return userHasPermission(currentUser, 'owner.games.view')
+          ? <OwnerGamesScreen onNavigate={navigate} />
+          : <GamesScreen onNavigate={navigate} />;
       case 'clubs':
         return <ClubsScreen onNavigate={navigate} onBack={goBack} />;
       case 'profile':
@@ -229,6 +255,10 @@ function AppInner() {
         return <ClubDetailsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
         return <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
+      case 'book-court':
+        return <BookCourtScreen venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
+      case 'my-bookings':
+        return <MyBookingsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
         return <CreateClubScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-profile':
@@ -244,9 +274,13 @@ function AppInner() {
       case 'owner-venues':
         return <OwnerVenuesScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-venue':
-        return <OwnerVenueScreen key={screen.params.id} venueId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
+        return <OwnerVenueScreen key={screen.params.id} venueId={screen.params.id} initialTab={screen.params.tab} onNavigate={navigate} onBack={goBack} />;
       case 'owner-new-venue':
         return <OwnerNewVenueScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-bookings':
+        return <OwnerBookingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-insights':
+        return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       default:
         return <HomeScreenSwitch onNavigate={navigate} />;
     }

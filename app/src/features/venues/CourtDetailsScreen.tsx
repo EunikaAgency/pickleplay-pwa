@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
+import { Button } from '../../shared/components/ui/Button';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
@@ -113,7 +114,7 @@ function CourtDetail({
   const tags = [io, courtsTotal ? `${courtsTotal} courts` : null, price].filter(Boolean) as string[];
 
   return (
-    <div className="scroll pb-[30px]">
+    <div className="scroll pb-[110px]">
       <div className="detail-hero">
         <div
           className="img"
@@ -262,6 +263,23 @@ function CourtDetail({
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="app-action-bar">
+        {price ? (
+          <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id })}>
+            <Icon name="calendar" size={16} /> Book this court
+          </Button>
+        ) : (
+          <>
+            <Button fullWidth variant="outline" disabled>
+              <Icon name="lock" size={16} /> Booking unavailable
+            </Button>
+            <div className="text-[12px] text-[var(--muted)] font-semibold mt-2 text-center">
+              No rates listed for this court yet.
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -189,6 +189,7 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
       <div className="section">
         <div className="set-list">
           {([
+            { ic: 'calendar', name: 'My bookings',  desc: 'Court reservations',       color: 'var(--lime-700,#5b7400)', nav: 'my-bookings' },
             { ic: 'user',   name: 'Account',        desc: 'Profile, email, password', color: 'var(--primary)', nav: 'edit-profile' },
             { ic: 'shield', name: 'Privacy',        desc: 'Visibility & permissions', color: '#5b7400',         nav: 'settings' },
             { ic: 'bell',   name: 'Notifications',  desc: 'Push, email, in-app',      color: 'var(--coral)',    nav: 'notifications' },

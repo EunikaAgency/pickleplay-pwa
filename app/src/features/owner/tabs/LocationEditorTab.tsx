@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Icon } from '../../shared/components/ui/Icon';
-import { Button } from '../../shared/components/ui/Button';
-import { Toast } from '../../shared/components/ui/Toast';
-import { FormField } from '../../shared/components/forms/FormField';
-import { OwnerSection } from './OwnerSection';
-import { updateVenue, geocodePlace, type OwnerVenueDetail } from '../../shared/lib/api';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { Button } from '../../../shared/components/ui/Button';
+import { Toast } from '../../../shared/components/ui/Toast';
+import { FormField } from '../../../shared/components/forms/FormField';
+import { OwnerSection } from '../components/OwnerSection';
+import { updateVenue, geocodePlace, type OwnerVenueDetail } from '../../../shared/lib/api';
 
 interface LocationEditorTabProps {
   venue: OwnerVenueDetail;

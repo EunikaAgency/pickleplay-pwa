@@ -26,13 +26,12 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
     },
   });
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!form.isValid || loading) return;
+  const signIn = async (email: string, password: string) => {
+    if (loading) return;
     setSubmitError(null);
     setLoading(true);
     try {
-      await login(form.values.email.trim(), form.values.password);
+      await login(email.trim(), password);
       onLoginSuccess();
     } catch (err) {
       setSubmitError(
@@ -44,6 +43,12 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
       );
       setLoading(false);
     }
+  };
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!form.isValid) return;
+    void signIn(form.values.email, form.values.password);
   };
 
   return (
@@ -107,7 +112,7 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="text-[var(--muted)]"
                 >
-                  <Icon name={showPassword ? 'heart' : 'heart_o'} size={16} />
+                  <Icon name={showPassword ? 'eye_off' : 'eye'} size={16} />
                 </button>
               }
             />
@@ -146,6 +151,27 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
                 </>
               )}
             </Button>
+          </div>
+
+          <div className="px-5 mt-2.5 flex gap-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => signIn('test@example.com', 'password123')}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
+            >
+              <Icon name="bolt" size={14} />
+              Test Owner Account
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => signIn('84a3be4a.hernandez@example.com', 'password123')}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
+            >
+              <Icon name="bolt" size={14} />
+              Test Player Account
+            </button>
           </div>
         </form>
 

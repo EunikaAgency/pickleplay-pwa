@@ -1,4 +1,4 @@
-import { Icon } from '../../shared/components/ui/Icon';
+import { Icon } from '../../../shared/components/ui/Icon';
 
 type StatTone = 'primary' | 'lime' | 'coral' | 'neutral';
 

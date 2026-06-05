@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
+import { Icon } from '../../../shared/components/ui/Icon';
 
 interface OwnerSectionProps {
   title: string;

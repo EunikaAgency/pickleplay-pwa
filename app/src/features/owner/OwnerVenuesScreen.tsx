@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
-import { OwnerStat } from './OwnerStat';
-import { useAuthStore } from '../../shared/lib/authStore';
-import { listOwnerVenues, type ApiVenue } from '../../shared/lib/api';
-import { locationLine } from '../../shared/lib/venueDisplay';
+import { OwnerStat } from './components/OwnerStat';
+import { VenueCard } from './components/VenueCard';
+import { useOwnerDashboard } from './hooks/useOwnerDashboard';
+import { money } from '../bookings/bookingDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface OwnerVenuesScreenProps {
@@ -16,82 +15,8 @@ interface OwnerVenuesScreenProps {
   onBack: () => void;
 }
 
-const CARD_GRADIENT = 'linear-gradient(135deg, #0040e0, #6c83ff)';
-
-function VenueCard({ venue, onOpen }: { venue: ApiVenue; onOpen: () => void }) {
-  const state = venue.state || 'unclaimed';
-  return (
-    <button type="button" onClick={onOpen} className="card p-0 text-left w-full">
-      <div className="relative h-28" style={{ background: CARD_GRADIENT }}>
-        {venue.image ? (
-          <img src={venue.image} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-white/40">
-            <Icon name="paddle" size={40} />
-          </div>
-        )}
-        <div className="absolute right-2 top-2 flex gap-1">
-          <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--primary-deep)]">{state}</span>
-          {venue.isVerified && <span className="rounded-full bg-[var(--lime)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[var(--lime-ink)]">Verified</span>}
-        </div>
-      </div>
-      <div className="p-3.5">
-        <div className="font-heading font-semibold text-[16px] text-[var(--ink)]">{venue.displayName}</div>
-        <div className="mt-0.5 flex items-center gap-1 t-sm">
-          <Icon name="location" size={13} /> {locationLine(venue) || '—'}
-        </div>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="flex items-center gap-1 text-[13px] text-[var(--muted)]">
-            <Icon name="paddle" size={14} /> {venue.courtCount ?? 0} courts
-          </span>
-          <span className="inline-flex items-center gap-1 text-[13px] font-extrabold text-[var(--primary)]">
-            Manage <Icon name="forward" size={14} />
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}
-
 export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps) {
-  const currentUser = useAuthStore((s) => s.user);
-  const ownerId = currentUser?.id ?? '';
-  const [venues, setVenues] = useState<ApiVenue[]>([]);
-  const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
-
-  useEffect(() => {
-    if (!ownerId) return;
-    let cancelled = false;
-    listOwnerVenues(ownerId)
-      .then((v) => {
-        if (cancelled) return;
-        setVenues(v);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (!cancelled) setStatus('error');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ownerId]);
-
-  const retry = () => {
-    setStatus('loading');
-    listOwnerVenues(ownerId)
-      .then((v) => {
-        setVenues(v);
-        setStatus('ready');
-      })
-      .catch(() => setStatus('error'));
-  };
-
-  const stats = useMemo(() => {
-    const claimed = venues.filter((v) => v.state === 'claimed').length;
-    const verified = venues.filter((v) => v.isVerified).length;
-    const courts = venues.reduce((sum, v) => sum + (v.courtCount || 0), 0);
-    return { total: venues.length, claimed, verified, courts };
-  }, [venues]);
+  const { canAnalytics, venues, status, retry, combined, statsReady, structural, glanceFor } = useOwnerDashboard();
 
   const header = (
     <ScreenHeader
@@ -147,15 +72,27 @@ export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps
       ) : (
         <div className="scroll safe-top safe-bottom px-5">
           {header}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <OwnerStat label="Venues" value={stats.total} icon="storefront" tone="primary" />
-            <OwnerStat label="Claimed" value={stats.claimed} icon="check" tone="lime" />
-            <OwnerStat label="Verified" value={stats.verified} icon="verified" tone="coral" />
-            <OwnerStat label="Total courts" value={stats.courts} icon="paddle" tone="neutral" />
-          </div>
+          {canAnalytics ? (
+            <>
+              <div className="t-eyebrow mb-2">All venues · combined</div>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <OwnerStat label="Revenue this month" value={statsReady ? money(combined.month) : '—'} icon="payments" tone="primary" />
+                <OwnerStat label="Revenue this week" value={statsReady ? money(combined.week) : '—'} icon="trending_up" tone="lime" />
+                <OwnerStat label="Bookings today" value={statsReady ? combined.todayBookings : '—'} icon="calendar" tone="neutral" />
+                <OwnerStat label="Awaiting approval" value={statsReady ? combined.pending : '—'} icon="bell" tone="coral" />
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <OwnerStat label="Venues" value={structural.total} icon="storefront" tone="primary" />
+              <OwnerStat label="Claimed" value={structural.claimed} icon="check" tone="lime" />
+              <OwnerStat label="Verified" value={structural.verified} icon="verified" tone="coral" />
+              <OwnerStat label="Total courts" value={structural.courts} icon="paddle" tone="neutral" />
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {venues.map((v) => (
-              <VenueCard key={v.id || v.slug} venue={v} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
+              <VenueCard key={v.id || v.slug} venue={v} glance={glanceFor(v)} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
             ))}
           </div>
         </div>

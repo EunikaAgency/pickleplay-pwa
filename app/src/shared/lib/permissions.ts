@@ -9,6 +9,10 @@ export const ALL_PERMISSIONS = [
   'owner.access',
   'owner.venues.create',
   'owner.venues.manage',
+  'owner.bookings.manage',
+  'owner.analytics.view',
+  'owner.games.view',
+  'owner.market.view',
   'owner.reviews.manage',
   'owner.coaches.manage',
   'owner.tournaments.manage',
@@ -25,6 +29,7 @@ export const ALL_PERMISSIONS = [
   'player.profile.manage',
   'player.venues.locate',
   'player.tournaments.join',
+  'player.bookings.create',
   'user.notifications.manage',
 ] as const;
 
@@ -38,6 +43,7 @@ const PLAYER_PERMISSIONS: Permission[] = [
   'player.profile.manage',
   'player.venues.locate',
   'player.tournaments.join',
+  'player.bookings.create',
   'user.notifications.manage',
 ];
 
@@ -49,6 +55,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.access',
     'owner.venues.create',
     'owner.venues.manage',
+    'owner.bookings.manage',
+    'owner.analytics.view',
+    'owner.games.view',
+    'owner.market.view',
     'owner.reviews.manage',
     'owner.coaches.manage',
     'owner.tournaments.manage',

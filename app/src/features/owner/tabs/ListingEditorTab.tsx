@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Icon } from '../../shared/components/ui/Icon';
-import { Button } from '../../shared/components/ui/Button';
-import { Toast } from '../../shared/components/ui/Toast';
-import { Chip } from '../../shared/components/ui/Chip';
-import { FormField } from '../../shared/components/forms/FormField';
-import { FormSelect } from '../../shared/components/forms/FormSelect';
-import { OwnerSection } from './OwnerSection';
-import { updateVenue, type OwnerVenueDetail } from '../../shared/lib/api';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { Button } from '../../../shared/components/ui/Button';
+import { Toast } from '../../../shared/components/ui/Toast';
+import { Chip } from '../../../shared/components/ui/Chip';
+import { FormField } from '../../../shared/components/forms/FormField';
+import { FormSelect } from '../../../shared/components/forms/FormSelect';
+import { OwnerSection } from '../components/OwnerSection';
+import { updateVenue, type OwnerVenueDetail } from '../../../shared/lib/api';
 
 interface ListingEditorTabProps {
   venue: OwnerVenueDetail;

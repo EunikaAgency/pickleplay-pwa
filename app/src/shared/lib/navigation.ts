@@ -11,6 +11,8 @@ export type Screen =
   | { id: 'court-details'; params: { id: string } }
   | { id: 'club-details'; params: { id: string } }
   | { id: 'create-game' }
+  | { id: 'book-court'; params: { venueId?: string } }
+  | { id: 'my-bookings' }
   | { id: 'create-club' }
   | { id: 'edit-profile' }
   | { id: 'settings' }
@@ -18,8 +20,10 @@ export type Screen =
   | { id: 'invite-players'; params: { id: string } }
   | { id: 'notifications' }
   | { id: 'owner-venues' }
-  | { id: 'owner-venue'; params: { id: string } }
-  | { id: 'owner-new-venue' };
+  | { id: 'owner-venue'; params: { id: string; tab?: string } }
+  | { id: 'owner-new-venue' }
+  | { id: 'owner-bookings' }
+  | { id: 'owner-insights' };
 
 export type ScreenId = Screen['id'];
 

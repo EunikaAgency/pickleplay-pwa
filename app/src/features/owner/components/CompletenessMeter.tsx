@@ -1,6 +1,6 @@
-import { Icon } from '../../shared/components/ui/Icon';
-import { ProgressBar } from '../../shared/components/ui/ProgressBar';
-import type { OwnerVenueDetail } from '../../shared/lib/api';
+import { Icon } from '../../../shared/components/ui/Icon';
+import { ProgressBar } from '../../../shared/components/ui/ProgressBar';
+import type { OwnerVenueDetail } from '../../../shared/lib/api';
 
 export interface CompletenessCheck {
   label: string;

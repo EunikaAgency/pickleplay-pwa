@@ -5,7 +5,7 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { FormField } from '../../shared/components/forms/FormField';
 import { FormSelect } from '../../shared/components/forms/FormSelect';
 import { useForm } from '../../shared/hooks/useForm';
-import { OwnerSection } from './OwnerSection';
+import { OwnerSection } from './components/OwnerSection';
 import { createVenue, fetchCities, ApiError, type ApiCity } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 

@@ -6,27 +6,34 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission, type Permission } from '../../shared/lib/permissions';
 import { getOwnerVenue, entityId, type OwnerVenueDetail } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
-import { VenueOverviewTab } from './VenueOverviewTab';
-import { ListingEditorTab } from './ListingEditorTab';
-import { LocationEditorTab } from './LocationEditorTab';
-import { HoursEditorTab } from './HoursEditorTab';
-import { CourtsEditorTab } from './CourtsEditorTab';
-import { FaqsEditorTab } from './FaqsEditorTab';
-import { ReviewsInboxTab } from './ReviewsInboxTab';
-import { PhotosTab } from './PhotosTab';
+import { VenueOverviewTab } from './tabs/VenueOverviewTab';
+import { InsightsTab } from './tabs/InsightsTab';
+import { BookingsInboxTab } from './tabs/BookingsInboxTab';
+import { ListingEditorTab } from './tabs/ListingEditorTab';
+import { LocationEditorTab } from './tabs/LocationEditorTab';
+import { HoursEditorTab } from './tabs/HoursEditorTab';
+import { CourtsEditorTab } from './tabs/CourtsEditorTab';
+import { FaqsEditorTab } from './tabs/FaqsEditorTab';
+import { ReviewsInboxTab } from './tabs/ReviewsInboxTab';
+import { PhotosTab } from './tabs/PhotosTab';
 
 interface OwnerVenueScreenProps {
   venueId: string; // the slug (or _id) passed via navigation params
+  initialTab?: string; // optional deep-link to a tab (e.g. 'bookings', 'insights')
   onNavigate: Navigate;
   onBack: () => void;
 }
 
-type TabId = 'overview' | 'listing' | 'location' | 'hours' | 'courts' | 'faqs' | 'reviews' | 'photos';
+type TabId = 'overview' | 'insights' | 'bookings' | 'listing' | 'location' | 'hours' | 'courts' | 'faqs' | 'reviews' | 'photos';
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
+// `perm` gates a tab behind a permission; tabs without one are always shown.
+const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
   { id: 'overview', label: 'Overview', icon: 'home' },
+  { id: 'insights', label: 'Insights', icon: 'bar_chart', perm: 'owner.analytics.view' },
+  { id: 'bookings', label: 'Bookings', icon: 'calendar', perm: 'owner.bookings.manage' },
   { id: 'listing', label: 'Listing', icon: 'storefront' },
   { id: 'location', label: 'Location', icon: 'location' },
   { id: 'hours', label: 'Hours', icon: 'clock' },
@@ -38,6 +45,8 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 
 const TAB_TITLE: Record<TabId, string> = {
   overview: 'Overview',
+  insights: 'Insights',
+  bookings: 'Bookings',
   listing: 'Listing',
   location: 'Location',
   hours: 'Hours',
@@ -47,11 +56,12 @@ const TAB_TITLE: Record<TabId, string> = {
   photos: 'Photos',
 };
 
-export function OwnerVenueScreen({ venueId: slug, onNavigate, onBack }: OwnerVenueScreenProps) {
+export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack }: OwnerVenueScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [venue, setVenue] = useState<OwnerVenueDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
-  const [tab, setTab] = useState<TabId>('overview');
+  const startTab = TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : 'overview';
+  const [tab, setTab] = useState<TabId>(startTab);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,7 +147,7 @@ export function OwnerVenueScreen({ venueId: slug, onNavigate, onBack }: OwnerVen
       />
 
       <div className="scroll-x flex gap-2 px-5 pb-2">
-        {TABS.map((t) => (
+        {TABS.filter((t) => !t.perm || userHasPermission(currentUser, t.perm)).map((t) => (
           <Chip key={t.id} selected={tab === t.id} onClick={() => setTab(t.id)}>
             <Icon name={t.icon} size={13} /> {t.label}
           </Chip>
@@ -146,6 +156,8 @@ export function OwnerVenueScreen({ venueId: slug, onNavigate, onBack }: OwnerVen
 
       <div className="px-5 pt-4">
         {tab === 'overview' && <VenueOverviewTab venue={venue} venueId={vid} onOpenTab={(t) => setTab(t as TabId)} />}
+        {tab === 'insights' && <InsightsTab venueId={vid} />}
+        {tab === 'bookings' && <BookingsInboxTab venueId={vid} />}
         {tab === 'listing' && <ListingEditorTab venue={venue} venueId={vid} reload={reload} />}
         {tab === 'location' && <LocationEditorTab venue={venue} venueId={vid} reload={reload} />}
         {tab === 'hours' && <HoursEditorTab venueId={vid} />}
