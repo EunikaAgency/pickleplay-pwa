@@ -11,19 +11,19 @@ interface BookingsInboxTabProps {
   venueId: string;
 }
 
-type Filter = 'all' | 'pending_approval' | 'confirmed' | 'paid' | 'cancelled';
+type Filter = 'all' | 'pending_approval' | 'confirmed' | 'cancelled';
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'pending_approval', label: 'Pending' },
-  { id: 'confirmed', label: 'Confirmed' },
-  { id: 'paid', label: 'Paid' },
+  { id: 'confirmed', label: 'Complete' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
-// Owner bookings inbox: review, confirm, cancel, and mark-paid the bookings
-// players make on this venue. Mirrors the CourtsEditorTab mutation pattern
-// (optimistic local update + toast). Server filters by status.
+// Owner bookings inbox: review and cancel the bookings players make on this
+// venue. Bookings arrive already paid + confirmed (no approval step). Mirrors
+// the CourtsEditorTab mutation pattern (optimistic local update + toast).
+// Server filters by status.
 export function BookingsInboxTab({ venueId }: BookingsInboxTabProps) {
   const user = useAuthStore((s) => s.user);
   const canManage = userHasPermission(user, 'owner.bookings.manage');

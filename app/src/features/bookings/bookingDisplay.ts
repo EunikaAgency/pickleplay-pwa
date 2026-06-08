@@ -5,11 +5,14 @@ import type { ApiBooking } from '../../shared/lib/api';
 
 const CURRENCY_SYMBOLS: Record<string, string> = { PHP: '₱', USD: '$', EUR: '€', GBP: '£' };
 
-/** "₱600" — money with the right symbol (defaults to PHP, the seeded currency). */
+/** "₱32,540" — money with the right symbol + thousands separators (defaults to PHP). */
 export function money(amount: number | null | undefined, currency = 'PHP'): string {
   const sym = CURRENCY_SYMBOLS[currency.toUpperCase()] ?? '';
   const n = typeof amount === 'number' ? amount : 0;
-  return `${sym}${n % 1 === 0 ? n : n.toFixed(2)}`;
+  const formatted = n % 1 === 0
+    ? n.toLocaleString('en-US')
+    : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return `${sym}${formatted}`;
 }
 
 /** Local YYYY-MM-DD (matches how the API stores a booking's date). */
@@ -25,6 +28,16 @@ export function to12h(hhmm: string): string {
   const ampm = h < 12 ? 'AM' : 'PM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/** "6:30 PM" → "18:30" (for prefilling a <input type="time">). Empty if unparseable. */
+export function to24h(label: string | null | undefined): string {
+  if (!label) return '';
+  const m = label.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return '';
+  let h = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return `${String(h).padStart(2, '0')}:${m[2]}`;
 }
 
 /** Add `hours` to a "HH:MM" start, returning "HH:MM" (clamped to 23:59). */
@@ -51,10 +64,11 @@ export interface StatusChip {
 /** Map a booking status to a human label + tone for a status chip. */
 export function statusChip(status: string | null | undefined): StatusChip {
   switch (status) {
+    // Bookings arrive already paid + confirmed, so the settled state reads
+    // "Complete". Legacy 'paid' rows fold into the same state.
     case 'confirmed':
-      return { label: 'Confirmed', className: 'bg-[var(--lime)] text-[var(--ink)]' };
     case 'paid':
-      return { label: 'Paid', className: 'bg-[var(--primary)] text-white' };
+      return { label: 'Complete', className: 'bg-[var(--lime)] text-[var(--ink)]' };
     case 'cancelled':
       return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
     case 'pending_approval':

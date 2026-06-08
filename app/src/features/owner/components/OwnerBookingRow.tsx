@@ -15,7 +15,8 @@ function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'pr
   );
 }
 
-// One booking row with status-aware Confirm / Mark-paid / Cancel actions.
+// One booking row with status-aware Confirm / Cancel actions. Bookings arrive
+// already paid, so there's no "mark paid" step — the owner can only cancel.
 // `showVenue` tags the row with its venue name (the cross-venue inbox uses it).
 // Shared by BookingsInboxTab (per-venue) and OwnerBookingsScreen (all venues).
 export function OwnerBookingRow({ booking, canManage, showVenue, onChanged }: {
@@ -63,7 +64,6 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged }: {
       {canManage && st !== 'cancelled' && (
         <div className="flex flex-wrap items-center gap-2 mt-3">
           {st === 'pending_approval' && <ActionButton label="Confirm" tone="primary" busy={busy} onClick={() => act('confirmed')} />}
-          {(st === 'confirmed' || st === 'pending_approval') && <ActionButton label="Mark paid" tone="lime" busy={busy} onClick={() => act('paid')} />}
           <div className="flex-1" />
           <ActionButton label={st === 'pending_approval' ? 'Decline' : 'Cancel'} tone="ghost" busy={busy} onClick={() => act('cancelled')} />
         </div>

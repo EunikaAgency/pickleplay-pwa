@@ -10,6 +10,8 @@ import { GameDetailsScreen } from './features/games/GameDetailsScreen';
 import { CourtDetailsScreen } from './features/venues/CourtDetailsScreen';
 import { ClubDetailsScreen } from './features/clubs/ClubDetailsScreen';
 import { CreateGameScreen } from './features/games/CreateGameScreen';
+import { GameLobbyScreen } from './features/games/GameLobbyScreen';
+import { MyGamesScreen } from './features/games/MyGamesScreen';
 import { BookCourtScreen } from './features/bookings/BookCourtScreen';
 import { MyBookingsScreen } from './features/bookings/MyBookingsScreen';
 import { CreateClubScreen } from './features/clubs/CreateClubScreen';
@@ -21,6 +23,7 @@ import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
 import { NotificationsScreen } from './features/profile/NotificationsScreen';
 import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
 import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
+import { OwnerNotificationsScreen } from './features/owner/OwnerNotificationsScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
 import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
 import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
@@ -41,6 +44,9 @@ import { tabScreens, type Navigate, type Screen, type ScreenId, type TabId } fro
 
 const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'create-game': 'player.games.create',
+  'edit-game': 'player.games.manage',
+  'my-games': 'player.games.manage',
+  'game-lobby': 'player.games.vote',
   'book-court': 'player.bookings.create',
   'create-club': 'player.clubs.create',
   'edit-profile': 'player.profile.manage',
@@ -52,12 +58,16 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-new-venue': 'owner.venues.create',
   'owner-bookings': 'owner.bookings.manage',
   'owner-insights': 'owner.analytics.view',
+  'owner-notifications': 'owner.notifications.view',
 };
 
 // Human-readable verb phrases for the guest auth prompt ("You'll need an
 // account to <intent>"). Used when a guest hits a permission-gated screen.
 const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'create-game': 'create a game',
+  'edit-game': 'edit your game',
+  'my-games': 'see your games',
+  'game-lobby': 'join the game lobby',
   'book-court': 'book a court',
   'my-bookings': 'see your bookings',
   'create-club': 'start a club',
@@ -249,14 +259,30 @@ function AppInner() {
         return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
+      case 'game-lobby':
+        return <GameLobbyScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'court-details':
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
         return <ClubDetailsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
         return <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
+      case 'edit-game':
+        return <CreateGameScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
+      case 'my-games':
+        return <MyGamesScreen onNavigate={navigate} onBack={goBack} />;
       case 'book-court':
-        return <BookCourtScreen venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
+        return (
+          <BookCourtScreen
+            venueId={screen.params.venueId}
+            date={screen.params.date}
+            time={screen.params.time}
+            hours={screen.params.hours}
+            gameId={screen.params.gameId}
+            onNavigate={navigate}
+            onBack={goBack}
+          />
+        );
       case 'my-bookings':
         return <MyBookingsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
@@ -281,6 +307,8 @@ function AppInner() {
         return <OwnerBookingsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-insights':
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-notifications':
+        return <OwnerNotificationsScreen onNavigate={navigate} onBack={goBack} />;
       default:
         return <HomeScreenSwitch onNavigate={navigate} />;
     }

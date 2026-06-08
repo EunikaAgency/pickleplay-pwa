@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer, TileLayer, CircleMarker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import { Icon } from '../../shared/components/ui/Icon';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
 import { Button } from '../../shared/components/ui/Button';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ProgressBar } from '../../shared/components/ui/ProgressBar';
-import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import type { Navigate } from '../../shared/lib/navigation';
-import { listAllVenues, createGame, type ApiVenue } from '../../shared/lib/api';
-import { locationLine, venueCoords, venueImage } from '../../shared/lib/venueDisplay';
-import { getCurrentLocation, haversineKm, formatDistance, type LatLng } from '../../shared/lib/geo';
+import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
+import { listAllVenues, createGame, getGame, updateGame, type ApiVenue } from '../../shared/lib/api';
+import { venueCoords } from '../../shared/lib/venueDisplay';
+import { getCurrentLocation, haversineKm, type LatLng } from '../../shared/lib/geo';
 
 interface CreateGameScreenProps {
   onNavigate: Navigate;
   onBack: () => void;
+  /** When set, the screen edits this existing game instead of creating a new one. */
+  gameId?: string;
 }
 
 const TYPES = [
@@ -28,33 +29,34 @@ const WHEN   = ['Tonight', 'Tomorrow', 'This weekend', 'Next week', 'Custom', 'R
 const TIMES  = ['5:00 PM', '5:30 PM', '6:00 PM', '6:30 PM', '7:00 PM', 'Custom'];
 const DURATIONS = ['1 hr', '1.5 hr', '2 hr', '3 hr', 'Custom'];
 
+// Vote-flow ranges (km). The host sets how far they're willing to play; players
+// within this radius can join and later vote on the actual venue.
+const RANGES = [2, 5, 10, 25] as const;
+
 const TITLE_BY_STEP = ['What kind of game?', 'When are you playing?', 'Where & who?'];
 
 // Metro Manila — most seeded venues are here; used to center the map when no
 // venue carries coordinates and the user hasn't shared their location.
 const MAP_FALLBACK_CENTER: [number, number] = [14.5995, 120.9842];
 
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-/** Frame the map around the given points; refits whenever the set changes. */
-function FitBounds({ points }: { points: [number, number][] }) {
+/** Frame the map around the whole range circle, so it zooms out as the range
+ *  grows and recenters when the search center moves. */
+function FitToRange({ center, rangeKm }: { center: LatLng; rangeKm: number }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      map.setView(points[0], 14);
-      return;
-    }
-    map.fitBounds(points, { padding: [36, 36], maxZoom: 15 });
-  }, [map, points]);
+    const [lat, lng] = center;
+    // Bounding box of the circle: ~111 km per degree of latitude; longitude
+    // degrees shrink by cos(latitude).
+    const dLat = rangeKm / 111;
+    const dLng = rangeKm / (111 * Math.cos((lat * Math.PI) / 180) || 1);
+    map.fitBounds([[lat - dLat, lng - dLng], [lat + dLat, lng + dLng]], { padding: [18, 18] });
+  }, [map, center, rangeKm]);
+  return null;
+}
+
+/** Lets the host tap the map to move the game's search center. */
+function ClickToSetCenter({ onPick }: { onPick: (p: LatLng) => void }) {
+  useMapEvents({ click: (e) => onPick([e.latlng.lat, e.latlng.lng]) });
   return null;
 }
 
@@ -76,7 +78,17 @@ function to12h(hhmm: string): string {
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) {
+/** "6:30 PM" → "18:30" for prefilling the <input type="time"> on edit. */
+function to24h(label: string): string {
+  const m = label.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!m) return '';
+  let h = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) h += 12;
+  return `${String(h).padStart(2, '0')}:${m[2]}`;
+}
+
+export function CreateGameScreen({ onNavigate, onBack, gameId }: CreateGameScreenProps) {
+  const isEdit = !!gameId;
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [type, setType] = useState<typeof TYPES[number]['v']>('doubles');
@@ -91,14 +103,19 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
   const [spots, setSpots] = useState(4);
   const [vis, setVis] = useState<'public' | 'invite'>('public');
 
-  // Real venues for the court picker (step 3), sorted nearest-first once located.
+  // Vote flow: the host sets a search CENTER + RANGE instead of a fixed venue.
+  // Players within range join, then the lobby votes on the actual court later.
+  const [center, setCenter] = useState<LatLng | null>(null);
+  const [rangeKm, setRangeKm] = useState<number>(10);
+  const [rangeCustom, setRangeCustom] = useState(false);   // free-input range mode
+  const [customRange, setCustomRange] = useState('');
+  const centerTouched = useRef(false);
+
+  // Real venues — shown as context (how many courts fall in range) on step 3.
   const [venues, setVenues] = useState<ApiVenue[]>([]);
   const [venuesLoading, setVenuesLoading] = useState(true);
-  const [venueId, setVenueId] = useState('');
-  const [venueQuery, setVenueQuery] = useState('');
-  const venueTouched = useRef(false);
 
-  // Geolocation for nearest-court sorting + the map.
+  // Geolocation for the map + auto-centering the search range.
   const [userLoc, setUserLoc] = useState<LatLng | null>(null);
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);
@@ -109,24 +126,58 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
   const [error, setError] = useState<string | null>(null);
   const [newGameId, setNewGameId] = useState<string | null>(null);
 
+  // Edit mode: load the game and prefill the form once.
+  const [loadingGame, setLoadingGame] = useState(isEdit);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
     let alive = true;
     setVenuesLoading(true);
     listAllVenues()
-      .then((items) => {
-        if (!alive) return;
-        setVenues(items);
-        setVenueId((prev) => prev || items[0]?.id || '');
-      })
-      .catch(() => { /* picker shows an empty-state; the game can still post without a venue */ })
+      .then((items) => { if (alive) setVenues(items); })
+      .catch(() => { /* the in-range count just shows 0; the game can still post */ })
       .finally(() => { if (alive) setVenuesLoading(false); });
     return () => { alive = false; };
   }, []);
 
-  const selectVenue = (id: string) => {
-    venueTouched.current = true;
-    setVenueId(id);
-  };
+  // Prefill from the existing game when editing.
+  useEffect(() => {
+    if (!gameId) return;
+    let alive = true;
+    setLoadingGame(true);
+    setLoadError(null);
+    getGame(gameId)
+      .then((g) => {
+        if (!alive) return;
+        if (g.gameType === 'singles' || g.gameType === 'doubles' || g.gameType === 'open') setType(g.gameType);
+        if (g.skillLabel) setSkill(g.skillLabel);
+        setName(g.title || '');
+        // When: a relative preset, else fall back to a Custom calendar date.
+        if (g.whenLabel && WHEN.includes(g.whenLabel) && g.whenLabel !== 'Custom') setWhen(g.whenLabel);
+        else { setWhen('Custom'); setCustomDate(g.date || ''); }
+        // Time: a preset, else Custom + the 24h value for the picker.
+        if (g.timeLabel && TIMES.includes(g.timeLabel)) setTime(g.timeLabel);
+        else if (g.timeLabel) { setTime('Custom'); setCustomTime(to24h(g.timeLabel)); }
+        // Duration: a preset, else Custom + the numeric hours.
+        if (g.durationLabel && DURATIONS.includes(g.durationLabel)) setDuration(g.durationLabel);
+        else if (g.durationLabel) { setDuration('Custom'); setCustomDuration(String(parseFloat(g.durationLabel) || '')); }
+        if (g.capacity) setSpots(g.capacity);
+        setVis(g.visibility === 'invite' ? 'invite' : 'public');
+        // Range + center — keep what the host chose; don't let geolocation override it.
+        if (g.locationCenter?.lat != null && g.locationCenter?.lng != null) {
+          setCenter([g.locationCenter.lat, g.locationCenter.lng]);
+          centerTouched.current = true;
+          locTried.current = true;
+        }
+        if (g.rangeKm != null) {
+          setRangeKm(g.rangeKm);
+          if (!(RANGES as readonly number[]).includes(g.rangeKm)) { setRangeCustom(true); setCustomRange(String(g.rangeKm)); }
+        }
+      })
+      .catch((e) => { if (alive) setLoadError(e instanceof Error ? e.message : 'Could not load this game.'); })
+      .finally(() => { if (alive) setLoadingGame(false); });
+    return () => { alive = false; };
+  }, [gameId]);
 
   const handleLocate = () => {
     if (locating) return;
@@ -146,44 +197,33 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  // Venues with coords + distance, ranked nearest-first when located.
-  const ranked = useMemo(() => {
-    const rows = venues.map((v) => {
-      const coords = venueCoords(v);
-      const distanceKm = userLoc && coords ? haversineKm(userLoc, coords) : null;
-      return { v, coords, distanceKm };
-    });
-    if (userLoc) {
-      rows.sort((a, b) => {
-        if (a.distanceKm == null && b.distanceKm == null) return a.v.displayName.localeCompare(b.v.displayName);
-        if (a.distanceKm == null) return 1;
-        if (b.distanceKm == null) return -1;
-        return a.distanceKm - b.distanceKm;
-      });
-    }
-    return rows;
-  }, [venues, userLoc]);
-
-  // Once located, auto-select the nearest court — unless the user already chose one.
+  // Once located, center the search range on the user — unless they moved it.
   useEffect(() => {
-    if (!userLoc || venueTouched.current) return;
-    const nearest = ranked.find((r) => r.coords);
-    if (nearest) setVenueId(nearest.v.id);
-  }, [userLoc, ranked]);
+    if (userLoc && !centerTouched.current) setCenter(userLoc);
+  }, [userLoc]);
 
-  // Name/area search — lets the user find a preferred venue that isn't nearby.
-  // Narrows both the list and the map pins; ranking (nearest-first) is preserved.
-  const filtered = useMemo(() => {
-    const q = venueQuery.trim().toLowerCase();
-    if (!q) return ranked;
-    return ranked.filter(({ v }) => `${v.displayName} ${locationLine(v)}`.toLowerCase().includes(q));
-  }, [ranked, venueQuery]);
+  const pickCenter = (p: LatLng) => {
+    centerTouched.current = true;
+    setCenter(p);
+  };
 
-  const locatable = useMemo(() => filtered.filter((r) => r.coords) as { v: ApiVenue; coords: [number, number]; distanceKm: number | null }[], [filtered]);
-  const mapPoints = useMemo<[number, number][]>(() => locatable.map((r) => r.coords), [locatable]);
-  const fitPoints = useMemo<[number, number][]>(() => (userLoc ? [userLoc, ...mapPoints] : mapPoints), [userLoc, mapPoints]);
-  const mapCenter: [number, number] = userLoc ?? mapPoints[0] ?? MAP_FALLBACK_CENTER;
-  const selectedCoords = locatable.find((r) => r.v.id === venueId)?.coords ?? null;
+  // Locatable venues + their distance from the chosen center, and which fall in
+  // range — shown as context so the host knows there are courts to vote on.
+  const located = useMemo(
+    () =>
+      venues
+        .map((v) => ({ v, coords: venueCoords(v) }))
+        .filter((r): r is { v: ApiVenue; coords: [number, number] } => !!r.coords)
+        .map((r) => ({ ...r, distanceKm: center ? haversineKm(center, r.coords) : null })),
+    [venues, center],
+  );
+  const inRange = useMemo(
+    () => located.filter((r) => r.distanceKm != null && r.distanceKm <= rangeKm).sort((a, b) => (a.distanceKm! - b.distanceKm!)),
+    [located, rangeKm],
+  );
+
+  const mapPoints = useMemo<[number, number][]>(() => located.map((r) => r.coords), [located]);
+  const mapCenter: [number, number] = center ?? userLoc ?? mapPoints[0] ?? MAP_FALLBACK_CENTER;
 
   const totalSteps = 3;
   const back = () => (step > 0 ? (setError(null), setStep((s) => s - 1)) : onBack());
@@ -192,9 +232,9 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
     setSubmitting(true);
     setError(null);
     try {
-      const game = await createGame({
+      const loc = center ?? userLoc;
+      const payload = {
         title: name.trim() || undefined,
-        venueId: venueId || undefined,
         gameType: type,
         skillLabel: skill,
         whenLabel: when,
@@ -203,11 +243,15 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
         date: when === 'Custom' ? customDate : undefined,
         capacity: spots,
         visibility: vis,
-      });
+        // Vote flow: post a search center + range; the venue is voted on later.
+        locationCenter: loc ? { lat: loc[0], lng: loc[1] } : undefined,
+        rangeKm,
+      };
+      const game = isEdit ? await updateGame(gameId!, payload) : await createGame(payload);
       setNewGameId(game.id);
       setDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not post your game. Please try again.');
+      setError(e instanceof Error ? e.message : isEdit ? 'Could not save your changes. Please try again.' : 'Could not post your game. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -225,15 +269,43 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
     else void submit();
   };
 
-  if (done && newGameId) {
+  // Edit mode: hold the wizard until the game is loaded (or surface a failure).
+  if (isEdit && loadingGame) {
     return (
+      <div className="scroll px-5 pt-[calc(28px+env(safe-area-inset-top))]">
+        <LoadingSkeleton variant="block" count={1} />
+        <div className="mt-3"><LoadingSkeleton variant="card" count={3} /></div>
+      </div>
+    );
+  }
+  if (isEdit && loadError) {
+    return (
+      <div className="scroll px-5 pt-[calc(28px+env(safe-area-inset-top))]">
+        <ScreenHeader onBack={onBack} backIcon="back" eyebrow="Edit game" title="Couldn't load this game" />
+        <div className="text-[13px] text-[var(--coral)] font-semibold px-1">{loadError}</div>
+      </div>
+    );
+  }
+
+  if (done && newGameId) {
+    return isEdit ? (
       <CompletionScreen
         icon="check"
-        title="Game posted!"
-        description="Your game is live — players can now join."
+        title="Game updated!"
+        description="Your changes are saved. Players in range still see the latest details."
         actions={[
-          { label: 'View game', variant: 'outline', onClick: () => onNavigate('game-details', { id: newGameId }) },
-          { label: 'Invite players', variant: 'dark', onClick: () => onNavigate('invite-players', { id: newGameId }) },
+          { label: 'Open lobby', variant: 'dark', onClick: () => onNavigate('game-lobby', { id: newGameId }) },
+          { label: 'Done', variant: 'outline', onClick: () => onNavigate('my-games') },
+        ]}
+      />
+    ) : (
+      <CompletionScreen
+        icon="check"
+        title="Lobby created!"
+        description="Players within your range can now join. Once the lobby fills, your group votes on a venue — then you book it."
+        actions={[
+          { label: 'Open lobby', variant: 'dark', onClick: () => onNavigate('game-lobby', { id: newGameId }) },
+          { label: 'Invite players', variant: 'outline', onClick: () => onNavigate('invite-players', { id: newGameId }) },
         ]}
       />
     );
@@ -244,7 +316,7 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
       <ScreenHeader
         onBack={back}
         backIcon={step === 0 ? 'close' : 'back'}
-        eyebrow={`Step ${step + 1} of ${totalSteps}`}
+        eyebrow={isEdit ? `Edit · Step ${step + 1} of ${totalSteps}` : `Step ${step + 1} of ${totalSteps}`}
         title={TITLE_BY_STEP[step]}
       />
 
@@ -370,17 +442,23 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
         <>
           <div className="field">
             <div className="flex items-center justify-between mb-2">
-              <div className="lbl mb-0!">Court</div>
+              <div className="lbl mb-0!">Play area</div>
               <button
                 type="button"
                 onClick={handleLocate}
                 disabled={locating}
-                className={`chip ${userLoc ? 'lime' : ''}`}
-                aria-pressed={!!userLoc}
+                className={`chip ${center ? 'lime' : ''}`}
+                aria-pressed={!!center}
               >
                 <Icon name={locating ? 'spinner' : 'navigate'} size={12} className={locating ? 'animate-spin' : ''} />
-                {locating ? 'Locating…' : userLoc ? 'Nearest first' : 'Near me'}
+                {locating ? 'Locating…' : center ? 'Centered on you' : 'Use my location'}
               </button>
+            </div>
+
+            <div className="text-[12px] text-[var(--muted)] font-semibold mb-2">
+              You don't pick the court yet — set where you want to play. Players in
+              range join, then your group votes on the venue. Tap the map to move
+              the center.
             </div>
 
             {locError && (
@@ -389,141 +467,92 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
               </div>
             )}
 
-            {/* Search — find a preferred venue by name/area, not just nearby ones */}
-            {!venuesLoading && venues.length > 0 && (
-              <div className="relative mb-3">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]">
-                  <Icon name="search" size={16} />
-                </span>
-                <input
-                  className="control pl-10!"
-                  placeholder="Search a venue by name or area"
-                  value={venueQuery}
-                  onChange={(e) => setVenueQuery(e.target.value)}
-                  aria-label="Search venues"
-                />
-                {venueQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setVenueQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-                    aria-label="Clear search"
-                  >
-                    <Icon name="close" size={14} />
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Map — see the nearest courts; tap a pin to pick one */}
-            {!venuesLoading && mapPoints.length > 0 && (
-              <div className="relative z-0 h-[200px] rounded-2xl overflow-hidden border-[0.5px] border-[var(--hairline)] mb-3">
+            {/* Map — the search center + range ring, with courts that fall inside */}
+            {!venuesLoading && (
+              <div className="relative z-0 h-[220px] rounded-2xl overflow-hidden border-[0.5px] border-[var(--hairline)] mb-3">
                 <MapContainer center={mapCenter} zoom={12} className="w-full h-full" zoomControl={false} scrollWheelZoom={false}>
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
-                  <FitBounds points={fitPoints} />
-                  {userLoc && (
-                    <CircleMarker
-                      center={userLoc}
-                      radius={8}
-                      pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#0040e0', fillOpacity: 1 }}
-                    />
+                  <ClickToSetCenter onPick={pickCenter} />
+                  {center && (
+                    <>
+                      <FitToRange center={center} rangeKm={rangeKm} />
+                      <Circle
+                        center={center}
+                        radius={rangeKm * 1000}
+                        pathOptions={{ color: '#0040e0', weight: 1.5, fillColor: '#0040e0', fillOpacity: 0.08 }}
+                      />
+                      <CircleMarker
+                        center={center}
+                        radius={8}
+                        pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#0040e0', fillOpacity: 1 }}
+                      />
+                    </>
                   )}
-                  {selectedCoords && (
+                  {mapPoints.map((coords, i) => (
                     <CircleMarker
-                      center={selectedCoords}
-                      radius={16}
-                      pathOptions={{ color: '#C1F100', weight: 3, fillColor: '#C1F100', fillOpacity: 0.25 }}
+                      key={i}
+                      center={coords}
+                      radius={5}
+                      pathOptions={{ color: '#ffffff', weight: 1.5, fillColor: '#C1F100', fillOpacity: 1 }}
                     />
-                  )}
-                  {locatable.map(({ v, coords, distanceKm }) => {
-                    const photo = venueImage(v);
-                    return (
-                      <Marker
-                        key={v.id}
-                        position={coords}
-                        icon={markerIcon}
-                        eventHandlers={{ click: () => selectVenue(v.id) }}
-                      >
-                        <Popup className="venue-popup" minWidth={208} maxWidth={208}>
-                          <button type="button" className="venue-popup-card" onClick={() => selectVenue(v.id)}>
-                            <div
-                              className="venue-popup-img"
-                              style={photo ? { backgroundImage: `url(${photo})` } : undefined}
-                            >
-                              {!photo && <Icon name="paddle" size={26} />}
-                            </div>
-                            <div className="venue-popup-body">
-                              <div className="venue-popup-title">{v.displayName}</div>
-                              <div className="venue-popup-meta">
-                                {distanceKm != null && (
-                                  <>
-                                    <span className="font-extrabold text-[var(--primary)]">{formatDistance(distanceKm)}</span>
-                                    <span className="opacity-40">·</span>
-                                  </>
-                                )}
-                                <span className="truncate min-w-0">{locationLine(v) || 'Court'}</span>
-                              </div>
-                              <div className="venue-popup-foot">
-                                <span className="venue-popup-cta">
-                                  {venueId === v.id ? 'Selected ✓' : 'Select court'}
-                                </span>
-                              </div>
-                            </div>
-                          </button>
-                        </Popup>
-                      </Marker>
-                    );
-                  })}
+                  ))}
                 </MapContainer>
               </div>
             )}
 
-            {/* Court list — photo + distance, nearest first */}
-            {venuesLoading ? (
-              <LoadingSkeleton variant="card" count={3} />
-            ) : venues.length === 0 ? (
-              <div className="text-[13px] text-[var(--muted)] font-semibold py-2">
-                No courts available right now — you can still post and add a court later.
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="text-[13px] text-[var(--muted)] font-semibold py-3 text-center">
-                No venues match “{venueQuery.trim()}”. Try a different name or area.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
-                {filtered.map(({ v, distanceKm }) => {
-                  const photo = venueImage(v);
-                  const selected = venueId === v.id;
-                  const meta = [distanceKm != null ? formatDistance(distanceKm) : null, locationLine(v) || (v.courtCount ? `${v.courtCount} courts` : 'Court')]
-                    .filter(Boolean)
-                    .join(' · ');
-                  return (
-                    <button
-                      key={v.id}
-                      onClick={() => selectVenue(v.id)}
-                      className={`time-pick text-left px-3! py-2.5! flex items-center gap-3 ${
-                        selected ? 'bg-[var(--ink)]! text-white!' : 'bg-[var(--surface)]! text-[var(--ink)]!'
-                      }`}
-                    >
-                      <div
-                        className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-white/90 overflow-hidden bg-[var(--surface-3)]"
-                        style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-                      >
-                        {!photo && <Icon name="paddle" size={20} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-heading font-semibold text-[14px] truncate">{v.displayName}</div>
-                        <div className="text-[11px] opacity-70 font-semibold truncate">{meta}</div>
-                      </div>
-                      {selected && <Icon name="check" size={16} />}
-                    </button>
-                  );
-                })}
+            {/* Range presets + custom */}
+            <div className="lbl">Range · {rangeKm} km</div>
+            <div className="time-grid">
+              {RANGES.map((r) => (
+                <button
+                  key={r}
+                  className={`time-pick ${!rangeCustom && rangeKm === r ? 'active' : ''}`}
+                  onClick={() => { setRangeCustom(false); setRangeKm(r); }}
+                >
+                  {r} km
+                </button>
+              ))}
+              <button
+                className={`time-pick ${rangeCustom ? 'active' : ''}`}
+                onClick={() => { setRangeCustom(true); if (customRange) setRangeKm(Number(customRange)); }}
+              >
+                Custom
+              </button>
+            </div>
+            {rangeCustom && (
+              <div className="field mt-3">
+                <div className="lbl">Custom range (km)</div>
+                <input
+                  type="number"
+                  className="control"
+                  placeholder="e.g. 40"
+                  value={customRange}
+                  min={1}
+                  max={200}
+                  step={1}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setCustomRange(raw);
+                    const n = Number(raw);
+                    if (n > 0) setRangeKm(Math.min(200, Math.max(1, n)));
+                  }}
+                />
               </div>
             )}
+
+            <div className="text-[12px] font-semibold mt-2 flex items-center gap-1.5 text-[var(--muted)]">
+              <Icon name="paddle" size={13} />
+              {venuesLoading
+                ? 'Checking courts in range…'
+                : !center
+                  ? 'Set a center to see courts in range'
+                  : inRange.length > 0
+                    ? `${inRange.length} court${inRange.length === 1 ? '' : 's'} in range to vote on`
+                    : 'No courts in range yet — widen the range so there are venues to vote on'}
+            </div>
           </div>
 
           <div className="field">
@@ -565,11 +594,11 @@ export function CreateGameScreen({ onNavigate, onBack }: CreateGameScreenProps) 
           {step === totalSteps - 1 ? (
             submitting ? (
               <>
-                <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Posting…
+                <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isEdit ? 'Saving…' : 'Posting…'}
               </>
             ) : (
               <>
-                <Icon name="bolt" size={18} /> Post game
+                <Icon name="bolt" size={18} /> {isEdit ? 'Save changes' : 'Post game'}
               </>
             )
           ) : (

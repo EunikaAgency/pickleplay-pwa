@@ -7,14 +7,20 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings,
+  listAllVenues, createBooking, checkout, getSettings, bookGame,
   type ApiVenue, type AppSettings, type CheckoutCard,
 } from '../../shared/lib/api';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
-import { addHours, money, prettyDate, to12h, todayYMD } from './bookingDisplay';
+import { addHours, money, prettyDate, to12h, to24h, todayYMD } from './bookingDisplay';
 
 interface BookCourtScreenProps {
   venueId?: string;
+  /** Schedule prefill (e.g. from a game's chosen date/time). */
+  date?: string;
+  time?: string;            // 12h label like "6:30 PM"
+  hours?: number;
+  /** When booking for a game lobby: lock the venue + link the booking to the game. */
+  gameId?: string;
   onNavigate: Navigate;
   onBack: () => void;
 }
@@ -33,8 +39,10 @@ function isBookable(v: ApiVenue): boolean {
   return v.priceFrom != null;
 }
 
-export function BookCourtScreen({ venueId, onNavigate, onBack }: BookCourtScreenProps) {
+export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours: hoursProp, gameId, onNavigate, onBack }: BookCourtScreenProps) {
   const [step, setStep] = useState(0);
+  // Booking for a game locks the venue (it's the voted-on court).
+  const lockVenue = !!gameId;
 
   // Bookable venues (priced only) for the picker.
   const [venues, setVenues] = useState<ApiVenue[]>([]);
@@ -43,10 +51,10 @@ export function BookCourtScreen({ venueId, onNavigate, onBack }: BookCourtScreen
   const [picking, setPicking] = useState(!venueId); // show the list when nothing preselected
   const [query, setQuery] = useState('');
 
-  // Schedule.
-  const [date, setDate] = useState(todayYMD());
-  const [startTime, setStartTime] = useState('18:00');
-  const [hours, setHours] = useState(1.5);
+  // Schedule — prefilled from the game's chosen date/time when present.
+  const [date, setDate] = useState(dateProp || todayYMD());
+  const [startTime, setStartTime] = useState(to24h(timeProp) || '18:00');
+  const [hours, setHours] = useState(hoursProp && hoursProp > 0 ? hoursProp : 1.5);
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -65,8 +73,12 @@ export function BookCourtScreen({ venueId, onNavigate, onBack }: BookCourtScreen
       .then((items) => {
         if (!alive) return;
         const bookable = items.filter(isBookable);
-        setVenues(bookable);
-        setSelectedId((prev) => prev || (venueId ?? '') || bookable[0]?.id || '');
+        // Always keep a deep-linked venue (e.g. a game's winning court) selectable,
+        // even if it has no published rate — it just books at ₱0.
+        const preselected = venueId ? items.find((v) => v.id === venueId) : null;
+        const list = preselected && !bookable.some((v) => v.id === venueId) ? [preselected, ...bookable] : bookable;
+        setVenues(list);
+        setSelectedId((prev) => prev || (venueId ?? '') || list[0]?.id || '');
       })
       .catch(() => { /* picker shows an empty-state */ })
       .finally(() => { if (alive) setVenuesLoading(false); });
@@ -122,7 +134,12 @@ export function BookCourtScreen({ venueId, onNavigate, onBack }: BookCourtScreen
         card,
       });
       const confirmed = result.booking?.status === 'confirmed';
-      setDone({ confirmed, bookingId: result.booking?.id ?? booking.id });
+      const bookingId = result.booking?.id ?? booking.id;
+      // Booking for a game lobby: attach it so the game flips to booked/paying.
+      if (gameId) {
+        try { await bookGame(gameId, { bookingId }); } catch { /* booking still valid; lobby resyncs on next load */ }
+      }
+      setDone({ confirmed, bookingId });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not complete your booking. Please try again.');
     } finally {
@@ -152,10 +169,17 @@ export function BookCourtScreen({ venueId, onNavigate, onBack }: BookCourtScreen
             ? 'Your court is booked. You can see it under My bookings.'
             : 'Your request was sent and is awaiting venue approval.'
         }
-        actions={[
-          { label: 'View my bookings', variant: 'dark', onClick: () => onNavigate('my-bookings') },
-          { label: 'Done', variant: 'outline', onClick: onBack },
-        ]}
+        actions={
+          gameId
+            ? [
+                { label: 'Back to game', variant: 'dark' as const, onClick: () => onNavigate('game-lobby', { id: gameId }) },
+                { label: 'My bookings', variant: 'outline' as const, onClick: () => onNavigate('my-bookings') },
+              ]
+            : [
+                { label: 'View my bookings', variant: 'dark' as const, onClick: () => onNavigate('my-bookings') },
+                { label: 'Done', variant: 'outline' as const, onClick: onBack },
+              ]
+        }
       />
     );
   }
@@ -184,7 +208,7 @@ export function BookCourtScreen({ venueId, onNavigate, onBack }: BookCourtScreen
           <div className="field">
             <div className="flex items-center justify-between mb-2">
               <div className="lbl mb-0!">Court</div>
-              {selected && !picking && (
+              {selected && !picking && !lockVenue && (
                 <button type="button" className="chip" onClick={() => setPicking(true)}>
                   <Icon name="edit" size={12} /> Change
                 </button>

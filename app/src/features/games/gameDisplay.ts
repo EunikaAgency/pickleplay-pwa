@@ -33,10 +33,14 @@ export function timeLine(g: Pick<ApiGame, 'timeLabel' | 'whenLabel'>): string {
   return g.timeLabel || g.whenLabel || '';
 }
 
-/** "Riverside · Makati" (real venue) / the free-text name / "Location TBD". */
-export function gameLocation(g: Pick<ApiGame, 'venue' | 'venueName'>): string {
-  if (g.venue) return [g.venue.displayName, g.venue.area || g.venue.city].filter(Boolean).join(' · ');
-  return g.venueName || 'Location TBD';
+/** "Riverside · Makati" (real venue) / the free-text name / "Location TBD".
+ *  For a vote-flow lobby that hasn't booked yet, prefers the winning venue once
+ *  picked, else signals the venue is still to be decided. */
+export function gameLocation(g: Pick<ApiGame, 'venue' | 'venueName' | 'winningVenue' | 'status'>): string {
+  const v = g.venue || g.winningVenue;
+  if (v) return [v.displayName, v.area || v.city].filter(Boolean).join(' · ');
+  if (g.venueName) return g.venueName;
+  return g.status === 'voting' ? 'Venue — voting' : 'Venue TBD';
 }
 
 /** The game's own title, else a derived "Doubles · 3.0–3.5"-style label. */
@@ -56,4 +60,48 @@ export function gameTypeLabel(g: Pick<ApiGame, 'gameType'>): string {
 export function spotsLabel(g: Pick<ApiGame, 'spotsLeft'>): string {
   const n = g.spotsLeft ?? 0;
   return n > 0 ? `${n} left` : 'Full';
+}
+
+/* ─── Vote flow display ──────────────────────────────────────── */
+
+export type GameTone = 'lime' | 'blue' | 'coral' | 'muted';
+
+/** Human label + a tone for the lobby status, used on rows + the lobby header. */
+export function statusMeta(status?: string | null): { label: string; tone: GameTone } {
+  switch (status) {
+    case 'published': return { label: 'Filling', tone: 'blue' };
+    case 'full':      return { label: 'Lobby full', tone: 'lime' };
+    case 'voting':    return { label: 'Voting', tone: 'coral' };
+    case 'vote_won':  return { label: 'Venue picked', tone: 'lime' };
+    case 'paying':    return { label: 'Awaiting payment', tone: 'coral' };
+    case 'booked':    return { label: 'Booked', tone: 'lime' };
+    case 'cancelled': return { label: 'Cancelled', tone: 'muted' };
+    default:          return { label: 'Open', tone: 'blue' };
+  }
+}
+
+/** Votes a venue has so far, from the serialized `voteCounts` map. */
+export function votesFor(g: Pick<ApiGame, 'voteCounts'>, venueId: string): number {
+  return g.voteCounts?.[venueId] ?? 0;
+}
+
+/** Strict majority threshold for the current roster (e.g. 4 players → 3). */
+export function majorityThreshold(g: Pick<ApiGame, 'participantCount'>): number {
+  return Math.floor((g.participantCount ?? 0) / 2) + 1;
+}
+
+/** "12m left" / "Closing" / "" — time until the vote deadline. */
+export function voteTimeLeft(g: Pick<ApiGame, 'voteDeadline'>, now: number = Date.now()): string {
+  if (!g.voteDeadline) return '';
+  const ms = new Date(g.voteDeadline).getTime() - now;
+  if (Number.isNaN(ms)) return '';
+  if (ms <= 0) return 'Closing';
+  const mins = Math.round(ms / 60_000);
+  if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m left`;
+  return `${mins}m left`;
+}
+
+/** True when this game uses the players-first vote flow (range, no fixed venue). */
+export function isVoteFlow(g: Pick<ApiGame, 'rangeKm' | 'locationCenter'>): boolean {
+  return g.rangeKm != null || g.locationCenter != null;
 }

@@ -8,10 +8,13 @@ export type Screen =
   | { id: 'clubs' }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
+  | { id: 'game-lobby'; params: { id: string } }
   | { id: 'court-details'; params: { id: string } }
   | { id: 'club-details'; params: { id: string } }
   | { id: 'create-game' }
-  | { id: 'book-court'; params: { venueId?: string } }
+  | { id: 'edit-game'; params: { id: string } }
+  | { id: 'my-games' }
+  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number; gameId?: string } }
   | { id: 'my-bookings' }
   | { id: 'create-club' }
   | { id: 'edit-profile' }
@@ -23,7 +26,8 @@ export type Screen =
   | { id: 'owner-venue'; params: { id: string; tab?: string } }
   | { id: 'owner-new-venue' }
   | { id: 'owner-bookings' }
-  | { id: 'owner-insights' };
+  | { id: 'owner-insights' }
+  | { id: 'owner-notifications' };
 
 export type ScreenId = Screen['id'];
 

@@ -18,12 +18,11 @@ interface OwnerBookingsScreenProps {
   onBack: () => void;
 }
 
-type StatusFilter = 'all' | 'pending_approval' | 'confirmed' | 'paid' | 'cancelled';
+type StatusFilter = 'all' | 'pending_approval' | 'confirmed' | 'cancelled';
 const STATUS_FILTERS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'pending_approval', label: 'Pending' },
-  { id: 'confirmed', label: 'Confirmed' },
-  { id: 'paid', label: 'Paid' },
+  { id: 'confirmed', label: 'Complete' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
@@ -44,15 +43,13 @@ export function OwnerBookingsScreen({ onBack }: OwnerBookingsScreenProps) {
     return bookings
       .filter((b) => (statusFilter === 'all' ? true : b.status === statusFilter))
       .filter((b) => (venueFilter === 'all' ? true : (b.venueId || '') === venueFilter))
-      .sort((a, b) => {
-        // Pending first, then soonest date/time.
-        const pa = a.status === 'pending_approval' ? 0 : 1;
-        const pb = b.status === 'pending_approval' ? 0 : 1;
-        if (pa !== pb) return pa - pb;
-        const da = a.date || '';
-        const db = b.date || '';
-        return da === db ? (a.startTime || '').localeCompare(b.startTime || '') : da.localeCompare(db);
-      });
+      // Newest booking first — most recently *made* reservation on top, across all
+      // venues. We sort by booking id (a Mongo ObjectId whose leading bytes are the
+      // creation timestamp), NOT createdAt: the seeded demo rows set createdAt to
+      // the play-date (sometimes future), so sorting on it just looks like date
+      // sorting and buries genuinely new bookings. The id reflects true insertion
+      // order, so real new bookings always land on top.
+      .sort((a, b) => (b.id || '').localeCompare(a.id || ''));
   }, [bookings, statusFilter, venueFilter]);
 
   const onChanged = (updated: ApiBooking) => {

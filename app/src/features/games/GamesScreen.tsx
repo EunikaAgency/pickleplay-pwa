@@ -8,7 +8,9 @@ import { Segmented } from '../../shared/components/ui/Segmented';
 import { GameFilterSheet } from './GameFilterSheet';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { listGames, type ApiGame } from '../../shared/lib/api';
-import { dayParts, gameThumb, gameTitle, timeLine, gameLocation } from './gameDisplay';
+import { useAuthStore } from '../../shared/lib/authStore';
+import { dayParts, gameThumb, gameTitle, timeLine, gameLocation, isVoteFlow } from './gameDisplay';
+import { GameManageActions } from './GameManageActions';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface GamesScreenProps {
@@ -43,6 +45,7 @@ const CALENDAR = (() => {
 const QUICK_CHIPS = ['Tonight', 'Beginner', '3.0–3.5', 'Within 5 mi', 'Doubles'];
 
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
+  const me = useAuthStore((s) => s.user);
   const [view, setView] = useState<GamesView>('browse');
   // null = all upcoming days; a calendar index narrows browse to that date.
   const [activeDay, setActiveDay] = useState<number | null>(null);
@@ -84,8 +87,8 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const emptyState = (
     <EmptyState
       icon="paddle"
-      title={view === 'mine' ? "You haven't joined any games yet" : 'No games found'}
-      description={view === 'mine' ? 'Browse upcoming games near you to get on the courts.' : 'Try a different date or check back soon.'}
+      title={view === 'mine' ? "You haven't created or joined any games yet" : 'No games found'}
+      description={view === 'mine' ? 'Create a game or browse upcoming ones near you to get on the courts.' : 'Try a different date or check back soon.'}
       action={view === 'mine' ? { label: 'Browse games', onPress: () => setView('browse') } : undefined}
     />
   );
@@ -176,6 +179,8 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
             <div className="games-grid flex flex-col gap-2.5">
               {games.map((g) => {
                 const { day, num } = dayParts(g);
+                // In "My Games", surface host controls inside the card for games you created.
+                const isMine = view === 'mine' && (g.creatorId === me?.id || g.creator?.id === me?.id);
                 return (
                   <GameRow
                     key={g.id}
@@ -187,7 +192,20 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
                     loc={gameLocation(g)}
                     joined={view === 'mine'}
                     showRsvp={false}
-                    onTap={() => onNavigate('game-details', { id: g.id })}
+                    onTap={() =>
+                      // Vote-flow games live in the lobby (venue vote → book);
+                      // classic games keep the read-only details screen.
+                      isVoteFlow(g) && g.status !== 'cancelled'
+                        ? onNavigate('game-lobby', { id: g.id })
+                        : onNavigate('game-details', { id: g.id })
+                    }
+                    footer={isMine ? (
+                      <GameManageActions
+                        game={g}
+                        onNavigate={onNavigate}
+                        onDeleted={(id) => setGames((prev) => prev.filter((x) => x.id !== id))}
+                      />
+                    ) : undefined}
                   />
                 );
               })}

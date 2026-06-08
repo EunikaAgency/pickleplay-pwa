@@ -344,6 +344,10 @@
   width: 100%;
   text-align: left;
 }
+/* When the card carries a footer (host Edit/Delete), stack the row + footer. */
+.game-row.has-footer { flex-direction: column; align-items: stretch; gap: 0; }
+.game-row-main { display: flex; align-items: stretch; gap: 10px; width: 100%; }
+.game-row-footer { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--hairline); }
 .game-row .thumb {
   width: 72px; height: 72px; border-radius: 12px;
   position: relative; overflow: hidden;

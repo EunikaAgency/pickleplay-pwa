@@ -8,8 +8,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 import {
-  listOwnerVenues, getVenueAnalytics, getVenueBookings, listGames,
-  type ApiVenue, type ApiBooking, type ApiGame, type OwnerAnalytics,
+  listOwnerVenues, getVenueAnalytics, getVenueBookings, listGames, getReviews, entityId,
+  type ApiVenue, type ApiBooking, type ApiGame, type OwnerAnalytics, type OwnerReview,
 } from '../../../shared/lib/api';
 import { todayYMD } from '../../bookings/bookingDisplay';
 
@@ -20,6 +20,14 @@ export interface OwnerBookingRow extends ApiBooking {
 export interface OwnerGameRow extends ApiGame {
   venueName: string;
 }
+export interface OwnerReviewRow extends OwnerReview {
+  /** Stable id for the row (review id, namespaced by venue to avoid collisions). */
+  rowId: string;
+  venueName: string;
+  venueId: string;
+  /** slug (preferred) or id — used to deep-link to the owner-venue reviews tab. */
+  venueRef: string;
+}
 
 const byDateTime = (a: ApiBooking, b: ApiBooking) => {
   const da = a.date || '';
@@ -27,8 +35,8 @@ const byDateTime = (a: ApiBooking, b: ApiBooking) => {
   return da === db ? (a.startTime || '').localeCompare(b.startTime || '') : da.localeCompare(db);
 };
 
-export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: boolean; withAnalytics?: boolean } = {}) {
-  const { withBookings = false, withGames = false, withAnalytics = true } = opts;
+export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: boolean; withReviews?: boolean; withAnalytics?: boolean } = {}) {
+  const { withBookings = false, withGames = false, withReviews = false, withAnalytics = true } = opts;
   const currentUser = useAuthStore((s) => s.user);
   const ownerId = currentUser?.id ?? '';
   const canAnalytics = withAnalytics && userHasPermission(currentUser, 'owner.analytics.view');
@@ -38,6 +46,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
   const [analytics, setAnalytics] = useState<Record<string, OwnerAnalytics>>({});
   const [bookings, setBookings] = useState<OwnerBookingRow[]>([]);
   const [games, setGames] = useState<OwnerGameRow[]>([]);
+  const [reviews, setReviews] = useState<OwnerReviewRow[]>([]);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -103,6 +112,26 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
     return () => { cancelled = true; };
   }, [withGames, venues]);
 
+  // Reviews per venue (only when the consumer needs them, e.g. notifications).
+  useEffect(() => {
+    if (!withReviews || venues.length === 0) return;
+    let cancelled = false;
+    Promise.allSettled(venues.map((v) => getReviews(v.slug || v.id))).then((results) => {
+      if (cancelled) return;
+      const rows: OwnerReviewRow[] = [];
+      results.forEach((r, i) => {
+        if (r.status !== 'fulfilled') return;
+        const v = venues[i];
+        const ref = v.slug || v.id;
+        for (const review of r.value.items) {
+          rows.push({ ...review, rowId: `${v.id}:${entityId(review)}`, venueName: v.displayName || 'Venue', venueId: v.id, venueRef: ref });
+        }
+      });
+      setReviews(rows);
+    });
+    return () => { cancelled = true; };
+  }, [withReviews, venues]);
+
   const combined = useMemo(() => {
     const vals = Object.values(analytics);
     return vals.reduce(
@@ -163,7 +192,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
     analyticsByVenue: analytics,
     combined, combinedRevenueDaily, statsReady, structural, glanceFor,
     bookings, pending, upcoming, removeBooking, updateBookingRow,
-    games,
+    games, reviews,
   };
 }
 

@@ -49,8 +49,12 @@ src/
     home/              # HomeScreenSwitch (picks ↓; App.tsx routes owners to owner/OwnerHomeScreen
                        #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic)
     games/             # Games (player browse/join — owners get owner/OwnerGames instead via App.tsx),
-                       #   GameDetails, CreateGame, InvitePlayers, GameFilterSheet, gameDisplay
-                       #   (API-wired: create/list/detail/join; chat + invite-send still demo)
+                       #   GameDetails, CreateGame (vote flow: schedule + location RANGE, no fixed
+                       #   venue; also doubles as the EDIT screen via a gameId prop), GameLobby
+                       #   (post-create lobby state machine: filling → full → voting → vote_won →
+                       #   paying → booked), MyGames (manage games you created: status + edit/delete),
+                       #   InvitePlayers, GameFilterSheet, gameDisplay (API-wired: create/edit/delete/
+                       #   list/detail/join + venue vote/book; chat + invite-send still demo)
     bookings/          # BookCourt (pick court→time→pay test-checkout), MyBookings (list+cancel), bookingDisplay
     venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
     clubs/             # Clubs, ClubDetails, CreateClub
@@ -63,8 +67,9 @@ src/
                        # analytics: combined trends + per-venue compare) — the Home Bookings/Insights
                        # buttons open these; OwnerGames (the Games tab for owners — "Your courts":
                        # Schedule agenda of bookings+games per day + Games list at their venues);
-                       # OwnerNearby (the Nearby tab for owners — a local market map: own vs
-                       # competitor pins + price/rating/court/density comparisons per focus venue);
+                       # OwnerNearby (the Nearby tab for owners — a "your venues" operations
+                       # map: your venues as live-status pins (today's bookings / pending /
+                       # occupancy), tap → glance → console; attention-sorted venue list below);
                        # OwnerVenues (list w/ per-card glance), OwnerVenue (tabbed host),
                        # OwnerNewVenue (create).
       tabs/            # the OwnerVenue panels: Overview (business dashboard: revenue/bookings/
@@ -75,9 +80,7 @@ src/
                        # OwnerGameCard/CompletenessMeter
       hooks/           # useOwnerDashboard.ts (shared venues+analytics+bookings+games hook; opts
                        # withBookings/withGames/withAnalytics; exposes analyticsByVenue, bookings, games)
-      utils/           # ownerMetrics.ts (revenue bucketing + cross-venue merge helpers),
-                       # marketMetrics.ts (OwnerNearby market math: competitorsNear +
-                       # marketSummary + compareToFocus, pure/geo-based)
+      utils/           # ownerMetrics.ts (revenue bucketing + cross-venue merge helpers)
 
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
@@ -166,7 +169,15 @@ src/
   Same API the web `/owner/` console uses; no API changes. (Known gaps mirror web: photos
   are upload-only, address text/city are staff-managed, no token refresh on 401.)
 - **Home A/B:** `HomeScreenSwitch` shows a floating New/Classic toggle and persists
-  the choice in `localStorage` (`pb-home-design`); "New" = `HomeScreenRefined`.
+  the choice in `localStorage` (`pb-home-design`); "New" = `HomeScreenRefined`. The
+  refined home's **hero is live**: your next commitment is the **soonest of your
+  games (`listGames({ mine: true })`) and court bookings (`listBookings()`)** —
+  a court booking renders the same hero (party size instead of a roster, opens
+  My bookings); else it features the best open game (`listGames({ status:
+  'published' })`); else the create-a-game prompt. **Open games near you**
+  (`listGames({ status: 'published' })`) and **Courts to book** (`listVenues`)
+  are live lists too. Only the check-in banner and the streak card stay demo
+  (no presence/player-stats backend).
 - **Chrome:** TabBar (mobile) + Sidebar (desktop) render via `App.tsx`; hidden on
   `landing`/`login`/`onboarding`. Create (`+`) is a TabBar action, not a separate FAB.
 
@@ -185,8 +196,10 @@ src/
 |---|---|
 | Navigation / new screen / auth-or-guest flow | `App.tsx`, `shared/lib/navigation.ts` |
 | Login / current user / session | `shared/lib/authStore.ts`, `shared/lib/api.ts`, `LoginScreen.tsx` |
-| Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` (owners get `features/owner/OwnerNearbyScreen.tsx` + `utils/marketMetrics.ts`) |
+| Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` (owners get `features/owner/OwnerNearbyScreen.tsx` — a "your venues" ops map) |
 | Games tab (browse/mine, create, detail, join) | `features/games/{GamesScreen,GameDetailsScreen,CreateGameScreen}.tsx`, `gameDisplay.ts`; games endpoints in `shared/lib/api.ts` |
+| Game lobby + venue vote (fill → vote → book) | `features/games/GameLobbyScreen.tsx`; vote endpoints (`getVenueSuggestions`/`openVote`/`voteGame`/`resolveVote`/`bookGame`) + `gameDisplay` vote helpers; gated by `player.games.vote` |
+| Manage games you created (list, edit, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows; both use `features/games/GameManageActions.tsx` (shared Edit/Delete row); edit reuses `CreateGameScreen` with a `gameId` prop; `updateGame`/`deleteGame` in `shared/lib/api.ts`; gated by `player.games.manage` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |

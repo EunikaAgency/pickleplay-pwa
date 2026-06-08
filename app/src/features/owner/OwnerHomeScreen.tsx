@@ -88,11 +88,14 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
         </div>
       </div>
       <button
-        onClick={() => onNavigate('notifications')}
+        onClick={() => onNavigate('owner-notifications')}
         aria-label="Notifications"
-        className="w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
+        className="relative w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
       >
         <Icon name="bell" size={18} />
+        {canBookings && pendingCount > 0 && (
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[var(--coral)] border-2 border-[var(--surface)]" aria-hidden="true" />
+        )}
       </button>
     </div>
   );

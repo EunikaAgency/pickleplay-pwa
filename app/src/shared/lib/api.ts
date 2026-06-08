@@ -723,7 +723,23 @@ export interface ApiGameVenue {
   slug?: string;
   area?: string | null;
   city?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  priceFrom?: number | null;
+  priceFromLabel?: string | null;
+  image?: string | null;
 }
+
+/** One player's current venue vote within a lobby. */
+export interface ApiGameVote {
+  userId: string;
+  venueId: string;
+}
+
+/** Game lobby status. The classic flow uses published|full|cancelled; the
+ *  vote flow adds voting → vote_won → paying → booked. */
+export type GameStatus =
+  | 'published' | 'full' | 'voting' | 'vote_won' | 'paying' | 'booked' | 'cancelled';
 
 export interface ApiGame {
   id: string;
@@ -735,6 +751,7 @@ export interface ApiGame {
   durationLabel?: string | null;
   date?: string | null;            // YYYY-MM-DD (best-effort)
   capacity?: number | null;
+  minPlayers?: number | null;
   spotsLeft?: number | null;
   participantCount?: number | null;
   participants?: ApiGamePerson[];
@@ -744,7 +761,17 @@ export interface ApiGame {
   venueId?: string | null;
   venueName?: string | null;       // free-text fallback when no venue link
   visibility?: string | null;
-  status?: string | null;          // 'published' | 'full' | 'cancelled'
+  status?: GameStatus | string | null;
+  // ---- Vote flow ----
+  locationCenter?: { lat?: number | null; lng?: number | null } | null;
+  rangeKm?: number | null;
+  candidateVenues?: ApiGameVenue[];     // the ballot (snapshot when vote opens)
+  winningVenue?: ApiGameVenue | null;
+  winningVenueId?: string | null;
+  votes?: ApiGameVote[];
+  voteCounts?: Record<string, number>;  // venueId → vote count
+  voteDeadline?: string | null;         // ISO timestamp
+  bookingId?: string | null;
 }
 
 export interface ListGamesParams {
@@ -767,7 +794,13 @@ export interface CreateGamePayload {
   /** Explicit YYYY-MM-DD from the "Custom" date picker; overrides the derived date. */
   date?: string;
   capacity: number;
+  /** Min players before the host can open the venue vote (vote flow). */
+  minPlayers?: number;
   visibility: 'public' | 'invite';
+  // Vote flow: omit venueId and pass a search center + radius instead. The venue
+  // is chosen later by the lobby's vote.
+  locationCenter?: { lat: number; lng: number };
+  rangeKm?: number;
 }
 
 /** List games — public browse, or the current user's games via `mine`. */
@@ -788,6 +821,16 @@ export async function createGame(body: CreateGamePayload): Promise<ApiGame> {
   return request<ApiGame>(GAMES_PREFIX, { method: 'POST', body, auth: true });
 }
 
+/** Edit a game the current user created (host-only; editable while filling). */
+export async function updateGame(id: string, body: Partial<CreateGamePayload>): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
+}
+
+/** Delete a game the current user created (host-only; blocked once booked). */
+export async function deleteGame(id: string): Promise<void> {
+  await request<{ id: string; deleted: boolean }>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
 /** Join a game — server enforces capacity + one-per-player. */
 export async function joinGame(id: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/join`, { method: 'POST', body: {}, auth: true });
@@ -796,6 +839,37 @@ export async function joinGame(id: string): Promise<ApiGame> {
 /** Leave a game (re-opens it if it was full). */
 export async function leaveGame(id: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
+}
+
+/* ─── Vote flow: suggest → open vote → vote → resolve → book ─── */
+
+/** Ranked venue suggestions for a game's ballot (in-range, nearest-first). */
+export async function getVenueSuggestions(id: string): Promise<ApiGameVenue[]> {
+  const env = await rawRequest<ApiGameVenue[]>(`${GAMES_PREFIX}/${id}/venue-suggestions`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Host opens the venue vote — snapshots a ballot + starts the countdown. */
+export async function openVote(id: string, deadlineMinutes?: number): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/open-vote`, {
+    method: 'POST', body: deadlineMinutes ? { deadlineMinutes } : {}, auth: true,
+  });
+}
+
+/** Cast or change the caller's venue vote; auto-resolves on a majority. */
+export async function voteGame(id: string, venueId: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/vote`, { method: 'POST', body: { venueId }, auth: true });
+}
+
+/** Force-resolve the vote (host early-close, or after the deadline). */
+export async function resolveVote(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/resolve-vote`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Host books the winning venue. Pass a `bookingId` to attach a booking already
+ *  made via the book-a-court flow; omit it to have the server create one. */
+export async function bookGame(id: string, body: { bookingId?: string } = {}): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/book`, { method: 'POST', body, auth: true });
 }
 
 /* ─── Bookings + checkout ───────────────────────────────────── */
@@ -842,7 +916,7 @@ export async function listBookings(params: { status?: string } = {}): Promise<Ap
   return env.data ?? [];
 }
 
-/** Create a booking (starts as pending_approval). */
+/** Create a booking. Auto-confirmed on creation — no venue-owner approval step. */
 export async function createBooking(body: CreateBookingPayload): Promise<ApiBooking> {
   return request<ApiBooking>(BOOKINGS_PREFIX, { method: 'POST', body, auth: true });
 }
@@ -865,7 +939,9 @@ export async function cancelBooking(id: string, cancellationReason?: string): Pr
 // actions; `getVenueAnalytics` returns aggregated business metrics for the
 // dashboard. All require auth + venue ownership (or admin).
 
-export type BookingStatus = 'confirmed' | 'cancelled' | 'paid';
+// Bookings arrive already paid + confirmed, so the owner only ever cancels
+// (or, for any legacy pending row, confirms). No 'paid' transition from the app.
+export type BookingStatus = 'confirmed' | 'cancelled';
 
 /** All bookings for a venue the user owns (optionally filtered by status). */
 export async function getVenueBookings(venueId: string, status?: string): Promise<ApiBooking[]> {
@@ -873,7 +949,7 @@ export async function getVenueBookings(venueId: string, status?: string): Promis
   return env.data ?? [];
 }
 
-/** Confirm / cancel / mark-paid a booking on a venue the user owns. */
+/** Confirm / cancel a booking on a venue the user owns. */
 export async function updateBookingStatus(
   venueId: string,
   bookingId: string,
