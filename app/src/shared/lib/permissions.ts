@@ -27,7 +27,6 @@ export const ALL_PERMISSIONS = [
   'coach.applications.manage',
   'player.dashboard.access',
   'player.games.create',
-  'player.games.vote',
   'player.games.manage',
   'player.clubs.create',
   'player.clubs.join',
@@ -47,7 +46,6 @@ export type Role = 'admin' | 'moderator' | 'owner' | 'organizer' | 'coach' | 'pl
 const PLAYER_PERMISSIONS: Permission[] = [
   'player.dashboard.access',
   'player.games.create',
-  'player.games.vote',
   'player.games.manage',
   'player.clubs.create',
   'player.clubs.join',

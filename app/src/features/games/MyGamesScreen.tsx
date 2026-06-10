@@ -7,7 +7,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { listGames, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { dayParts, timeLine, gameTitle, statusMeta, isVoteFlow, type GameTone } from './gameDisplay';
+import { dayParts, timeLine, gameTitle, statusMeta, type GameTone } from './gameDisplay';
 import { GameManageActions } from './GameManageActions';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -47,10 +47,7 @@ export function MyGamesScreen({ onNavigate, onBack }: MyGamesScreenProps) {
 
   useEffect(() => { void load(); }, [load, reloadKey]);
 
-  const openGame = (g: ApiGame) =>
-    isVoteFlow(g) && g.status !== 'cancelled'
-      ? onNavigate('game-lobby', { id: g.id })
-      : onNavigate('game-details', { id: g.id });
+  const openGame = (g: ApiGame) => onNavigate('game-details', { id: g.id });
 
   const dropGame = (id: string) => setGames((prev) => prev.filter((g) => g.id !== id));
 

@@ -49,13 +49,15 @@ src/
     home/              # HomeScreenSwitch (picks ↓; App.tsx routes owners to owner/OwnerHomeScreen
                        #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic)
     games/             # Games (player browse/join — owners get owner/OwnerGames instead via App.tsx),
-                       #   GameDetails, CreateGame (vote flow: schedule + location RANGE, no fixed
-                       #   venue; also doubles as the EDIT screen via a gameId prop), GameLobby
-                       #   (post-create lobby state machine: filling → full → voting → vote_won →
-                       #   paying → booked), MyGames (manage games you created: status + edit/delete),
-                       #   InvitePlayers, GameFilterSheet, gameDisplay (API-wired: create/edit/delete/
-                       #   list/detail/join + venue vote/book; chat + invite-send still demo)
-    bookings/          # BookCourt (pick court→time→pay test-checkout), MyBookings (list+cancel), bookingDisplay
+                       #   GameDetails, CreateGame (venue-first: pick a priced court → date +
+                       #   start/end time → details → PAY to book the court → game posts; with a
+                       #   gameId prop it switches to the MANAGE form: edit details + kick players,
+                       #   venue/time locked), MyGames (manage games you created: status + edit/delete),
+                       #   InvitePlayers, GameFilterSheet + gameFilters (when/skill/type/openings
+                       #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
+                       #   list/detail/join/kick; chat + invite-send still demo)
+    bookings/          # BookCourt (pick court→whole-hour start/end via HourSelect, full hours
+                       #   greyed out from live availability→pay test-checkout), MyBookings (list+cancel), bookingDisplay
     venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
     clubs/             # Clubs, ClubDetails, CreateClub
     profile/           # Profile, EditProfile, Settings, Notifications
@@ -88,7 +90,8 @@ src/
                         # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap), … (see folder)
     components/layout/  # TabBar (mobile), Sidebar (desktop)
     components/forms/   # FormField, FormSelect, FormTierPicker
-    hooks/              # useForm, useTheme, usePrefersReducedMotion
+    hooks/              # useForm, useTheme, usePrefersReducedMotion, useVenueAvailability
+                        #   (per-hour court availability → greys out full hours in the time pickers)
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
                         # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
@@ -140,27 +143,39 @@ src/
   venue **images** (media-derived) with a gradient fallback. **Near me:** the "Near me"
   chip / locate button asks for the user's location (`shared/lib/geo.ts`) and shows the
   courts *near them* — locatable venues only, ranked nearest-first and capped to a radius
-  (default 25 mi, adjustable in the sheet; `resolveNearby`), with a nearest-few fallback —
+  (default 10 km, adjustable in the sheet; `resolveNearby`), with a nearest-few fallback —
   not the whole directory. **Open to guests** (browse aid); `player.venues.locate` only governs signed-in
   users (`!isLoggedIn || userHasPermission(...)`). **Filters narrow the list too:** the quick
   chips (Games here / Indoor / Free / Lighted) and the `NearbyFilterSheet` (court type, price,
   open play, distance cap, amenities) edit one `VenueFilters` state applied via `matchesFilters`
   (`venueFilters.ts`). Filtering or locating switches the list to the full set (so a filter
   can't hide matches on unfetched pages); otherwise it stays the server-paged directory. Real
-  data is sparse (ratings/coords often null) so fields degrade gracefully; the on-detail
-  "Games this week" list is still demo.
-- **Games tab is live:** `GamesScreen` lists games from `/api/v1/games` (Browse = public
-  published; **My Games** = games you created or joined), `GameDetailsScreen` loads one via
+  data is sparse (ratings/coords often null) so fields degrade gracefully. **Court detail is
+  fully live:** its location card renders a real Leaflet map at the venue's coords (falls back
+  to the decorative pin box when a venue has no lat/lng), and the **"Games here"** list loads
+  real games hosted at the venue via `listGames({ venueId })` (matched by the game's fixed
+  `venueId`) — own loading/empty/error states; nothing on this screen is demo anymore.
+- **Games tab is live:** `GamesScreen` has two top tabs — **Booking** and **Games**.
+  **Booking** is the court-bookings view (`listBookings`/`cancelBooking`) with a **calendar ⇄
+  list** toggle (month grid dots days that have bookings; tap a day to see its cards). **Games**
+  holds the **My Games / Browse** sub-tabs: **Browse** = public published games from
+  `/api/v1/games`, grouped into date sections with rich cards (time rail, roster avatars,
+  spots/skill); **My Games** = games you created or joined, as commitment cards with a status
+  accent (HOSTING/GOING). `GameDetailsScreen` loads one via
   `getGame` and **Join** calls `joinGame` (soft-gated by `onRequireAuth`; spots/roster are
-  server-derived). `CreateGameScreen` posts via `createGame`: its **when** step has `Custom`
-  date/start-time/duration inputs (explicit `date` to the API), and its **court** step asks for
-  the user's location (`geo.ts`), ranks **real venues** (`listAllVenues`) nearest-first with
-  photos, has a **name/area search**, and shows a **Leaflet map** (pins + you-are-here dot, tap
-  to pick; search narrows both list + pins) — storing a real `venueId`; on success it routes to
-  the real game id.
-  Gated by `player.games.create` (`SCREEN_PERMISSIONS`). The Browse **calendar strip** filters
-  by date (server `date` param); the quick chips, search box, `GameFilterSheet`, and the
-  Game-Details **chat** are still cosmetic/demo (no endpoints yet).
+  server-derived). `CreateGameScreen` is **venue-first**: a 3-step wizard (pick a priced court
+  via `listAllVenues` + search → date + start/end time with a live `rate × hours` cost → game
+  details) ending in a **payment** step that books the court (`createBooking` → `checkout`) and
+  then posts a fixed-venue game (`createGame` with `venueId` + the booking's `bookingId`). With a
+  `gameId` prop it instead renders the **manage** form — edit type/skill/name/spots/visibility
+  (`updateGame`) and remove players (`kickPlayer`); venue + schedule are read-only. There is **no
+  vote/lobby flow** — games are joinable immediately and open in `GameDetailsScreen`.
+  Gated by `player.games.create` (`SCREEN_PERMISSIONS`); creating also exercises
+  `player.bookings.create` (the host books the court). Browse **date grouping** is client-side
+  over all upcoming published games; the **quick chips + `GameFilterSheet` now filter for real**
+  (client-side via `gameFilters.ts` — when/skill/type/has-openings; both edit one `GameFilters`
+  state, the header button shows an active-filter count). The search box was removed; the
+  Game-Details **chat** is still demo (no endpoint yet).
 - **Owner console:** users with `owner.access` see a **"My venues"** row in the Profile
   ("You") tab → `owner-venues`. `OwnerVenuesScreen` lists their venues (live, via
   `listOwnerVenues`); `OwnerVenueScreen` is a single screen with an in-screen tab strip
@@ -175,9 +190,13 @@ src/
   a court booking renders the same hero (party size instead of a roster, opens
   My bookings); else it features the best open game (`listGames({ status:
   'published' })`); else the create-a-game prompt. **Open games near you**
-  (`listGames({ status: 'published' })`) and **Courts to book** (`listVenues`)
-  are live lists too. Only the check-in banner and the streak card stay demo
-  (no presence/player-stats backend).
+  (`listGames({ status: 'published' })`) is a live list, and **Courts to book** is
+  **location-aware**: it best-effort requests the user's location (`geo.ts`), and
+  once located pulls the full directory (`listAllVenues`) to rank courts
+  nearest-first with a distance on each card (heading flips to "Courts near you");
+  with no location it falls back to the plain `listVenues({ pageSize: 6 })` list.
+  Only the check-in banner and the streak card stay demo (no presence/player-stats
+  backend).
 - **Chrome:** TabBar (mobile) + Sidebar (desktop) render via `App.tsx`; hidden on
   `landing`/`login`/`onboarding`. Create (`+`) is a TabBar action, not a separate FAB.
 
@@ -198,8 +217,8 @@ src/
 | Login / current user / session | `shared/lib/authStore.ts`, `shared/lib/api.ts`, `LoginScreen.tsx` |
 | Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` (owners get `features/owner/OwnerNearbyScreen.tsx` — a "your venues" ops map) |
 | Games tab (browse/mine, create, detail, join) | `features/games/{GamesScreen,GameDetailsScreen,CreateGameScreen}.tsx`, `gameDisplay.ts`; games endpoints in `shared/lib/api.ts` |
-| Game lobby + venue vote (fill → vote → book) | `features/games/GameLobbyScreen.tsx`; vote endpoints (`getVenueSuggestions`/`openVote`/`voteGame`/`resolveVote`/`bookGame`) + `gameDisplay` vote helpers; gated by `player.games.vote` |
-| Manage games you created (list, edit, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows; both use `features/games/GameManageActions.tsx` (shared Edit/Delete row); edit reuses `CreateGameScreen` with a `gameId` prop; `updateGame`/`deleteGame` in `shared/lib/api.ts`; gated by `player.games.manage` |
+| Create a game (venue-first + pay) | `features/games/CreateGameScreen.tsx` — `CreateGameWizard`: court → date/start-end → details → `createBooking`+`checkout`+`createGame`; gated by `player.games.create` (+ `player.bookings.create`) |
+| Manage games you created (edit details, kick, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows (`GameManageActions.tsx`); editing reuses `CreateGameScreen` with a `gameId` prop (the `ManageGameScreen` form: edit details + remove players via `kickPlayer`); `updateGame`/`deleteGame`/`kickPlayer` in `shared/lib/api.ts`; gated by `player.games.manage` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |

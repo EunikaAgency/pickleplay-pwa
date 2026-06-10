@@ -12,19 +12,17 @@ export interface VenueFilters {
   openPlay: boolean;
   /** Selected amenity ApiVenue boolean keys (e.g. 'hasLighting'). */
   amenities: Set<string>;
-  /** Radius in miles for "Near me" — only applies once the user is located. */
-  maxDistanceMi: number;
+  /** Radius in km for "Near me" — only applies once the user is located. */
+  maxDistanceKm: number;
 }
 
-// Slider bounds + the default radius applied when the user taps "Near me", so
-// the list shows courts *near* them rather than every court sorted by distance.
-export const MIN_DISTANCE_MI = 1;
-export const MAX_DISTANCE_MI = 50;
-export const DEFAULT_NEARBY_MI = 25;
-const KM_PER_MI = 1.60934;
-
-/** Miles → kilometres (venue distances are computed in km). */
-export const milesToKm = (mi: number): number => mi * KM_PER_MI;
+// Slider bounds + the default radius (km) applied when the user taps "Near me",
+// so the list shows courts *near* them rather than every court sorted by
+// distance. Venue distances are already computed in km (haversineKm), so the
+// filter shares that unit directly — no conversion.
+export const MIN_DISTANCE_KM = 1;
+export const MAX_DISTANCE_KM = 50;
+export const DEFAULT_NEARBY_KM = 10;
 
 /** A fresh, empty filter set (own Set instance so callers never share state). */
 export const makeDefaultFilters = (): VenueFilters => ({
@@ -32,7 +30,7 @@ export const makeDefaultFilters = (): VenueFilters => ({
   price: 'Any',
   openPlay: false,
   amenities: new Set(),
-  maxDistanceMi: DEFAULT_NEARBY_MI,
+  maxDistanceKm: DEFAULT_NEARBY_KM,
 });
 
 // Amenities offered in the sheet, mapped to their ApiVenue boolean flag so the

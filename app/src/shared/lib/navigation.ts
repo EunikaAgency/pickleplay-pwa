@@ -8,13 +8,12 @@ export type Screen =
   | { id: 'clubs' }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
-  | { id: 'game-lobby'; params: { id: string } }
   | { id: 'court-details'; params: { id: string } }
   | { id: 'club-details'; params: { id: string } }
   | { id: 'create-game' }
   | { id: 'edit-game'; params: { id: string } }
   | { id: 'my-games' }
-  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number; gameId?: string } }
+  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number } }
   | { id: 'my-bookings' }
   | { id: 'create-club' }
   | { id: 'edit-profile' }
@@ -37,10 +36,18 @@ export type TabId = (typeof tabScreens)[number];
 type ScreensWithParams = Extract<Screen, { params: unknown }>;
 type ScreensWithoutParams = Exclude<Screen, { params: unknown }>;
 
+/** Options for a navigation. `replace` swaps the current screen out of the back
+ *  stack instead of pushing on top — use it after finishing a flow so backing out
+ *  of the result doesn't return to the (now-stale) form. */
+export interface NavigateOptions {
+  replace?: boolean;
+}
+
 export type Navigate = {
-  (id: ScreensWithoutParams['id']): void;
+  (id: ScreensWithoutParams['id'], params?: undefined, opts?: NavigateOptions): void;
   <K extends ScreensWithParams['id']>(
     id: K,
     params: Extract<Screen, { id: K }>['params'],
+    opts?: NavigateOptions,
   ): void;
 };

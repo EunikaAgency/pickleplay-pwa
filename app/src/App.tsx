@@ -10,7 +10,6 @@ import { GameDetailsScreen } from './features/games/GameDetailsScreen';
 import { CourtDetailsScreen } from './features/venues/CourtDetailsScreen';
 import { ClubDetailsScreen } from './features/clubs/ClubDetailsScreen';
 import { CreateGameScreen } from './features/games/CreateGameScreen';
-import { GameLobbyScreen } from './features/games/GameLobbyScreen';
 import { MyGamesScreen } from './features/games/MyGamesScreen';
 import { BookCourtScreen } from './features/bookings/BookCourtScreen';
 import { MyBookingsScreen } from './features/bookings/MyBookingsScreen';
@@ -46,7 +45,6 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'create-game': 'player.games.create',
   'edit-game': 'player.games.manage',
   'my-games': 'player.games.manage',
-  'game-lobby': 'player.games.vote',
   'book-court': 'player.bookings.create',
   'create-club': 'player.clubs.create',
   'edit-profile': 'player.profile.manage',
@@ -67,7 +65,6 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'create-game': 'create a game',
   'edit-game': 'edit your game',
   'my-games': 'see your games',
-  'game-lobby': 'join the game lobby',
   'book-court': 'book a court',
   'my-bookings': 'see your bookings',
   'create-club': 'start a club',
@@ -118,7 +115,7 @@ function AppInner() {
     return false;
   };
 
-  const navigate = ((id: ScreenId, params?: { id: string }) => {
+  const navigate = ((id: ScreenId, params?: { id: string }, opts?: { replace?: boolean }) => {
     const requiredPermission = SCREEN_PERMISSIONS[id];
     if (requiredPermission && !userHasPermission(currentUser, requiredPermission)) {
       // A guest hit a gated screen — prompt them to sign up instead of silently
@@ -127,7 +124,10 @@ function AppInner() {
       return;
     }
 
-    setHistory((prev) => [...prev, screen]);
+    // `replace` swaps the current screen out of the back stack (don't push it),
+    // so backing out of the destination skips it — e.g. after creating a game,
+    // back from the new game's details goes to where the user started, not the form.
+    if (!opts?.replace) setHistory((prev) => [...prev, screen]);
     if (isTabScreen(id)) {
       setActiveTab(id);
       setScreen({ id } as Screen);
@@ -259,8 +259,6 @@ function AppInner() {
         return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
-      case 'game-lobby':
-        return <GameLobbyScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'court-details':
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
@@ -278,7 +276,6 @@ function AppInner() {
             date={screen.params.date}
             time={screen.params.time}
             hours={screen.params.hours}
-            gameId={screen.params.gameId}
             onNavigate={navigate}
             onBack={goBack}
           />

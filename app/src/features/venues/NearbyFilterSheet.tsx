@@ -1,7 +1,7 @@
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Button } from '../../shared/components/ui/Button';
 import { Chip } from '../../shared/components/ui/Chip';
-import { AMENITY_OPTIONS, MIN_DISTANCE_MI, MAX_DISTANCE_MI, makeDefaultFilters, type VenueFilters } from './venueFilters';
+import { AMENITY_OPTIONS, MIN_DISTANCE_KM, MAX_DISTANCE_KM, makeDefaultFilters, type VenueFilters } from './venueFilters';
 
 interface NearbyFilterSheetProps {
   open: boolean;
@@ -72,18 +72,18 @@ export function NearbyFilterSheet({ open, onClose, filters, onChange, resultCoun
       </div>
 
       <div className="field">
-        <div className="lbl">Within {filters.maxDistanceMi} mi</div>
+        <div className="lbl">Within {filters.maxDistanceKm} km</div>
         <input
           type="range"
-          min={MIN_DISTANCE_MI}
-          max={MAX_DISTANCE_MI}
-          value={filters.maxDistanceMi}
-          onChange={(e) => onChange({ ...filters, maxDistanceMi: +e.target.value })}
+          min={MIN_DISTANCE_KM}
+          max={MAX_DISTANCE_KM}
+          value={filters.maxDistanceKm}
+          onChange={(e) => onChange({ ...filters, maxDistanceKm: +e.target.value })}
           className="w-full [accent-color:var(--primary)]"
         />
         <div className="flex justify-between text-[11px] text-[var(--muted)] font-bold">
-          <span>{MIN_DISTANCE_MI} mi</span>
-          <span>{MAX_DISTANCE_MI} mi</span>
+          <span>{MIN_DISTANCE_KM} km</span>
+          <span>{MAX_DISTANCE_KM} km</span>
         </div>
         <div className="mt-1 text-[11px] text-[var(--muted)] font-semibold">
           {located

@@ -1,15 +1,25 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
-import { GameRow } from '../../shared/components/ui/GameRow';
 import { Segmented } from '../../shared/components/ui/Segmented';
 import { GameFilterSheet } from './GameFilterSheet';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
-import { listGames, type ApiGame } from '../../shared/lib/api';
+import { listGames, listBookings, cancelBooking, type ApiGame, type ApiGamePerson, type ApiBooking } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { dayParts, gameThumb, gameTitle, timeLine, gameLocation, isVoteFlow } from './gameDisplay';
+import { getInitials } from '../../shared/lib/initials';
+import {
+  dayParts, gameThumb, gameTitle, timeLine, gameLocation,
+  splitTime, spotsLabel, dateSectionHeader, relativeDayLabel, type GameThumb,
+} from './gameDisplay';
+import {
+  isCancellable, money, prettyDate, todayYMD,
+  dateBox, timeRange, bookingDuration, bookingStatusChip,
+} from '../bookings/bookingDisplay';
+import {
+  type GameFilters, makeDefaultGameFilters, matchesGameFilters, countActiveGameFilters,
+} from './gameFilters';
 import { GameManageActions } from './GameManageActions';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -17,39 +27,340 @@ interface GamesScreenProps {
   onNavigate: Navigate;
 }
 
-type GamesView = 'browse' | 'mine';
+type TopTab = 'booking' | 'games';
+type GamesView = 'mine' | 'browse';
 
-/** Local YYYY-MM-DD (matches how the API computes a game's `date`). */
-function localYMD(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+// Quick chips are shortcuts into the same filter model the sheet edits. Each is
+// active when its field already holds that value, and toggles it on/off.
+const QUICK_CHIPS: { label: string; isOn: (f: GameFilters) => boolean; toggle: (f: GameFilters) => GameFilters }[] = [
+  { label: 'Today', isOn: (f) => f.when === 'today', toggle: (f) => ({ ...f, when: f.when === 'today' ? 'any' : 'today' }) },
+  { label: 'Weekend', isOn: (f) => f.when === 'weekend', toggle: (f) => ({ ...f, when: f.when === 'weekend' ? 'any' : 'weekend' }) },
+  { label: 'Beginner', isOn: (f) => f.skill === 'Beginner', toggle: (f) => ({ ...f, skill: f.skill === 'Beginner' ? 'Any' : 'Beginner' }) },
+  { label: '3.0–3.5', isOn: (f) => f.skill === '3.0–3.5', toggle: (f) => ({ ...f, skill: f.skill === '3.0–3.5' ? 'Any' : '3.0–3.5' }) },
+  { label: 'Doubles', isOn: (f) => f.gameType === 'doubles', toggle: (f) => ({ ...f, gameType: f.gameType === 'doubles' ? 'Any' : 'doubles' }) },
+  { label: 'Open spots', isOn: (f) => f.openings, toggle: (f) => ({ ...f, openings: !f.openings }) },
+];
+
+/* Solid accent (divider / dot) per game color, used by Browse cards. */
+const BAR_TONE: Record<GameThumb, string> = {
+  lime: 'bg-[var(--lime)]',
+  blue: 'bg-[var(--primary)]',
+  coral: 'bg-[var(--coral)]',
+};
+const AVATAR_TONES = [
+  'bg-[var(--primary-soft)] text-[var(--primary-deep)]',
+  'bg-[var(--coral-soft)] text-[var(--coral)]',
+  'bg-[var(--lime-soft)] text-[var(--lime-ink)]',
+];
+
+/** Overlapping participant avatars (initials fallback) + a "+N" overflow chip. */
+function AvatarStack({ people, total, size = 28 }: { people: ApiGamePerson[]; total?: number; size?: number }) {
+  const shown = people.slice(0, 3);
+  const count = total ?? people.length;
+  const more = Math.max(0, count - shown.length);
+  if (shown.length === 0 && more === 0) return null;
+  const dim = { width: size, height: size };
+  return (
+    <div className="flex items-center">
+      {shown.map((p, i) => (
+        <div
+          key={p.id}
+          className={`rounded-full ring-2 ring-[var(--surface)] flex items-center justify-center text-[10px] font-bold overflow-hidden ${AVATAR_TONES[i % AVATAR_TONES.length]}`}
+          style={{ ...dim, marginLeft: i === 0 ? 0 : -8 }}
+        >
+          {p.avatarUrl ? <img src={p.avatarUrl} alt="" className="w-full h-full object-cover" /> : getInitials(p.displayName)}
+        </div>
+      ))}
+      {more > 0 && (
+        <div
+          className="rounded-full ring-2 ring-[var(--surface)] bg-[var(--surface-2)] text-[var(--muted)] flex items-center justify-center text-[10px] font-bold"
+          style={{ ...dim, marginLeft: shown.length ? -8 : 0 }}
+        >
+          +{more}
+        </div>
+      )}
+    </div>
+  );
 }
 
-const CALENDAR = (() => {
-  const today = new Date();
-  const wdays = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  return Array.from({ length: 10 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return {
-      wd: i === 0 ? 'TODAY' : i === 1 ? 'TOM' : wdays[d.getDay()],
-      dn: d.getDate(),
-      iso: localYMD(d),
-      key: i,
-    };
-  });
-})();
+/** Browse-list card: time rail · accent divider · title/venue/roster · spots + skill. */
+function BrowseGameCard({ g, onTap }: { g: ApiGame; onTap: () => void }) {
+  const tone = gameThumb(g);
+  const { time, suffix } = splitTime(timeLine(g));
+  const people = g.participants ?? [];
+  const count = g.participantCount ?? people.length;
+  const cap = g.capacity ?? null;
+  const left = g.spotsLeft ?? 0;
+  const spotsClass =
+    left <= 0 ? 'bg-[var(--surface-3)] text-[var(--muted)]'
+    : left <= 2 ? 'bg-[var(--coral-soft)] text-[var(--coral)]'
+    : 'bg-[var(--primary-soft)] text-[var(--primary-deep)]';
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className="w-full text-left flex gap-3 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] p-3.5 active:scale-[0.99] transition-transform"
+    >
+      <div className="shrink-0 w-[52px] text-center pt-1">
+        <div className="font-heading font-bold text-[19px] leading-none text-[var(--ink)]">{time || '—'}</div>
+        {suffix && <div className="text-[11px] font-bold text-[var(--muted)] mt-1">{suffix}</div>}
+      </div>
+      <div className={`w-[3px] self-stretch rounded-full shrink-0 ${BAR_TONE[tone]}`} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${BAR_TONE[tone]}`} />
+              <span className="font-heading font-semibold text-[16px] text-[var(--ink)] truncate">{gameTitle(g)}</span>
+            </div>
+            <div className="flex items-center gap-1 text-[12.5px] text-[var(--muted)] mt-1 min-w-0">
+              <Icon name="location" size={12} />
+              <span className="truncate">{gameLocation(g)}</span>
+            </div>
+          </div>
+          <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${spotsClass}`}>{spotsLabel(g)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2 mt-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <AvatarStack people={people} total={count} />
+            {cap != null && <span className="text-[12px] font-bold text-[var(--ink-2)]">{count}/{cap}</span>}
+          </div>
+          {g.skillLabel && <span className="shrink-0 text-[12.5px] font-bold text-[var(--primary)]">{g.skillLabel}</span>}
+        </div>
+      </div>
+    </button>
+  );
+}
 
-const QUICK_CHIPS = ['Tonight', 'Beginner', '3.0–3.5', 'Within 5 mi', 'Doubles'];
+interface MyGameCardProps {
+  g: ApiGame;
+  meId?: string;
+  onOpen: () => void;
+  onNavigate: Navigate;
+  onDeleted: (id: string) => void;
+}
+
+/** "My Games" commitment card: status accent bar · date box · roster · Manage/Details. */
+function MyGameCard({ g, meId, onOpen, onNavigate, onDeleted }: MyGameCardProps) {
+  const [managing, setManaging] = useState(false);
+  const isHost = g.creatorId === meId || g.creator?.id === meId;
+  const { day, num } = dayParts(g);
+  // The date box already shows the day, so only prefix a relative word (Today /
+  // Tomorrow) — never repeat the full date here.
+  const rel = relativeDayLabel(g);
+  const relWord = rel === 'Today' || rel === 'Tomorrow' ? rel : null;
+  const when = [relWord, timeLine(g)].filter(Boolean).join(' · ');
+  const people = g.participants ?? [];
+  const count = g.participantCount ?? people.length;
+  const left = g.spotsLeft ?? 0;
+
+  // One colour story per card: the date box, accent bar, and badge all share the
+  // status tone (host = lime, going = green, cancelled = grey).
+  const status =
+    g.status === 'cancelled'
+      ? { label: 'CANCELLED', badge: 'bg-[var(--surface-3)] text-[var(--muted)]', bar: 'bg-[var(--surface-3)]', box: 'bg-[var(--surface-3)] text-[var(--muted)]' }
+      : isHost
+      ? { label: 'HOSTING', badge: 'bg-[var(--lime)] text-[var(--lime-ink)]', bar: 'bg-[var(--lime)]', box: 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' }
+      : { label: 'GOING', badge: 'bg-[rgba(26,160,82,0.14)] text-[#1aa052]', bar: 'bg-[#1aa052]', box: 'bg-[rgba(26,160,82,0.12)] text-[#1aa052]' };
+
+  const summary = isHost
+    ? count > 1 ? `You + ${count - 1} confirmed` : "You're hosting"
+    : left > 0 ? `${left} ${left === 1 ? 'spot' : 'spots'} open` : 'Roster full';
+
+  return (
+    <div className="relative rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] overflow-hidden">
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${status.bar}`} />
+      <div className="pl-5 pr-4 py-4">
+        <div
+          className="flex gap-3 cursor-pointer"
+          role="button"
+          tabIndex={0}
+          onClick={onOpen}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+        >
+          <div className={`shrink-0 w-14 h-14 rounded-2xl flex flex-col items-center justify-center ${status.box}`}>
+            <span className="font-heading font-bold text-[11px] tracking-wide leading-none">{day}</span>
+            {num && <span className="font-heading font-bold text-[22px] leading-none mt-1">{num}</span>}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="font-heading font-semibold text-[16.5px] text-[var(--ink)] truncate">{gameTitle(g)}</div>
+              <span className={`shrink-0 text-[10px] font-extrabold tracking-[0.06em] px-2.5 py-1 rounded-full ${status.badge}`}>
+                {status.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[13px] text-[var(--muted)] mt-1.5 min-w-0">
+              <Icon name="clock" size={13} /><span className="font-semibold truncate">{when || '—'}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[13px] text-[var(--muted)] mt-1 min-w-0">
+              <Icon name="location" size={13} /><span className="truncate">{gameLocation(g)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t-[0.5px] border-[var(--hairline)]">
+          <div className="flex items-center gap-2 min-w-0">
+            <AvatarStack people={people} total={count} />
+            <span className="text-[13px] font-semibold text-[var(--ink-2)] truncate">{summary}</span>
+          </div>
+          {isHost ? (
+            <button
+              type="button"
+              onClick={() => setManaging((m) => !m)}
+              className="shrink-0 text-[13px] font-bold text-[var(--primary)] flex items-center gap-0.5"
+            >
+              Manage <Icon name="chevron" size={15} className={`transition-transform ${managing ? 'rotate-90' : ''}`} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="shrink-0 text-[13px] font-bold text-[var(--primary)] flex items-center gap-0.5"
+            >
+              Details <Icon name="chevron" size={15} />
+            </button>
+          )}
+        </div>
+
+        {isHost && managing && (
+          <GameManageActions
+            game={g}
+            onNavigate={onNavigate}
+            onDeleted={onDeleted}
+            className="mt-3 pt-3 border-t-[0.5px] border-[var(--hairline)]"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A single court-booking card (date box · venue · duration/price · time range · status). */
+function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id: string) => void; cancelling: boolean }) {
+  const { wd, d } = dateBox(b.date);
+  const chip = bookingStatusChip(b);
+  const sub = [bookingDuration(b), b.amount != null ? money(b.amount) : null].filter(Boolean).join(' · ');
+  const dateLine = [prettyDate(b.date), timeRange(b)].filter(Boolean).join(' · ');
+  return (
+    <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] p-3.5">
+      <div className="flex gap-3">
+        <div className="shrink-0 w-14 h-14 rounded-2xl bg-[var(--primary-soft)] text-[var(--primary-deep)] flex flex-col items-center justify-center">
+          <span className="font-heading font-bold text-[11px] tracking-wide leading-none">{wd || '—'}</span>
+          {d && <span className="font-heading font-bold text-[22px] leading-none mt-1">{d}</span>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-heading font-semibold text-[16.5px] text-[var(--ink)] truncate">{b.venueName || 'Court booking'}</div>
+            <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${chip.className}`}>{chip.label}</span>
+          </div>
+          {sub && <div className="text-[13px] font-semibold text-[var(--muted)] mt-1">{sub}</div>}
+          <div className="flex items-center gap-1.5 text-[13px] text-[var(--muted)] mt-1 min-w-0">
+            <Icon name="calendar" size={13} /><span className="truncate">{dateLine || '—'}</span>
+          </div>
+        </div>
+      </div>
+      {isCancellable(b) && (
+        <div className="flex justify-end mt-2.5 pt-2.5 border-t-[0.5px] border-[var(--hairline)]">
+          <button
+            type="button"
+            onClick={() => onCancel(b.id)}
+            disabled={cancelling}
+            className="text-[13px] font-bold text-[var(--coral)] flex items-center gap-1 disabled:opacity-50"
+          >
+            {cancelling
+              ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={14} /></span> Cancelling…</>
+              : <><Icon name="close" size={14} /> Cancel</>}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface BookingCalendarProps {
+  year: number;
+  month: number; // 0-based
+  bookingsByDate: Map<string, ApiBooking[]>;
+  selected: string;
+  today: string;
+  onSelect: (ymd: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+/** Month grid that dots days with bookings and highlights today + the selected day. */
+function BookingCalendar({ year, month, bookingsByDate, selected, today, onSelect, onPrev, onNext }: BookingCalendarProps) {
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array.from({ length: firstWeekday }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  const ymd = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  return (
+    <div className="rounded-3xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="font-heading font-bold text-[18px] text-[var(--ink)]">{monthLabel}</div>
+        <div className="flex items-center gap-2">
+          <button onClick={onPrev} aria-label="Previous month" className="w-9 h-9 rounded-xl bg-[var(--surface-2)] text-[var(--ink-2)] flex items-center justify-center active:scale-95 transition-transform">
+            <Icon name="chevron" size={16} className="rotate-180" />
+          </button>
+          <button onClick={onNext} aria-label="Next month" className="w-9 h-9 rounded-xl bg-[var(--surface-2)] text-[var(--ink-2)] flex items-center justify-center active:scale-95 transition-transform">
+            <Icon name="chevron" size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7">
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => (
+          <div key={i} className="text-center text-[12px] font-bold text-[var(--muted)] py-1">{w}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-y-1 mt-1">
+        {cells.map((day, i) => {
+          if (day === null) return <div key={i} />;
+          const key = ymd(day);
+          const dayBookings = bookingsByDate.get(key) ?? [];
+          const has = dayBookings.length > 0;
+          const confirmed = dayBookings.some((b) => b.status === 'confirmed' || b.status === 'paid');
+          const isSel = key === selected;
+          const isToday = key === today;
+          const dotClass = !has
+            ? 'bg-transparent'
+            : isSel ? 'bg-[var(--lime-ink)]'
+            : confirmed ? 'bg-[#1aa052]'
+            : 'bg-[var(--muted)]';
+          return (
+            <div key={i} className="flex flex-col items-center py-0.5">
+              <button
+                type="button"
+                onClick={() => onSelect(key)}
+                aria-label={key}
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors ${
+                  isSel ? 'bg-[var(--lime)] text-[var(--lime-ink)]'
+                  : isToday ? 'text-[var(--ink)] ring-1 ring-[var(--surface-3)]'
+                  : 'text-[var(--ink)]'
+                }`}
+              >
+                {day}
+              </button>
+              <span className={`mt-0.5 w-1.5 h-1.5 rounded-full ${dotClass}`} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const me = useAuthStore((s) => s.user);
-  const [view, setView] = useState<GamesView>('browse');
-  // null = all upcoming days; a calendar index narrows browse to that date.
-  const [activeDay, setActiveDay] = useState<number | null>(null);
-  const [activeChips, setActiveChips] = useState<Set<string>>(new Set(['Tonight']));
+  const [topTab, setTopTab] = useState<TopTab>('booking');
+  const [gamesView, setGamesView] = useState<GamesView>('mine');
+  const [filters, setFilters] = useState<GameFilters>(makeDefaultGameFilters);
   const [filterOpen, setFilterOpen] = useState(false);
 
   const [games, setGames] = useState<ApiGame[]>([]);
@@ -57,39 +368,117 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const dateFilter = view === 'browse' && activeDay !== null ? CALENDAR[activeDay].iso : undefined;
+  const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [bookingsReloadKey, setBookingsReloadKey] = useState(0);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+
+  // Bookings: calendar (default) vs flat list, the displayed month, and the picked day.
+  const [bookingTab, setBookingTab] = useState<'calendar' | 'list'>('calendar');
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayYMD());
+  const calInited = useRef(false);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-    const params = view === 'mine' ? { mine: true } : { status: 'published', date: dateFilter };
+    const params = gamesView === 'mine' ? { mine: true } : { status: 'published' };
     listGames(params)
       .then((rows) => { if (alive) setGames(rows); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load games.'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [view, dateFilter, reloadKey]);
+  }, [gamesView, reloadKey]);
+
+  useEffect(() => {
+    if (topTab !== 'booking') return;
+    let alive = true;
+    setBookingsLoading(true);
+    setBookingsError(null);
+    listBookings()
+      .then((items) => { if (alive) setBookings(items); })
+      .catch((e) => { if (alive) setBookingsError(e instanceof Error ? e.message : 'Could not load your bookings.'); })
+      .finally(() => { if (alive) setBookingsLoading(false); });
+    return () => { alive = false; };
+  }, [topTab, bookingsReloadKey]);
+
+  // Filters apply client-side to whatever games are loaded (Browse or My Games).
+  const filteredGames = useMemo(() => games.filter((g) => matchesGameFilters(g, filters)), [games, filters]);
+  const activeFilterCount = countActiveGameFilters(filters);
+
+  // Browse groups the filtered games into date sections ("TODAY · FRI JUN 5", count on the right).
+  const grouped = useMemo(() => {
+    const map = new Map<string, { header: string; items: ApiGame[] }>();
+    for (const g of filteredGames) {
+      const { key, header } = dateSectionHeader(g.date);
+      const bucket = map.get(key);
+      if (bucket) bucket.items.push(g);
+      else map.set(key, { header, items: [g] });
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+  }, [filteredGames]);
+
+  // Index bookings by day for the calendar dots + the selected-day list.
+  const bookingsByDate = useMemo(() => {
+    const map = new Map<string, ApiBooking[]>();
+    for (const b of bookings) {
+      if (!b.date) continue;
+      const arr = map.get(b.date);
+      if (arr) arr.push(b);
+      else map.set(b.date, [b]);
+    }
+    return map;
+  }, [bookings]);
+
+  // On first load, open the calendar on the soonest upcoming booking (else the latest one).
+  useEffect(() => {
+    if (calInited.current || bookings.length === 0) return;
+    calInited.current = true;
+    const today = todayYMD();
+    const dates = [...new Set(bookings.map((b) => b.date).filter((d): d is string => !!d))].sort();
+    const pick = dates.find((d) => d >= today) ?? dates[dates.length - 1];
+    if (pick) {
+      setSelectedDate(pick);
+      const [y, m] = pick.split('-').map(Number);
+      setCalMonth({ year: y, month: m - 1 });
+    }
+  }, [bookings]);
+
+  const selectedBookings = bookingsByDate.get(selectedDate) ?? [];
+  const prevMonth = () => setCalMonth(({ year, month }) => (month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }));
+  const nextMonth = () => setCalMonth(({ year, month }) => (month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }));
 
   const refetch = () => setReloadKey((k) => k + 1);
 
-  const toggle = (c: string) => {
-    setActiveChips((prev) => {
-      const next = new Set(prev);
-      if (next.has(c)) next.delete(c);
-      else next.add(c);
-      return next;
-    });
+  const openGame = (g: ApiGame) => onNavigate('game-details', { id: g.id });
+
+  const handleCancelBooking = async (id: string) => {
+    setCancelling(id);
+    try {
+      const updated = await cancelBooking(id);
+      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: updated.status ?? 'cancelled' } : b)));
+    } catch {
+      setBookingsReloadKey((k) => k + 1);
+    } finally {
+      setCancelling(null);
+    }
   };
 
-  const tapDay = (i: number) => setActiveDay((prev) => (prev === i ? null : i));
+  const subtitle =
+    topTab === 'booking'
+      ? `${bookings.length} court ${bookings.length === 1 ? 'booking' : 'bookings'}`
+      : gamesView === 'browse'
+      ? `${filteredGames.length} ${filteredGames.length === 1 ? 'game' : 'games'} nearby`
+      : `${filteredGames.length} ${filteredGames.length === 1 ? 'game' : 'games'} joined`;
 
-  const emptyState = (
+  const gamesEmpty = (
     <EmptyState
       icon="paddle"
-      title={view === 'mine' ? "You haven't created or joined any games yet" : 'No games found'}
-      description={view === 'mine' ? 'Create a game or browse upcoming ones near you to get on the courts.' : 'Try a different date or check back soon.'}
-      action={view === 'mine' ? { label: 'Browse games', onPress: () => setView('browse') } : undefined}
+      title={gamesView === 'mine' ? "You haven't created or joined any games yet" : 'No games found'}
+      description={gamesView === 'mine' ? 'Create a game or browse upcoming ones near you to get on the courts.' : 'Try a different filter or check back soon.'}
+      action={gamesView === 'mine' ? { label: 'Browse games', onPress: () => setGamesView('browse') } : undefined}
     />
   );
 
@@ -98,123 +487,207 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
       <div className="app-header">
         <div>
           <div className="greet-name">Games</div>
-          <div className="greet-sub">
-            {games.length} {games.length === 1 ? 'game' : 'games'} {view === 'mine' ? "you're in" : 'available'}
-          </div>
+          <div className="greet-sub">{subtitle}</div>
         </div>
-        <button
-          onClick={() => setFilterOpen(true)}
-          aria-label="Open filters"
-          className="relative w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)]"
-        >
-          <Icon name="sliders" size={18} />
-        </button>
+        {topTab === 'games' && (
+          <button
+            onClick={() => setFilterOpen(true)}
+            aria-label="Open filters"
+            className="relative w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)]"
+          >
+            <Icon name="sliders" size={18} />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--coral)] text-white text-[11px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
-      <div className="searchbar">
-        <Icon name="search" size={16} />
-        <input placeholder="Search games, courts, players…" />
-        <button className="text-[var(--primary)]" aria-label="Voice search">
-          <Icon name="mic" size={16} />
-        </button>
-      </div>
-
-      <div className="px-4 pt-3.5">
+      <div className="px-4 pt-4">
         <Segmented
-          value={view}
-          onChange={setView}
+          value={topTab}
+          onChange={setTopTab}
           options={[
-            { value: 'browse', label: 'Browse' },
-            { value: 'mine', label: 'My Games' },
+            { value: 'booking', label: 'Booking' },
+            { value: 'games', label: 'Games' },
           ]}
         />
       </div>
 
-      {view === 'browse' && (
-        <div className="section mt-4!">
-          <div className="cal-strip">
-            {CALENDAR.map((d, i) => (
+      {topTab === 'games' && (
+        <div className="px-4 pt-3.5">
+          <div className="flex gap-6 border-b-[0.5px] border-[var(--hairline)]">
+            {([['mine', 'My Games'], ['browse', 'Browse']] as const).map(([val, label]) => (
               <button
-                key={d.key}
-                className={`day ${activeDay === i ? 'active' : ''}`}
-                onClick={() => tapDay(i)}
+                key={val}
+                onClick={() => setGamesView(val)}
+                className={`relative pb-2.5 font-heading font-semibold text-[15px] transition-colors ${gamesView === val ? 'text-[var(--ink)]' : 'text-[var(--muted)]'}`}
               >
-                <span className="wd">{d.wd}</span>
-                <span className="dn">{d.dn}</span>
+                {label}
+                {gamesView === val && <span className="absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-[var(--lime)]" />}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="section mt-3.5!">
-        <div className="scroll-x flex gap-2 pb-1">
-          {QUICK_CHIPS.map((c) => (
-            <button key={c} className={`chip ${activeChips.has(c) ? 'lime' : ''}`} onClick={() => toggle(c)}>
-              {c}
-            </button>
-          ))}
+      {topTab === 'games' && gamesView === 'browse' && (
+        <div className="section mt-3.5!">
+          <div className="scroll-x flex gap-2 pb-1">
+            {QUICK_CHIPS.map((c) => (
+              <button
+                key={c.label}
+                className={`chip ${c.isOn(filters) ? 'lime' : ''}`}
+                onClick={() => setFilters(c.toggle)}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="section mt-3!">
-        <DemoBranch
-          loading={<LoadingSkeleton variant="card" count={4} />}
-          error={
-            <ErrorState
-              title="Couldn't load games"
-              message="We couldn't reach the games feed. Pull down to retry."
-              onRetry={refetch}
-            />
-          }
-          empty={emptyState}
-        >
-          {loading ? (
+      {topTab === 'booking' && (
+        <div className="px-4 pt-3.5 flex justify-end">
+          <div className="flex items-center gap-0.5 p-1 rounded-xl bg-[var(--surface-2)]">
+            {([['list', 'filter'], ['calendar', 'calendar']] as const).map(([val, icon]) => (
+              <button
+                key={val}
+                onClick={() => setBookingTab(val)}
+                aria-label={`${val} view`}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                  bookingTab === val ? 'bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-card)]' : 'text-[var(--muted)]'
+                }`}
+              >
+                <Icon name={icon} size={16} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="section mt-4!">
+        {topTab === 'booking' ? (
+          bookingsLoading ? (
             <LoadingSkeleton variant="card" count={4} />
-          ) : error ? (
-            <ErrorState title="Couldn't load games" message={error} onRetry={refetch} />
-          ) : games.length === 0 ? (
-            emptyState
-          ) : (
-            <div className="games-grid flex flex-col gap-2.5">
-              {games.map((g) => {
-                const { day, num } = dayParts(g);
-                // In "My Games", surface host controls inside the card for games you created.
-                const isMine = view === 'mine' && (g.creatorId === me?.id || g.creator?.id === me?.id);
-                return (
-                  <GameRow
-                    key={g.id}
-                    day={day}
-                    num={num}
-                    thumb={gameThumb(g)}
-                    title={gameTitle(g)}
-                    time={timeLine(g)}
-                    loc={gameLocation(g)}
-                    joined={view === 'mine'}
-                    showRsvp={false}
-                    onTap={() =>
-                      // Vote-flow games live in the lobby (venue vote → book);
-                      // classic games keep the read-only details screen.
-                      isVoteFlow(g) && g.status !== 'cancelled'
-                        ? onNavigate('game-lobby', { id: g.id })
-                        : onNavigate('game-details', { id: g.id })
-                    }
-                    footer={isMine ? (
-                      <GameManageActions
-                        game={g}
-                        onNavigate={onNavigate}
-                        onDeleted={(id) => setGames((prev) => prev.filter((x) => x.id !== id))}
-                      />
-                    ) : undefined}
-                  />
-                );
-              })}
+          ) : bookingsError ? (
+            <ErrorState title="Couldn't load bookings" message={bookingsError} onRetry={() => setBookingsReloadKey((k) => k + 1)} />
+          ) : bookings.length === 0 ? (
+            <EmptyState
+              icon="calendar"
+              title="No bookings yet"
+              description="Reserve a court and your bookings will show up here."
+              action={{ label: 'Find a court', onPress: () => onNavigate('nearby') }}
+            />
+          ) : bookingTab === 'calendar' ? (
+            <div className="flex flex-col gap-4">
+              <BookingCalendar
+                year={calMonth.year}
+                month={calMonth.month}
+                bookingsByDate={bookingsByDate}
+                selected={selectedDate}
+                today={todayYMD()}
+                onSelect={setSelectedDate}
+                onPrev={prevMonth}
+                onNext={nextMonth}
+              />
+              <div>
+                <div className="flex items-center gap-3 mb-2.5">
+                  <div className="font-heading font-bold text-[15px] text-[var(--ink)]">{prettyDate(selectedDate) || 'Selected day'}</div>
+                  <div className="flex-1 h-px bg-[var(--hairline)]" />
+                  <div className="text-[12px] font-bold text-[var(--muted)]">
+                    {selectedBookings.length} {selectedBookings.length === 1 ? 'booking' : 'bookings'}
+                  </div>
+                </div>
+                {selectedBookings.length === 0 ? (
+                  <div className="rounded-2xl border-[0.5px] border-dashed border-[var(--hairline)] py-7 text-center text-[13px] font-semibold text-[var(--muted)]">
+                    No bookings on this day
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {selectedBookings.map((b) => (
+                      <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} cancelling={cancelling === b.id} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </DemoBranch>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {bookings.map((b) => (
+                <BookingCard key={b.id} b={b} onCancel={handleCancelBooking} cancelling={cancelling === b.id} />
+              ))}
+            </div>
+          )
+        ) : (
+          <DemoBranch
+            loading={<LoadingSkeleton variant="card" count={4} />}
+            error={
+              <ErrorState
+                title="Couldn't load games"
+                message="We couldn't reach the games feed. Pull down to retry."
+                onRetry={refetch}
+              />
+            }
+            empty={gamesEmpty}
+          >
+            {loading ? (
+              <LoadingSkeleton variant="card" count={4} />
+            ) : error ? (
+              <ErrorState title="Couldn't load games" message={error} onRetry={refetch} />
+            ) : games.length === 0 ? (
+              gamesEmpty
+            ) : filteredGames.length === 0 ? (
+              <EmptyState
+                icon="filter"
+                title="No games match these filters"
+                description="Loosen or clear your filters to see more games."
+                action={{ label: 'Clear filters', onPress: () => setFilters(makeDefaultGameFilters()) }}
+              />
+            ) : gamesView === 'mine' ? (
+              <div className="flex flex-col gap-3">
+                {filteredGames.map((g) => (
+                  <MyGameCard
+                    key={g.id}
+                    g={g}
+                    meId={me?.id}
+                    onOpen={() => openGame(g)}
+                    onNavigate={onNavigate}
+                    onDeleted={(id) => setGames((prev) => prev.filter((x) => x.id !== id))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {grouped.map((section) => (
+                  <div key={section.header} className="mb-5 last:mb-0">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <div className="text-[12px] font-extrabold tracking-[0.08em] text-[var(--muted)]">{section.header}</div>
+                      <div className="flex-1 h-px bg-[var(--hairline)]" />
+                      <div className="text-[12px] font-bold text-[var(--muted)]">{section.items.length}</div>
+                    </div>
+                    <div className="flex flex-col gap-2.5">
+                      {section.items.map((g) => (
+                        <BrowseGameCard key={g.id} g={g} onTap={() => openGame(g)} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DemoBranch>
+        )}
       </div>
 
-      <GameFilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} />
+      <GameFilterSheet
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        value={filters}
+        onChange={setFilters}
+        resultCount={filteredGames.length}
+      />
     </div>
   );
 }

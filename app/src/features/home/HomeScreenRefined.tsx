@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
@@ -10,7 +10,9 @@ import { useDemoState } from '../../shared/lib/demoState';
 import type { Navigate } from '../../shared/lib/navigation';
 import { firstNameOf } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { listGames, listBookings, listVenues, apiImageUrl, type ApiGame, type ApiBooking, type ApiVenue } from '../../shared/lib/api';
+import { listGames, listBookings, listVenues, listAllVenues, apiImageUrl, type ApiGame, type ApiBooking, type ApiVenue } from '../../shared/lib/api';
+import { venueCoords } from '../../shared/lib/venueDisplay';
+import { getCurrentLocation, haversineKm, formatDistance, type LatLng } from '../../shared/lib/geo';
 
 interface HomeScreenRefinedProps {
   onNavigate: Navigate;
@@ -101,7 +103,7 @@ function heroTitle(g: ApiGame): string {
 
 /** "Riverside · Makati" (real venue) / the free-text name / "Venue TBD". */
 function heroVenue(g: ApiGame): string {
-  const v = g.venue || g.winningVenue;
+  const v = g.venue;
   if (v) return [v.displayName, v.area || v.city].filter(Boolean).join(' · ');
   return g.venueName || 'Venue TBD';
 }
@@ -134,7 +136,7 @@ function clockLabel(time?: string | null): string {
 }
 
 function gameToCommitment(g: ApiGame, ms: number): NextCommitment {
-  const v = g.venue || g.winningVenue;
+  const v = g.venue;
   const roster = (g.participants ?? []).slice(0, 2).map((p, i) => ({
     name: p.displayName || 'Player',
     variant: ROSTER_VARIANTS[i % ROSTER_VARIANTS.length],
@@ -236,32 +238,30 @@ function countdownLabel(mins: number): string {
 /* ─── Open-games + courts card helpers ─────────────────────────────── */
 
 /** "Today" / "Tomorrow" / "Sat" from a game's date (else its when label). */
-function dayLabel(g: ApiGame): string {
-  if (!g.date) return g.whenLabel || '';
-  const d = new Date(`${g.date}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return g.whenLabel || '';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff = Math.round((d.getTime() - today.getTime()) / 86_400_000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
-}
-
-/** Skill/type chip text for an open-game card. */
-function gameTag(g: ApiGame): string {
-  return g.skillLabel || (g.gameType ? g.gameType[0].toUpperCase() + g.gameType.slice(1) : 'Open');
-}
-
-/** Beginner/open-level games get the lime accent; graded skill levels get blue. */
-function isOpenLevel(g: ApiGame): boolean {
-  const s = (g.skillLabel || '').toLowerCase();
-  return !g.skillLabel || s.includes('begin') || s.includes('all') || s.includes('open');
-}
-
 /** The venue's short display name (no area) for the card's compact slot. */
 function venueShortName(g: ApiGame): string {
-  return g.venue?.displayName || g.winningVenue?.displayName || g.venueName || 'Venue TBD';
+  return g.venue?.displayName || g.venueName || 'Venue TBD';
+}
+
+/** "Makati Pickleball Club · Makati" — venue + its area/city when known. */
+function gameVenueLine(g: ApiGame): string {
+  const name = venueShortName(g);
+  const area = g.venue?.area || g.venue?.city || '';
+  return area ? `${name} · ${area}` : name;
+}
+
+/** Hour + meridiem for the compact time box, e.g. "8:00 AM" → { big: '8', small: 'AM' };
+ *  falls back to the day-of-month + weekday when there's no parseable time. */
+function gameTimeBox(g: ApiGame): { big: string; small: string } {
+  const m = (g.timeLabel || '').match(/(\d{1,2})(?::\d{2})?\s*(AM|PM)/i);
+  if (m) return { big: m[1], small: m[2].toUpperCase() };
+  if (g.date) {
+    const d = new Date(`${g.date}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      return { big: String(d.getDate()), small: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()] };
+    }
+  }
+  return { big: (g.whenLabel || '—').slice(0, 3).toUpperCase(), small: '' };
 }
 
 /** Area/city line for a venue card. */
@@ -302,6 +302,7 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
   const [myBookings, setMyBookings] = useState<ApiBooking[]>([]);
   const [openGames, setOpenGames] = useState<ApiGame[]>([]);
   const [courts, setCourts] = useState<ApiVenue[]>([]);
+  const [userLoc, setUserLoc] = useState<LatLng | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -339,6 +340,28 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
     };
   }, [userId, demoState, reloadKey]);
 
+  // Best-effort: ask for the user's location once so "Courts to book" can rank
+  // by distance. If denied/unavailable, we silently stay with the plain list.
+  useEffect(() => {
+    if (demoState === 'empty') return;
+    let alive = true;
+    getCurrentLocation()
+      .then((loc) => { if (alive) setUserLoc(loc); })
+      .catch(() => { /* keep the plain directory list */ });
+    return () => { alive = false; };
+  }, [demoState]);
+
+  // Once located, pull the full directory so the nearest courts (not just the
+  // first page) can surface.
+  useEffect(() => {
+    if (!userLoc || demoState === 'empty') return;
+    let alive = true;
+    listAllVenues()
+      .then((all) => { if (alive) setCourts(all); })
+      .catch(() => { /* keep whatever the initial fetch loaded */ });
+    return () => { alive = false; };
+  }, [userLoc, demoState, reloadKey]);
+
   const refetch = () => setReloadKey((k) => k + 1);
 
   // Guests see "Create an Account" up front; the rest stay, minus Join game's
@@ -352,12 +375,28 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
   const featuredOpenGame = topOpen ? toFeaturedGame(topOpen) : null;
 
   // Open-games list: drop the one already featured in the hero (only featured
-  // when there's no commitment) and keep joinable games only.
+  // when there's no commitment), exclude games you're already in (hosting or
+  // joined — no "Join" on your own game), and keep joinable games only.
   const heroFeaturedId = nextCommitment ? undefined : topOpen?.id;
+  const myGameIds = new Set(myGames.map((g) => g.id));
   const openList = openGames
-    .filter((g) => g.id !== heroFeaturedId && (g.spotsLeft ?? 1) > 0)
+    .filter((g) => g.id !== heroFeaturedId && !myGameIds.has(g.id) && (g.spotsLeft ?? 1) > 0)
     .slice(0, 4);
-  const courtList = courts.slice(0, 4);
+  // When located, rank the locatable courts nearest-first and attach a distance;
+  // otherwise fall back to the directory order with no distance.
+  const courtList = useMemo<{ venue: ApiVenue; km: number | null }[]>(() => {
+    if (userLoc) {
+      const ranked = courts
+        .map((v) => ({ venue: v, coords: venueCoords(v) }))
+        .filter((r): r is { venue: ApiVenue; coords: [number, number] } => !!r.coords)
+        .map((r) => ({ venue: r.venue, km: haversineKm(userLoc, r.coords) }))
+        .sort((a, b) => a.km - b.km)
+        .slice(0, 6);
+      if (ranked.length > 0) return ranked;
+      // Located but no venue carries coordinates → fall back to the plain list.
+    }
+    return courts.slice(0, 4).map((v) => ({ venue: v, km: null }));
+  }, [courts, userLoc]);
 
   return (
     <div className="scroll safe-top safe-bottom home-refined">
@@ -467,64 +506,44 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
                   action={{ label: 'Create a game', onPress: () => onNavigate('create-game') }}
                 />
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
                   {openList.map((g) => {
-                    const open = isOpenLevel(g);
-                    const urgent = (g.spotsLeft ?? 9) <= 2;
-                    const day = dayLabel(g);
+                    const tb = gameTimeBox(g);
+                    const left = g.spotsLeft ?? 0;
+                    const full = left <= 0;
                     return (
                       <div
                         key={g.id}
-                        className="bg-[var(--surface)] rounded-[22px] p-4 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex flex-col gap-3.5"
+                        className="bg-[var(--surface)] rounded-2xl p-4 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex items-center gap-3.5"
                       >
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="space-y-1.5 min-w-0">
-                            <span
-                              className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-[0.04em] uppercase ${
-                                open
-                                  ? 'bg-[var(--lime-soft)] text-[var(--lime-ink)]'
-                                  : 'bg-[var(--primary-soft)] text-[var(--primary-deep)]'
-                              }`}
-                            >
-                              {gameTag(g)}
-                            </span>
-                            <div className="hd-3">{heroTitle(g)}</div>
+                        {/* time box */}
+                        <div className="shrink-0 w-14 h-14 rounded-2xl bg-[var(--lime-soft)] text-[var(--lime-ink)] flex flex-col items-center justify-center">
+                          <span className="font-heading font-bold text-[20px] leading-none">{tb.big}</span>
+                          {tb.small && <span className="text-[10px] font-bold mt-0.5 tracking-wide">{tb.small}</span>}
+                        </div>
+                        {/* title + venue */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: OPEN_GREEN }} />
+                            <span className="hd-3 text-[15px] truncate">{heroTitle(g)}</span>
                           </div>
-                          <div className="text-right shrink-0">
-                            <div className="font-heading font-bold text-[17px] text-[var(--primary)] leading-tight">
-                              {g.timeLabel || g.whenLabel || ''}
-                            </div>
-                            <div className="text-[12px] text-[var(--muted)] max-w-[120px] truncate">
-                              {venueShortName(g)}
-                            </div>
+                          <div className="flex items-center gap-1 text-[12px] text-[var(--muted)] mt-1.5 min-w-0">
+                            <Icon name="location" size={12} />
+                            <span className="truncate">{gameVenueLine(g)}</span>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between pt-3 border-t border-[var(--hairline)]">
-                          <div className="flex items-center gap-4">
-                            {day && (
-                              <span className="flex items-center gap-1 text-[var(--muted)] text-[12px]">
-                                <Icon name="calendar" size={14} />
-                                {day}
-                              </span>
-                            )}
-                            <span
-                              className="flex items-center gap-1 text-[12px] font-bold"
-                              style={{ color: urgent ? 'var(--coral)' : OPEN_GREEN }}
-                            >
-                              <Icon name="user" size={14} />
-                              {heroSpots(g)}
-                            </span>
-                          </div>
+                        {/* Join + spots */}
+                        <div className="shrink-0 flex flex-col items-end gap-1.5">
                           <button
                             onClick={() => onNavigate('game-details', { id: g.id })}
-                            className={`px-5 py-2 rounded-full text-[13px] font-heading font-semibold active:scale-95 transition-transform ${
-                              open
-                                ? 'bg-[var(--lime)] text-[var(--lime-ink)]'
-                                : 'bg-[var(--primary)] text-white'
-                            }`}
+                            disabled={full}
+                            className="px-5 py-2 rounded-full bg-[var(--coral)] text-white text-[13px] font-heading font-semibold active:scale-95 transition-transform disabled:opacity-50"
                           >
-                            Join
+                            {full ? 'Full' : 'Join'}
                           </button>
+                          <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: full ? 'var(--muted)' : 'var(--primary)' }}>
+                            {full ? 'No spots' : `${left} ${left === 1 ? 'spot' : 'spots'} left`}
+                          </span>
                         </div>
                       </div>
                     );
@@ -562,7 +581,7 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
             {(loading || courtList.length > 0) && (
               <section className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <div className="hd-2">Courts to book</div>
+                  <div className="hd-2">{userLoc ? 'Courts near you' : 'Courts to book'}</div>
                   <button
                     className="text-[var(--primary)] font-bold text-[13px]"
                     onClick={() => onNavigate('nearby')}
@@ -571,42 +590,50 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
                   </button>
                 </div>
                 {loading ? (
-                  <LoadingSkeleton variant="card" count={2} />
+                  <div className="flex gap-3.5 overflow-hidden">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="shrink-0 w-60 h-[264px] rounded-2xl bg-[var(--surface-2)] animate-pulse" />
+                    ))}
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-                    {courtList.map((v, i) => {
+                  <div className="scroll-x flex gap-3.5 pb-1 -mx-4 px-4">
+                    {courtList.map(({ venue: v, km }, i) => {
                       const img = apiImageUrl(v.image || v.mainImageUrl);
                       const area = venueArea(v);
-                      const stat = venueStat(v);
+                      // When located, the distance is the most useful stat; else fall
+                      // back to the rating/price/court-count stat.
+                      const stat = km != null ? formatDistance(km) : venueStat(v);
                       return (
                         <div
                           key={v.id}
-                          className="bg-[var(--surface)] rounded-2xl p-3 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex items-center justify-between gap-3"
+                          className="shrink-0 w-60 bg-[var(--surface)] rounded-2xl shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] overflow-hidden flex flex-col"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-12 h-12 rounded-xl shrink-0 bg-cover bg-center"
-                              style={img ? { backgroundImage: `url(${img})` } : { background: COURT_GRADIENTS[i % COURT_GRADIENTS.length] }}
-                            />
+                          <div
+                            className="w-full h-36 bg-cover bg-center"
+                            style={img ? { backgroundImage: `url(${img})` } : { background: COURT_GRADIENTS[i % COURT_GRADIENTS.length] }}
+                          />
+                          <div className="p-4 flex flex-col gap-3 flex-1">
                             <div className="min-w-0">
-                              <div className="hd-3 text-[15px] truncate">{v.displayName}</div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {area && <span className="text-[12px] text-[var(--muted)] truncate">{area}</span>}
-                                {area && stat && <span className="w-1 h-1 rounded-full bg-[var(--muted)]" />}
-                                {stat && (
-                                  <span className="text-[12px] font-bold" style={{ color: OPEN_GREEN }}>
-                                    {stat}
-                                  </span>
-                                )}
-                              </div>
+                              <div className="hd-3 text-[16px] truncate leading-snug">{v.displayName}</div>
+                              {(area || stat) && (
+                                <div className="flex items-center gap-1.5 mt-1.5">
+                                  {area && <span className="text-[13px] text-[var(--muted)] truncate">{area}</span>}
+                                  {area && stat && <span className="w-1 h-1 rounded-full bg-[var(--muted)] shrink-0" />}
+                                  {stat && (
+                                    <span className="text-[13px] font-bold shrink-0 flex items-center gap-0.5" style={{ color: OPEN_GREEN }}>
+                                      {km != null && <Icon name="location" size={12} />}{stat}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
+                            <button
+                              onClick={() => onNavigate('court-details', { id: v.id })}
+                              className="mt-auto w-full border-[0.5px] border-[var(--hairline)] py-2.5 rounded-full font-heading font-semibold text-[14px] text-[var(--ink)] active:scale-95 transition-transform"
+                            >
+                              Book
+                            </button>
                           </div>
-                          <button
-                            onClick={() => onNavigate('court-details', { id: v.id })}
-                            className="shrink-0 border-[0.5px] border-[var(--hairline)] px-4 py-2 rounded-full font-heading font-semibold text-[13px] text-[var(--ink)] active:scale-95 transition-transform"
-                          >
-                            Book
-                          </button>
                         </div>
                       );
                     })}
@@ -643,111 +670,102 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
 // Pill button styles shared across hero variants.
 const limePill =
   'h-12 px-6 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-extrabold text-[15px] inline-flex items-center gap-2 shadow-[0_8px_18px_-6px_rgba(186,246,3,0.45)] active:scale-95 transition-transform';
-const ghostIcon =
-  'w-12 h-12 rounded-full bg-[rgba(255,255,255,0.16)] text-white inline-flex items-center justify-center border border-[rgba(255,255,255,0.22)] active:scale-95 transition-transform';
 const ghostPill =
   'h-12 px-5 rounded-full bg-[rgba(255,255,255,0.16)] text-white font-heading font-semibold text-[14px] inline-flex items-center gap-2 border border-[rgba(255,255,255,0.22)] active:scale-95 transition-transform';
+/** "TODAY" / "TOMORROW" / "SAT" for the hero eyebrow, from minutes-until-start. */
+function commitmentDay(startsInMinutes: number): string {
+  const start = new Date(Date.now() + startsInMinutes * 60_000);
+  const now = new Date();
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((startDay.getTime() - today.getTime()) / 86_400_000);
+  if (diff <= 0) return 'TODAY';
+  if (diff === 1) return 'TOMORROW';
+  return start.toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase();
+}
 
 /** Variant 1 — you have an upcoming commitment (game or court booking).
  *  Actions adapt to how close it is and which kind it is. */
 function CommitmentHero({ commitment, onNavigate }: { commitment: NextCommitment; onNavigate: Navigate }) {
   const isBooking = commitment.kind === 'booking';
-  const urgency = urgencyOf(commitment.startsInMinutes);
-  const countdown = countdownLabel(commitment.startsInMinutes);
-  const checkInWindow = urgency === 'live' || urgency === 'imminent';
-  const showDirections = urgency !== 'scheduled' && !!commitment.venueId;
+  const isLive = urgencyOf(commitment.startsInMinutes) === 'live';
+  const eyebrow = isLive ? 'HAPPENING NOW' : `UP NEXT · ${commitmentDay(commitment.startsInMinutes)}`;
+  // Right-aligned countdown reads "in 2h 15m"; live just says "now".
+  const countdownRight = isLive ? 'now' : countdownLabel(commitment.startsInMinutes).replace(/^In /, 'in ');
 
-  const eyebrow =
-    urgency === 'live'
-      ? 'Happening now'
-      : checkInWindow
-        ? `Starting soon • ${countdown}`
-        : `Next game • ${countdown}`;
-
-  // Games open their details; a booking opens the My bookings list.
+  // Tapping the card opens the game/booking; the pill gives one-tap directions.
   const open = () => (isBooking ? onNavigate('my-bookings') : onNavigate('game-details', { id: commitment.id }));
-  const primaryLabel = isBooking ? 'View booking' : checkInWindow ? 'Check in' : 'View game';
+  const total = commitment.roster.length + commitment.extraPlayers;
 
   return (
     <div
-      className="relative overflow-hidden rounded-[28px] p-5 lg:p-7 min-h-[210px] w-full flex flex-col justify-between text-white shadow-[var(--shadow-pop)]"
+      className="relative overflow-hidden rounded-[24px] p-5 lg:p-6 w-full text-white shadow-[var(--shadow-pop)]"
       style={{ background: HERO_GRADIENT }}
     >
-      {/* Tap the header region to open it; action buttons sit beside it so we
-          avoid nesting interactive controls inside one big button. */}
-      <button onClick={open} className="relative z-[2] text-left w-full active:opacity-90 transition-opacity">
-        <div className="flex items-center gap-1.5 text-[12px] font-extrabold tracking-[0.08em] uppercase opacity-95">
-          {checkInWindow && <Icon name="bolt" size={14} className="text-[var(--lime)]" />}
-          {eyebrow}
-        </div>
-        <div className="mt-2 font-heading text-[28px] font-extrabold leading-[1.1] tracking-[-0.01em] max-w-[260px]">
-          {commitment.title}
-        </div>
-        <div className="mt-2 flex items-center gap-3 text-[13px] font-semibold opacity-90">
-          <span className="inline-flex items-center gap-1">
-            <Icon name="clock" size={14} />
-            {commitment.timeLabel}
+      {/* Row 1 — status dot + label · countdown */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-[var(--lime)] opacity-60 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--lime)]" />
           </span>
-          {/* For a booking the venue is already the headline — don't repeat it. */}
-          {!isBooking && (
-            <span className="inline-flex items-center gap-1">
-              <Icon name="location" size={14} />
-              {commitment.venueName}
-            </span>
-          )}
+          <span className="text-[11px] font-extrabold tracking-[0.12em] uppercase text-white/90 truncate">{eyebrow}</span>
         </div>
+        <span className="text-[12px] font-semibold text-white/60 shrink-0">{countdownRight}</span>
+      </div>
+
+      {/* Title + meta + location (tap to open) */}
+      <button onClick={open} className="block w-full text-left mt-3 active:opacity-90 transition-opacity">
+        <div className="font-heading text-[26px] font-extrabold leading-[1.12] tracking-[-0.01em]">{commitment.title}</div>
+        {commitment.timeLabel && (
+          <div className="mt-1.5 text-[13px] font-semibold text-white/75">{commitment.timeLabel}</div>
+        )}
+        {/* For a booking the venue is already the headline — don't repeat it. */}
+        {!isBooking && commitment.venueName && (
+          <div className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-white/80">
+            <Icon name="location" size={15} className="text-white/60 shrink-0" />
+            <span className="truncate">{commitment.venueName}</span>
+          </div>
+        )}
       </button>
 
-      <div className="relative z-[2] flex items-end justify-between gap-3 mt-6">
+      <div className="my-4 h-px bg-white/20" />
+
+      {/* Row 2 — who's going · directions */}
+      <div className="flex items-center justify-between gap-3">
         {isBooking ? (
-          // Bookings have no named roster — surface the party size instead.
-          <div className="flex items-center gap-1.5 text-[13px] font-semibold opacity-90">
-            <Icon name="user" size={16} />
+          <div className="flex items-center gap-1.5 text-[13px] font-semibold text-white/85">
+            <Icon name="user" size={16} className="text-white/60" />
             {commitment.playerCount
               ? `${commitment.playerCount} ${commitment.playerCount === 1 ? 'player' : 'players'}`
               : 'Court reserved'}
           </div>
         ) : (
-          <button
-            onClick={open}
-            aria-label="See who's in"
-            className="flex flex-col items-start gap-1.5 active:opacity-90 transition-opacity"
-          >
+          <button onClick={open} aria-label="See who's in" className="flex items-center gap-2.5 active:opacity-90 transition-opacity">
             <div className="flex -space-x-2.5">
               {commitment.roster.map((p) => (
-                <Avatar
-                  key={p.name}
-                  name={p.name}
-                  variant={p.variant}
-                  size={36}
-                  className="border-2 border-[#2455f4]"
-                />
+                <Avatar key={p.name} name={p.name} variant={p.variant} size={32} className="border-2 border-[#2455f4]" />
               ))}
               {commitment.extraPlayers > 0 && (
-                <span className="w-9 h-9 rounded-full border-2 border-[#2455f4] bg-[var(--lime)] text-[var(--lime-ink)] flex items-center justify-center text-[12px] font-extrabold">
+                <span className="w-8 h-8 rounded-full border-2 border-[#2455f4] bg-[var(--lime)] text-[var(--lime-ink)] flex items-center justify-center text-[11px] font-extrabold">
                   +{commitment.extraPlayers}
                 </span>
               )}
             </div>
-            <span className="text-[11px] font-bold opacity-80">Who's in →</span>
+            {total > 0 && <span className="text-[13px] font-semibold text-white/80">going</span>}
           </button>
         )}
 
-        <div className="flex items-center gap-2 shrink-0">
-          {showDirections && (
-            <button
-              onClick={() => onNavigate('court-details', { id: commitment.venueId })}
-              className={ghostIcon}
-              aria-label="Directions to the court"
-            >
-              <Icon name="directions" size={18} />
-            </button>
-          )}
-          <button onClick={open} className={limePill}>
-            {checkInWindow && !isBooking ? <Icon name="check" size={16} /> : null}
-            {primaryLabel}
+        {commitment.venueId ? (
+          <button onClick={() => onNavigate('court-details', { id: commitment.venueId })} className={limePill} aria-label="Directions to the court">
+            <Icon name="directions" size={16} />
+            Directions
           </button>
-        </div>
+        ) : (
+          <button onClick={open} className={limePill}>
+            {isBooking ? 'View booking' : 'View game'}
+          </button>
+        )}
       </div>
     </div>
   );

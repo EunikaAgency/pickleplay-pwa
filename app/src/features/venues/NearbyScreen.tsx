@@ -7,7 +7,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { NearbyFilterSheet } from './NearbyFilterSheet';
-import { makeDefaultFilters, matchesFilters, countActiveFilters, milesToKm, type VenueFilters } from './venueFilters';
+import { makeDefaultFilters, matchesFilters, countActiveFilters, type VenueFilters } from './venueFilters';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import type { Navigate } from '../../shared/lib/navigation';
 import { useAuthStore } from '../../shared/lib/authStore';
@@ -131,24 +131,51 @@ function resolveNearby(source: ApiVenue[], userLoc: LatLng, filters: VenueFilter
     return [{ v, coords, distanceKm: haversineKm(userLoc, coords) }];
   });
   rows.sort((a, b) => a.distanceKm - b.distanceKm);
-  const capKm = milesToKm(filters.maxDistanceMi);
+  const capKm = filters.maxDistanceKm;
   const within = rows.filter((r) => r.distanceKm <= capKm);
   return within.length ? within : rows.slice(0, NEAREST_FALLBACK);
 }
 
-// Frame the map around the given points. The seeded data is sparse and spread
-// nationwide, so fitting to the pins (and the user, once located) is what
-// actually surfaces courts. Refits whenever the point set changes.
-function FitToMarkers({ points }: { points: [number, number][] }) {
+// Frame the map. Once the user shares their location we keep *them* centered by
+// fitting a box that is symmetric about the user — so the user dot stays
+// dead-center rather than drifting toward the courts' centroid. The box spans to
+// the farthest nearby court (so the nearby cluster is in view, never a blank
+// radius), but at least the chosen radius. Other courts stay rendered on the map
+// beyond the frame — the user zooms out to see them. Without a location there's
+// no user to center on, so we fall back to framing the court pins.
+function FrameMap({ userLoc, radiusKm, nearbyPoints, allPoints }: {
+  userLoc: LatLng | null;
+  radiusKm: number;
+  nearbyPoints: [number, number][];
+  allPoints: [number, number][];
+}) {
   const map = useMap();
   useEffect(() => {
-    if (points.length === 0) return;
-    if (points.length === 1) {
-      map.setView(points[0], 14);
+    if (userLoc) {
+      // Start from the chosen radius (in degrees), then grow the box to include
+      // every nearby court — keeping it symmetric so the user stays centered.
+      let latSpan = radiusKm / 111;
+      let lngSpan = radiusKm / (111 * Math.cos((userLoc[0] * Math.PI) / 180));
+      for (const [lat, lng] of nearbyPoints) {
+        latSpan = Math.max(latSpan, Math.abs(lat - userLoc[0]));
+        lngSpan = Math.max(lngSpan, Math.abs(lng - userLoc[1]));
+      }
+      map.fitBounds(
+        [
+          [userLoc[0] - latSpan, userLoc[1] - lngSpan],
+          [userLoc[0] + latSpan, userLoc[1] + lngSpan],
+        ],
+        { padding: [40, 40], maxZoom: 15 },
+      );
       return;
     }
-    map.fitBounds(points, { padding: [56, 56], maxZoom: 15 });
-  }, [map, points]);
+    if (allPoints.length === 0) return;
+    if (allPoints.length === 1) {
+      map.setView(allPoints[0], 14);
+      return;
+    }
+    map.fitBounds(allPoints, { padding: [56, 56], maxZoom: 15 });
+  }, [map, userLoc, radiusKm, nearbyPoints, allPoints]);
   return null;
 }
 
@@ -342,14 +369,21 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
     return venues.map((v) => ({ ...toVenueCard(v), distanceKm: null }));
   }, [nearby, filtering, search, venues, mapVenues, filters]);
 
-  // Map pins. Located → exactly the nearby courts with coords (pins match the
-  // list). Filtering → the filtered full set. Otherwise → an active search's
+  // Map pins. Located → *every* locatable court (filter/search-matched), each
+  // tagged with its distance from the user — the radius narrows the list, not the
+  // map, so courts beyond it stay on the map (the user just zooms out to see
+  // them). Filtering → the filtered full set. Otherwise → an active search's
   // paged matches, else every locatable court.
   const mapCards = useMemo<MapMarker[]>(() => {
-    if (nearby) {
-      return nearby.map((r) => toMapMarker(r.v, r.coords, r.distanceKm));
-    }
     const q = search.toLowerCase();
+    if (userLoc) {
+      const source = mapVenues.length ? mapVenues : venues;
+      return source.flatMap((v) => {
+        if (!matchesQuery(v, q) || !matchesFilters(v, filters)) return [];
+        const coords = venueCoords(v);
+        return coords ? [toMapMarker(v, coords, haversineKm(userLoc, coords))] : [];
+      });
+    }
     if (filtering) {
       const source = mapVenues.length ? mapVenues : venues;
       return source.flatMap((v) => {
@@ -363,13 +397,14 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
       const coords = venueCoords(v);
       return coords ? [toMapMarker(v, coords, null)] : [];
     });
-  }, [nearby, filtering, search, venues, mapVenues, filters]);
+  }, [userLoc, filtering, search, venues, mapVenues, filters]);
 
   const mapPoints = useMemo<[number, number][]>(() => mapCards.map((c) => [c.lat, c.lng]), [mapCards]);
-  // Frame the user + nearby pins when located, otherwise just the pins.
-  const fitPoints = useMemo<[number, number][]>(
-    () => (userLoc ? [userLoc, ...mapPoints] : mapPoints),
-    [userLoc, mapPoints],
+  // Just the nearby (radius / nearest-fallback) coords — used to frame the map
+  // around the user so the nearby cluster is in view without losing the rest.
+  const nearbyPoints = useMemo<[number, number][]>(
+    () => (nearby ? nearby.map((r) => r.coords) : []),
+    [nearby],
   );
   const mapCenter: [number, number] = userLoc ?? (mapCards[0] ? [mapCards[0].lat, mapCards[0].lng] : MAP_FALLBACK_CENTER);
 
@@ -421,7 +456,7 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              <FitToMarkers points={fitPoints} />
+              <FrameMap userLoc={userLoc} radiusKm={filters.maxDistanceKm} nearbyPoints={nearbyPoints} allPoints={mapPoints} />
               {userLoc && (
                 <CircleMarker
                   center={userLoc}

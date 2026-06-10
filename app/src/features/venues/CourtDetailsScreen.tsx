@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import L from 'leaflet';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
@@ -6,8 +8,8 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import type { Navigate } from '../../shared/lib/navigation';
-import { getVenue, ApiError, type ApiVenueDetail } from '../../shared/lib/api';
-import { indoorLabel, priceLabel, locationLine, venueAmenities, mapsUrl, venueImage } from '../../shared/lib/venueDisplay';
+import { getVenue, listGames, ApiError, type ApiVenueDetail, type ApiGame } from '../../shared/lib/api';
+import { indoorLabel, priceLabel, locationLine, venueAmenities, mapsUrl, venueImage, venueCoords } from '../../shared/lib/venueDisplay';
 
 interface CourtDetailsScreenProps {
   courtId: string;
@@ -17,6 +19,43 @@ interface CourtDetailsScreenProps {
 
 const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const HERO_GRADIENT = 'linear-gradient(135deg,#4d6dff 0%,#0040e0 60%,#0035be 100%)';
+
+// Leaflet's default marker asset paths break under bundlers, so point them at the
+// CDN copies (same approach as NearbyScreen's map).
+const markerIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+// --- Small game-row formatters (kept local; the venues slice must not import the
+// games slice's gameDisplay.ts — cross-feature code only travels via shared/). ---
+
+/** The date "thumb" (e.g. SAT / 15) from a game's date, falling back to its label. */
+function gameThumb(g: ApiGame): { day: string; num: string } {
+  if (g.date) {
+    const d = new Date(`${g.date}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      return { day: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(), num: String(d.getDate()) };
+    }
+  }
+  return { day: (g.whenLabel || 'TBD').slice(0, 3).toUpperCase(), num: '' };
+}
+
+function gameTitle(g: ApiGame): string {
+  if (g.title && g.title.trim()) return g.title.trim();
+  if (g.gameType) return `${g.gameType[0].toUpperCase()}${g.gameType.slice(1)} game`;
+  return 'Pickleball game';
+}
+
+function gameSpots(g: ApiGame): string {
+  if (g.spotsLeft != null) return `${g.spotsLeft} spot${g.spotsLeft === 1 ? '' : 's'} left`;
+  return g.skillLabel || g.durationLabel || '';
+}
 
 export function CourtDetailsScreen({ courtId, onNavigate, onBack }: CourtDetailsScreenProps) {
   const [venue, setVenue] = useState<ApiVenueDetail | null>(null);
@@ -108,10 +147,33 @@ function CourtDetail({
   const location = locationLine(venue);
   const amenities = venueAmenities(venue);
   const about = venue.description || venue.oneLineSummary || '';
+  const coords = venueCoords(venue);
 
   const todayHours = venue.hours?.[DAY_KEYS[new Date().getDay()]];
 
   const tags = [io, courtsTotal ? `${courtsTotal} courts` : null, price].filter(Boolean) as string[];
+
+  // Real games hosted at this venue (published = joinable). Read-only surface of
+  // already-public game browse, so no new permission gates it.
+  const [games, setGames] = useState<ApiGame[]>([]);
+  const [gamesStatus, setGamesStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    setGamesStatus('loading');
+    listGames({ venueId: venue.id })
+      .then((list) => {
+        if (cancelled) return;
+        setGames(list.slice(0, 4));
+        setGamesStatus('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setGamesStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [venue.id]);
 
   return (
     <div className="scroll pb-[110px]">
@@ -177,11 +239,33 @@ function CourtDetail({
         </div>
 
         <div className="location-card">
-          <div className="map-preview">
-            <div className="pin">
-              <Icon name="location" size={16} />
+          {coords ? (
+            <div className="h-[140px] relative">
+              <MapContainer
+                center={coords}
+                zoom={15}
+                className="w-full h-full"
+                zoomControl={false}
+                dragging={false}
+                scrollWheelZoom={false}
+                doubleClickZoom={false}
+                touchZoom={false}
+                keyboard={false}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker position={coords} icon={markerIcon} />
+              </MapContainer>
             </div>
-          </div>
+          ) : (
+            <div className="map-preview">
+              <div className="pin">
+                <Icon name="location" size={16} />
+              </div>
+            </div>
+          )}
           <div className="map-info">
             <div className="text">
               <div className="name">{venue.displayName}</div>
@@ -225,43 +309,58 @@ function CourtDetail({
           </div>
         )}
 
-        {/* Games this week — still demo content; the games feature isn't wired to the API yet. */}
+        {/* Games hosted at this venue — live from the games API (published = joinable). */}
         <div className="section p-0!">
           <div className="section-head px-0">
             <div>
-              <div className="t-eyebrow">Games this week</div>
+              <div className="t-eyebrow">Games here</div>
               <div className="hd-2 mt-1">Drop in or RSVP</div>
             </div>
-            <button className="more" onClick={() => onNavigate('games')}>All</button>
+            {games.length > 0 && (
+              <button className="more" onClick={() => onNavigate('games')}>All</button>
+            )}
           </div>
-          <div className="flex flex-col gap-2.5">
-            {[
-              { day: 'TOM', num: '14', title: 'Morning Doubles Mixer', time: '9:00 AM', loc: '4 spots left' },
-              { day: 'SAT', num: '15', title: 'Saturday Mix-In',        time: '9:00 AM', loc: '8 spots left' },
-              { day: 'SUN', num: '16', title: 'Beginner Clinic',        time: '2:00 PM', loc: '2 spots left' },
-            ].map((g) => (
-              <button
-                key={g.title}
-                className="game-row"
-                onClick={() => onNavigate('game-details', { id: '1' })}
-              >
-                <div className="thumb lime">
-                  <span className="day">{g.day}</span>
-                  <span className="num">{g.num}</span>
-                </div>
-                <div className="body">
-                  <div className="title">{g.title}</div>
-                  <div className="meta">
-                    <span className="m"><Icon name="clock" size={11} />{g.time}</span>
-                    <span className="m"><Icon name="paddle" size={11} />{g.loc}</span>
-                  </div>
-                </div>
-                <div className="rsvp bg-[var(--primary-tint)]! text-[var(--primary)]! shadow-none!">
-                  <Icon name="chevron" size={16} />
-                </div>
-              </button>
-            ))}
-          </div>
+          {gamesStatus === 'loading' ? (
+            <LoadingSkeleton variant="card" count={2} />
+          ) : gamesStatus === 'error' ? (
+            <div className="text-[13px] text-[var(--muted)] font-semibold bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-5 text-center">
+              Couldn't load games for this court.
+            </div>
+          ) : games.length === 0 ? (
+            <div className="text-[13px] text-[var(--muted)] font-semibold bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-5 text-center">
+              No games scheduled here yet.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {games.map((g) => {
+                const thumb = gameThumb(g);
+                const time = g.timeLabel || g.whenLabel || '';
+                const spots = gameSpots(g);
+                return (
+                  <button
+                    key={g.id}
+                    className="game-row"
+                    onClick={() => onNavigate('game-details', { id: g.id })}
+                  >
+                    <div className="thumb lime">
+                      <span className="day">{thumb.day}</span>
+                      {thumb.num && <span className="num">{thumb.num}</span>}
+                    </div>
+                    <div className="body">
+                      <div className="title">{gameTitle(g)}</div>
+                      <div className="meta">
+                        {time && <span className="m"><Icon name="clock" size={11} />{time}</span>}
+                        {spots && <span className="m"><Icon name="paddle" size={11} />{spots}</span>}
+                      </div>
+                    </div>
+                    <div className="rsvp bg-[var(--primary-tint)]! text-[var(--primary)]! shadow-none!">
+                      <Icon name="chevron" size={16} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

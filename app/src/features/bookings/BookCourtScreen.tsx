@@ -5,32 +5,25 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ProgressBar } from '../../shared/components/ui/ProgressBar';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
+import { HourSelect } from '../../shared/components/ui/HourSelect';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings, bookGame,
+  listAllVenues, createBooking, checkout, getSettings,
   type ApiVenue, type AppSettings, type CheckoutCard,
 } from '../../shared/lib/api';
+import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
-import { addHours, money, prettyDate, to12h, to24h, todayYMD } from './bookingDisplay';
+import { addHours, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
 
 interface BookCourtScreenProps {
   venueId?: string;
-  /** Schedule prefill (e.g. from a game's chosen date/time). */
+  /** Schedule prefill (date / 12h time label / hours). */
   date?: string;
   time?: string;            // 12h label like "6:30 PM"
   hours?: number;
-  /** When booking for a game lobby: lock the venue + link the booking to the game. */
-  gameId?: string;
   onNavigate: Navigate;
   onBack: () => void;
 }
-
-const DURATIONS = [
-  { label: '1 hr', hours: 1 },
-  { label: '1.5 hr', hours: 1.5 },
-  { label: '2 hr', hours: 2 },
-  { label: '3 hr', hours: 3 },
-];
 
 const TITLE_BY_STEP = ['Court & time', 'Review', 'Checkout'];
 
@@ -39,10 +32,8 @@ function isBookable(v: ApiVenue): boolean {
   return v.priceFrom != null;
 }
 
-export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours: hoursProp, gameId, onNavigate, onBack }: BookCourtScreenProps) {
+export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours: hoursProp, onNavigate, onBack }: BookCourtScreenProps) {
   const [step, setStep] = useState(0);
-  // Booking for a game locks the venue (it's the voted-on court).
-  const lockVenue = !!gameId;
 
   // Bookable venues (priced only) for the picker.
   const [venues, setVenues] = useState<ApiVenue[]>([]);
@@ -51,10 +42,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [picking, setPicking] = useState(!venueId); // show the list when nothing preselected
   const [query, setQuery] = useState('');
 
-  // Schedule — prefilled from the game's chosen date/time when present.
+  // Schedule — prefilled from the game's chosen date/time when present. The user
+  // picks a start + end hour directly; the duration (hours) is derived from them.
+  // Courts are booked by the hour, so times snap to the hour (no minutes).
+  const initialStart = snapToHour(to24h(timeProp) || '18:00');
   const [date, setDate] = useState(dateProp || todayYMD());
-  const [startTime, setStartTime] = useState(to24h(timeProp) || '18:00');
-  const [hours, setHours] = useState(hoursProp && hoursProp > 0 ? hoursProp : 1.5);
+  const [startTime, setStartTime] = useState(initialStart);
+  const [endTime, setEndTime] = useState(() => addHours(initialStart, hoursProp && hoursProp >= 1 ? Math.round(hoursProp) : 1));
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -101,9 +95,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const selected = useMemo(() => venues.find((v) => v.id === selectedId) ?? null, [venues, selectedId]);
   const currency = selected?.pricingCurrency ?? 'PHP';
   const rate = selected?.priceFrom ?? 0;
+  const hours = hoursBetween(startTime, endTime);
   const total = Math.round(rate * hours * 100) / 100;
-  const endTime = addHours(startTime, hours);
   const isTest = settings?.paymentTestMode ?? false;
+
+  // Live court availability for the chosen venue/date → greys out full hours.
+  const { startDisabled, endDisabledFor, rangeBlocked } = useVenueAvailability(selected?.id, date);
+  const slotUnavailable = rangeBlocked(startTime, endTime);
+
+  // Keep a positive duration: if a new start lands at/after the end, push the end out an hour.
+  const onStartChange = (v: string) => {
+    setStartTime(v);
+    if (hoursBetween(v, endTime) <= 0) setEndTime(addHours(v, 1));
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -135,10 +139,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       });
       const confirmed = result.booking?.status === 'confirmed';
       const bookingId = result.booking?.id ?? booking.id;
-      // Booking for a game lobby: attach it so the game flips to booked/paying.
-      if (gameId) {
-        try { await bookGame(gameId, { bookingId }); } catch { /* booking still valid; lobby resyncs on next load */ }
-      }
       setDone({ confirmed, bookingId });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not complete your booking. Please try again.');
@@ -152,7 +152,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       if (!selected) { setError('Please choose a court.'); return; }
       if (!date) { setError('Please pick a date.'); return; }
       if (!startTime) { setError('Please pick a start time.'); return; }
-      if (!(hours > 0)) { setError('Please pick a duration.'); return; }
+      if (!endTime) { setError('Please pick an end time.'); return; }
+      if (!(hours > 0)) { setError('End time must be after the start time.'); return; }
+      if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
     }
     setError(null);
     if (step < totalSteps - 1) setStep((s) => s + 1);
@@ -169,17 +171,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             ? 'Your court is booked. You can see it under My bookings.'
             : 'Your request was sent and is awaiting venue approval.'
         }
-        actions={
-          gameId
-            ? [
-                { label: 'Back to game', variant: 'dark' as const, onClick: () => onNavigate('game-lobby', { id: gameId }) },
-                { label: 'My bookings', variant: 'outline' as const, onClick: () => onNavigate('my-bookings') },
-              ]
-            : [
-                { label: 'View my bookings', variant: 'dark' as const, onClick: () => onNavigate('my-bookings') },
-                { label: 'Done', variant: 'outline' as const, onClick: onBack },
-              ]
-        }
+        actions={[
+          { label: 'View my bookings', variant: 'dark' as const, onClick: () => onNavigate('my-bookings') },
+          { label: 'Done', variant: 'outline' as const, onClick: onBack },
+        ]}
       />
     );
   }
@@ -208,7 +203,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           <div className="field">
             <div className="flex items-center justify-between mb-2">
               <div className="lbl mb-0!">Court</div>
-              {selected && !picking && !lockVenue && (
+              {selected && !picking && (
                 <button type="button" className="chip" onClick={() => setPicking(true)}>
                   <Icon name="edit" size={12} /> Change
                 </button>
@@ -287,37 +282,36 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           </div>
 
           <div className="field">
-            <div className="lbl">Start time</div>
-            <input
-              type="time"
-              className="control"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-          </div>
-
-          <div className="field">
-            <div className="lbl">Duration</div>
-            <div className="time-grid">
-              {DURATIONS.map((d) => (
-                <button
-                  key={d.label}
-                  className={`time-pick ${hours === d.hours ? 'active' : ''}`}
-                  onClick={() => setHours(d.hours)}
-                >
-                  {d.label}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="lbl">Start time</div>
+                <HourSelect aria-label="Start time" value={startTime} onChange={onStartChange} disabled={startDisabled} />
+              </div>
+              <div>
+                <div className="lbl">End time</div>
+                <HourSelect aria-label="End time" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
+              </div>
             </div>
+            {slotUnavailable && (
+              <div className="mt-2 t-sm text-[var(--coral)] font-bold">That time is fully booked — pick a free slot.</div>
+            )}
           </div>
 
           {selected && (
             <div className="field">
               <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 flex items-center justify-between">
-                <div className="text-[13px] font-semibold text-[var(--muted)]">
-                  {money(rate, currency)}/hr × {hours} hr
-                </div>
-                <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(total, currency)}</div>
+                {hours > 0 ? (
+                  <>
+                    <div className="text-[13px] font-semibold text-[var(--muted)]">
+                      {money(rate, currency)}/hr × {hours} hr
+                    </div>
+                    <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(total, currency)}</div>
+                  </>
+                ) : (
+                  <div className="text-[13px] font-semibold text-[var(--coral)]">
+                    End time must be after the start time.
+                  </div>
+                )}
               </div>
             </div>
           )}

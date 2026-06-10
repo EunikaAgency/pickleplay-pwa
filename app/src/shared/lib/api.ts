@@ -441,6 +441,19 @@ export async function getVenue(idOrSlug: string): Promise<ApiVenueDetail> {
   return request<ApiVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`);
 }
 
+export interface VenueAvailability {
+  date: string;
+  /** Number of courts at the venue. */
+  capacity: number;
+  /** Free-court count per clock-hour 0–23; a booking can start at `hour` when `free > 0`. */
+  hours: { hour: number; free: number }[];
+}
+
+/** Per-hour court availability for a venue on a date — powers the booking time pickers (public). */
+export async function getVenueAvailability(idOrSlug: string, date: string): Promise<VenueAvailability> {
+  return request<VenueAvailability>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}/availability${toQuery({ date })}`);
+}
+
 /* ─── Owner (venue management) ──────────────────────────────── */
 //
 // Everything below is gated server-side by `requireVenueOwner()` (owner-of-venue
@@ -730,16 +743,8 @@ export interface ApiGameVenue {
   image?: string | null;
 }
 
-/** One player's current venue vote within a lobby. */
-export interface ApiGameVote {
-  userId: string;
-  venueId: string;
-}
-
-/** Game lobby status. The classic flow uses published|full|cancelled; the
- *  vote flow adds voting → vote_won → paying → booked. */
-export type GameStatus =
-  | 'published' | 'full' | 'voting' | 'vote_won' | 'paying' | 'booked' | 'cancelled';
+/** Game status. A game is created at a fixed venue and is immediately joinable. */
+export type GameStatus = 'published' | 'full' | 'cancelled';
 
 export interface ApiGame {
   id: string;
@@ -751,7 +756,6 @@ export interface ApiGame {
   durationLabel?: string | null;
   date?: string | null;            // YYYY-MM-DD (best-effort)
   capacity?: number | null;
-  minPlayers?: number | null;
   spotsLeft?: number | null;
   participantCount?: number | null;
   participants?: ApiGamePerson[];
@@ -762,15 +766,7 @@ export interface ApiGame {
   venueName?: string | null;       // free-text fallback when no venue link
   visibility?: string | null;
   status?: GameStatus | string | null;
-  // ---- Vote flow ----
-  locationCenter?: { lat?: number | null; lng?: number | null } | null;
-  rangeKm?: number | null;
-  candidateVenues?: ApiGameVenue[];     // the ballot (snapshot when vote opens)
-  winningVenue?: ApiGameVenue | null;
-  winningVenueId?: string | null;
-  votes?: ApiGameVote[];
-  voteCounts?: Record<string, number>;  // venueId → vote count
-  voteDeadline?: string | null;         // ISO timestamp
+  /** The host's court reservation, made + paid when the game was created. */
   bookingId?: string | null;
 }
 
@@ -791,16 +787,12 @@ export interface CreateGamePayload {
   whenLabel?: string;
   timeLabel?: string;
   durationLabel?: string;
-  /** Explicit YYYY-MM-DD from the "Custom" date picker; overrides the derived date. */
+  /** Explicit YYYY-MM-DD from the date picker; overrides the derived date. */
   date?: string;
   capacity: number;
-  /** Min players before the host can open the venue vote (vote flow). */
-  minPlayers?: number;
   visibility: 'public' | 'invite';
-  // Vote flow: omit venueId and pass a search center + radius instead. The venue
-  // is chosen later by the lobby's vote.
-  locationCenter?: { lat: number; lng: number };
-  rangeKm?: number;
+  /** The host's court reservation (created + paid via the booking flow) to link. */
+  bookingId?: string;
 }
 
 /** List games — public browse, or the current user's games via `mine`. */
@@ -821,12 +813,12 @@ export async function createGame(body: CreateGamePayload): Promise<ApiGame> {
   return request<ApiGame>(GAMES_PREFIX, { method: 'POST', body, auth: true });
 }
 
-/** Edit a game the current user created (host-only; editable while filling). */
+/** Edit a game's details the current user created (host-only). */
 export async function updateGame(id: string, body: Partial<CreateGamePayload>): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
 }
 
-/** Delete a game the current user created (host-only; blocked once booked). */
+/** Delete a game the current user created (host-only). */
 export async function deleteGame(id: string): Promise<void> {
   await request<{ id: string; deleted: boolean }>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
 }
@@ -841,35 +833,9 @@ export async function leaveGame(id: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
 }
 
-/* ─── Vote flow: suggest → open vote → vote → resolve → book ─── */
-
-/** Ranked venue suggestions for a game's ballot (in-range, nearest-first). */
-export async function getVenueSuggestions(id: string): Promise<ApiGameVenue[]> {
-  const env = await rawRequest<ApiGameVenue[]>(`${GAMES_PREFIX}/${id}/venue-suggestions`, { auth: true });
-  return env.data ?? [];
-}
-
-/** Host opens the venue vote — snapshots a ballot + starts the countdown. */
-export async function openVote(id: string, deadlineMinutes?: number): Promise<ApiGame> {
-  return request<ApiGame>(`${GAMES_PREFIX}/${id}/open-vote`, {
-    method: 'POST', body: deadlineMinutes ? { deadlineMinutes } : {}, auth: true,
-  });
-}
-
-/** Cast or change the caller's venue vote; auto-resolves on a majority. */
-export async function voteGame(id: string, venueId: string): Promise<ApiGame> {
-  return request<ApiGame>(`${GAMES_PREFIX}/${id}/vote`, { method: 'POST', body: { venueId }, auth: true });
-}
-
-/** Force-resolve the vote (host early-close, or after the deadline). */
-export async function resolveVote(id: string): Promise<ApiGame> {
-  return request<ApiGame>(`${GAMES_PREFIX}/${id}/resolve-vote`, { method: 'POST', body: {}, auth: true });
-}
-
-/** Host books the winning venue. Pass a `bookingId` to attach a booking already
- *  made via the book-a-court flow; omit it to have the server create one. */
-export async function bookGame(id: string, body: { bookingId?: string } = {}): Promise<ApiGame> {
-  return request<ApiGame>(`${GAMES_PREFIX}/${id}/book`, { method: 'POST', body, auth: true });
+/** Host removes a player from the roster. */
+export async function kickPlayer(id: string, userId: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/kick`, { method: 'POST', body: { userId }, auth: true });
 }
 
 /* ─── Bookings + checkout ───────────────────────────────────── */

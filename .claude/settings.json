@@ -18,8 +18,9 @@
       "Bash(find src *)",
       "Bash(cat src/vite-env.d.ts)",
       "Bash(node -e \"console.log\\(require\\('zustand/package.json'\\).version\\)\")",
-      "Bash(node -e \"console.log\\(typeof require\\('zustand'\\).create\\)\")"
+      "Bash(node -e \"console.log\\(typeof require\\('zustand'\\).create\\)\")",
+      "Read(//etc/**)",
+      "Bash(mongoexport --quiet --db pickleballers --collection games --query '{ \"$or\": [ { \"venueId\": null }, { \"venueId\": { \"$exists\": false } } ] }' --out /tmp/legacy-voteflow-games-backup.json)"
     ]
   }
 }
-

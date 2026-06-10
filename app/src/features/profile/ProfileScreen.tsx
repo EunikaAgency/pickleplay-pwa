@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { getInitials } from '../../shared/lib/initials';
 import { DuprExplainerSheet } from '../../shared/components/ui/DuprExplainerSheet';
@@ -12,212 +12,197 @@ interface ProfileScreenProps {
   onLogout: () => void;
 }
 
-const ACHIEVEMENTS = [
-  { ic: 'trophy', label: 'First win',  color: '#c89000',         bg: 'rgba(200,144,0,0.15)' },
-  { ic: 'fire',   label: '5-streak',   color: 'var(--coral)',    bg: 'var(--coral-soft)' },
-  { ic: 'star',   label: 'Top 5 club', color: 'var(--primary)',  bg: 'var(--primary-tint)' },
-  { ic: 'paddle', label: '100 games',  color: 'var(--lime-ink)', bg: 'var(--lime-soft)' },
-] as const;
+type MenuItem = {
+  key: string;
+  icon: string;
+  label: string;
+  value?: string;
+  color: string;
+  tone?: 'default' | 'danger';
+  onClick: () => void;
+};
+
+function MenuRow({ item }: { item: MenuItem }) {
+  const danger = item.tone === 'danger';
+  return (
+    <button type="button" onClick={item.onClick} className="w-full flex items-center gap-3.5 px-4 py-3.5 text-left">
+      <span
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-white"
+        style={{ background: item.color }}
+      >
+        <Icon name={item.icon} size={18} />
+      </span>
+      <span
+        className="flex-1 min-w-0 font-heading font-semibold text-[16px]"
+        style={{ color: danger ? 'var(--coral)' : 'var(--ink)' }}
+      >
+        {item.label}
+      </span>
+      {item.value && <span className="text-[14px] font-semibold text-[var(--muted)] shrink-0">{item.value}</span>}
+      {!danger && <Icon name="chevron" size={18} className="text-[var(--surface-3)] shrink-0" />}
+    </button>
+  );
+}
+
+function MenuGroup({ items }: { items: MenuItem[] }) {
+  return (
+    <div className="card p-0!">
+      {items.map((item, i) => (
+        <Fragment key={item.key}>
+          {i > 0 && <div className="h-px bg-[var(--hairline)] ml-[70px]" />}
+          <MenuRow item={item} />
+        </Fragment>
+      ))}
+    </div>
+  );
+}
 
 export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [duprOpen, setDuprOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const isOwner = userHasPermission(currentUser, 'owner.access');
 
   const name = currentUser?.displayName ?? 'Your profile';
   const initials = getInitials(currentUser?.displayName) || '··';
   const tier = currentUser?.skillLevel != null ? tierForDupr(currentUser.skillLevel) : null;
-  const tierLine = tier
-    ? `${tier.name.toUpperCase()} · ${tier.dupr}`
-    : (currentUser?.skillLevelLabel?.toUpperCase() ?? 'UNRATED PLAYER');
+  const roleLine = tier
+    ? `${tier.name} Player`.toUpperCase()
+    : (currentUser?.skillLevelLabel?.toUpperCase() ?? 'PICKLEBALL PLAYER');
 
-  const pct = 66;
-  const r = 36;
-  const c = 2 * Math.PI * r;
-  const dash = (pct / 100) * c;
+  // Profile stats are still demo data — the API doesn't expose win/loss totals.
+  const stats = [
+    { label: 'DUPR', value: currentUser?.skillLevel != null ? `${currentUser.skillLevel}` : '—' },
+    { label: 'Games', value: '124' },
+    { label: 'Win rate', value: '66%' },
+  ];
+
+  const sections: { title: string; items: MenuItem[] }[] = [
+    {
+      title: 'Activity',
+      items: [
+        { key: 'my-games', icon: 'paddle', label: 'My games', color: 'var(--primary)', onClick: () => onNavigate('my-games') },
+        { key: 'my-bookings', icon: 'calendar', label: 'My bookings', color: '#5b7400', onClick: () => onNavigate('my-bookings') },
+        ...(isOwner
+          ? [{ key: 'owner-venues', icon: 'storefront', label: 'My venues', color: 'var(--primary)', onClick: () => onNavigate('owner-venues') } as MenuItem]
+          : []),
+      ],
+    },
+    {
+      title: 'Account',
+      items: [
+        { key: 'account', icon: 'user', label: 'Account', color: 'var(--primary)', onClick: () => onNavigate('edit-profile') },
+        {
+          key: 'dupr',
+          icon: 'verified',
+          label: 'DUPR & Rating',
+          value: currentUser?.skillLevel != null ? 'Verified' : undefined,
+          color: '#c89000',
+          onClick: () => setDuprOpen(true),
+        },
+        { key: 'privacy', icon: 'shield', label: 'Privacy & Visibility', color: '#5b7400', onClick: () => onNavigate('settings') },
+      ],
+    },
+    {
+      title: 'App',
+      items: [
+        { key: 'notifications', icon: 'bell', label: 'Notifications', value: 'On', color: 'var(--coral)', onClick: () => onNavigate('notifications') },
+        { key: 'settings', icon: 'settings', label: 'Settings', color: 'var(--ink-2)', onClick: () => onNavigate('settings') },
+      ],
+    },
+    {
+      title: 'Support',
+      items: [
+        { key: 'help', icon: 'help', label: 'Help & Support', color: 'var(--ink-2)', onClick: () => onNavigate('settings') },
+        { key: 'signout', icon: 'logout', label: 'Sign out', color: 'var(--coral)', tone: 'danger', onClick: onLogout },
+      ],
+    },
+  ];
+
+  const q = query.trim().toLowerCase();
+  const filtered = sections
+    .map((s) => ({ ...s, items: s.items.filter((it) => !q || it.label.toLowerCase().includes(q)) }))
+    .filter((s) => s.items.length > 0);
 
   return (
     <div className="scroll safe-top safe-bottom">
-      <div className="app-header">
-        <div className="greet-name">Profile</div>
-        <button
-          onClick={() => onNavigate('settings')}
-          aria-label="Open settings"
-          className="w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)]"
-        >
-          <Icon name="settings" size={18} />
-        </button>
+      <div className="px-5">
+        <h1 className="hd-display">Profile</h1>
       </div>
 
-      <div className="profile-hero">
-        <div className="avatar-xl w-[112px]! h-[112px]! overflow-hidden">
-          {currentUser?.avatarUrl ? (
-            <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="text-[42px]">{initials}</div>
-          )}
-          <button
-            type="button"
-            onClick={() => setDuprOpen(true)}
-            className="dupr-pill -bottom-2.5! right-auto! left-1/2! -translate-x-1/2"
-            aria-label="What is DUPR?"
-          >
-            <Icon name="bolt" size={11} /> {currentUser?.skillLevel != null ? `${currentUser.skillLevel} DUPR` : 'DUPR'}
-          </button>
-        </div>
-        <h2 className="mt-[22px]">{name}</h2>
-        <div className="tier">{tierLine}</div>
-        {currentUser?.bio && (
-          <div className="mt-2.5 text-[13px] text-[var(--muted)] italic">
-            "{currentUser.bio}"
-          </div>
-        )}
-      </div>
-
-      {/* Win-rate ring + stats — wrapped so we can lay it side-by-side
-          with quick-actions on desktop. */}
-      <div className="profile-stats-grid"><div className="ring-card">
-        <div className="win-rate-ring">
-          <svg width="96" height="96" viewBox="0 0 96 96">
-            <circle cx="48" cy="48" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="8" />
-            <circle
-              cx="48"
-              cy="48"
-              r={r}
-              fill="none"
-              stroke="var(--lime)"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={`${dash} ${c}`}
-              transform="rotate(-90 48 48)"
-            />
-          </svg>
-          <div className="center">
-            <div className="pct">{pct}%</div>
-            <div className="lbl">Win rate</div>
-          </div>
-        </div>
-        <div className="stats">
-          <div className="row">
-            <span className="l">Games played</span>
-            <span className="v">124</span>
-          </div>
-          <div className="row">
-            <span className="l">Wins</span>
-            <span className="v text-[#5b7400]">82</span>
-          </div>
-          <div className="row">
-            <span className="l">Losses</span>
-            <span className="v text-[var(--coral)]">42</span>
-          </div>
-          <div className="row">
-            <span className="l">Current streak</span>
-            <span className="v">4 wins 🔥</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="qa-row profile-qa">
-        {([
-          { ic: 'calendar', label: 'Games',  color: 'var(--primary)', nav: 'games' },
-          { ic: 'heart',    label: 'Saved',  color: 'var(--coral)' },
-          { ic: 'shield',   label: 'Verify', color: '#5b7400' },
-          { ic: 'help',     label: 'Help',   color: 'var(--ink-2)' },
-        ] as const).map((q) => (
-          <button key={q.label} className="qa" onClick={() => 'nav' in q && onNavigate(q.nav)}>
-            <div
-              className="ic"
-              style={{
-                color: q.color,
-                background:
-                  q.color === 'var(--ink-2)' ? 'var(--surface-2)' : `color-mix(in oklab, ${q.color} 12%, transparent)`,
-              }}
-            >
-              <Icon name={q.ic} size={18} />
-            </div>
-            <div className="label">{q.label}</div>
-          </button>
-        ))}
-      </div></div>
-
-      {/* Achievements rail */}
-      <div className="section">
-        <div className="section-head">
-          <div className="hd-2">Recent achievements</div>
-          <button className="more">All</button>
-        </div>
-        <div className="rail">
-          {ACHIEVEMENTS.map((a) => (
-            <div
-              key={a.label}
-              className="w-[110px] px-2.5 py-3.5 bg-[var(--surface)] rounded-2xl border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] flex flex-col items-center gap-2"
-            >
-              <div
-                className="w-11 h-11 rounded-[14px] flex items-center justify-center"
-                style={{ background: a.bg, color: a.color }}
-              >
-                <Icon name={a.ic} size={22} />
-              </div>
-              <div className="text-[11px] font-bold text-[var(--ink-2)] text-center">
-                {a.label}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Owner console entry — only for users with venue-owner access. */}
-      {isOwner && (
-        <div className="section">
-          <div className="set-list">
-            <button className="row" onClick={() => onNavigate('owner-venues')}>
-              <div className="ic" style={{ background: 'var(--primary)' }}>
-                <Icon name="storefront" size={16} />
-              </div>
-              <div className="body">
-                <div className="name">My venues</div>
-                <div className="desc">Manage listings, hours, courts & reviews</div>
-              </div>
-              <Icon name="chevron" size={16} className="chev" />
+      {/* Search */}
+      <div className="px-5 mt-4">
+        <div className="searchbar mx-0! mt-0!">
+          <Icon name="search" size={18} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search settings"
+            aria-label="Search settings"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="text-[var(--muted)]">
+              <Icon name="close" size={16} />
             </button>
-          </div>
+          )}
         </div>
+      </div>
+
+      {/* Profile card — hidden while searching */}
+      {!q && (
+        <button
+          type="button"
+          onClick={() => onNavigate('edit-profile')}
+          className="section block w-full text-left"
+          aria-label="Edit your profile"
+        >
+          <div className="card">
+            <div className="flex items-center gap-3.5 px-4 py-4">
+              <span className="relative shrink-0">
+                <span
+                  className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden font-heading font-semibold text-[18px]"
+                  style={{
+                    background: 'var(--primary-soft)',
+                    color: 'var(--primary-deep)',
+                    boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px var(--coral)',
+                  }}
+                >
+                  {currentUser?.avatarUrl ? (
+                    <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </span>
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-heading font-semibold text-[18px] text-[var(--ink)] truncate">{name}</div>
+                <div className="t-eyebrow mt-1">{roleLine}</div>
+              </div>
+              <Icon name="chevron" size={18} className="text-[var(--surface-3)] shrink-0" />
+            </div>
+            <div className="h-px bg-[var(--hairline)]" />
+            <div className="flex px-4 py-4">
+              {stats.map((s) => (
+                <div key={s.label} className="flex-1 text-center min-w-0">
+                  <div className="font-heading font-semibold text-[22px] text-[var(--ink)] leading-none">{s.value}</div>
+                  <div className="t-eyebrow mt-1.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </button>
       )}
 
-      {/* Settings list */}
-      <div className="section">
-        <div className="set-list">
-          {([
-            { ic: 'calendar', name: 'My bookings',  desc: 'Court reservations',       color: 'var(--lime-700,#5b7400)', nav: 'my-bookings' },
-            { ic: 'paddle', name: 'My games',       desc: 'Games you created',        color: 'var(--primary)', nav: 'my-games' },
-            { ic: 'user',   name: 'Account',        desc: 'Profile, email, password', color: 'var(--primary)', nav: 'edit-profile' },
-            { ic: 'shield', name: 'Privacy',        desc: 'Visibility & permissions', color: '#5b7400',         nav: 'settings' },
-            { ic: 'bell',   name: 'Notifications',  desc: 'Push, email, in-app',      color: 'var(--coral)',    nav: 'notifications' },
-            { ic: 'help',   name: 'Help & Support', desc: 'Rules, FAQ, contact us',   color: 'var(--ink-2)',    nav: 'settings' },
-          ] as const).map((s) => (
-            <button key={s.name} className="row" onClick={() => s.nav && onNavigate(s.nav)}>
-              <div className="ic" style={{ background: s.color }}>
-                <Icon name={s.ic} size={16} />
-              </div>
-              <div className="body">
-                <div className="name">{s.name}</div>
-                <div className="desc">{s.desc}</div>
-              </div>
-              <Icon name="chevron" size={16} className="chev" />
-            </button>
-          ))}
-          <button className="row" onClick={onLogout}>
-            <div className="ic bg-[var(--coral)]">
-              <Icon name="logout" size={16} />
-            </div>
-            <div className="body">
-              <div className="name text-[var(--coral)]!">Sign out</div>
-            </div>
-            <Icon name="chevron" size={16} className="chev" />
-          </button>
+      {filtered.map((section) => (
+        <div key={section.title} className="section">
+          <div className="t-eyebrow mb-2.5 px-0.5">{section.title}</div>
+          <MenuGroup items={section.items} />
         </div>
-      </div>
+      ))}
+
+      {filtered.length === 0 && (
+        <div className="section text-center text-[13px] text-[var(--muted)]">No settings match "{query}".</div>
+      )}
 
       <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
     </div>
