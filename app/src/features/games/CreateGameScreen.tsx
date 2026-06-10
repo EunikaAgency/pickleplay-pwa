@@ -7,11 +7,12 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ProgressBar } from '../../shared/components/ui/ProgressBar';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { HourSelect } from '../../shared/components/ui/HourSelect';
+import { CourtPicker } from '../../shared/components/ui/CourtPicker';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings, createGame, getGame, updateGame, kickPlayer,
-  type ApiVenue, type AppSettings, type CheckoutCard, type ApiGame, type ApiGamePerson,
+  listAllVenues, createBooking, checkout, getSettings, createGame, getGame, updateGame, kickPlayer, listCourts,
+  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type ApiGame, type ApiGamePerson,
 } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
@@ -34,6 +35,9 @@ type GameType = (typeof TYPES)[number]['v'];
 const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
 
 const TITLE_BY_STEP = ['Court & time', 'Game details', 'Payment'];
+
+// How many courts to show before "Show all" (search bypasses this).
+const COURT_LIMIT = 6;
 
 /** A venue is bookable only if it has a rate (decision: require a price). */
 function isBookable(v: ApiVenue): boolean {
@@ -58,12 +62,21 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const [selectedId, setSelectedId] = useState('');
   const [picking, setPicking] = useState(true);
   const [query, setQuery] = useState('');
+  const [showAllCourts, setShowAllCourts] = useState(false);
 
   // Schedule — start + end hour; the duration (hours) is derived. Courts are
   // booked by the hour, so both times snap to the hour (no minutes).
   const [date, setDate] = useState(todayYMD());
   const [startTime, setStartTime] = useState('18:00');
-  const [endTime, setEndTime] = useState(() => addHours('18:00', 1));
+  // End starts empty; it auto-fills to start + 1h the moment the user changes the
+  // start (see onStartChange), and is otherwise picked by hand.
+  const [endTime, setEndTime] = useState('');
+
+  // Courts at the chosen venue. Each court is reserved independently, so the host
+  // picks one; it drives availability and pins the game's court booking. Venues
+  // with no defined courts fall back to a venue-level reservation (no picker).
+  const [courts, setCourts] = useState<ApiCourt[]>([]);
+  const [courtId, setCourtId] = useState('');
 
   // Game details.
   const [type, setType] = useState<GameType>('doubles');
@@ -96,6 +109,18 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
     return () => { alive = false; };
   }, []);
 
+  // Load the chosen venue's courts; default to the first (host can switch). Reset
+  // while a fresh venue loads.
+  useEffect(() => {
+    if (!selectedId) { setCourts([]); setCourtId(''); return; }
+    let alive = true;
+    setCourts([]); setCourtId('');
+    listCourts(selectedId)
+      .then((rows) => { if (!alive) return; setCourts(rows); setCourtId(rows[0]?.id ?? ''); })
+      .catch(() => { if (alive) { setCourts([]); setCourtId(''); } });
+    return () => { alive = false; };
+  }, [selectedId]);
+
   useEffect(() => {
     let alive = true;
     getSettings()
@@ -110,10 +135,21 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const hours = hoursBetween(startTime, endTime);
   const total = Math.round(rate * hours * 100) / 100;
 
-  // Live court availability for the chosen venue/date → greys out full hours.
-  const { startDisabled, endDisabledFor, rangeBlocked } = useVenueAvailability(selected?.id, date);
+  // Live availability for the chosen court (or the venue pool when none) on this
+  // date → greys out hours that court is already taken.
+  const { availability, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
   const isTest = settings?.paymentTestMode ?? false;
+
+  // If the chosen court leaves the current start hour booked, jump the start to
+  // the first free hour so the end picker isn't entirely blocked. End resets to
+  // empty for the host to pick.
+  useEffect(() => {
+    if (!availability) return;
+    const cur = Number(startTime.split(':')[0]);
+    const free = firstFreeHour(cur);
+    if (free != null && free !== cur) { setStartTime(`${String(free).padStart(2, '0')}:00`); setEndTime(''); }
+  }, [availability, startTime, firstFreeHour]);
 
   const onStartChange = (v: string) => {
     setStartTime(v);
@@ -126,6 +162,11 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
     return venues.filter((v) => `${v.displayName} ${locationLine(v)}`.toLowerCase().includes(q));
   }, [venues, query]);
 
+  // Keep the picker short: show only the first few courts until the player
+  // searches (search shows all matches) or taps "Show all".
+  const isSearching = query.trim().length > 0;
+  const visibleVenues = isSearching || showAllCourts ? filtered : filtered.slice(0, COURT_LIMIT);
+
   const totalSteps = 3;
   const back = () => (step > 0 ? (setError(null), setStep((s) => s - 1)) : onBack());
 
@@ -135,7 +176,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
     setError(null);
     try {
       // Pay for + reserve the court, then post the game at that booked court.
-      const booking = await createBooking({ venueId: selected.id, date, startTime, endTime, amount: total });
+      const booking = await createBooking({ venueId: selected.id, courtId: courtId || undefined, date, startTime, endTime, amount: total });
       await checkout({ bookingId: booking.id, amount: total, currency, method: isTest ? 'test_card' : 'card', card });
       const game = await createGame({
         title: name.trim() || undefined,
@@ -159,7 +200,8 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
 
   const next = () => {
     if (step === 0) {
-      if (!selected) { setError('Please choose a court.'); return; }
+      if (!selected) { setError('Please choose a venue.'); return; }
+      if (courts.length > 0 && !courtId) { setError('Please choose a court.'); return; }
       if (!date) { setError('Please pick a date.'); return; }
       if (!startTime || !endTime) { setError('Please pick a start and end time.'); return; }
       if (!(hours > 0)) { setError('End time must be after the start time.'); return; }
@@ -239,32 +281,43 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
                     No venues match “{query.trim()}”.
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto">
-                    {filtered.map((v) => {
-                      const photo = venueImage(v);
-                      const sel = v.id === selectedId;
-                      const meta = [priceLabel(v), locationLine(v) || 'Court'].filter(Boolean).join(' · ');
-                      return (
-                        <button
-                          key={v.id}
-                          onClick={() => { setSelectedId(v.id); setPicking(false); }}
-                          className={`time-pick text-left px-3! py-2.5! flex items-center gap-3 ${sel ? 'bg-[var(--ink)]! text-white!' : 'bg-[var(--surface)]! text-[var(--ink)]!'}`}
-                        >
-                          <div
-                            className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-white/90 overflow-hidden bg-[var(--surface-3)]"
-                            style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                  <>
+                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto">
+                      {visibleVenues.map((v) => {
+                        const photo = venueImage(v);
+                        const sel = v.id === selectedId;
+                        const meta = [priceLabel(v), locationLine(v) || 'Court'].filter(Boolean).join(' · ');
+                        return (
+                          <button
+                            key={v.id}
+                            onClick={() => { setSelectedId(v.id); setPicking(false); }}
+                            className={`time-pick text-left px-3! py-2.5! flex items-center gap-3 ${sel ? 'bg-[var(--ink)]! text-white!' : 'bg-[var(--surface)]! text-[var(--ink)]!'}`}
                           >
-                            {!photo && <Icon name="paddle" size={20} />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-heading font-semibold text-[14px] truncate">{v.displayName}</div>
-                            <div className="text-[11px] opacity-70 font-semibold truncate">{meta}</div>
-                          </div>
-                          {sel && <Icon name="check" size={16} />}
-                        </button>
-                      );
-                    })}
-                  </div>
+                            <div
+                              className="w-12 h-12 rounded-xl shrink-0 flex items-center justify-center text-white/90 overflow-hidden bg-[var(--surface-3)]"
+                              style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+                            >
+                              {!photo && <Icon name="paddle" size={20} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-heading font-semibold text-[14px] truncate">{v.displayName}</div>
+                              <div className="text-[11px] opacity-70 font-semibold truncate">{meta}</div>
+                            </div>
+                            {sel && <Icon name="check" size={16} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {!isSearching && !showAllCourts && filtered.length > COURT_LIMIT && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllCourts(true)}
+                        className="mt-2 w-full text-center text-[13px] font-bold text-[var(--primary)] py-2"
+                      >
+                        Show all {filtered.length} courts
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -275,6 +328,13 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
             <input type="date" className="control" value={date} min={todayYMD()} onChange={(e) => setDate(e.target.value)} />
           </div>
 
+          {courts.length > 0 && (
+            <div className="field">
+              <div className="lbl">Court</div>
+              <CourtPicker courts={courts} value={courtId} onChange={setCourtId} />
+            </div>
+          )}
+
           <div className="field">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -283,7 +343,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
               </div>
               <div>
                 <div className="lbl">End time</div>
-                <HourSelect aria-label="End time" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
+                <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
               </div>
             </div>
             {slotUnavailable && (
@@ -299,6 +359,8 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
                     <div className="text-[13px] font-semibold text-[var(--muted)]">{money(rate, currency)}/hr × {hours} hr</div>
                     <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(total, currency)}</div>
                   </>
+                ) : !endTime ? (
+                  <div className="text-[13px] font-semibold text-[var(--muted)]">Pick an end time to see the total.</div>
                 ) : (
                   <div className="text-[13px] font-semibold text-[var(--coral)]">End time must be after the start time.</div>
                 )}

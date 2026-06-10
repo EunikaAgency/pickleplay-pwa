@@ -19,6 +19,8 @@ interface HourSelectProps {
   after?: string;
   /** Optional: return true for an hour (0–23) that can't be picked — greyed out (e.g. fully booked). */
   disabled?: (hour: number) => boolean;
+  /** Shown when `value` is empty, so the field can start unset (e.g. an end time awaiting a start). */
+  placeholder?: string;
   /** Accessible name for the field. */
   'aria-label'?: string;
 }
@@ -33,7 +35,7 @@ function hourLabel(h: number): string {
   return `${h12}:00 ${ampm}`;
 }
 
-export function HourSelect({ value, onChange, after, disabled, 'aria-label': label = 'Select time' }: HourSelectProps) {
+export function HourSelect({ value, onChange, after, disabled, placeholder = 'Select', 'aria-label': label = 'Select time' }: HourSelectProps) {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<'down' | 'up'>('down');
   const [maxH, setMaxH] = useState(DESIRED_MAX);
@@ -44,7 +46,9 @@ export function HourSelect({ value, onChange, after, disabled, 'aria-label': lab
   const hours: number[] = [];
   for (let h = 0; h < 24; h++) if (h > minHour) hours.push(h);
 
-  const selectedHour = Number(value.split(':')[0]);
+  // An empty value leaves the field unset — it renders the placeholder, not 12:00 AM.
+  const hasValue = Boolean(value);
+  const selectedHour = hasValue ? Number(value.split(':')[0]) : NaN;
 
   // Decide placement/height from the live viewport before opening (in the click
   // handler, not an effect, so we don't setState during render commit).
@@ -92,7 +96,9 @@ export function HourSelect({ value, onChange, after, disabled, 'aria-label': lab
         aria-expanded={open}
         aria-label={label}
       >
-        <span>{hourLabel(Number.isFinite(selectedHour) ? selectedHour : 0)}</span>
+        <span className={hasValue ? '' : 'text-[var(--muted)]'}>
+          {hasValue ? hourLabel(selectedHour) : placeholder}
+        </span>
         <Icon name="chevron" size={16} className={`text-[var(--muted)] shrink-0 transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
       </button>
 

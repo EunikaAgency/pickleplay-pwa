@@ -135,7 +135,13 @@ export function statusChip(status: string | null | undefined): StatusChip {
   }
 }
 
-/** Whether a booking can still be cancelled (not already cancelled). */
-export function isCancellable(b: ApiBooking): boolean {
-  return b.status !== 'cancelled';
+/** Whether a booking can still be cancelled: not already cancelled, and not in
+ *  the past. A completed booking (confirmed/paid with a start time that has
+ *  passed) can't be cancelled — mirrors the Upcoming-vs-Completed split in
+ *  `bookingStatusChip`. A pending request can always be declined. */
+export function isCancellable(b: ApiBooking, now: number = Date.now()): boolean {
+  if (b.status === 'cancelled') return false;
+  if (b.status === 'pending_approval') return true;
+  const start = b.date ? new Date(`${b.date}T${b.startTime || '00:00'}:00`).getTime() : NaN;
+  return Number.isNaN(start) || start >= now;
 }

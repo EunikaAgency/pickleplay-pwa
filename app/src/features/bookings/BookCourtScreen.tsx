@@ -6,10 +6,11 @@ import { ProgressBar } from '../../shared/components/ui/ProgressBar';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
 import { HourSelect } from '../../shared/components/ui/HourSelect';
+import { CourtPicker } from '../../shared/components/ui/CourtPicker';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings,
-  type ApiVenue, type AppSettings, type CheckoutCard,
+  listAllVenues, createBooking, checkout, getSettings, listCourts,
+  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard,
 } from '../../shared/lib/api';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
@@ -32,7 +33,7 @@ function isBookable(v: ApiVenue): boolean {
   return v.priceFrom != null;
 }
 
-export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours: hoursProp, onNavigate, onBack }: BookCourtScreenProps) {
+export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNavigate, onBack }: BookCourtScreenProps) {
   const [step, setStep] = useState(0);
 
   // Bookable venues (priced only) for the picker.
@@ -48,7 +49,15 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const initialStart = snapToHour(to24h(timeProp) || '18:00');
   const [date, setDate] = useState(dateProp || todayYMD());
   const [startTime, setStartTime] = useState(initialStart);
-  const [endTime, setEndTime] = useState(() => addHours(initialStart, hoursProp && hoursProp >= 1 ? Math.round(hoursProp) : 1));
+  // End starts empty; it auto-fills to start + 1h the moment the user changes the
+  // start (see onStartChange), and is otherwise picked by hand.
+  const [endTime, setEndTime] = useState('');
+
+  // Courts at the selected venue. Each court is booked independently, so the
+  // booker picks one and it drives both availability and the booking. Venues
+  // with no defined courts fall back to a venue-level booking (no picker).
+  const [courts, setCourts] = useState<ApiCourt[]>([]);
+  const [courtId, setCourtId] = useState('');
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -79,6 +88,18 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     return () => { alive = false; };
   }, [venueId]);
 
+  // Load the selected venue's courts; default to the first so a court is always
+  // chosen (the booker can switch). Reset to none while a fresh venue loads.
+  useEffect(() => {
+    if (!selectedId) { setCourts([]); setCourtId(''); return; }
+    let alive = true;
+    setCourts([]); setCourtId('');
+    listCourts(selectedId)
+      .then((rows) => { if (!alive) return; setCourts(rows); setCourtId(rows[0]?.id ?? ''); })
+      .catch(() => { if (alive) { setCourts([]); setCourtId(''); } });
+    return () => { alive = false; };
+  }, [selectedId]);
+
   // Load the payment mode once, before checkout, so we can pre-fill the demo card.
   useEffect(() => {
     let alive = true;
@@ -99,9 +120,20 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const total = Math.round(rate * hours * 100) / 100;
   const isTest = settings?.paymentTestMode ?? false;
 
-  // Live court availability for the chosen venue/date → greys out full hours.
-  const { startDisabled, endDisabledFor, rangeBlocked } = useVenueAvailability(selected?.id, date);
+  // Live availability for the chosen court (or the venue pool when none) on this
+  // date → greys out hours that court is already taken.
+  const { availability, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
+
+  // If the chosen court leaves the current start hour booked (e.g. the default
+  // 6 PM on a court that's taken until 9), jump the start to the first free hour
+  // so the end picker isn't entirely blocked. End resets to empty for the user.
+  useEffect(() => {
+    if (!availability) return;
+    const cur = Number(startTime.split(':')[0]);
+    const free = firstFreeHour(cur);
+    if (free != null && free !== cur) { setStartTime(`${String(free).padStart(2, '0')}:00`); setEndTime(''); }
+  }, [availability, startTime, firstFreeHour]);
 
   // Keep a positive duration: if a new start lands at/after the end, push the end out an hour.
   const onStartChange = (v: string) => {
@@ -125,6 +157,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     try {
       const booking = await createBooking({
         venueId: selected.id,
+        courtId: courtId || undefined,
         date,
         startTime,
         endTime,
@@ -149,7 +182,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
   const next = () => {
     if (step === 0) {
-      if (!selected) { setError('Please choose a court.'); return; }
+      if (!selected) { setError('Please choose a venue.'); return; }
+      if (courts.length > 0 && !courtId) { setError('Please choose a court.'); return; }
       if (!date) { setError('Please pick a date.'); return; }
       if (!startTime) { setError('Please pick a start time.'); return; }
       if (!endTime) { setError('Please pick an end time.'); return; }
@@ -281,6 +315,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             />
           </div>
 
+          {courts.length > 0 && (
+            <div className="field">
+              <div className="lbl">Court</div>
+              <CourtPicker courts={courts} value={courtId} onChange={setCourtId} />
+            </div>
+          )}
+
           <div className="field">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -289,7 +330,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               </div>
               <div>
                 <div className="lbl">End time</div>
-                <HourSelect aria-label="End time" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
+                <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
               </div>
             </div>
             {slotUnavailable && (
@@ -307,6 +348,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                     </div>
                     <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(total, currency)}</div>
                   </>
+                ) : !endTime ? (
+                  <div className="text-[13px] font-semibold text-[var(--muted)]">
+                    Pick an end time to see the total.
+                  </div>
                 ) : (
                   <div className="text-[13px] font-semibold text-[var(--coral)]">
                     End time must be after the start time.

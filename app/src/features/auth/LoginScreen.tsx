@@ -13,6 +13,10 @@ interface LoginScreenProps {
 
 export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
   const login = useAuthStore((s) => s.login);
+  const register = useAuthStore((s) => s.register);
+  const [mode, setMode] = useState<'signin' | 'register'>('signin');
+  const [name, setName] = useState('');
+  const [nameTouched, setNameTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -45,10 +49,41 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
     }
   };
 
+  const createAccount = async () => {
+    if (loading) return;
+    setSubmitError(null);
+    setLoading(true);
+    try {
+      await register({ email: form.values.email.trim(), password: form.values.password, displayName: name.trim() });
+      onLoginSuccess();
+    } catch (err) {
+      setSubmitError(
+        err instanceof ApiError && err.status === 409
+          ? 'That email is already registered — try signing in.'
+          : err instanceof ApiError
+            ? err.message
+            : 'Something went wrong. Please try again.',
+      );
+      setLoading(false);
+    }
+  };
+
+  const switchMode = (next: 'signin' | 'register') => {
+    setMode(next);
+    setSubmitError(null);
+    setNameTouched(false);
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.isValid) return;
-    void signIn(form.values.email, form.values.password);
+    if (mode === 'register') {
+      setNameTouched(true);
+      if (!name.trim() || !form.isValid) return;
+      void createAccount();
+    } else {
+      if (!form.isValid) return;
+      void signIn(form.values.email, form.values.password);
+    }
   };
 
   return (
@@ -77,11 +112,26 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
 
       <div className="mx-4 mt-5 rounded-3xl p-5 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-pop)]">
         <div className="p-5">
-          <h2 className="hd-2">Welcome back</h2>
-          <p className="t-sm mt-1">Ready to hit the courts?</p>
+          <h2 className="hd-2">{mode === 'register' ? 'Create your account' : 'Welcome back'}</h2>
+          <p className="t-sm mt-1">{mode === 'register' ? 'Join the community in seconds.' : 'Ready to hit the courts?'}</p>
         </div>
 
         <form onSubmit={handleSubmit}>
+          {mode === 'register' && (
+            <div className="field">
+              <FormField
+                label="Name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={() => setNameTouched(true)}
+                placeholder="Your name"
+                leadingIcon="user"
+                error={nameTouched && !name.trim() ? 'Name is required.' : undefined}
+              />
+            </div>
+          )}
+
           <div className="field">
             <FormField
               label="Email"
@@ -118,11 +168,13 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
             />
           </div>
 
-          <div className="flex justify-end px-5">
-            <a href="#" className="text-[12px] font-bold text-[var(--primary)]">
-              Forgot password?
-            </a>
-          </div>
+          {mode === 'signin' && (
+            <div className="flex justify-end px-5">
+              <a href="#" className="text-[12px] font-bold text-[var(--primary)]">
+                Forgot password?
+              </a>
+            </div>
+          )}
 
           {submitError && (
             <div
@@ -137,50 +189,63 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
           )}
 
           <div className="px-5 mt-4">
-            <Button type="submit" fullWidth disabled={loading || !form.isValid}>
+            <Button type="submit" fullWidth disabled={loading || !form.isValid || (mode === 'register' && !name.trim())}>
               {loading ? (
                 <>
                   <span className="inline-flex animate-spin">
                     <Icon name="spinner" size={18} />
                   </span>
-                  Signing in…
+                  {mode === 'register' ? 'Creating account…' : 'Signing in…'}
                 </>
               ) : (
                 <>
-                  Sign in <Icon name="forward" size={16} />
+                  {mode === 'register' ? 'Create account' : 'Sign in'} <Icon name="forward" size={16} />
                 </>
               )}
             </Button>
           </div>
 
-          <div className="px-5 mt-2.5 flex gap-2">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => signIn('test@example.com', 'password123')}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
-            >
-              <Icon name="bolt" size={14} />
-              Test Owner Account
-            </button>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => signIn('84a3be4a.hernandez@example.com', 'password123')}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
-            >
-              <Icon name="bolt" size={14} />
-              Test Player Account
-            </button>
-          </div>
+          {mode === 'signin' && (
+            <div className="px-5 mt-2.5 flex gap-2">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => signIn('test@example.com', 'password123')}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
+              >
+                <Icon name="bolt" size={14} />
+                Test Owner Account
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => signIn('84a3be4a.hernandez@example.com', 'password123')}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
+              >
+                <Icon name="bolt" size={14} />
+                Test Player Account
+              </button>
+            </div>
+          )}
         </form>
 
         <div className="px-5 pt-5 pb-3 text-center">
           <p className="t-sm">
-            New here?{' '}
-            <a href="#" className="text-[var(--primary)] font-bold">
-              Join the league
-            </a>
+            {mode === 'signin' ? (
+              <>
+                New here?{' '}
+                <button type="button" onClick={() => switchMode('register')} className="text-[var(--primary)] font-bold">
+                  Create an account
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <button type="button" onClick={() => switchMode('signin')} className="text-[var(--primary)] font-bold">
+                  Sign in
+                </button>
+              </>
+            )}
           </p>
         </div>
       </div>

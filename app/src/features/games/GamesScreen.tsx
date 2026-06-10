@@ -8,6 +8,7 @@ import { GameFilterSheet } from './GameFilterSheet';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { listGames, listBookings, cancelBooking, type ApiGame, type ApiGamePerson, type ApiBooking } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { takePendingGamesTab } from '../../shared/lib/navIntent';
 import { getInitials } from '../../shared/lib/initials';
 import {
   dayParts, gameThumb, gameTitle, timeLine, gameLocation,
@@ -358,8 +359,11 @@ function BookingCalendar({ year, month, bookingsByDate, selected, today, onSelec
 
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const me = useAuthStore((s) => s.user);
-  const [topTab, setTopTab] = useState<TopTab>('booking');
-  const [gamesView, setGamesView] = useState<GamesView>('mine');
+  // Honor a one-shot intent from the home screen ("Join game" / "Browse all
+  // games" land on Games → Browse instead of the default Booking tab).
+  const [initialTab] = useState(() => takePendingGamesTab());
+  const [topTab, setTopTab] = useState<TopTab>(initialTab ?? 'booking');
+  const [gamesView, setGamesView] = useState<GamesView>(initialTab === 'games' ? 'browse' : 'mine');
   const [filters, setFilters] = useState<GameFilters>(makeDefaultGameFilters);
   const [filterOpen, setFilterOpen] = useState(false);
 

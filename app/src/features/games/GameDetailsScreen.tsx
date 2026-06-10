@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
+import { Button } from '../../shared/components/ui/Button';
+import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { CourtIllustration } from '../../shared/components/ui/CourtIllustration';
 import { DuprExplainerSheet } from '../../shared/components/ui/DuprExplainerSheet';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
-import { getGame, joinGame, ApiError, type ApiGame } from '../../shared/lib/api';
+import { getGame, joinGame, leaveGame, ApiError, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { dayParts, gameTitle, gameTypeLabel, timeLine, gameLocation, spotsLabel } from './gameDisplay';
+import {
+  dayParts, gameTitle, gameTypeLabel, timeLine, gameLocation, spotsLabel,
+  LOBBY_LEAVE_GRACE_PERIOD_DAYS, isLobbyFull, isWithinGracePeriod, canLeaveLobby,
+} from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface GameDetailsScreenProps {
@@ -31,8 +36,12 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [reloadKey, setReloadKey] = useState(0);
 
   const [joining, setJoining] = useState(false);
-  const [joinError, setJoinError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [duprOpen, setDuprOpen] = useState(false);
+  // Joining inside the grace window makes the joiner acknowledge the no-refund
+  // rule first; this gates the actual join behind a confirmation modal.
+  const [confirmJoinOpen, setConfirmJoinOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -53,24 +62,70 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const participants = game?.participants ?? [];
   const isJoined = !!(game && me && participants.some((p) => p.id === me.id));
   const spotsLeft = game?.spotsLeft ?? 0;
+  const creatorId = game?.creatorId || game?.creator?.id;
+  const isHost = !!(game && me && creatorId && me.id === creatorId);
 
-  const handleJoin = async () => {
-    if (!game || isJoined || joining) return;
-    // Browsing the game is free; committing to it requires an account.
-    if (onRequireAuth && !onRequireAuth('join this game')) return;
+  // Lobby / grace-period state — all derived from the shared rules so the UI and
+  // the validation never drift apart.
+  const lobbyFull = !!game && isLobbyFull(game);
+  const withinGrace = !!game && isWithinGracePeriod(game);
+  const leaveAllowed = !!game && canLeaveLobby(game);
+
+  // Actually book the joiner in (skips the auth/grace gates, which handleJoin runs).
+  const doJoin = async () => {
+    if (!game) return;
+    setConfirmJoinOpen(false);
     setJoining(true);
-    setJoinError(null);
+    setActionError(null);
     try {
       const updated = await joinGame(game.id);
       setGame(updated);
     } catch (e) {
-      setJoinError(e instanceof Error ? e.message : 'Could not join this game.');
+      setActionError(e instanceof Error ? e.message : 'Could not join this game.');
     } finally {
       setJoining(false);
     }
   };
 
+  const handleJoin = () => {
+    if (!game || isJoined || joining) return;
+    // Browsing the game is free; committing to it requires an account.
+    if (onRequireAuth && !onRequireAuth('join this game')) return;
+    // Joining within the grace window can lock the spot once the lobby fills, so
+    // make the joiner confirm the no-refund rule before we book them in.
+    if (withinGrace) { setConfirmJoinOpen(true); return; }
+    void doJoin();
+  };
+
+  const handleLeave = async () => {
+    if (!game || leaving || !leaveAllowed) return;
+    setLeaving(true);
+    setActionError(null);
+    try {
+      const updated = await leaveGame(game.id);
+      setGame(updated);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not leave this game.');
+    } finally {
+      setLeaving(false);
+    }
+  };
+
   const isFull = spotsLeft <= 0 && !isJoined;
+
+  // A single grace-period notice whose wording adapts to the viewer's state
+  // (host gets the "ready to play" banner instead, so they're excluded here).
+  const graceNotice: string | null = (() => {
+    if (!game || isHost || !withinGrace) return null;
+    if (isJoined) {
+      return leaveAllowed
+        ? `This game is within ${LOBBY_LEAVE_GRACE_PERIOD_DAYS} days. You can still leave while the lobby has open spots — once it fills, your spot is final and non-refundable.`
+        : `The lobby is full and the game is within ${LOBBY_LEAVE_GRACE_PERIOD_DAYS} days, so your spot is locked in — this booking is final and non-refundable.`;
+    }
+    // Non-joined viewer: only relevant while there's still a spot to take.
+    if (lobbyFull) return null;
+    return `This game is within the ${LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period. You can leave only while the lobby isn't full — once it fills, your booking is final and non-refundable.`;
+  })();
 
   return (
     <DemoBranch
@@ -172,6 +227,30 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
           </div>
 
           <div className="detail-body">
+            {/* Host-only: the lobby just filled — the game is ready to play. */}
+            {isHost && lobbyFull && (
+              <div className="rounded-2xl bg-[var(--lime)]/20 border-[0.5px] border-[var(--lime)] px-4 py-3 flex items-start gap-3 mb-4">
+                <Icon name="check" size={20} className="mt-0.5 shrink-0 text-[var(--ink)]" />
+                <div>
+                  <div className="text-[14px] font-bold text-[var(--ink)]">Your lobby is full</div>
+                  <div className="text-[12px] font-semibold text-[var(--ink-2)]">The game is ready to play — your full roster is locked in.</div>
+                </div>
+              </div>
+            )}
+
+            {/* Joiner-facing grace-period / no-refund notice. */}
+            {graceNotice && (
+              <div className="rounded-2xl bg-[var(--coral-soft)] border-[0.5px] border-[var(--coral)]/30 px-4 py-3 flex items-start gap-3 mb-4">
+                <Icon name={leaveAllowed ? 'clock' : 'lock'} size={18} className="mt-0.5 shrink-0 text-[var(--coral)]" />
+                <div>
+                  <div className="text-[13px] font-bold text-[var(--coral)]">
+                    {leaveAllowed ? `Within the ${LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period` : 'Spot locked in'}
+                  </div>
+                  <div className="text-[12px] font-semibold text-[var(--ink-2)]">{graceNotice}</div>
+                </div>
+              </div>
+            )}
+
             <div className="kv-grid">
               <div className="kv">
                 <div className="eyebrow">Format</div>
@@ -271,42 +350,85 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
 
           <div className="sticky-cta">
             <div className="price">
-              <div className="eyebrow">Open spots</div>
-              <div className="amount">{spotsLeft > 0 ? spotsLeft : 'Full'}</div>
+              <div className="eyebrow">{isJoined ? 'Your spot' : 'Open spots'}</div>
+              <div className="amount">{isJoined ? "You're in" : spotsLeft > 0 ? spotsLeft : 'Full'}</div>
             </div>
-            <button
-              className={`btn-join ${isJoined ? 'joined' : ''}`}
-              onClick={handleJoin}
-              disabled={joining || isJoined || isFull}
-            >
-              {joining ? (
-                <>
-                  <span className="inline-flex animate-spin">
-                    <Icon name="spinner" size={18} />
-                  </span>
-                  Joining…
-                </>
-              ) : isJoined ? (
-                <>
-                  <Icon name="check" size={16} />
-                  You're in!
-                </>
-              ) : isFull ? (
-                'Game full'
+            {isHost ? (
+              <button className="btn-join joined" disabled>
+                <Icon name="shield" size={16} />
+                You're hosting
+              </button>
+            ) : isJoined ? (
+              leaveAllowed ? (
+                <button className="btn-join btn-leave" onClick={handleLeave} disabled={leaving}>
+                  {leaving ? (
+                    <>
+                      <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
+                      Leaving…
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="logout" size={16} />
+                      Leave game
+                    </>
+                  )}
+                </button>
               ) : (
-                <>
-                  <Icon name="bolt" size={16} />
-                  Join Game
-                </>
-              )}
-            </button>
+                <button className="btn-join joined" disabled title="The lobby is full and the game is within the grace period — your spot is final.">
+                  <Icon name="lock" size={16} />
+                  Spot locked
+                </button>
+              )
+            ) : (
+              <button className="btn-join" onClick={handleJoin} disabled={joining || isFull}>
+                {joining ? (
+                  <>
+                    <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
+                    Joining…
+                  </>
+                ) : isFull ? (
+                  'Game full'
+                ) : (
+                  <>
+                    <Icon name="bolt" size={16} />
+                    Join Game
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
-          {joinError && (
+          {actionError && (
             <div className="fixed bottom-[96px] left-0 right-0 px-4 text-center text-[13px] text-[var(--coral)] font-semibold">
-              {joinError}
+              {actionError}
             </div>
           )}
+
+          {/* Booking-within-grace confirmation — explicit no-refund acknowledgement. */}
+          <BottomSheet open={confirmJoinOpen} onClose={() => setConfirmJoinOpen(false)} title="Confirm your booking">
+            <div className="px-1 pb-1">
+              <div className="rounded-2xl bg-[var(--coral-soft)] border-[0.5px] border-[var(--coral)]/30 px-4 py-3.5 flex items-start gap-3">
+                <Icon name="shield" size={20} className="mt-0.5 shrink-0 text-[var(--coral)]" />
+                <div>
+                  <div className="text-[14px] font-bold text-[var(--coral)] mb-0.5">Within the {LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period</div>
+                  <p className="text-[13px] font-semibold text-[var(--ink-2)] leading-snug">
+                    This game is within the {LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period. You may leave only while the
+                    lobby is not full. Once the lobby becomes full, your booking is final and non-refundable.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <Button variant="outline" onClick={() => setConfirmJoinOpen(false)} disabled={joining}>Cancel</Button>
+                <Button variant="dark" onClick={doJoin} disabled={joining}>
+                  {joining ? (
+                    <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Booking…</>
+                  ) : (
+                    'Confirm Booking'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </BottomSheet>
 
           <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
         </div>

@@ -3,13 +3,16 @@ import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
+import { Avatar } from '../../shared/components/ui/Avatar';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import type { Navigate } from '../../shared/lib/navigation';
-import { getVenue, listGames, ApiError, type ApiVenueDetail, type ApiGame } from '../../shared/lib/api';
+import { getVenue, listGames, getVenueCheckIns, checkInToVenue, checkOutOfVenue, ApiError, type ApiVenueDetail, type ApiGame, type VenueCheckIns } from '../../shared/lib/api';
 import { indoorLabel, priceLabel, locationLine, venueAmenities, mapsUrl, venueImage, venueCoords } from '../../shared/lib/venueDisplay';
+import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 
 interface CourtDetailsScreenProps {
   courtId: string;
@@ -175,6 +178,36 @@ function CourtDetail({
     };
   }, [venue.id]);
 
+  // Live check-ins ("who's here now"). The count shows for everyone; the toggle
+  // is gated by player.venues.checkin (only signed-in players with the perm).
+  const currentUser = useAuthStore((s) => s.user);
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const canCheckIn = isLoggedIn && userHasPermission(currentUser, 'player.venues.checkin');
+  const [checkIns, setCheckIns] = useState<VenueCheckIns | null>(null);
+  const [checkBusy, setCheckBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getVenueCheckIns(venue.id)
+      .then((d) => { if (!cancelled) setCheckIns(d); })
+      .catch(() => { if (!cancelled) setCheckIns(null); });
+    return () => { cancelled = true; };
+  }, [venue.id]);
+
+  const toggleCheckIn = async () => {
+    if (!checkIns || checkBusy) return;
+    setCheckBusy(true);
+    try {
+      if (checkIns.checkedIn) await checkOutOfVenue(venue.id);
+      else await checkInToVenue(venue.id);
+      setCheckIns(await getVenueCheckIns(venue.id));
+    } catch {
+      /* leave the prior state on failure */
+    } finally {
+      setCheckBusy(false);
+    }
+  };
+
   return (
     <div className="scroll pb-[110px]">
       <div className="detail-hero">
@@ -306,6 +339,45 @@ function CourtDetail({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Live check-ins — "who's here now". Count shows for everyone; the
+            toggle button only for signed-in players with the check-in permission. */}
+        {checkIns && (checkIns.count > 0 || canCheckIn) && (
+          <div className="rounded-2xl bg-[var(--lime-soft)] border-[0.5px] border-[rgba(193,241,0,0.5)] p-4 flex items-center gap-3">
+            {checkIns.count > 0 ? (
+              <>
+                <div className="relative shrink-0">
+                  <div className="flex -space-x-2">
+                    {checkIns.players.slice(0, 3).map((p, i) => (
+                      <Avatar key={p.id} src={p.avatarUrl} name={p.name} variant={(['blue', 'coral', 'lime'] as const)[i % 3]} size={32} className="border-2 border-white" />
+                    ))}
+                    {checkIns.count > Math.min(checkIns.players.length, 3) && (
+                      <div className="w-8 h-8 rounded-full border-2 border-white bg-[var(--surface-3)] flex items-center justify-center text-[10px] font-bold text-[var(--ink-2)]">
+                        +{checkIns.count - Math.min(checkIns.players.length, 3)}
+                      </div>
+                    )}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[var(--coral)] border-2 border-white animate-pulse" />
+                </div>
+                <p className="flex-1 text-[14px] text-[var(--lime-ink)] leading-tight">
+                  <strong className="font-extrabold">{checkIns.count} {checkIns.count === 1 ? 'player' : 'players'}</strong> here now
+                </p>
+              </>
+            ) : (
+              <p className="flex-1 text-[14px] text-[var(--lime-ink)] font-semibold leading-tight">Be the first to check in here.</p>
+            )}
+            {canCheckIn && (
+              <button
+                type="button"
+                onClick={toggleCheckIn}
+                disabled={checkBusy}
+                className={`shrink-0 h-9 px-4 rounded-full font-extrabold text-[13px] disabled:opacity-60 ${checkIns.checkedIn ? 'bg-white text-[var(--lime-ink)] border-[0.5px] border-[rgba(193,241,0,0.6)]' : 'bg-[var(--lime)] text-[var(--lime-ink)]'}`}
+              >
+                {checkIns.checkedIn ? 'Checked in ✓' : 'Check in'}
+              </button>
+            )}
           </div>
         )}
 

@@ -37,6 +37,7 @@ export const ALL_PERMISSIONS = [
   'player.venues.locate',
   'player.tournaments.join',
   'player.bookings.create',
+  'player.venues.checkin',
   'user.notifications.manage',
 ] as const;
 
@@ -55,6 +56,7 @@ const PLAYER_PERMISSIONS: Permission[] = [
   'player.venues.locate',
   'player.tournaments.join',
   'player.bookings.create',
+  'player.venues.checkin',
   'user.notifications.manage',
 ];
 

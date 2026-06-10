@@ -83,6 +83,7 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
       items: [
         { key: 'my-games', icon: 'paddle', label: 'My games', color: 'var(--primary)', onClick: () => onNavigate('my-games') },
         { key: 'my-bookings', icon: 'calendar', label: 'My bookings', color: '#5b7400', onClick: () => onNavigate('my-bookings') },
+        { key: 'clubs', icon: 'groups', label: 'Clubs', color: 'var(--coral)', onClick: () => onNavigate('clubs') },
         ...(isOwner
           ? [{ key: 'owner-venues', icon: 'storefront', label: 'My venues', color: 'var(--primary)', onClick: () => onNavigate('owner-venues') } as MenuItem]
           : []),

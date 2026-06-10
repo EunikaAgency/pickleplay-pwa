@@ -10,8 +10,9 @@ import { useDemoState } from '../../shared/lib/demoState';
 import type { Navigate } from '../../shared/lib/navigation';
 import { firstNameOf } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { listGames, listBookings, listVenues, listAllVenues, apiImageUrl, type ApiGame, type ApiBooking, type ApiVenue } from '../../shared/lib/api';
+import { listGames, listBookings, listVenues, listAllVenues, apiImageUrl, getCheckInHotspot, type ApiGame, type ApiBooking, type ApiVenue, type CheckInHotspot } from '../../shared/lib/api';
 import { venueCoords } from '../../shared/lib/venueDisplay';
+import { setPendingGamesTab } from '../../shared/lib/navIntent';
 import { getCurrentLocation, haversineKm, formatDistance, type LatLng } from '../../shared/lib/geo';
 
 interface HomeScreenRefinedProps {
@@ -23,10 +24,10 @@ interface HomeScreenRefinedProps {
 type QuickAction = { label: string; icon: string; lime?: boolean; go: (n: Navigate) => void };
 
 const QUICK: QuickAction[] = [
-  { label: 'Join game', icon: 'paddle', lime: true, go: (n) => n('games') },
+  { label: 'Join game', icon: 'paddle', lime: true, go: (n) => { setPendingGamesTab('games'); n('games'); } },
   { label: 'Book court', icon: 'calendar', go: (n) => n('nearby') },
   { label: 'Create match', icon: 'plus', go: (n) => n('create-game') },
-  { label: 'Find players', icon: 'groups', go: (n) => n('search') },
+  { label: 'Clubs', icon: 'groups', go: (n) => n('clubs') },
 ];
 
 // Guests get a sign-up shortcut as the leading action; it drops into the
@@ -302,6 +303,7 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
   const [myBookings, setMyBookings] = useState<ApiBooking[]>([]);
   const [openGames, setOpenGames] = useState<ApiGame[]>([]);
   const [courts, setCourts] = useState<ApiVenue[]>([]);
+  const [hotspot, setHotspot] = useState<CheckInHotspot | null>(null);
   const [userLoc, setUserLoc] = useState<LatLng | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -324,13 +326,15 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
       userId ? listBookings().catch(() => [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
       listGames({ status: 'published' }).catch(() => [] as ApiGame[]),
       listVenues({ pageSize: 6 }).then((p) => p.items).catch(() => [] as ApiVenue[]),
+      getCheckInHotspot().catch(() => null),
     ])
-      .then(([mine, bookings, open, venues]) => {
+      .then(([mine, bookings, open, venues, hot]) => {
         if (!alive) return;
         setMyGames(mine);
         setMyBookings(bookings);
         setOpenGames(open);
         setCourts(venues);
+        setHotspot(hot);
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -491,7 +495,7 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
                 <div className="hd-2">Open games near you</div>
                 <button
                   className="text-[var(--primary)] font-bold text-[13px]"
-                  onClick={() => onNavigate('games')}
+                  onClick={() => { setPendingGamesTab('games'); onNavigate('games'); }}
                 >
                   View all
                 </button>
@@ -552,30 +556,40 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
               )}
             </section>
 
-            {/* Social check-in */}
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-[var(--lime-soft)] border-[0.5px] border-[rgba(193,241,0,0.5)]">
-              <div className="relative shrink-0">
-                <div className="flex -space-x-2">
-                  {(['Coach Mike', 'Sarah K'] as const).map((n, i) => (
-                    <Avatar
-                      key={n}
-                      name={n}
-                      variant={(['blue', 'coral'] as const)[i]}
-                      size={32}
-                      className="border-2 border-white"
-                    />
-                  ))}
-                  <div className="w-8 h-8 rounded-full border-2 border-white bg-[var(--surface-3)] flex items-center justify-center text-[10px] font-bold text-[var(--ink-2)]">
-                    +3
+            {/* Social check-in — live "who's playing now" from real check-ins.
+                Hidden when nobody is checked in (and in the empty reviewer mode). */}
+            {demoState !== 'empty' && hotspot && hotspot.count > 0 && (
+              <button
+                type="button"
+                onClick={() => onNavigate('court-details', { id: hotspot.venueSlug || hotspot.venueId })}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[var(--lime-soft)] border-[0.5px] border-[rgba(193,241,0,0.5)] text-left active:opacity-90 transition-opacity"
+              >
+                <div className="relative shrink-0">
+                  <div className="flex -space-x-2">
+                    {hotspot.players.slice(0, 3).map((p, i) => (
+                      <Avatar
+                        key={p.id}
+                        src={p.avatarUrl}
+                        name={p.name}
+                        variant={ROSTER_VARIANTS[i % ROSTER_VARIANTS.length]}
+                        size={32}
+                        className="border-2 border-white"
+                      />
+                    ))}
+                    {hotspot.count > Math.min(hotspot.players.length, 3) && (
+                      <div className="w-8 h-8 rounded-full border-2 border-white bg-[var(--surface-3)] flex items-center justify-center text-[10px] font-bold text-[var(--ink-2)]">
+                        +{hotspot.count - Math.min(hotspot.players.length, 3)}
+                      </div>
+                    )}
                   </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[var(--coral)] border-2 border-white animate-pulse" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[var(--coral)] border-2 border-white animate-pulse" />
-              </div>
-              <p className="text-[14px] text-[var(--lime-ink)] leading-tight">
-                <strong className="font-extrabold">5 players</strong> checked in at{' '}
-                <strong className="font-extrabold">Riverside Courts</strong>
-              </p>
-            </div>
+                <p className="text-[14px] text-[var(--lime-ink)] leading-tight">
+                  <strong className="font-extrabold">{hotspot.count} {hotspot.count === 1 ? 'player' : 'players'}</strong> checked in at{' '}
+                  <strong className="font-extrabold">{hotspot.venueName}</strong>
+                </p>
+              </button>
+            )}
 
             {/* Courts to book */}
             {(loading || courtList.length > 0) && (
@@ -789,34 +803,35 @@ function FindGameHero({ game, onNavigate }: { game: FeaturedGame; onNavigate: Na
       </div>
 
       {/* Featured open game — the fastest path onto a court right now. */}
-      <div className="relative z-[2] mt-5 rounded-2xl bg-[rgba(255,255,255,0.14)] border border-[rgba(255,255,255,0.2)] p-3.5 flex items-center justify-between gap-3">
-        <button
-          onClick={() => onNavigate('game-details', { id: game.id })}
-          className="min-w-0 text-left active:opacity-90 transition-opacity"
-        >
-          <div className="font-heading font-bold text-[16px] leading-tight truncate">{game.title}</div>
-          <div className="mt-1 flex items-center gap-3 text-[12px] opacity-90">
-            <span className="inline-flex items-center gap-1">
+      <div className="relative z-[2] mt-5 rounded-2xl bg-[rgba(255,255,255,0.14)] border border-[rgba(255,255,255,0.2)] p-3.5">
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          <div className="font-heading font-bold text-[16px] leading-tight">{game.title}</div>
+          <span className="shrink-0 text-[11px] font-extrabold text-[var(--lime)] bg-[rgba(186,246,3,0.18)] px-2.5 py-0.5 rounded-full whitespace-nowrap">
+            {game.spots}
+          </span>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-1.5 text-[12px] opacity-85">
               <Icon name="clock" size={13} />
-              {game.time}
-            </span>
-            <span className="inline-flex items-center gap-1 truncate">
-              <Icon name="location" size={13} />
-              {game.loc}
-            </span>
-            <span className="font-bold shrink-0">{game.spots}</span>
+              <span>{game.time}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[12px] opacity-85 min-w-0">
+              <Icon name="location" size={13} className="shrink-0" />
+              <span className="truncate">{game.loc}</span>
+            </div>
           </div>
-        </button>
-        <button
-          onClick={() => onNavigate('game-details', { id: game.id })}
-          className="shrink-0 h-11 px-6 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-extrabold text-[14px] active:scale-95 transition-transform"
-        >
-          Join
-        </button>
+          <button
+            onClick={() => onNavigate('game-details', { id: game.id })}
+            className="shrink-0 h-9 px-5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-extrabold text-[13px] active:scale-95 transition-transform"
+          >
+            Join
+          </button>
+        </div>
       </div>
 
       <button
-        onClick={() => onNavigate('games')}
+        onClick={() => { setPendingGamesTab('games'); onNavigate('games'); }}
         className="relative z-[2] mt-3 self-start text-[13px] font-bold opacity-90 inline-flex items-center gap-1 active:opacity-100"
       >
         Browse all games <Icon name="forward" size={15} />

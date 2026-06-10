@@ -5,6 +5,7 @@ import { Button } from '../../shared/components/ui/Button';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ProgressBar } from '../../shared/components/ui/ProgressBar';
 import type { Navigate } from '../../shared/lib/navigation';
+import { createClub } from '../../shared/lib/api';
 
 interface CreateClubScreenProps {
   onNavigate: Navigate;
@@ -16,27 +17,36 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
-  const [skillMin, setSkillMin] = useState('all');
-  const [skillMax, setSkillMax] = useState('all');
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdRef, setCreatedRef] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (step < 3) setStep(step + 1);
-    else setSubmitted(true);
+    if (step < 3) { setStep(step + 1); return; }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const club = await createClub({ name: name.trim(), description: description.trim() || undefined, visibility });
+      setCreatedRef(club.slug || club.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create your club. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const back = () => (step > 1 ? setStep(step - 1) : onBack());
 
-  if (submitted) {
+  if (createdRef) {
     return (
       <CompletionScreen
         icon="check"
         title="Club created!"
-        description="Your new club is live. Start inviting members."
+        description="Your new club is live. Open it to make the first post and invite members."
         actions={[
-          { label: 'View club', variant: 'outline', onClick: () => onNavigate('club-details', { id: 'new' }) },
-          { label: 'Invite members', variant: 'dark', onClick: () => onBack() },
+          { label: 'View club', variant: 'dark', onClick: () => onNavigate('club-details', { id: createdRef }) },
+          { label: 'Done', variant: 'outline', onClick: onBack },
         ]}
       />
     );
@@ -62,41 +72,26 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
           <>
             <div className="field">
               <div className="lbl">Club name</div>
-              <input className="control" placeholder="e.g. Neon Smashers" value={name} onChange={(e) => setName(e.target.value)} required />
+              <input className="control" placeholder="e.g. Neon Smashers" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required />
             </div>
             <div className="field">
               <div className="lbl">Description</div>
-              <textarea className="control" rows={4} placeholder="What's your club about?" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <textarea className="control" rows={4} placeholder="What's your club about?" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={4000} />
             </div>
           </>
         )}
 
         {step === 2 && (
-          <>
-            <div className="field">
-              <div className="lbl">Visibility</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" className={`time-pick ${visibility === 'public' ? 'active' : ''}`} onClick={() => setVisibility('public')}>🌍 Public</button>
-                <button type="button" className={`time-pick ${visibility === 'private' ? 'active' : ''}`} onClick={() => setVisibility('private')}>🔒 Private</button>
-              </div>
+          <div className="field">
+            <div className="lbl">Visibility</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className={`time-pick ${visibility === 'public' ? 'active' : ''}`} onClick={() => setVisibility('public')}>🌍 Public</button>
+              <button type="button" className={`time-pick ${visibility === 'private' ? 'active' : ''}`} onClick={() => setVisibility('private')}>🔒 Private</button>
             </div>
-
-            <div className="field">
-              <div className="lbl">Skill range</div>
-              <div className="grid grid-cols-2 gap-2">
-                <select className="control" value={skillMin} onChange={(e) => setSkillMin(e.target.value)}>
-                  {['all', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0'].map((s) => (
-                    <option key={s} value={s}>{s === 'all' ? 'All levels' : s}</option>
-                  ))}
-                </select>
-                <select className="control" value={skillMax} onChange={(e) => setSkillMax(e.target.value)}>
-                  {['all', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0', '5.5+'].map((s) => (
-                    <option key={s} value={s}>{s === 'all' ? 'All levels' : s}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="t-sm mt-2 px-1">
+              {visibility === 'public' ? 'Anyone can find and join this club.' : 'People request to join; you approve them.'}
             </div>
-          </>
+          </div>
         )}
 
         {step === 3 && (
@@ -109,35 +104,21 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
               <div className="t-eyebrow">Description</div>
               <p className="mt-1">{description || '—'}</p>
             </div>
-            <div className="mt-3.5 grid grid-cols-2 gap-3">
-              <div>
-                <div className="t-eyebrow">Visibility</div>
-                <div className="hd-3 mt-1 capitalize">{visibility}</div>
-              </div>
-              <div>
-                <div className="t-eyebrow">Skill range</div>
-                <div className="hd-3 mt-1">
-                  {skillMin === 'all' ? 'All' : skillMin} – {skillMax === 'all' ? 'All' : skillMax}
-                </div>
-              </div>
+            <div className="mt-3.5">
+              <div className="t-eyebrow">Visibility</div>
+              <div className="hd-3 mt-1 capitalize">{visibility}</div>
             </div>
           </div>
         )}
 
+        {error && <div className="px-5 mt-3 t-sm text-[var(--coral)] font-bold">{error}</div>}
+
         <div className="app-action-bar">
-          <Button
-            type="submit"
-            fullWidth
-            disabled={step === 1 && !name}
-          >
+          <Button type="submit" fullWidth disabled={(step === 1 && !name.trim()) || submitting}>
             {step === 3 ? (
-              <>
-                <Icon name="bolt" size={18} /> Create club
-              </>
+              submitting ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={16} /></span> Creating…</> : <><Icon name="bolt" size={18} /> Create club</>
             ) : (
-              <>
-                Continue <Icon name="forward" size={16} />
-              </>
+              <>Continue <Icon name="forward" size={16} /></>
             )}
           </Button>
         </div>

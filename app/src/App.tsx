@@ -262,7 +262,7 @@ function AppInner() {
       case 'court-details':
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
-        return <ClubDetailsScreen onNavigate={navigate} onBack={goBack} />;
+        return <ClubDetailsScreen key={screen.params.id} clubId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
         return <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-game':

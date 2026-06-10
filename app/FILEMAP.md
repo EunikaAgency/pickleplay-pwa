@@ -56,10 +56,13 @@ src/
                        #   InvitePlayers, GameFilterSheet + gameFilters (when/skill/type/openings
                        #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
                        #   list/detail/join/kick; chat + invite-send still demo)
-    bookings/          # BookCourt (pick court→whole-hour start/end via HourSelect, full hours
-                       #   greyed out from live availability→pay test-checkout), MyBookings (list+cancel), bookingDisplay
+    bookings/          # BookCourt (pick venue→court (CourtPicker)→whole-hour start/end via HourSelect,
+                       #   taken hours greyed out from that court's live availability→pay test-checkout),
+                       #   MyBookings (list+cancel), bookingDisplay
     venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
-    clubs/             # Clubs, ClubDetails, CreateClub
+    clubs/             # Clubs (live: my/discover lists), ClubDetails (live: detail +
+                       #   members + Facebook-style feed with post/like, join/leave),
+                       #   CreateClub (live: POST /clubs). All via the clubs client in api.ts.
     profile/           # Profile, EditProfile, Settings, Notifications
     search/            # SearchScreen
     owner/             # venue-owner console (the one feature with internal subfolders — it's
@@ -87,11 +90,13 @@ src/
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
                         # EmptyState/ErrorState/LoadingSkeleton, DemoBranch, Toast,
+                        # HourSelect, CourtPicker (pick which court to book/host),
                         # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap), … (see folder)
     components/layout/  # TabBar (mobile), Sidebar (desktop)
     components/forms/   # FormField, FormSelect, FormTierPicker
     hooks/              # useForm, useTheme, usePrefersReducedMotion, useVenueAvailability
-                        #   (per-hour court availability → greys out full hours in the time pickers)
+                        #   (per-hour availability → greys out taken hours; pass a courtId to
+                        #    scope it to that court, else the whole-venue pool)
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
                         # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
@@ -163,7 +168,16 @@ src/
   spots/skill); **My Games** = games you created or joined, as commitment cards with a status
   accent (HOSTING/GOING). `GameDetailsScreen` loads one via
   `getGame` and **Join** calls `joinGame` (soft-gated by `onRequireAuth`; spots/roster are
-  server-derived). `CreateGameScreen` is **venue-first**: a 3-step wizard (pick a priced court
+  server-derived). A game's roster **is** its lobby: when it fills the **host** sees a
+  "lobby full — ready to play" banner **and** gets a real notification in their inbox (the API
+  emits a `game_full` `Notification` to the creator on the join that fills the game — see the
+  Notifications note below); **joiners** get a **Leave game** action governed by the
+  `LOBBY_LEAVE_GRACE_PERIOD_DAYS` rules in `gameDisplay.ts` (`isLobbyFull`/`isWithinGracePeriod`/
+  `canLeaveLobby`) — leaveable while the lobby has openings, or when full and the game is still
+  >N days out; a full lobby inside the window locks the spot in (final/non-refundable). Joining
+  **within** that window first asks for confirmation in a no-refund modal. The rule is enforced
+  in the UI **and** on the server — `leaveGame` returns 409 `LOBBY_LOCKED` if a non-host tries to
+  leave a full lobby inside the window. `CreateGameScreen` is **venue-first**: a 3-step wizard (pick a priced court
   via `listAllVenues` + search → date + start/end time with a live `rate × hours` cost → game
   details) ending in a **payment** step that books the court (`createBooking` → `checkout`) and
   then posts a fixed-venue game (`createGame` with `venueId` + the booking's `bookingId`). With a
@@ -176,6 +190,28 @@ src/
   (client-side via `gameFilters.ts` — when/skill/type/has-openings; both edit one `GameFilters`
   state, the header button shows an active-filter count). The search box was removed; the
   Game-Details **chat** is still demo (no endpoint yet).
+- **Clubs are live** (reached via the home **Clubs** quick-action + a **Clubs** row in the
+  Profile/"You" tab — there is no Clubs *tab* in the TabBar; the FAB took that slot):
+  `ClubsScreen` lists your clubs (`listClubs({ mine: true })`) + a
+  Discover directory (`listClubs()`, your clubs filtered out), with client-side search.
+  `ClubDetailsScreen` (mounted with `clubId`) loads the club, members, and a
+  **Facebook-style feed** — members post (`createClubPost`) and like (`react/unreactClubPost`),
+  and anyone can join/leave (`joinClub`/`leaveClub`); the host can't leave. `CreateClubScreen`
+  posts to `createClub` then opens the new club. Gated by the `player.clubs.*` permissions
+  (create/join/post/react). Clubs client lives in `shared/lib/api.ts`. (No club-events surface —
+  the old Events tab was dropped; nested post replies aren't shown in the app yet.)
+- **Notifications are live** (Profile → bell): `NotificationsScreen` reads the user's real inbox
+  (`listNotifications`/`markNotificationRead`/`markAllNotificationsRead` → `/api/v1/notifications`,
+  in the API's `interactions` slice). Rows tap through when their `linkUrl` is a known app path
+  (currently `/games/:id` → game-details). Today the only producer is the games **`game_full`**
+  notification (host's lobby filled); gated by the existing `user.notifications.manage`.
+- **Web Push (real OS notifications)** delivers those alerts even with the app closed.
+  `shared/lib/push.ts` (`enablePush`/`refreshPushSubscription`/`unbindPushOnLogout`/`disablePush`)
+  subscribes the device via the service worker and registers it (`/api/v1/push/*` in `api.ts`); the
+  SW push/notificationclick handlers live in `public/push-sw.js` (pulled into the Workbox-generated
+  SW via `vite.config` `workbox.importScripts`). `NotificationsScreen` shows a "Turn on push" prompt
+  (gated by `user.notifications.manage`); `authStore` re-binds the device on login/restore and
+  unbinds on logout. The API signs + sends with VAPID when a game fills.
 - **Owner console:** users with `owner.access` see a **"My venues"** row in the Profile
   ("You") tab → `owner-venues`. `OwnerVenuesScreen` lists their venues (live, via
   `listOwnerVenues`); `OwnerVenueScreen` is a single screen with an in-screen tab strip
@@ -195,10 +231,15 @@ src/
   once located pulls the full directory (`listAllVenues`) to rank courts
   nearest-first with a distance on each card (heading flips to "Courts near you");
   with no location it falls back to the plain `listVenues({ pageSize: 6 })` list.
-  Only the check-in banner and the streak card stay demo (no presence/player-stats
-  backend).
+  The **check-in banner is live**: it shows the busiest venue right now from real
+  check-ins (`getCheckInHotspot`) and hides when nobody's checked in; players check
+  in/out on the court page (`CourtDetailsScreen`, gated by `player.venues.checkin`).
+  Only the streak card stays demo (no player-stats backend).
 - **Chrome:** TabBar (mobile) + Sidebar (desktop) render via `App.tsx`; hidden on
-  `landing`/`login`/`onboarding`. Create (`+`) is a TabBar action, not a separate FAB.
+  `landing`/`login`/`onboarding`. The mobile TabBar's five tabs are **Today · Games ·
+  Clubs · Nearby · You** (the old center **+** create-FAB was removed in favour of a Clubs
+  tab; create a game from the home "Create match" quick-action). The desktop Sidebar still
+  carries the create FAB (`onCreate`/`canCreate` props remain for it).
 
 ## Conventions (brief — full rules in CLAUDE.md / AGENTS.md)
 

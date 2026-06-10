@@ -240,6 +240,26 @@ export async function login(email: string, password: string): Promise<AppUser> {
   return user;
 }
 
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/** Create a new account (role defaults to player), then sign in: stores tokens + returns the user. */
+export async function register(payload: RegisterPayload): Promise<AppUser> {
+  const data = await request<AuthTokens & { user: ApiUser }>(`${AUTH_PREFIX}/register`, {
+    method: 'POST',
+    body: payload,
+  });
+  setTokens(data.accessToken, data.refreshToken);
+  const user = toAppUser(data.user);
+  storeUser(user);
+  return user;
+}
+
 /**
  * Exchange the stored refresh token for a fresh token pair. Returns true on
  * success. A 401 means the refresh token itself is invalid/expired → clear the
@@ -443,15 +463,72 @@ export async function getVenue(idOrSlug: string): Promise<ApiVenueDetail> {
 
 export interface VenueAvailability {
   date: string;
-  /** Number of courts at the venue. */
+  /** Number of courts the availability covers — the venue pool, or 1 when scoped to a court. */
   capacity: number;
+  /** Echoed back when the request was scoped to a single court. */
+  courtId?: string;
   /** Free-court count per clock-hour 0–23; a booking can start at `hour` when `free > 0`. */
   hours: { hour: number; free: number }[];
 }
 
-/** Per-hour court availability for a venue on a date — powers the booking time pickers (public). */
-export async function getVenueAvailability(idOrSlug: string, date: string): Promise<VenueAvailability> {
-  return request<VenueAvailability>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}/availability${toQuery({ date })}`);
+/**
+ * Per-hour court availability for a venue on a date — powers the booking time
+ * pickers (public). Pass `courtId` to scope it to one court (capacity 1), so the
+ * picker greys the hours *that court* is taken rather than the whole venue pool.
+ */
+export async function getVenueAvailability(idOrSlug: string, date: string, courtId?: string): Promise<VenueAvailability> {
+  return request<VenueAvailability>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}/availability${toQuery({ date, courtId })}`);
+}
+
+/* ─── Check-ins (live presence) ─────────────────────────────── */
+//
+// A check-in = a player marking themselves present at a venue ("I'm here now").
+// Presence is time-bounded server-side (active for a few hours). Powers the home
+// "who's playing" banner (hotspot) and the court page's check-in.
+
+const CHECKINS_PREFIX = '/api/v1/check-ins';
+
+export interface CheckInPlayer {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+}
+
+export interface CheckInHotspot {
+  venueId: string;
+  venueName: string;
+  venueSlug: string | null;
+  count: number;
+  players: CheckInPlayer[];
+}
+
+export interface VenueCheckIns {
+  venueId: string;
+  venueName: string;
+  count: number;
+  players: CheckInPlayer[];
+  /** Whether the current (signed-in) user is checked in here. */
+  checkedIn: boolean;
+}
+
+/** The busiest venue right now (for the home banner); null when nobody's checked in. */
+export async function getCheckInHotspot(): Promise<CheckInHotspot | null> {
+  return request<CheckInHotspot | null>(`${CHECKINS_PREFIX}/hotspot`);
+}
+
+/** Who's checked in at a venue right now, plus whether you are. */
+export async function getVenueCheckIns(idOrSlug: string): Promise<VenueCheckIns> {
+  return request<VenueCheckIns>(`${CHECKINS_PREFIX}${toQuery({ venueId: idOrSlug })}`, { auth: true });
+}
+
+/** Check in at a venue (current user). */
+export async function checkInToVenue(idOrSlug: string): Promise<{ venueId: string; checkedIn: boolean; count: number }> {
+  return request(`${CHECKINS_PREFIX}`, { method: 'POST', body: { venueId: idOrSlug }, auth: true });
+}
+
+/** Check out — leave wherever you were. */
+export async function checkOutOfVenue(idOrSlug?: string): Promise<{ checkedIn: boolean }> {
+  return request(`${CHECKINS_PREFIX}`, { method: 'DELETE', body: idOrSlug ? { venueId: idOrSlug } : undefined, auth: true });
 }
 
 /* ─── Owner (venue management) ──────────────────────────────── */
@@ -836,6 +913,175 @@ export async function leaveGame(id: string): Promise<ApiGame> {
 /** Host removes a player from the roster. */
 export async function kickPlayer(id: string, userId: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/kick`, { method: 'POST', body: { userId }, auth: true });
+}
+
+/* ─── Notifications (inbox) ──────────────────────────────────── */
+//
+// The current user's notification feed (e.g. "your lobby is full"). All routes
+// are self-scoped (`requireAuth`); the server stamps `createdAt`/`isRead`.
+
+const NOTIFICATIONS_PREFIX = '/api/v1/notifications';
+
+export interface ApiNotification {
+  id: string;
+  type?: string | null;
+  title: string;
+  body: string;
+  icon?: string | null;
+  /** A relative app path (e.g. "/games/<id>") the client maps to a screen. */
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAt?: string;
+}
+
+/** The current user's notifications, newest first (server caps at 50). */
+export async function listNotifications(): Promise<ApiNotification[]> {
+  const env = await rawRequest<ApiNotification[]>(NOTIFICATIONS_PREFIX, { auth: true });
+  return env.data ?? [];
+}
+
+/** Mark a single notification read. */
+export async function markNotificationRead(id: string): Promise<void> {
+  await request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/** Mark every unread notification read. */
+export async function markAllNotificationsRead(): Promise<void> {
+  await request(`${NOTIFICATIONS_PREFIX}/mark-all-read`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/* ─── Web Push (OS notifications) ────────────────────────────── */
+//
+// Device-level push so the user is alerted even with the app closed. The browser
+// subscription is registered with the API, which signs + sends via VAPID.
+
+const PUSH_PREFIX = '/api/v1/push';
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent?: string;
+}
+
+/** The VAPID public key the browser needs to create a push subscription. */
+export async function getPushPublicKey(): Promise<{ publicKey: string | null }> {
+  return request<{ publicKey: string | null }>(`${PUSH_PREFIX}/public-key`);
+}
+
+/** Register (or refresh) this device's push subscription. */
+export async function subscribePush(sub: PushSubscriptionPayload): Promise<void> {
+  await request(`${PUSH_PREFIX}/subscribe`, { method: 'POST', body: sub, auth: true });
+}
+
+/** Drop this device's subscription server-side (logout / turn-off). */
+export async function unsubscribePush(endpoint: string): Promise<void> {
+  await request(`${PUSH_PREFIX}/unsubscribe`, { method: 'POST', body: { endpoint }, auth: true });
+}
+
+/* ─── Clubs (communities + feed) ─────────────────────────────── */
+//
+// A club is a community with members and a Facebook-style post feed. Browse +
+// detail + feed are public; joining, posting, and reacting require auth (gated by
+// player.clubs.* permissions server-side too).
+
+const CLUBS_PREFIX = '/api/v1/clubs';
+
+export interface ClubPerson {
+  id: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface ApiClub {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  visibility: 'public' | 'private';
+  memberCount: number;
+  postCount: number;
+  host: ClubPerson | null;
+  isMember: boolean;
+  isHost: boolean;
+  joinRequestStatus: string | null;
+}
+
+export interface ApiClubMember {
+  id: string;
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: 'host' | 'member';
+  joinedAt?: string | null;
+}
+
+export interface ApiClubPost {
+  id: string;
+  author: ClubPerson | null;
+  body: string | null;
+  reactionCount: number;
+  replyCount: number;
+  viewerReacted: boolean;
+  isDeleted: boolean;
+  createdAt?: string | null;
+}
+
+/** Clubs list — `mine` = clubs you're a member of; otherwise the public directory. */
+export async function listClubs(params: { mine?: boolean } = {}): Promise<ApiClub[]> {
+  const env = await rawRequest<ApiClub[]>(`${CLUBS_PREFIX}${toQuery({ ...params })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** A single club (by slug or _id), with viewer membership flags. */
+export async function getClub(idOrSlug: string): Promise<ApiClub> {
+  return request<ApiClub>(`${CLUBS_PREFIX}/${encodeURIComponent(idOrSlug)}`, { auth: true });
+}
+
+export interface CreateClubPayload {
+  name: string;
+  description?: string;
+  visibility?: 'public' | 'private';
+}
+
+/** Create a club (you become the host + first member). */
+export async function createClub(body: CreateClubPayload): Promise<ApiClub> {
+  return request<ApiClub>(CLUBS_PREFIX, { method: 'POST', body, auth: true });
+}
+
+/** Join a club → `{ status: 'member' | 'pending' }` (private clubs request approval). */
+export async function joinClub(id: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`${CLUBS_PREFIX}/${id}/join`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Leave a club. */
+export async function leaveClub(id: string): Promise<{ left: boolean }> {
+  return request<{ left: boolean }>(`${CLUBS_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
+}
+
+/** A club's members. */
+export async function listClubMembers(id: string): Promise<ApiClubMember[]> {
+  const env = await rawRequest<ApiClubMember[]>(`${CLUBS_PREFIX}/${id}/members`, { auth: true });
+  return env.data ?? [];
+}
+
+/** A club's top-level feed posts (newest first). */
+export async function listClubFeed(id: string): Promise<ApiClubPost[]> {
+  const env = await rawRequest<ApiClubPost[]>(`${CLUBS_PREFIX}/${id}/feed`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Post to a club's feed. */
+export async function createClubPost(id: string, body: string): Promise<ApiClubPost> {
+  return request<ApiClubPost>(`${CLUBS_PREFIX}/${id}/posts`, { method: 'POST', body: { body }, auth: true });
+}
+
+/** Like / unlike a post. */
+export async function reactClubPost(id: string, postId: string): Promise<unknown> {
+  return request(`${CLUBS_PREFIX}/${id}/posts/${postId}/react`, { method: 'POST', body: {}, auth: true });
+}
+export async function unreactClubPost(id: string, postId: string): Promise<unknown> {
+  return request(`${CLUBS_PREFIX}/${id}/posts/${postId}/react`, { method: 'DELETE', auth: true });
 }
 
 /* ─── Bookings + checkout ───────────────────────────────────── */

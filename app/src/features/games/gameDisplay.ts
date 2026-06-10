@@ -97,6 +97,47 @@ export function spotsLabel(g: Pick<ApiGame, 'spotsLeft'>): string {
   return n > 0 ? `${n} left` : 'Full';
 }
 
+/* ─── Lobby leave / grace-period rules ───────────────────────── */
+//
+// A game's roster is its "lobby". Joiners can drop out freely until the lobby
+// fills up; once it's FULL their spot is only refundable (i.e. leaveable) while
+// the game is still comfortably in the future. Inside the grace window a full
+// lobby is locked in — the host's court is committed, so the booking is final.
+// Change this one constant to retune the window everywhere it's enforced.
+export const LOBBY_LEAVE_GRACE_PERIOD_DAYS = 3;
+
+/** Whole days from today (local midnight) until the game date; null when undated. */
+export function daysUntilGame(g: Pick<ApiGame, 'date'>): number | null {
+  if (!g.date) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(`${g.date}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+}
+
+/** True once every spot is taken (the lobby is full). */
+export function isLobbyFull(g: Pick<ApiGame, 'spotsLeft'>): boolean {
+  return (g.spotsLeft ?? 0) <= 0;
+}
+
+/** The game date is inside the no-refund window — within the grace period (≤ N
+ *  days away, including today/overdue). An undated game can't be locked in, so
+ *  it's treated as outside the window. */
+export function isWithinGracePeriod(g: Pick<ApiGame, 'date'>): boolean {
+  const days = daysUntilGame(g);
+  return days != null && days <= LOBBY_LEAVE_GRACE_PERIOD_DAYS;
+}
+
+/** Whether a joiner may still leave the lobby:
+ *  - lobby not full → always leaveable (even within the grace period)
+ *  - lobby full but the game is still more than N days away → leaveable
+ *  - lobby full AND within the grace period → locked in (final, non-refundable). */
+export function canLeaveLobby(g: Pick<ApiGame, 'spotsLeft' | 'date'>): boolean {
+  if (!isLobbyFull(g)) return true;
+  return !isWithinGracePeriod(g);
+}
+
 /* ─── Status display ─────────────────────────────────────────── */
 
 export type GameTone = 'lime' | 'blue' | 'coral' | 'muted';

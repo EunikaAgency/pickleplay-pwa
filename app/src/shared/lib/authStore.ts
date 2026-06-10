@@ -9,11 +9,14 @@ import {
   getStoredUser,
   hasStoredSession,
   login as apiLogin,
+  register as apiRegister,
   logout as apiLogout,
   updateMe,
   type ProfileUpdate,
+  type RegisterPayload,
 } from './api';
 import type { AppUser } from './permissions';
+import { refreshPushSubscription, unbindPushOnLogout } from './push';
 
 interface AuthState {
   user: AppUser | null;
@@ -28,6 +31,9 @@ interface AuthState {
 
   /** Log in with credentials; stores tokens + user. Throws (ApiError) on failure. */
   login: (email: string, password: string) => Promise<AppUser>;
+
+  /** Create a new account (defaults to the player role) and sign in. Throws (ApiError) on failure. */
+  register: (payload: RegisterPayload) => Promise<AppUser>;
 
   /**
    * Persist profile edits to the account (`PATCH /me`) and update the store so
@@ -67,6 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // refresh token is *also* gone/expired — i.e. the session is truly over.
       const user = await fetchCurrentUser();
       set({ user, isLoggedIn: true });
+      void refreshPushSubscription(); // re-bind this device's push to the restored user
       return true;
     } catch (err) {
       if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
@@ -83,6 +90,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (email, password) => {
     const user = await apiLogin(email, password);
+    set({ user, isLoggedIn: true });
+    void refreshPushSubscription(); // re-bind this device's push to the new user
+    return user;
+  },
+
+  register: async (payload) => {
+    const user = await apiRegister(payload);
     set({ user, isLoggedIn: true });
     return user;
   },
@@ -109,6 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    unbindPushOnLogout(); // best-effort: drop this device's push before the token is cleared
     apiLogout();
     set({ user: null, isLoggedIn: false });
   },

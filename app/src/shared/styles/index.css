@@ -621,6 +621,7 @@
 }
 .sticky-cta .btn-join:active { transform: scale(0.96); }
 .sticky-cta .btn-join.joined { background: var(--primary); color: white; box-shadow: 0 6px 18px -6px rgba(0,64,224,0.55); }
+.sticky-cta .btn-join.btn-leave { background: var(--coral-soft); color: var(--coral); box-shadow: none; }
 .sticky-cta .btn-join:disabled { opacity: 0.85; cursor: default; }
 
 /* ─── Detail hero ─── */
