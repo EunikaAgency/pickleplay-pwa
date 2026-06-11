@@ -190,8 +190,8 @@ src/
   (client-side via `gameFilters.ts` — when/skill/type/has-openings; both edit one `GameFilters`
   state, the header button shows an active-filter count). The search box was removed; the
   Game-Details **chat** is still demo (no endpoint yet).
-- **Clubs are live** (reached via the home **Clubs** quick-action + a **Clubs** row in the
-  Profile/"You" tab — there is no Clubs *tab* in the TabBar; the FAB took that slot):
+- **Clubs are live** (reached via the **Clubs** tab in the TabBar, plus the home **Clubs**
+  quick-action and a **Clubs** row in the Profile/"You" tab):
   `ClubsScreen` lists your clubs (`listClubs({ mine: true })`) + a
   Discover directory (`listClubs()`, your clubs filtered out), with client-side search.
   `ClubDetailsScreen` (mounted with `clubId`) loads the club, members, and a
