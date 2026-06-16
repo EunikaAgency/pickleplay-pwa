@@ -210,7 +210,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
                           {canBookings && (
                             <button
                               type="button"
-                              onClick={() => onNavigate('owner-bookings')}
+                              onClick={() => onNavigate('owner-bookings', {})}
                               className="h-8 px-3 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] font-bold text-[12px]"
                             >
                               Bookings

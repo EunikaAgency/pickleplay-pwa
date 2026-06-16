@@ -59,7 +59,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
   const {
     canAnalytics, venues, status, retry, combined, combinedRevenueDaily,
-    statsReady, glanceFor, pending, upcoming, removeBooking,
+    monthBookings, structural, statsReady, glanceFor, pending, upcoming, removeBooking,
   } = useOwnerDashboard({ withBookings: canBookings });
   const [toast, setToast] = useState(false);
 
@@ -69,8 +69,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
 
   const quick: { icon: string; label: string; onPress: () => void }[] = [
     { icon: 'storefront', label: 'My venues', onPress: () => onNavigate('owner-venues') },
-    ...(canBookings ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings') }] : []),
-    ...(canAnalytics ? [{ icon: 'bar_chart', label: 'Insights', onPress: () => onNavigate('owner-insights') }] : []),
+    ...(canBookings ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
     ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];
 
@@ -156,8 +155,11 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
                 <div className="relative z-[2] mt-5">
                   {combinedRevenueDaily.length > 1 && <Sparkline points={combinedRevenueDaily} color="rgba(255,255,255,0.92)" />}
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-[12px] opacity-90">{venues.length} venue{venues.length === 1 ? '' : 's'} · {statsReady ? money(combined.week) : '₱0'} this week</span>
-                    <span className="h-10 px-5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-extrabold text-[14px] inline-flex items-center">Manage venues</span>
+                    <div className="flex flex-col gap-0.5 text-[12px] opacity-90 min-w-0">
+                      <span className="font-extrabold">{statsReady ? monthBookings : 0} booking{monthBookings === 1 ? '' : 's'} this month</span>
+                      <span>{venues.length} venue{venues.length === 1 ? '' : 's'} · {structural.courts} court{structural.courts === 1 ? '' : 's'} · {statsReady ? money(combined.week) : '₱0'} this week</span>
+                    </div>
+                    <span className="h-10 px-5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-extrabold text-[clamp(12px,3.5vw,14px)] whitespace-nowrap shrink-0 inline-flex items-center">Manage my venues</span>
                   </div>
                 </div>
               </button>
@@ -175,14 +177,28 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
               ))}
             </div>
 
-            {/* Combined KPIs */}
+            {/* My revenue (combined KPIs) */}
             {canAnalytics && (
-              <div className="grid grid-cols-2 gap-3">
-                <OwnerStat label="Revenue this month" value={statsReady ? money(combined.month) : '—'} icon="payments" tone="primary" />
-                <OwnerStat label="Revenue this week" value={statsReady ? money(combined.week) : '—'} icon="trending_up" tone="lime" />
-                <OwnerStat label="Bookings today" value={statsReady ? combined.todayBookings : '—'} icon="calendar" tone="neutral" />
-                <OwnerStat label="Awaiting approval" value={statsReady ? pendingCount : '—'} icon="bell" tone="coral" />
-              </div>
+              <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="hd-2">My revenue</div>
+                  {/* Light "floating" pill — the Insights entry point (replaces the
+                      old Quick-actions Insights button). */}
+                  <button
+                    onClick={() => onNavigate('owner-insights')}
+                    aria-label="See insights"
+                    className="inline-flex items-center gap-1 h-8 px-3 rounded-full bg-[var(--surface)] text-[var(--primary)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] text-[12px] font-extrabold active:scale-95 transition-transform"
+                  >
+                    Insights <Icon name="forward" size={14} />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <OwnerStat label="Revenue this month" value={statsReady ? money(combined.month) : '—'} icon="payments" tone="primary" onClick={() => onNavigate('owner-insights')} />
+                  <OwnerStat label="Revenue this week" value={statsReady ? money(combined.week) : '—'} icon="trending_up" tone="lime" onClick={() => onNavigate('owner-insights')} />
+                  <OwnerStat label="Bookings today" value={statsReady ? combined.todayBookings : '—'} icon="calendar" tone="neutral" onClick={() => { if (canBookings) onNavigate('owner-bookings', {}); else onNavigate('owner-insights'); }} />
+                  <OwnerStat label="Awaiting approval" value={statsReady ? pendingCount : '—'} icon="bell" tone="coral" onClick={() => { if (canBookings) onNavigate('owner-bookings', { status: 'pending_approval' }); else onNavigate('owner-insights'); }} />
+                </div>
+              </section>
             )}
 
             {/* Awaiting approval */}
@@ -204,19 +220,28 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
             {canBookings && upcoming.length > 0 && (
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="hd-2">Upcoming bookings</div>
-                  <button className="text-[var(--primary)] font-bold text-[13px]" onClick={() => onNavigate('owner-bookings')}>View all</button>
+                  <div className="hd-2">Bookings</div>
+                  <button className="text-[var(--primary)] font-bold text-[13px]" onClick={() => onNavigate('owner-bookings', {})}>View all</button>
                 </div>
-                <div className="space-y-2.5">
-                  {upcoming.slice(0, 4).map((b) => (
-                    <div key={b.id} className="bg-[var(--surface)] rounded-[18px] p-3.5 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-[14px] text-[var(--ink)] truncate">{b.userName || 'Player'}</div>
-                        <div className="t-sm truncate">{b.venueName} · {prettyDate(b.date)}{b.startTime ? ` · ${to12h(b.startTime)}` : ''}</div>
+                {/* Up to 10 bookings in a fixed scroll box ~4 cards tall — keeps
+                    the section compact while letting the rest scroll within.
+                    #1 peek: the box height lands mid-card so the next row peeks.
+                    #2 fade: a bottom gradient (only when overflowing) hints scroll. */}
+                <div className="relative">
+                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto scrollbar-none">
+                    {upcoming.slice(0, 10).map((b) => (
+                      <div key={b.id} className="bg-[var(--surface)] rounded-[18px] p-3.5 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-[14px] text-[var(--ink)] truncate">{b.userName || 'Player'}</div>
+                          <div className="t-sm truncate">{b.venueName} · {prettyDate(b.date)}{b.startTime ? ` · ${to12h(b.startTime)}` : ''}</div>
+                        </div>
+                        <div className="font-semibold text-[14px] text-[var(--ink)] tabular-nums shrink-0">{money(b.amount)}</div>
                       </div>
-                      <div className="font-semibold text-[14px] text-[var(--ink)] tabular-nums shrink-0">{money(b.amount)}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  {upcoming.length > 4 && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[var(--bg)] to-transparent" />
+                  )}
                 </div>
               </section>
             )}
@@ -224,7 +249,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
             {/* Your venues */}
             <section className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="hd-2">Your venues</div>
+                <div className="hd-2">My venues</div>
                 {venues.length > 4 && <button className="text-[var(--primary)] font-bold text-[13px]" onClick={() => onNavigate('owner-venues')}>View all</button>}
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

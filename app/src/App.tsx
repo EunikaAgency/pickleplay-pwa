@@ -39,7 +39,7 @@ import { DemoStateProvider, useDemoState } from './shared/lib/demoState';
 import { userHasPermission, type Permission } from './shared/lib/permissions';
 import { useAuthStore } from './shared/lib/authStore';
 import { useTheme } from './shared/hooks/useTheme';
-import { tabScreens, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
+import { tabScreens, screenFromPath, deepLinkParent, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
 
 const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'create-game': 'player.games.create',
@@ -98,10 +98,19 @@ function AppInner() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const restoreSession = useAuthStore((s) => s.restore);
   const logout = useAuthStore((s) => s.logout);
-  // Cold start drops guests straight onto the home tab so they can browse.
-  const [screen, setScreen] = useState<Screen>({ id: 'home' });
-  const [activeTab, setActiveTab] = useState<TabId>('home');
-  const [history, setHistory] = useState<Screen[]>([]);
+  // A deep link (notification click / shared URL) opens the PWA at a path like
+  // `/games/<id>`; resolve it to the initial screen, else cold-start on home so
+  // guests can browse. Detail-screen deep links seed a Back target so the back
+  // arrow returns somewhere sane instead of dead-ending.
+  const [screen, setScreen] = useState<Screen>(() => screenFromPath(window.location.pathname) ?? { id: 'home' });
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const s = screenFromPath(window.location.pathname);
+    return s && isTabScreen(s.id) ? s.id : 'home';
+  });
+  const [history, setHistory] = useState<Screen[]>(() => {
+    const s = screenFromPath(window.location.pathname);
+    return s && !isTabScreen(s.id) ? [deepLinkParent(s.id)] : [];
+  });
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
@@ -163,6 +172,15 @@ function AppInner() {
   useEffect(() => {
     restoreSession();
   }, [restoreSession]);
+
+  // Consume the deep-link path once: the screen-stack owns navigation (not the
+  // URL), so reset to `/` after the initial screen is resolved — otherwise a
+  // refresh or a service-worker re-navigation would re-trigger the same deep link.
+  useEffect(() => {
+    if (window.location.pathname !== '/') {
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   // Called by LoginScreen after the store's `login` action has set the user.
   // Only first-time users (who haven't onboarded on this account yet) see the
@@ -262,7 +280,7 @@ function AppInner() {
       case 'court-details':
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
-        return <ClubDetailsScreen key={screen.params.id} clubId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
+        return <ClubDetailsScreen key={screen.params.id} clubId={screen.params.id} invited={screen.params.invited} onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
         return <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-game':
@@ -301,7 +319,7 @@ function AppInner() {
       case 'owner-new-venue':
         return <OwnerNewVenueScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-bookings':
-        return <OwnerBookingsScreen onNavigate={navigate} onBack={goBack} />;
+        return <OwnerBookingsScreen initialStatus={screen.params?.status as 'all' | 'pending_approval' | 'confirmed' | 'cancelled' | undefined} onNavigate={navigate} onBack={goBack} />;
       case 'owner-insights':
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-notifications':
@@ -328,7 +346,9 @@ function AppInner() {
         <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} />
       )}
 
-      {!hideChrome && <InstallPrompt hasBottomChrome={showTabBar} />}
+      {/* Tab screens only: detail/wizard screens carry a sticky bottom CTA the
+          banner would otherwise float over and intercept taps on. */}
+      {showTabBar && <InstallPrompt hasBottomChrome />}
 
       <AuthPromptSheet
         open={authIntent !== null}

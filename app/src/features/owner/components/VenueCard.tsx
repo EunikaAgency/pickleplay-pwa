@@ -1,5 +1,5 @@
 import { Icon } from '../../../shared/components/ui/Icon';
-import { locationLine } from '../../../shared/lib/venueDisplay';
+import { locationLine, venueImage } from '../../../shared/lib/venueDisplay';
 import { money } from '../../bookings/bookingDisplay';
 import type { ApiVenue } from '../../../shared/lib/api';
 import type { Glance } from '../hooks/useOwnerDashboard';
@@ -11,11 +11,14 @@ const CARD_GRADIENT = 'linear-gradient(135deg, #0040e0, #6c83ff)';
 // Shared by OwnerVenuesScreen and OwnerHomeScreen.
 export function VenueCard({ venue, onOpen, glance }: { venue: ApiVenue; onOpen: () => void; glance: Glance | null }) {
   const state = venue.state || 'unclaimed';
+  // Prefer the media-derived image, fall back to mainImageUrl (resolved against
+  // the API asset host) — same as the player + filter-sheet cards.
+  const img = venueImage(venue);
   return (
     <button type="button" onClick={onOpen} className="card p-0 text-left w-full">
       <div className="relative h-28" style={{ background: CARD_GRADIENT }}>
-        {venue.image ? (
-          <img src={venue.image} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        {img ? (
+          <img src={img} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-white/40">
             <Icon name="paddle" size={40} />

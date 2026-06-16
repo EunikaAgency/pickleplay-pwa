@@ -77,7 +77,7 @@ function bookingNotif(b: OwnerBookingRow): OwnerNotif {
     kind: 'booking' as const,
     timestamp: created,
     timeLabel: timeAgo(created),
-    target: { id: 'owner-bookings' } as Screen,
+    target: { id: 'owner-bookings', params: {} } as Screen,
   };
   switch (b.status) {
     case 'pending_approval':

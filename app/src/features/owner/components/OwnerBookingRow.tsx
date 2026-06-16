@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Avatar } from '../../../shared/components/ui/Avatar';
 import { updateBookingStatus, type ApiBooking, type BookingStatus } from '../../../shared/lib/api';
 import { money, prettyDate, to12h, statusChip } from '../../bookings/bookingDisplay';
 
@@ -43,16 +44,25 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged }: {
   };
 
   const st = booking.status;
+  const courtLabel = booking.courtName || (booking.courtNumber ? `Court ${booking.courtNumber}` : null);
   return (
     <div className="rounded-xl border-[0.5px] border-[var(--hairline)] p-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-semibold text-[15px] text-[var(--ink)] truncate">{booking.userName || 'Player'}</div>
-          {showVenue && booking.venueName && <div className="text-[12px] font-bold text-[var(--primary)] truncate">{booking.venueName}</div>}
-          <div className="t-sm">
-            {prettyDate(booking.date)}
-            {booking.startTime ? ` · ${to12h(booking.startTime)}${booking.endTime ? `–${to12h(booking.endTime)}` : ''}` : ''}
-            {booking.playerCount ? ` · ${booking.playerCount}p` : ''}
+        <div className="flex items-start gap-2.5 min-w-0">
+          <Avatar src={booking.userAvatarUrl} name={booking.userName || 'Player'} size={38} className="shrink-0" />
+          <div className="min-w-0">
+            <div className="font-semibold text-[15px] text-[var(--ink)] truncate">{booking.userName || 'Player'}</div>
+            {showVenue && booking.venueName && (
+              <div className="text-[12px] font-bold text-[var(--primary)] truncate">
+                {booking.venueName}{courtLabel ? ` · ${courtLabel}` : ''}
+              </div>
+            )}
+            <div className="t-sm">
+              {/* Court leads the meta line only when it isn't already shown beside the venue. */}
+              {(!showVenue || !booking.venueName) && courtLabel ? `${courtLabel} · ` : ''}
+              {prettyDate(booking.date)}
+              {booking.startTime ? ` · ${to12h(booking.startTime)}${booking.endTime ? `–${to12h(booking.endTime)}` : ''}` : ''}
+            </div>
           </div>
         </div>
         <div className="text-right shrink-0">

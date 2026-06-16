@@ -146,6 +146,18 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
     );
   }, [analytics]);
 
+  // Bookings that happened in the current calendar month, summed across venues.
+  // revenueDaily carries a per-day `bookings` count over a ~90-day window, so
+  // the current month is always fully covered.
+  const monthBookings = useMemo(() => {
+    const prefix = todayYMD().slice(0, 7); // YYYY-MM
+    let n = 0;
+    for (const a of Object.values(analytics)) {
+      for (const d of a.revenueDaily) if (d.date.startsWith(prefix)) n += d.bookings;
+    }
+    return n;
+  }, [analytics]);
+
   // Daily revenue summed across venues by date → ascending series for a sparkline.
   const combinedRevenueDaily = useMemo(() => {
     const map = new Map<string, number>();
@@ -190,7 +202,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
   return {
     ownerId, canAnalytics, venues, status, retry,
     analyticsByVenue: analytics,
-    combined, combinedRevenueDaily, statsReady, structural, glanceFor,
+    combined, combinedRevenueDaily, monthBookings, statsReady, structural, glanceFor,
     bookings, pending, upcoming, removeBooking, updateBookingRow,
     games, reviews,
   };

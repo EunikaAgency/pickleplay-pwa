@@ -19,8 +19,15 @@ const ASSET_BASE = (import.meta.env.VITE_API_BASE_URL || 'https://pickleballer-a
 /** Resolve an API image path to an absolute URL; passes absolute URLs through, '' when empty. */
 export function apiImageUrl(path?: string | null): string {
   if (!path) return '';
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${ASSET_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  const v = path.trim();
+  // Guard against non-image junk in the seed data — placeholder text ("Unknown")
+  // and social-media page links stored where an image URL was expected. Using
+  // them as an <img src> just 404s / gets ORB-blocked, so fall back to the
+  // gradient (empty) instead of spamming the console.
+  if (!v || /^unknown$/i.test(v)) return '';
+  if (/^https?:\/\/(www\.)?(instagram|facebook|fb|tiktok|twitter|x|youtube|youtu)\.[a-z.]+/i.test(v)) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  return `${ASSET_BASE}${v.startsWith('/') ? v : `/${v}`}`;
 }
 
 const ACCESS_TOKEN_KEY = 'pb-access-token';
@@ -1059,6 +1066,11 @@ export async function leaveClub(id: string): Promise<{ left: boolean }> {
   return request<{ left: boolean }>(`${CLUBS_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
 }
 
+/** Delete a club (host-only; cascades members/posts/reactions server-side). */
+export async function deleteClub(id: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`${CLUBS_PREFIX}/${id}`, { method: 'DELETE', auth: true });
+}
+
 /** A club's members. */
 export async function listClubMembers(id: string): Promise<ApiClubMember[]> {
   const env = await rawRequest<ApiClubMember[]>(`${CLUBS_PREFIX}/${id}/members`, { auth: true });
@@ -1098,6 +1110,8 @@ export interface ApiBooking {
   venueName?: string | null;
   venueSlug?: string | null;
   courtId?: string | null;
+  courtNumber?: string | null;     // populated by the owner bookings endpoint
+  courtName?: string | null;       // populated by the owner bookings endpoint
   date?: string | null;            // YYYY-MM-DD
   startTime?: string | null;       // "18:30"
   endTime?: string | null;
@@ -1108,6 +1122,7 @@ export interface ApiBooking {
   cancellationReason?: string | null;
   createdAt?: string | null;
   userName?: string | null;        // populated by the owner bookings endpoint only
+  userAvatarUrl?: string | null;   // populated by the owner bookings endpoint only
 }
 
 export interface CreateBookingPayload {

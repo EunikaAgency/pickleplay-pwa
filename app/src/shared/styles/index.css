@@ -1109,6 +1109,13 @@
   margin: 0 auto;
 }
 .sheet.open { transform: translateY(0); }
+/* Opt-in: animate height changes too, matching the map-sheet's easing/duration
+   (the slide transform is preserved). Used by the Nearby filter sheet. */
+.sheet.sheet-anim-height {
+  transition:
+    transform .3s cubic-bezier(0.4, 0.0, 0.2, 1),
+    height .3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
 .sheet .sheet-handle {
   width: 36px; height: 5px;
   background: var(--surface-3);

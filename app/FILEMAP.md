@@ -68,7 +68,9 @@ src/
     owner/             # venue-owner console (the one feature with internal subfolders — it's
                        # ~3x any other slice). Root = the 8 screens: OwnerHome (the Home tab for
                        # owners — dashboard: revenue hero + KPIs + cross-venue pending/upcoming +
-                       # venue cards), OwnerBookings (all-venues inbox) + OwnerInsights (all-venues
+                       # venue cards), OwnerBookings (all-venues inbox: When tabs
+                       # upcoming/ongoing/past + OwnerBookingsFilterSheet for
+                       # status/sort/venue) + OwnerInsights (all-venues
                        # analytics: combined trends + per-venue compare) — the Home Bookings/Insights
                        # buttons open these; OwnerGames (the Games tab for owners — "Your courts":
                        # Schedule agenda of bookings+games per day + Games list at their venues);

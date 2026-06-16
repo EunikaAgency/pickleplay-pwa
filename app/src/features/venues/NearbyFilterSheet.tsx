@@ -29,6 +29,7 @@ export function NearbyFilterSheet({ open, onClose, filters, onChange, resultCoun
       title="Filter courts"
       subtitle="Pick your kind of court."
       height="74dvh"
+      sheetClassName="sheet-anim-height"
       footer={
         <div className="flex gap-2.5">
           <Button variant="outline" fullWidth className="flex-1" onClick={() => onChange(makeDefaultFilters())}>

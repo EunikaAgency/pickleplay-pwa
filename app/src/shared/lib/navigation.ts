@@ -9,7 +9,7 @@ export type Screen =
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
   | { id: 'court-details'; params: { id: string } }
-  | { id: 'club-details'; params: { id: string } }
+  | { id: 'club-details'; params: { id: string; invited?: boolean } }
   | { id: 'create-game' }
   | { id: 'edit-game'; params: { id: string } }
   | { id: 'my-games' }
@@ -24,7 +24,7 @@ export type Screen =
   | { id: 'owner-venues' }
   | { id: 'owner-venue'; params: { id: string; tab?: string } }
   | { id: 'owner-new-venue' }
-  | { id: 'owner-bookings' }
+  | { id: 'owner-bookings'; params: { status?: string } }
   | { id: 'owner-insights' }
   | { id: 'owner-notifications' };
 
@@ -32,6 +32,41 @@ export type ScreenId = Screen['id'];
 
 export const tabScreens = ['home', 'nearby', 'games', 'clubs', 'profile'] as const;
 export type TabId = (typeof tabScreens)[number];
+
+/**
+ * Map a URL path to a Screen for deep links — notification clicks open the PWA at
+ * paths like `/games/<id>` or `/clubs/<slug>` (see the API's `linkUrl`s), and the
+ * custom screen-stack nav needs to turn that path into the right screen on load.
+ * Returns null for `/` or anything without a matching screen (→ default home).
+ */
+export function screenFromPath(pathname: string): Screen | null {
+  const [head, tail] = pathname.replace(/^\/+|\/+$/g, '').split('/');
+  if (!head) return null;
+  const isObjectId = (s: string | undefined): s is string => !!s && /^[0-9a-fA-F]{24}$/.test(s);
+  switch (head) {
+    case 'games':
+      return isObjectId(tail) ? { id: 'game-details', params: { id: tail } } : { id: 'games' };
+    case 'clubs':
+      // Clubs link by slug or id — ClubDetails resolves either via getClub().
+      // Landing here from a link is an invite → flag it so the club page can
+      // greet the visitor with a "you're invited" prompt.
+      return tail ? { id: 'club-details', params: { id: tail, invited: true } } : { id: 'clubs' };
+    case 'venues':
+    case 'nearby':
+      return tail ? { id: 'court-details', params: { id: tail } } : { id: 'nearby' };
+    case 'notifications':
+      return { id: 'notifications' };
+    default:
+      return null;
+  }
+}
+
+/** A sensible Back target to seed history with when a deep link lands on a detail screen. */
+export function deepLinkParent(id: ScreenId): Screen {
+  if (id === 'club-details') return { id: 'clubs' };
+  if (id === 'court-details') return { id: 'nearby' };
+  return { id: 'home' };
+}
 
 type ScreensWithParams = Extract<Screen, { params: unknown }>;
 type ScreensWithoutParams = Exclude<Screen, { params: unknown }>;
