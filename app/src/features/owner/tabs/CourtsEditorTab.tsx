@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Chip } from '../../../shared/components/ui/Chip';
 import { OwnerSection } from '../components/OwnerSection';
@@ -7,7 +7,10 @@ import {
   createCourt,
   updateCourt,
   deleteCourt,
+  uploadCourtMedia,
+  apiImageUrl,
   entityId,
+  ApiError,
   type OwnerCourt,
 } from '../../../shared/lib/api';
 
@@ -22,18 +25,39 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const [surfaceType, setSurfaceType] = useState(court.surfaceType || '');
   const [indoor, setIndoor] = useState(!!court.indoor);
   const [isActive, setIsActive] = useState(court.isActive !== false);
+  const [mainImageUrl, setMainImageUrl] = useState(court.mainImageUrl || '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [busy, setBusy] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
+  const [photoErr, setPhotoErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const save = async () => {
     setStatus('saving');
     try {
-      const updated = await updateCourt(id, { courtNumber, surfaceType: surfaceType || undefined, indoor, isActive });
+      const updated = await updateCourt(id, { courtNumber, surfaceType: surfaceType || undefined, indoor, isActive, mainImageUrl });
       setStatus('saved');
       onSaved(updated);
       setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1800);
     } catch {
       setStatus('error');
+    }
+  };
+
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoStatus('uploading');
+    setPhotoErr('');
+    try {
+      const media = await uploadCourtMedia(id, file);
+      if (media?.url) { setMainImageUrl(media.url); setStatus('idle'); }
+      setPhotoStatus('idle');
+    } catch (err) {
+      setPhotoStatus('error');
+      setPhotoErr(err instanceof ApiError && err.status === 413 ? 'That file is too large (max 10MB).' : 'Upload failed. Try again.');
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
     }
   };
 
@@ -47,11 +71,33 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     }
   };
 
-  const dirty = courtNumber !== (court.courtNumber || '') || surfaceType !== (court.surfaceType || '') || indoor !== !!court.indoor || isActive !== (court.isActive !== false);
+  const dirty = courtNumber !== (court.courtNumber || '') || surfaceType !== (court.surfaceType || '') || indoor !== !!court.indoor || isActive !== (court.isActive !== false) || mainImageUrl !== (court.mainImageUrl || '');
 
   return (
     <div className="rounded-xl border-[0.5px] border-[var(--hairline)] p-3 space-y-3">
-      <div className="flex gap-3">
+      <div className="flex items-start gap-3">
+        <div className="field p-0! shrink-0">
+          <label className="lbl">Photo</label>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={photoStatus === 'uploading'}
+            aria-label={`Set photo for court ${courtNumber}`}
+            className="relative h-16 w-16 overflow-hidden rounded-xl bg-[var(--surface-2)] flex items-center justify-center text-[var(--muted)] disabled:opacity-60"
+          >
+            {mainImageUrl ? (
+              <img src={apiImageUrl(mainImageUrl)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            ) : (
+              <Icon name="camera" size={22} />
+            )}
+            {photoStatus === 'uploading' && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold">…</span>}
+          </button>
+          {mainImageUrl && photoStatus !== 'uploading' && (
+            <button type="button" onClick={() => { setMainImageUrl(''); setStatus('idle'); }} className="mt-1 t-sm text-[var(--muted)] hover:text-[var(--coral)] font-semibold">Remove</button>
+          )}
+        </div>
+        <div className="flex-1 flex gap-3">
         <div className="field p-0! w-20">
           <label className="lbl">Court #</label>
           <input className="control" value={courtNumber} maxLength={10} onChange={(e) => { setCourtNumber(e.target.value); setStatus('idle'); }} />
@@ -60,7 +106,9 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
           <label className="lbl">Surface</label>
           <input className="control" value={surfaceType} maxLength={50} onChange={(e) => { setSurfaceType(e.target.value); setStatus('idle'); }} placeholder="hard, wood…" />
         </div>
+        </div>
       </div>
+      {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold">{photoErr}</div>}
       <div className="flex flex-wrap items-center gap-2">
         <Chip selected={indoor} onClick={() => { setIndoor((v) => !v); setStatus('idle'); }}>{indoor && <Icon name="check" size={12} />} Indoor</Chip>
         <Chip selected={isActive} onClick={() => { setIsActive((v) => !v); setStatus('idle'); }}>{isActive && <Icon name="check" size={12} />} Active</Chip>

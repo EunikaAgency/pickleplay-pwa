@@ -1,4 +1,4 @@
-import type { ApiCourt } from '../../lib/api';
+import { apiImageUrl, type ApiCourt } from '../../lib/api';
 
 interface CourtPickerProps {
   courts: ApiCourt[];
@@ -30,6 +30,7 @@ export function CourtPicker({ courts, value, onChange }: CourtPickerProps) {
       {courts.map((court) => {
         const sel = court.id === value;
         const meta = courtMeta(court);
+        const img = apiImageUrl(court.mainImageUrl);
         return (
           <button
             key={court.id}
@@ -37,8 +38,16 @@ export function CourtPicker({ courts, value, onChange }: CourtPickerProps) {
             role="radio"
             aria-checked={sel}
             onClick={() => onChange(court.id)}
-            className={`time-pick !py-2.5 flex flex-col items-center gap-0.5 ${sel ? 'active' : ''}`}
+            className={`time-pick !py-2.5 flex flex-col items-center gap-1 ${sel ? 'active' : ''}`}
           >
+            {img && (
+              <img
+                src={img}
+                alt=""
+                className="mb-0.5 h-20 w-full rounded-lg object-cover"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            )}
             <span className="truncate max-w-full">{courtLabel(court)}</span>
             {meta && (
               <span className={`text-[11px] font-semibold ${sel ? 'text-white/70' : 'text-[var(--muted)]'}`}>{meta}</span>

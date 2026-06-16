@@ -9,6 +9,10 @@ interface SidebarProps {
   onCreate: () => void;
   canCreate: boolean;
   isLoggedIn: boolean;
+  /** Pop one step off the navigation history (universal back). */
+  onBack: () => void;
+  /** Whether there's a previous screen to return to. */
+  canGoBack: boolean;
 }
 
 interface SideTab {
@@ -26,7 +30,7 @@ const tabs: SideTab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
@@ -42,6 +46,18 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
         </span>
         <span className="brand-name">PickleBallers</span>
       </div>
+
+      <button
+        className="side-tab mb-2 disabled:cursor-not-allowed disabled:opacity-40"
+        onClick={onBack}
+        disabled={!canGoBack}
+        aria-label="Go back to the previous screen"
+      >
+        <span className="ico">
+          <Icon name="chevron" size={20} className="rotate-180" />
+        </span>
+        Back
+      </button>
 
       <nav className="flex flex-col gap-1">
         {tabs.map((t) => {

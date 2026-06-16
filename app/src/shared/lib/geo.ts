@@ -46,12 +46,16 @@ export function getCurrentLocation(): Promise<LatLng> {
         reject(
           new Error(
             err.code === err.PERMISSION_DENIED
-              ? 'Location access was denied. Enable it to sort by distance.'
+              // Browsers won't re-show the prompt once blocked — point the user
+              // at the address-bar permission icon so they can re-allow it.
+              ? 'Location is blocked. Tap the lock/location icon in your address bar, allow Location, then press the button again.'
               : 'Couldn’t get your location. Try again.',
           ),
         );
       },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+      // maximumAge:0 → every press does a fresh GPS read (never a cached fix), so
+      // the button re-asks the device for the current location each time.
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 },
     );
   });
 }

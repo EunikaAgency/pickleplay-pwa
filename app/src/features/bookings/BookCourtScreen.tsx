@@ -7,6 +7,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
 import { HourSelect } from '../../shared/components/ui/HourSelect';
 import { CourtPicker } from '../../shared/components/ui/CourtPicker';
+import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicker';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
   listAllVenues, createBooking, checkout, getSettings, listCourts,
@@ -26,7 +27,7 @@ interface BookCourtScreenProps {
   onBack: () => void;
 }
 
-const TITLE_BY_STEP = ['Court & time', 'Review', 'Checkout'];
+const TITLE_BY_STEP = ['Court & time', 'Summary', 'Checkout'];
 
 /** A venue is bookable only if it has a rate (decision: require a price). */
 function isBookable(v: ApiVenue): boolean {
@@ -122,18 +123,20 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
 
   // Live availability for the chosen court (or the venue pool when none) on this
   // date → greys out hours that court is already taken.
-  const { availability, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
+  const { availability, minBookableHour, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
+  const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
 
   // If the chosen court leaves the current start hour booked (e.g. the default
   // 6 PM on a court that's taken until 9), jump the start to the first free hour
   // so the end picker isn't entirely blocked. End resets to empty for the user.
+  // Keep the start on a valid hour: prefer the first free + future hour when
+  // availability is loaded; otherwise just bump off an already-passed hour today.
   useEffect(() => {
-    if (!availability) return;
     const cur = Number(startTime.split(':')[0]);
-    const free = firstFreeHour(cur);
-    if (free != null && free !== cur) { setStartTime(`${String(free).padStart(2, '0')}:00`); setEndTime(''); }
-  }, [availability, startTime, firstFreeHour]);
+    const target = firstFreeHour(cur) ?? (cur < minBookableHour && minBookableHour <= 23 ? minBookableHour : null);
+    if (target != null && target !== cur) { setStartTime(`${String(target).padStart(2, '0')}:00`); setEndTime(''); }
+  }, [availability, startTime, firstFreeHour, minBookableHour]);
 
   // Keep a positive duration: if a new start lands at/after the end, push the end out an hour.
   const onStartChange = (v: string) => {
@@ -188,6 +191,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
       if (!startTime) { setError('Please pick a start time.'); return; }
       if (!endTime) { setError('Please pick an end time.'); return; }
       if (!(hours > 0)) { setError('End time must be after the start time.'); return; }
+      if (startInPast) { setError('That start time has already passed. Please pick a later time.'); return; }
       if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
     }
     setError(null);
@@ -206,7 +210,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
             : 'Your request was sent and is awaiting venue approval.'
         }
         actions={[
-          { label: 'View my bookings', variant: 'dark' as const, onClick: () => onNavigate('my-bookings') },
+          // `replace` drops the finished wizard from the back stack so Back from
+          // My bookings doesn't re-open it at step 1.
+          { label: 'View my bookings', variant: 'dark' as const, onClick: () => onNavigate('my-bookings', undefined, { replace: true }) },
           { label: 'Done', variant: 'outline' as const, onClick: onBack },
         ]}
       />
@@ -236,7 +242,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
         <>
           <div className="field">
             <div className="flex items-center justify-between mb-2">
-              <div className="lbl mb-0!">Court</div>
+              <div className="lbl mb-0!">Venue</div>
               {selected && !picking && (
                 <button type="button" className="chip" onClick={() => setPicking(true)}>
                   <Icon name="edit" size={12} /> Change
@@ -305,14 +311,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
           </div>
 
           <div className="field">
-            <div className="lbl">Date</div>
-            <input
-              type="date"
-              className="control"
-              value={date}
-              min={todayYMD()}
-              onChange={(e) => setDate(e.target.value)}
-            />
+            <div className="lbl flex items-center justify-between">
+              <span>Date</span>
+              <span className="normal-case tracking-normal text-[13px] font-bold text-[var(--ink)]">{prettyDate(date)}</span>
+            </div>
+            <CalendarDatePicker value={date} min={todayYMD()} onChange={setDate} />
           </div>
 
           {courts.length > 0 && (

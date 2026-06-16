@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { OwnerSection } from '../components/OwnerSection';
-import { uploadVenueMedia, ApiError, type OwnerVenueDetail } from '../../../shared/lib/api';
+import { uploadVenueMedia, apiImageUrl, ApiError, type OwnerVenueDetail } from '../../../shared/lib/api';
 
 interface PhotosTabProps {
   venue: OwnerVenueDetail;
@@ -18,7 +18,10 @@ export function PhotosTab({ venue, venueId, reload }: PhotosTabProps) {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
   const [errMsg, setErrMsg] = useState('');
 
-  const hero = venue.image || null;
+  // Mirror the public listing's resolution: prefer uploaded media, else the
+  // imported hero (venue.mainImageUrl) — so the tab shows the same image the
+  // listing does instead of looking empty when there are no uploads.
+  const hero = apiImageUrl(venue.image) || apiImageUrl(venue.mainImageUrl) || null;
   const gallery = venue.gallery ?? [];
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,7 +60,7 @@ export function PhotosTab({ venue, venueId, reload }: PhotosTabProps) {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {gallery.map((src) => (
-              <img key={src} src={src} alt="" className="aspect-video w-full rounded-xl object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              <img key={src} src={apiImageUrl(src)} alt="" className="aspect-video w-full rounded-xl object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             ))}
           </div>
         )}
@@ -84,7 +87,7 @@ export function PhotosTab({ venue, venueId, reload }: PhotosTabProps) {
             <div className="t-eyebrow">Uploaded this session</div>
             <div className="mt-2 grid grid-cols-3 gap-2.5">
               {uploads.map((src) => (
-                <img key={src} src={src} alt="" className="aspect-video w-full rounded-xl object-cover" />
+                <img key={src} src={apiImageUrl(src)} alt="" className="aspect-video w-full rounded-xl object-cover" />
               ))}
             </div>
           </div>

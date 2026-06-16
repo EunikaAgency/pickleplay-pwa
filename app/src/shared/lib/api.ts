@@ -399,6 +399,8 @@ export interface ApiCourt {
   courtName?: string | null;
   surfaceType?: string | null;
   indoor?: boolean | null;
+  /** Per-court photo (servable URL from the media library). */
+  mainImageUrl?: string | null;
 }
 
 /** A single venue with the extra detail the get-by-id endpoint adds. */
@@ -545,8 +547,10 @@ export async function checkOutOfVenue(idOrSlug?: string): Promise<{ checkedIn: b
 // the web owner console (web/src/features/owner/api.js). All writes pass
 // `auth: true` so the Bearer token rides along.
 
-const COURTS_PREFIX = '/api/v1/courts';
-const FAQS_PREFIX = '/api/v1/faqs';
+// Courts and FAQs are mutated via routes mounted under the venues router, so the
+// real served paths are /api/v1/venues/courts/:id and /api/v1/venues/faqs/:id.
+const COURTS_PREFIX = '/api/v1/venues/courts';
+const FAQS_PREFIX = '/api/v1/venues/faqs';
 const CLOSURES_PREFIX = '/api/v1/holiday-closures';
 const REVIEWS_PREFIX = '/api/v1/reviews';
 
@@ -779,13 +783,13 @@ export async function deleteReviewReply(reviewId: string): Promise<void> {
  * attach the upload as hero / reorder / delete yet — this only creates the Media
  * record (same gap as the web console).
  */
-export async function uploadVenueMedia(venueId: string, file: File): Promise<UploadedMedia | null> {
+async function uploadMedia(ownerType: string, ownerId: string, file: File): Promise<UploadedMedia | null> {
   const fd = new FormData();
   fd.append('file', file);
   const token = getAccessToken();
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/api/v1/media/upload${toQuery({ ownerType: 'venue', ownerId: venueId })}`, {
+    res = await fetch(`${API_BASE}/api/v1/media/upload${toQuery({ ownerType, ownerId })}`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: fd,
@@ -798,6 +802,19 @@ export async function uploadVenueMedia(venueId: string, file: File): Promise<Upl
     throw new ApiError(json?.error?.message || `Upload failed (${res.status})`, json?.error?.code || 'ERROR', res.status);
   }
   return json?.data ?? null;
+}
+
+export function uploadVenueMedia(venueId: string, file: File): Promise<UploadedMedia | null> {
+  return uploadMedia('venue', venueId, file);
+}
+
+/**
+ * Upload a photo for a single court. Tagged `ownerType: 'court'` so it never
+ * feeds the venue's hero/gallery resolution (which only reads venue-owned media)
+ * — the returned URL is stored on the court via updateCourt({ mainImageUrl }).
+ */
+export function uploadCourtMedia(courtId: string, file: File): Promise<UploadedMedia | null> {
+  return uploadMedia('court', courtId, file);
 }
 
 /* ─── Games (open-play) ─────────────────────────────────────── */

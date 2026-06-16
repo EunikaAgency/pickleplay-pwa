@@ -93,6 +93,7 @@ src/
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
                         # EmptyState/ErrorState/LoadingSkeleton, DemoBranch, Toast,
                         # HourSelect, CourtPicker (pick which court to book/host),
+                        # CalendarDatePicker (month-grid date picker),
                         # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap), … (see folder)
     components/layout/  # TabBar (mobile), Sidebar (desktop)
     components/forms/   # FormField, FormSelect, FormTierPicker

@@ -190,7 +190,9 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   const canLocate = !isLoggedIn || userHasPermission(currentUser, 'player.venues.locate');
   const [active, setActive] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [sheet, setSheet] = useState<SheetState>('collapsed');
+  // Open on the list/search view (sheet expanded) rather than the bare map, so
+  // the court list is front-and-centre when the tab opens (client request).
+  const [sheet, setSheet] = useState<SheetState>('expanded');
   const [query, setQuery] = useState('');
   const [venues, setVenues] = useState<ApiVenue[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -330,6 +332,19 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
     setUserLoc(null);
     setLocError(null);
   };
+
+  // Auto-centre on the user when the tab opens, so the map focuses on their
+  // location without tapping the locate button (client request). Runs once; the
+  // browser still gates the geolocation permission prompt, and a denial just
+  // surfaces `locError` as before. Re-fires only if `canLocate` flips true later
+  // (e.g. after the session restores).
+  const didAutoLocate = useRef(false);
+  useEffect(() => {
+    if (didAutoLocate.current || !canLocate || userLoc) return;
+    didAutoLocate.current = true;
+    handleLocate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canLocate]);
 
   // Quick-chip toggles — each flips one corner of the same filter state the
   // sheet edits, so chips and sheet stay in sync.
@@ -589,13 +604,18 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
               aria-pressed={!!userLoc}
               onClick={handleLocate}
               disabled={locating}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center border-[0.5px] shadow-[var(--shadow-card)] backdrop-blur-[14px] [-webkit-backdrop-filter:blur(14px)] disabled:opacity-70 ${
+              className={`relative w-11 h-11 rounded-xl flex items-center justify-center border-[0.5px] shadow-[var(--shadow-card)] backdrop-blur-[14px] [-webkit-backdrop-filter:blur(14px)] disabled:opacity-70 ${
                 userLoc
                   ? 'bg-[var(--lime)] text-[var(--lime-ink)] border-transparent'
                   : 'bg-white/95 text-[var(--primary)] border-[var(--hairline)]'
               }`}
             >
-              <Icon name={locating ? 'spinner' : 'navigate'} size={18} className={locating ? 'animate-spin' : ''} />
+              {/* Radar ping — draws the eye to the locate control until a
+                  location is set; stops once active or while locating. */}
+              {!userLoc && !locating && (
+                <span className="absolute inset-0 rounded-xl bg-[var(--primary)]/40 animate-ping pointer-events-none motion-reduce:hidden" aria-hidden="true" />
+              )}
+              <Icon name={locating ? 'spinner' : 'navigate'} size={18} className={`relative ${locating ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
