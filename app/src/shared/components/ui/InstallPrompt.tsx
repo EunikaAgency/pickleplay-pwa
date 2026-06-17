@@ -14,6 +14,18 @@ interface InstallPromptProps {
   hasBottomChrome?: boolean;
 }
 
+// Remember a dismissal so the banner stays gone across reloads/navigation instead
+// of nagging on every visit.
+const DISMISSED_KEY = 'pb-install-dismissed';
+
+function wasDismissed(): boolean {
+  try {
+    return localStorage.getItem(DISMISSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 function detectInitialState() {
   if (typeof window === 'undefined') return { standalone: false, ios: false };
   const navigatorWithStandalone = window.navigator as NavigatorWithStandalone;
@@ -29,7 +41,7 @@ export function InstallPrompt({ hasBottomChrome = false }: InstallPromptProps) {
   const initial = detectInitialState();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(initial.standalone);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(wasDismissed);
   const [showIosPrompt] = useState(!initial.standalone && initial.ios);
 
   useEffect(() => {
@@ -91,7 +103,14 @@ export function InstallPrompt({ hasBottomChrome = false }: InstallPromptProps) {
           </button>
         )}
         <button
-          onClick={() => setDismissed(true)}
+          onClick={() => {
+            try {
+              localStorage.setItem(DISMISSED_KEY, '1');
+            } catch {
+              // localStorage may be unavailable; the banner just reappears next load.
+            }
+            setDismissed(true);
+          }}
           aria-label="Close"
           className="w-8 h-8 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] flex items-center justify-center"
         >

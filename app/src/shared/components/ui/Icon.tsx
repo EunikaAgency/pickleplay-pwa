@@ -116,6 +116,10 @@ const ICONS: Record<string, IconRenderer> = {
     `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
   wifi_off: (s) =>
     `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l22 22M16.7 17.7a5 5 0 00-9.4 0M5 12.5a10 10 0 0114 0M2 8.8A14 14 0 015.5 6.3M22 8.8a14 14 0 00-5-3M12 20h.01"/></svg>`,
+  // Lab flask — the test-mode / "no real charge" banner. A real SVG (not the
+  // Material-Symbols font fallback, which leaked the literal text "science").
+  science: (s) =>
+    `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.6 18A2 2 0 006.4 21h11.2a2 2 0 001.8-3L14 8.5V3"/><path d="M7 15h10"/></svg>`,
 };
 
 interface IconProps {

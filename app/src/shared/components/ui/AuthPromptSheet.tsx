@@ -28,7 +28,7 @@ export function AuthPromptSheet({ open, intent, onClose, onContinue }: AuthPromp
       open={open}
       onClose={onClose}
       title="Create your free account"
-      subtitle={`You'll need an account to ${intent}. Browsing stays free — sign up takes a few seconds.`}
+      subtitle={`You'll need an account to ${intent?.trim() || 'continue'}. Browsing stays free — sign up takes a few seconds.`}
     >
       <div className="px-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <ul className="space-y-3 mt-1 mb-5">
