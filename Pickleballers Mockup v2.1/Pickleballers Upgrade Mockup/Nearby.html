@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pickleballers — Nearby Courts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Grandstander:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Design Tokens ────────────────────────────────────── */
+:root {
+  --blue:       #3355FF;
+  --blue-dark:  #2440D9;
+  --lime:       #CCFF33;
+  --lime-press: #B8E600;
+  --navy:       #1A2138;
+  --slate:      #64748B;
+  --muted:      #94A3B8;
+  --border:     #CBD5E1;
+  --border-sub: #E2EAF2;
+  --bg-app:     #E9EDFF;
+  --bg-white:   #FFFFFF;
+  --bg-wash:    #F3F5FA;
+  --success:    #22C55E;
+  --warning:    #F97316;
+  --shadow-sm:  0 2px 8px rgba(0,0,0,0.08);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.10);
+  --r-pill:     9999px;
+  --r-card:     16px;
+  --r-sm:       8px;
+
+  --font-display: 'Grandstander', cursive;
+  --font-body:    'Lexend', sans-serif;
+}
+
+/* ── Reset ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-app);
+  color: var(--navy);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Phone Shell ─────────────────────────────────────── */
+.shell {
+  max-width: 390px;
+  margin: 0 auto;
+  background: var(--bg-app);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Status Bar ──────────────────────────────────────── */
+.status-bar {
+  background: var(--bg-white);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+  border-bottom: 1px solid var(--border-sub);
+}
+.status-right { display: flex; gap: 6px; align-items: center; }
+.signal-bar {
+  display: inline-flex; gap: 2px; align-items: flex-end; height: 12px;
+}
+.signal-bar span {
+  width: 3px; background: var(--navy); border-radius: 1px;
+  display: inline-block;
+}
+.signal-bar span:nth-child(1){height:4px}
+.signal-bar span:nth-child(2){height:6px}
+.signal-bar span:nth-child(3){height:9px}
+.signal-bar span:nth-child(4){height:12px}
+.battery {
+  width:22px; height:11px; border:1.5px solid var(--navy); border-radius:2px;
+  position:relative; display:inline-block;
+}
+.battery::after {
+  content:''; position:absolute; right:-5px; top:2.5px;
+  width:3px; height:5px; background:var(--navy); border-radius:0 1px 1px 0;
+}
+.battery-fill {
+  position:absolute; left:1px; top:1px; bottom:1px;
+  width:80%; background:var(--navy); border-radius:1px;
+}
+
+/* ── Top Nav ─────────────────────────────────────────── */
+.top-nav{
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  position:sticky;
+  top:0;
+  z-index:50;
+  background:var(--bg-white);
+  padding:0;
+}
+.topnav-inner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  height:60px;
+  padding:0 16px;
+  position:relative;
+}
+.icon-btn{
+  width:40px;height:40px;border:none;background:transparent;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;cursor:pointer;color:#1A2138;position:relative;
+}
+.nav-wordmark{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-family:var(--font-display);
+  font-weight:800;
+  font-size:22px;
+  color:#3355FF;
+}
+.nav-wordmark span{color:#A3CC00;}
+.notif-dot{
+  position:absolute;top:7px;right:8px;width:9px;height:9px;
+  border-radius:50%;background:#F97316;border:2px solid #fff;
+}
+.search-section{
+  padding:10px 16px 12px;
+  background:#FFFFFF;
+}
+
+
+/* ── Search Row ──────────────────────────────────────── */
+.search-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.search-wrap {
+  flex: 1;
+  position: relative;
+}
+.search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; color: var(--muted);
+}
+.search-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 40px 0 40px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--navy);
+  background: var(--bg-wash);
+  outline: none;
+  transition: border-color 150ms;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-input:focus { border-color: var(--blue); }
+.filter-icon-btn {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: var(--slate);
+  display: flex; align-items: center;
+}
+
+/* Map button */
+.map-btn {
+  height: 44px;
+  padding: 0 14px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 150ms;
+}
+.map-btn:hover { background: var(--blue-dark); }
+.map-btn svg { width: 16px; height: 16px; }
+
+/* ── Courts / Games Toggle ────────────────────────────── */
+.tab-toggle {
+  background: var(--bg-white);
+  padding: 0 16px 12px;
+  border-bottom: 1px solid var(--border-sub);
+}
+.toggle-track {
+  display: flex;
+  background: var(--bg-wash);
+  border-radius: var(--r-pill);
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid var(--border-sub);
+}
+.toggle-btn {
+  flex: 1;
+  height: 36px;
+  border: none;
+  border-radius: var(--r-pill);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 150ms;
+  background: transparent;
+  color: var(--slate);
+}
+.toggle-btn.active {
+  background: var(--blue);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+
+/* ── Scroll Content ──────────────────────────────────── */
+.scroll-body {
+  flex: 1;
+  background:#fafafa;
+  overflow-y: auto;
+  padding: 16px;
+  padding-bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ── Section Header ──────────────────────────────────── */
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--navy);
+}
+.section-sub {
+  font-size: 12px;
+  color: var(--slate);
+  margin-top: 2px;
+}
+
+/* ── Sort Row ────────────────────────────────────────── */
+.sort-select{
+  height:32px;
+  padding:0 12px 0 12px;
+  border:1.5px solid var(--blue);
+  border-radius:9999px;
+  background:#fff;
+  color:var(--blue);
+  font-family:var(--font-body);
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  outline:none;
+
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233355FF' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 10px center;
+  background-size:12px;
+}
+
+.sort-select:focus{
+  border-color:var(--blue-dark);
+}
+.sort-label { font-size: 12px; color: var(--slate); font-weight: 500; }
+.sort-btn {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  background: none;
+  border: 1.5px solid var(--blue);
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Court Card (List Style) ─────────────────────────── */
+.court-card {
+  background: var(--bg-white);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 150ms, transform 150ms;
+  border: 1px solid var(--border-sub);
+}
+.court-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.court-card:active { transform: scale(0.99); }
+
+.card-inner {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+.card-thumb {
+  width: 110px;
+  min-height: 110px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-wash);
+}
+.card-thumb img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.thumb-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #D6E0FF 0%, #B8D0FF 100%);
+}
+.thumb-placeholder svg { width: 36px; height: 36px; color: var(--blue); opacity: .5; }
+
+/* Access badge on thumb */
+.thumb-badge {
+  position: absolute; top: 8px; left: 8px;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.thumb-badge.public  { background: #DCFCE7; color: #166534; }
+.thumb-badge.fee     { background: #FEF9C3; color: #854D0E; }
+.thumb-badge.members { background: #EDE9FE; color: #5B21B6; }
+
+.card-fav {
+  position: absolute; top: 6px; right: 6px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.88);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.card-fav svg { width: 14px; height: 14px; color: var(--slate); }
+.card-fav.faved svg { color: #EF4444; fill: #EF4444; }
+
+.card-body {
+  flex: 1;
+  padding: 12px 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+.card-top {}
+.court-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--navy);
+  line-height: 1.2;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.court-meta {
+  font-size: 12px;
+  color: var(--slate);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.court-meta svg { width: 12px; height: 12px; flex-shrink: 0; }
+.dot-sep { color: var(--border); }
+
+/* Rating */
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.star-icon { color: #FBBF24; }
+.rating-num { font-size: 12px; font-weight: 600; color: var(--navy); }
+.rating-count { font-size: 11px; color: var(--muted); }
+
+/* Attribute pills */
+.attr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.attr-pill {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  color: var(--slate);
+  background: var(--bg-wash);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.attr-pill svg { width: 10px; height: 10px; }
+
+/* Court count badge inline */
+.courts-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--blue);
+  background: #E9EDFF;
+  border-radius: var(--r-pill);
+  padding: 2px 7px;
+}
+
+/* ── Featured Card (tall with photo) ────────────────── */
+.featured-card {
+  background: var(--bg-white);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-sub);
+  transition: box-shadow 150ms;
+}
+.featured-card:hover { box-shadow: var(--shadow-md); }
+.feat-photo {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+  background: linear-gradient(135deg, #C7D8FF 0%, #99B8FF 100%);
+  position: relative;
+}
+.feat-photo-wrap { position: relative; }
+.feat-badge-row {
+  position: absolute; top: 10px; left: 10px;
+  display: flex; gap: 6px;
+}
+.feat-badge {
+  font-size: 11px; font-weight: 700;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  display: flex; align-items: center; gap: 4px;
+}
+.feat-badge.featured { background: var(--lime); color: var(--navy); }
+.feat-badge.courts   { background: rgba(255,255,255,.92); color: var(--blue); }
+.feat-fav {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,.88);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.15);
+}
+.feat-fav svg { width: 16px; height: 16px; color: var(--slate); }
+.feat-body { padding: 14px 14px 12px; }
+.feat-name {
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 17px; color: var(--navy);
+  margin-bottom: 4px;
+}
+.feat-meta {
+  font-size: 12px; color: var(--slate);
+  display: flex; align-items: center; gap: 4px; margin-bottom: 8px;
+}
+.feat-amens {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+}
+.amen-tag {
+  font-size: 11px; font-weight: 500;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  background: var(--bg-wash); color: var(--slate);
+  border: 1px solid var(--border-sub);
+}
+
+/* ── Empty State ─────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--slate);
+}
+.empty-state p { font-size: 14px; line-height: 1.5; }
+
+/* ============================================================
+     BOTTOM TAB BAR
+  ============================================================ */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: white;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    z-index: 45;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #94a3b8;
+    transition: color 150ms;
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .tab-item.active { color: var(--blue); }
+  .tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #a3cc00;
+  }
+  .tab-item svg { width: 22px; height: 22px; }
+
+/* ── Improvement Annotations ─────────────────────────── */
+.annotation {
+  position: absolute;
+  right: -2px;
+  background: var(--lime);
+  color: var(--navy);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px 4px 0 0;
+  top: -18px;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: .03em;
+}
+
+/* ── Section divider label ───────────────────────────── */
+.divider-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.divider-label::before,
+.divider-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-sub);
+}
+.divider-label span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <!-- Top Nav -->
+  <div class="top-nav">
+    <div class="topnav-inner">
+      <a href="index.html">
+  <button class="icon-btn" aria-label="Go back">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+</a>
+      <div class="nav-wordmark">Pickle<span>Ballers</span></div>
+      <button class="icon-btn" aria-label="Notifications">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-dot"></span>
+      </button>
+    </div></div>
+    <!-- Improvement #1: Search bar + Map button -->
+    <div class="search-section">
+    <div class="search-row"  style="position:relative">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input class="search-input" type="text" placeholder="Find a court…" aria-label="Search courts">
+        <button class="filter-icon-btn" aria-label="Open filters">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <!-- Improvement #6: Labeled map button -->
+      <button class="map-btn" aria-label="Switch to map view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+          <line x1="9" y1="3" x2="9" y2="18"/>
+          <line x1="15" y1="6" x2="15" y2="21"/>
+        </svg>
+        Map
+      </button>
+    </div>
+  </div>
+  <!-- Improvement #3: Brand-blue Courts/Games toggle -->
+  <div class="tab-toggle">
+    <div class="toggle-track" role="tablist">
+      <button class="toggle-btn active" role="tab" aria-selected="true">Courts</button>
+      <button class="toggle-btn" role="tab" aria-selected="false">Games</button>
+    </div>
+  </div>
+
+  <!-- Scrollable Content -->
+  <div class="scroll-body">
+    <!-- Section header -->
+    <div class="section-head">
+      <div>
+        <div class="section-title">Nearby in Austin</div>
+        <div class="section-sub">24 courts within 5 miles</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        
+        <div class="sort-row">
+  <span class="sort-label">Sort:</span>
+
+  <select class="sort-select">
+    <option value="distance">Distance</option>
+    <option value="rating">Rating</option>
+    <option value="courts">Most Courts</option>
+    <option value="reviews">Most Reviews</option>
+    <option value="name">Name (A–Z)</option>
+  </select>
+</div>
+      </div>
+    </div>
+
+    <!-- Featured Card (top pick, full photo) -->
+    <div class="featured-card" role="article" aria-label="Austin Smash Center - featured court">
+      <div class="feat-photo-wrap">
+        <!-- Photo placeholder styled as court -->
+        <div style="width:100%;height:160px;background:linear-gradient(160deg,#1a3a8f 0%,#1e5a9e 40%,#2a7fd4 100%);position:relative;overflow:hidden">
+          <!-- Court lines suggestion -->
+          <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('5.png') center center / cover no-repeat;
+">
+</div>
+        </div>
+        <div class="feat-badge-row">
+          <span class="feat-badge featured">⭐ Top Pick</span>
+          <span class="feat-badge courts">6 Courts</span>
+        </div>
+        <button class="feat-fav" aria-label="Save to favorites">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="feat-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="feat-name">Austin Smash Center</div>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:8px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" stroke-width="1">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span style="font-size:13px;font-weight:600;color:var(--navy)">4.9</span>
+            <span style="font-size:11px;color:var(--muted)">(128)</span>
+          </div>
+        </div>
+        <div class="feat-meta">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          0.8 mi away
+          <span class="dot-sep">•</span>
+          Downtown
+          <span class="dot-sep">•</span>
+          <span style="color:#166534;font-weight:600">Indoor</span>
+        </div>
+        <div class="feat-amens">
+          <span class="amen-tag">🚻 Restrooms</span>
+          <span class="amen-tag">🛒 Pro Shop</span>
+          <span class="amen-tag">☕ Coffee</span>
+          <span class="amen-tag">🅿️ Parking</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Improvement #5: List card style for efficient browsing -->
+    <div class="divider-label"><span>More nearby</span></div>
+
+    <!-- Court Card 2 -->
+    <div class="court-card" role="article" aria-label="Canonigo Sports &amp; Recreation Center">
+      <div class="card-inner">
+        <div class="card-thumb">
+          <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('6.png') center center / cover no-repeat;
+">
+</div>
+          <span class="thumb-badge fee">Fee</span>
+          <button class="card-fav" aria-label="Save to favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div class="court-name">Canonigo Sports & Rec Center</div>
+            <div class="court-meta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              1.2 mi <span class="dot-sep">•</span> Tondo
+            </div>
+            <div class="rating-row">
+              <svg class="star-icon" width="12" height="12" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" stroke-width="1">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <span class="rating-num">4.6</span>
+              <span class="rating-count">(47)</span>
+            </div>
+          </div>
+          <div class="attr-row">
+            <span class="courts-badge">3 Courts</span>
+            <span class="attr-pill">Perm Lines</span>
+            <span class="attr-pill">Fee</span>
+            <span class="attr-pill">Portable Nets</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Court Card 3 -->
+    <div class="court-card" role="article" aria-label="Congress Pickleball Club">
+      <div class="card-inner">
+        <div class="card-thumb">
+          <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('7.png') center center / cover no-repeat;
+">
+</div>
+          <span class="thumb-badge members">Open</span>
+          <button class="card-fav faved" aria-label="Saved to favorites">
+            <svg viewBox="0 0 24 24" fill="#EF4444" stroke="#EF4444" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div class="court-name">Congress Pickleball Club</div>
+            <div class="court-meta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              1.9 mi <span class="dot-sep">•</span> Ermita
+            </div>
+            <div class="rating-row">
+              <svg class="star-icon" width="12" height="12" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" stroke-width="1">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <span class="rating-num">4.4</span>
+              <span class="rating-count">(22)</span>
+            </div>
+          </div>
+          <div class="attr-row">
+            <span class="courts-badge">1 Court</span>
+            <span class="attr-pill">Perm Lines</span>
+            <span class="attr-pill">Tennis Nets</span>
+            <span class="attr-pill">Portable Nets</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Court Card 4 -->
+    <div class="court-card" role="article" aria-label="Ground Game Pickleball">
+      <div class="card-inner">
+        <div class="card-thumb">
+          <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('1.png') center center / cover no-repeat;
+">
+</div>
+          <span class="thumb-badge public">Public</span>
+          <button class="card-fav" aria-label="Save to favorites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="card-top">
+            <div class="court-name">Ground Game Pickleball</div>
+            <div class="court-meta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              2.4 mi <span class="dot-sep">•</span> Malate
+            </div>
+            <div class="rating-row">
+              <svg class="star-icon" width="12" height="12" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" stroke-width="1">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <span class="rating-num">4.2</span>
+              <span class="rating-count">(18)</span>
+            </div>
+          </div>
+          <div class="attr-row">
+            <span class="courts-badge">4 Courts</span>
+            <span class="attr-pill">Perm Lines</span>
+            <span class="attr-pill">Outdoor</span>
+            <span class="attr-pill">Portable Nets</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load more -->
+    <button onclick="this.textContent='Loading…'" style="
+      width:100%;height:44px;
+      background:none;
+      border:1.5px solid var(--blue);
+      border-radius:var(--r-pill);
+      color:var(--blue);
+      font-family:var(--font-body);
+      font-size:14px;font-weight:600;
+      cursor:pointer;
+      transition:background 150ms,color 150ms;
+      margin-top:4px;
+    " onmouseover="this.style.background='var(--blue)';this.style.color='#fff'"
+       onmouseout="this.style.background='none';this.style.color='var(--blue)'">
+      Load more courts
+    </button>
+
+  </div><!-- end scroll-body -->
+
+  <!-- Bottom Nav -->
+  <!-- ============ BOTTOM TAB BAR ============ -->
+<nav class="tabbar" aria-label="Primary navigation">
+  <a href="index.html" class="tab-item " aria-current="page">
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+    Home
+  </a>
+  <a href="Nearby.html" class="tab-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+    Nearby
+  </a>
+  <a href="Games.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Games
+  </a>
+  <a href="Clubs.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Clubs
+  </a>
+  <a href="Profile.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Profile
+  </a>
+</nav>
+
+</div><!-- end shell -->
+
+<script>
+// Toggle Courts / Games tabs
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.toggle-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected','false');
+    });
+    this.classList.add('active');
+    this.setAttribute('aria-selected','true');
+  });
+});
+
+// Filter chips toggle
+document.querySelectorAll('.chip:not(.cta)').forEach(chip => {
+  chip.addEventListener('click', function() {
+    this.classList.toggle('active');
+  });
+});
+
+// Bottom nav tabs
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.replace('active','inactive'));
+    this.classList.replace('inactive','active');
+  });
+});
+
+// Fav button toggle
+document.querySelectorAll('.card-fav, .feat-fav').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    this.classList.toggle('faved');
+    const svg = this.querySelector('svg');
+    if (this.classList.contains('faved')) {
+      svg.setAttribute('fill','#EF4444');
+      svg.setAttribute('stroke','#EF4444');
+    } else {
+      svg.setAttribute('fill','none');
+      svg.setAttribute('stroke','currentColor');
+    }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pickleballers — Create a Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grandstander:wght@500;600;700;800;900&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+/* ============================================================
+   DESIGN TOKENS — Pickleballers Brand System
+============================================================ */
+:root {
+  --blue:           #3355FF;
+  --blue-hover:     #2440D9;
+  --lime:           #CCFF33;
+  --lime-hover:     #B8E600;
+  --lime-active:    #A3CC00;
+  --ink:            #1A2138;
+
+  --bg-app:         #E9EDFF;
+  --bg-alt:         #E1E8FF;
+  --bg-feature:     #F4FFD6;
+  --surface:        #FFFFFF;
+
+  --text-primary:   #1A2138;
+  --text-secondary: #64748B;
+  --text-muted:     #94A3B8;
+
+  --border:         #CBD5E1;
+  --border-subtle:  #E2EAF2;
+  --border-focus:   #3355FF;
+
+  --success:        #22C55E;
+  --warning:        #F97316;
+  --error:          #EF4444;
+
+  --radius-card:    16px;
+  --radius-lg:      20px;
+  --radius-pill:    9999px;
+  --radius-input:   12px;
+
+  --shadow-sm:  0 2px 8px  rgba(26,33,56,0.07);
+  --shadow-md:  0 4px 16px rgba(26,33,56,0.10);
+  --shadow-lg:  0 8px 28px rgba(26,33,56,0.14);
+
+  --ease-out:    cubic-bezier(0,0,0.2,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Lexend', sans-serif;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 90px;
+}
+
+h1,h2,h3,h4,.brand { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
+p { margin: 0; }
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; }
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   TOP NAV — exact clone of Profile.html
+============================================================ */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+.topnav-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  gap: 12px;
+  position: relative;
+}
+.brand {
+  font-family: 'Grandstander', cursive;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.3px;
+  color: var(--blue);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-decoration: none;
+}
+.brand span { color: var(--lime-active); }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  position: relative;
+  transition: background 150ms var(--ease-out);
+  cursor: pointer;
+  text-decoration: none;
+}
+.icon-btn:hover { background: var(--bg-app); }
+
+.notif-dot {
+  position: absolute;
+  top: 7px; right: 8px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--warning);
+  border: 2px solid var(--surface);
+}
+
+.nav-actions { display: flex; align-items: center; gap: 4px; }
+
+/* ============================================================
+   BOTTOM TAB BAR — exact clone of Profile.html
+============================================================ */
+.tabbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 64px;
+  background: var(--surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  z-index: 45;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 150ms;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+}
+.tab-item.active { color: var(--blue); }
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--lime-active);
+}
+.tab-item svg { width: 22px; height: 22px; }
+
+/* ============================================================
+   PAGE LAYOUT
+============================================================ */
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ============================================================
+   PAGE HEADER — blue hero band (matches Profile pattern)
+   Improvement: gives the create screen its own identity instead
+   of just dropping straight into a bare form.
+============================================================ */
+.page-hero {
+  background: var(--blue);
+  margin: 0 -16px; /* bleed to edges */
+  padding: 22px 24px 28px;
+  position: relative;
+  overflow: hidden;
+}
+.page-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse at 10% 80%, rgba(204,255,51,0.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 15%, rgba(255,255,255,0.06) 0%, transparent 45%);
+  pointer-events: none;
+}
+.page-hero-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--lime);
+  margin-bottom: 6px;
+  position: relative;
+  z-index: 1;
+}
+.page-hero h1 {
+  font-family: 'Grandstander', cursive;
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 4px;
+}
+.page-hero-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  position: relative;
+  z-index: 1;
+}
+
+/* Step indicator inside hero */
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  position: relative;
+  z-index: 1;
+}
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transition: background 200ms;
+}
+.step-dot.active { background: var(--lime); width: 22px; border-radius: 4px; }
+.step-dot.done { background: rgba(255,255,255,0.7); }
+
+/* ============================================================
+   FORM CARD — wraps the whole form
+============================================================ */
+.form-card {
+  background: var(--surface);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  margin: 0 -16px;
+  padding: 24px 20px 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   FORM FIELD GROUPS
+============================================================ */
+.field-group {
+  margin-bottom: 20px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.field-label-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.field-label-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Base input style — improvement: consistent radius, clear focus ring,
+   left icon slot built in, no browser chrome */
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.field-input {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-input);
+  font-family: 'Lexend', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field-input.has-icon { padding-left: 42px; }
+.field-input::placeholder { color: var(--text-muted); }
+.field-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(51,85,255,0.10);
+}
+.field-input:focus + .input-icon { color: var(--blue); }
+
+/* Right-side icon in input (e.g. calendar, clock) */
+.input-icon-right {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Textarea */
+.field-textarea {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-input);
+  font-family: 'Lexend', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  outline: none;
+  resize: none;
+  min-height: 88px;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+}
+.field-textarea::placeholder { color: var(--text-muted); }
+.field-textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(51,85,255,0.10);
+}
+
+/* Character counter for textarea */
+.char-count {
+  text-align: right;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   DATE + TIME side by side row
+   Improvement: Pickleballers stacks these, Pickleheads shows
+   Start + End time. We do a 2-column grid — more efficient.
+============================================================ */
+.field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ============================================================
+   PLAYERS STEPPER — improvement over plain number input.
+   Pickleheads uses –/+ buttons with a "No limit" toggle —
+   much more thumb-friendly than typing a number.
+============================================================ */
+.stepper-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-input);
+  overflow: hidden;
+  background: var(--surface);
+  transition: border-color 150ms;
+}
+.stepper-wrap:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(51,85,255,0.10); }
+
+.stepper-btn {
+  width: 50px;
+  height: 50px;
+  background: var(--bg-app);
+  border: none;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms;
+  user-select: none;
+}
+.stepper-btn:hover { background: var(--bg-alt); }
+.stepper-btn:active { background: var(--bg-alt); color: var(--blue-hover); }
+
+.stepper-value {
+  flex: 1;
+  text-align: center;
+  font-family: 'Grandstander', cursive;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  border: none;
+  outline: none;
+  background: transparent;
+  -moz-appearance: textfield;
+}
+.stepper-value::-webkit-outer-spin-button,
+.stepper-value::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.no-limit-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.no-limit-toggle label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--blue);
+  cursor: pointer;
+}
+.no-limit-toggle input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+/* ============================================================
+   SKILL RANGE SLIDER — improvement over two plain number inputs.
+   Pickleballers shows "MIN SKILL" and "MAX SKILL" as bare inputs.
+   A dual-label track is more expressive and touch-friendly.
+============================================================ */
+.skill-range-track {
+  position: relative;
+  height: 6px;
+  background: var(--border);
+  border-radius: var(--radius-pill);
+  margin: 10px 0 6px;
+}
+.skill-range-fill {
+  position: absolute;
+  height: 100%;
+  background: var(--blue);
+  border-radius: var(--radius-pill);
+  left: 22%;     /* = (2.0-1.0)/(5.5-1.0) mapped visually */
+  right: 22%;    /* = (5.5-4.5)/(5.5-1.0) mapped visually */
+  transition: left 100ms, right 100ms;
+}
+.skill-range-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.skill-range-inputs input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue);
+  cursor: pointer;
+  height: 4px;
+}
+.skill-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.skill-value-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.skill-value-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-app);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px 6px;
+  gap: 2px;
+}
+.skill-value-box span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.skill-value-box strong {
+  font-family: 'Grandstander', cursive;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--blue);
+}
+
+/* ============================================================
+   GAME TYPE SELECTOR — improvement: replaces bare toggle.
+   Pickleballers has one Public/Private toggle. We add game
+   format (Open Play, Round Robin, Competitive) as a visual
+   pill selector, then visibility separately.
+============================================================ */
+.type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 8px 10px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 150ms var(--ease-out);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.type-option .type-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--bg-app);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  transition: background 150ms;
+}
+.type-option.active {
+  border-color: var(--blue);
+  background: rgba(51,85,255,0.05);
+  color: var(--blue);
+}
+.type-option.active .type-icon {
+  background: var(--blue);
+  color: #fff;
+}
+.type-option:hover:not(.active) { border-color: var(--blue); }
+
+/* ============================================================
+   VISIBILITY TOGGLE — 2-option pill switch (Public / Private)
+   Improvement: border highlight on selected, helper text below.
+============================================================ */
+.vis-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--bg-app);
+}
+.vis-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  font-family: 'Lexend', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 150ms var(--ease-out);
+}
+.vis-btn.active {
+  background: var(--blue);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  margin: 3px;
+  padding: 8px 14px;
+}
+.vis-help {
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  min-height: 32px;
+}
+
+/* ============================================================
+   COURT RESERVED TOGGLE — new field (from Pickleheads)
+============================================================ */
+.yn-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.yn-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-family: 'Lexend', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 150ms var(--ease-out);
+}
+.yn-btn.active-yes {
+  border-color: var(--success);
+  background: rgba(34,197,94,0.08);
+  color: var(--success);
+}
+.yn-btn.active-no {
+  border-color: var(--blue);
+  background: rgba(51,85,255,0.07);
+  color: var(--blue);
+}
+.yn-btn:hover:not(.active-yes):not(.active-no) { border-color: var(--blue); }
+
+/* ============================================================
+   DIVIDER
+============================================================ */
+.form-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 4px 0 20px;
+}
+
+/* ============================================================
+   SECTION LABEL inside form card
+============================================================ */
+.form-section-label {
+  font-family: 'Grandstander', cursive;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-section-label svg { color: var(--blue); }
+
+/* ============================================================
+   SUBMIT BUTTON ROW
+============================================================ */
+.submit-wrap {
+  padding: 20px 20px 0;
+  background: var(--surface);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  margin: 0 -16px;
+}
+
+.submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--radius-pill);
+  background: var(--lime);
+  color: var(--ink);
+  font-family: 'Grandstander', cursive;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(163,204,0,0.30);
+  transition: background 150ms var(--ease-out), transform 100ms var(--ease-out), box-shadow 150ms;
+}
+.submit-btn:hover { background: var(--lime-hover); box-shadow: 0 6px 22px rgba(163,204,0,0.40); }
+.submit-btn:active { transform: scale(0.98); background: var(--lime-active); }
+
+.submit-help {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  padding-bottom: 6px;
+}
+
+/* ============================================================
+   PRO UPSELL BANNER — matches Pickleheads "Plus-power" pattern
+   Improvement: positioned after core fields so it doesn't
+   interrupt the primary flow, not mid-form.
+============================================================ */
+.pro-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, var(--ink) 0%, #2c3a6b 100%);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin: 16px 0 0;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+.pro-banner:hover { opacity: 0.92; }
+.pro-icon {
+  width: 42px; height: 42px;
+  background: var(--lime);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.pro-text strong {
+  display: block;
+  font-family: 'Grandstander', cursive;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.pro-text span {
+  font-size: 11px;
+  color: rgba(255,255,255,0.60);
+  line-height: 1.4;
+}
+.pro-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 44px; height: 26px;
+  background: rgba(255,255,255,0.2);
+  border-radius: var(--radius-pill);
+  position: relative;
+  transition: background 200ms;
+  cursor: pointer;
+  border: none;
+}
+.pro-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 200ms var(--ease-spring);
+}
+.pro-toggle.on {
+  background: var(--lime);
+}
+.pro-toggle.on::after {
+  transform: translateX(18px);
+}
+
+/* ============================================================
+   SMALL SPACING UTIL
+============================================================ */
+.gap-sm { height: 16px; }
+.gap-md { height: 24px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== TOP NAV — Profile.html style ===== -->
+<header class="topnav">
+  <div class="topnav-inner">
+    <!-- Back arrow left -->
+    <a href="index.html" class="icon-btn" aria-label="Go back">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <!-- Centered wordmark -->
+    <a href="index.html" class="brand">Pickle<span>Ballers</span></a>
+    <!-- Right: notifications -->
+    <div class="nav-actions">
+      <button class="icon-btn" aria-label="Notifications" style="position:relative">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-dot" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== PAGE ===== -->
+<div class="page">
+
+  <!-- Hero band -->
+  <div class="page-hero" role="banner">
+    <div class="page-hero-eyebrow">Games</div>
+    <h1>Create a Game</h1>
+    <p class="page-hero-sub">Set up your session — takes under a minute.</p>
+    <!-- 3-step progress dots -->
+    <div class="step-row" aria-label="Step 1 of 3: Details">
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+    </div>
+  </div>
+
+  <!-- ===== FORM CARD ===== -->
+  <div class="form-card">
+
+    <!-- ── SECTION: BASIC INFO ── -->
+    <div class="form-section-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Basic Info
+    </div>
+
+    <!-- Game Name -->
+    <div class="field-group">
+      <div class="field-label">
+        <span class="field-label-text">Game Name</span>
+      </div>
+      <div class="input-wrap">
+        <input
+          class="field-input"
+          type="text"
+          id="game-name"
+          placeholder="e.g. Saturday Morning Mix-In"
+          maxlength="60"
+          oninput="updateCharCount(this,'name-count',60)"
+          aria-label="Game name"
+        />
+      </div>
+      <div class="char-count"><span id="name-count">0</span> / 60</div>
+    </div>
+
+    <!-- Location -->
+    <div class="field-group">
+      <div class="field-label">
+        <span class="field-label-text">Location</span>
+      </div>
+      <div class="input-wrap">
+        <span class="input-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </span>
+        <input
+          class="field-input has-icon"
+          type="text"
+          id="location"
+          placeholder="Search courts…"
+          aria-label="Location"
+        />
+      </div>
+    </div>
+
+    <hr class="form-divider">
+
+    <!-- ── SECTION: DATE & TIME ── -->
+    <div class="form-section-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Date &amp; Time
+    </div>
+
+    <!-- Date full-width -->
+    <div class="field-group">
+      <div class="field-label">
+        <span class="field-label-text">Date</span>
+      </div>
+      <div class="input-wrap">
+        <input
+          class="field-input"
+          type="date"
+          id="game-date"
+          aria-label="Game date"
+        />
+      </div>
+    </div>
+
+    <!-- Start time + End time — 2-column improvement vs Pickleballers single time -->
+    <div class="field-row-2">
+      <div class="field-group" style="margin-bottom:0">
+        <div class="field-label">
+          <span class="field-label-text">Start</span>
+        </div>
+        <div class="input-wrap">
+          <select class="field-input" id="start-time" aria-label="Start time" style="padding-right:36px;cursor:pointer">
+            <option value="">-- : --</option>
+            <option>6:00 AM</option><option>6:30 AM</option>
+            <option>7:00 AM</option><option>7:30 AM</option>
+            <option>8:00 AM</option><option>8:30 AM</option>
+            <option>9:00 AM</option><option>9:30 AM</option>
+            <option>10:00 AM</option><option>10:30 AM</option>
+            <option>11:00 AM</option><option>11:30 AM</option>
+            <option>12:00 PM</option><option>12:30 PM</option>
+            <option>1:00 PM</option><option>1:30 PM</option>
+            <option selected>2:00 PM</option><option>2:30 PM</option>
+            <option>3:00 PM</option><option>3:30 PM</option>
+            <option>4:00 PM</option><option>4:30 PM</option>
+            <option>5:00 PM</option><option>5:30 PM</option>
+            <option>6:00 PM</option><option>7:00 PM</option>
+            <option>8:00 PM</option>
+          </select>
+          <span class="input-icon-right">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </div>
+      </div>
+      <div class="field-group" style="margin-bottom:0">
+        <div class="field-label">
+          <span class="field-label-text">End</span>
+        </div>
+        <div class="input-wrap">
+          <select class="field-input" id="end-time" aria-label="End time" style="padding-right:36px;cursor:pointer">
+            <option value="">-- : --</option>
+            <option>6:00 AM</option><option>6:30 AM</option>
+            <option>7:00 AM</option><option>7:30 AM</option>
+            <option>8:00 AM</option><option>8:30 AM</option>
+            <option>9:00 AM</option><option>9:30 AM</option>
+            <option>10:00 AM</option><option>10:30 AM</option>
+            <option>11:00 AM</option><option>11:30 AM</option>
+            <option>12:00 PM</option><option>12:30 PM</option>
+            <option>1:00 PM</option><option>1:30 PM</option>
+            <option>2:00 PM</option><option>2:30 PM</option>
+            <option>3:00 PM</option><option>3:30 PM</option>
+            <option selected>4:00 PM</option><option>4:30 PM</option>
+            <option>5:00 PM</option><option>5:30 PM</option>
+            <option>6:00 PM</option><option>7:00 PM</option>
+            <option>8:00 PM</option>
+          </select>
+          <span class="input-icon-right">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="form-divider">
+
+    <!-- ── SECTION: PLAYERS ── -->
+    <div class="form-section-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Players &amp; Skill
+    </div>
+
+    <!-- Players stepper — improvement vs bare number input -->
+    <div class="field-group">
+      <div class="field-label">
+        <span class="field-label-text">Max Players</span>
+        <span class="field-label-hint">
+          <label for="no-limit-check" style="display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="no-limit-check" onchange="toggleNoLimit(this)" style="accent-color:var(--blue);cursor:pointer;"> No limit
+          </label>
+        </span>
+      </div>
+      <div class="stepper-wrap" id="stepper-wrap">
+        <button class="stepper-btn" onclick="stepPlayers(-1)" aria-label="Decrease players">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <input class="stepper-value" id="players-val" type="number" value="8" min="2" max="64" aria-label="Number of players" />
+        <button class="stepper-btn" onclick="stepPlayers(1)" aria-label="Increase players">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Skill range — visual slider improvement vs bare MIN/MAX inputs -->
+    <div class="field-group">
+      <div class="field-label">
+        <span class="field-label-text">Skill Level (DUPR)</span>
+        <span class="field-label-hint">2.0 → 5.5</span>
+      </div>
+      <div class="skill-value-row">
+        <div class="skill-value-box">
+          <span>Min</span>
+          <strong id="skill-min-display">2.0</strong>
+        </div>
+        <div class="skill-value-box">
+          <span>Max</span>
+          <strong id="skill-max-display">4.5</strong>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Min Skill</div>
+          <input type="range" min="1.0" max="5.5" step="0.5" value="2.0" id="skill-min"
+            oninput="updateSkill()" style="width:100%;accent-color:var(--blue);" aria-label="Minimum skill level">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Max Skill</div>
+          <input type="range" min="1.0" max="5.5" step="0.5" value="4.5" id="skill-max"
+            oninput="updateSkill()" style="width:100%;accent-color:var(--blue);" aria-label="Maximum skill level">
+        </div>
+      </div>
+      <div class="skill-labels"><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span><span>5.5</span></div>
+    </div>
+
+    <hr class="form-divider">
+
+    <!-- ── SECTION: GAME FORMAT ── -->
+    <div class="form-section-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Game Format
+    </div>
+
+    <!-- Game type visual grid — improvement vs no format selector in original -->
+    <div class="field-group">
+      <div class="field-label"><span class="field-label-text">Type</span></div>
+      <div class="type-grid" role="group" aria-label="Game type">
+        <button class="type-option active" onclick="selectType(this)" aria-pressed="true">
+          <div class="type-icon">🏓</div>
+          Open Play
+        </button>
+        <button class="type-option" onclick="selectType(this)" aria-pressed="false">
+          <div class="type-icon">🔄</div>
+          Round Robin
+        </button>
+        <button class="type-option" onclick="selectType(this)" aria-pressed="false">
+          <div class="type-icon">🏆</div>
+          Competitive
+        </button>
+      </div>
+    </div>
+
+    <!-- Visibility toggle — Public / Private -->
+    <div class="field-group">
+      <div class="field-label"><span class="field-label-text">Visibility</span></div>
+      <div class="vis-toggle" role="group" aria-label="Game visibility">
+        <button class="vis-btn active" id="vis-public" onclick="setVis('public')" aria-pressed="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Public
+        </button>
+        <button class="vis-btn" id="vis-private" onclick="setVis('private')" aria-pressed="false">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Private
+        </button>
+      </div>
+      <div class="vis-help" id="vis-help-text">Anyone nearby can discover and join this game.</div>
+    </div>
+
+    <!-- Court Reserved — new field from Pickleheads, removes ambiguity -->
+    <div class="field-group">
+      <div class="field-label"><span class="field-label-text">Court Reserved?</span></div>
+      <div class="yn-toggle" role="group" aria-label="Court reserved">
+        <button class="yn-btn" id="court-yes" onclick="setCourt('yes')" aria-pressed="false">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Yes
+        </button>
+        <button class="yn-btn active-no" id="court-no" onclick="setCourt('no')" aria-pressed="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          No
+        </button>
+      </div>
+    </div>
+
+    <hr class="form-divider">
+
+    <!-- ── SECTION: DESCRIPTION ── -->
+    <div class="form-section-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+      Description
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">
+        <span class="field-label-text">Notes (optional)</span>
+        <span class="field-label-hint" id="desc-count">0 / 200</span>
+      </div>
+      <textarea
+        class="field-textarea"
+        id="game-desc"
+        placeholder="Any details players should know — bring extra balls, warm-up starts 10 min early…"
+        maxlength="200"
+        oninput="updateCharCount(this,'desc-count',200)"
+        aria-label="Game description"
+      ></textarea>
+    </div>
+
+  </div><!-- /form-card -->
+
+  <!-- PRO UPSELL — after the form, not mid-form -->
+  <div class="pro-banner" onclick="togglePro(this)" role="button" tabindex="0" aria-label="Toggle Pro features">
+    <div class="pro-icon">⚡</div>
+    <div class="pro-text">
+      <strong>Unlock Pro Features</strong>
+      <span>Unlimited round robins, leagues &amp; advanced scoring.</span>
+    </div>
+    <button class="pro-toggle" id="pro-toggle" aria-pressed="false" aria-label="Toggle Pro">
+    </button>
+  </div>
+
+  <!-- SUBMIT -->
+  <div class="submit-wrap">
+    <button class="submit-btn" onclick="handleSubmit()" aria-label="Create game">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Create Game
+    </button>
+    <p class="submit-help">Your game will be visible to nearby players right away.</p>
+  </div>
+
+  <div class="gap-md"></div>
+
+</div><!-- /page -->
+
+<!-- ===== BOTTOM TAB BAR — Profile.html style ===== -->
+<nav class="tabbar" aria-label="Primary navigation">
+  <a href="index.html" class="tab-item" aria-label="Home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+    Home
+  </a>
+  <a href="Nearby.html" class="tab-item" aria-label="Nearby">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+    Nearby
+  </a>
+  <a href="Games.html" class="tab-item active" aria-label="Games" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    Games
+  </a>
+  <a href="Clubs.html" class="tab-item" aria-label="Clubs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Clubs
+  </a>
+  <a href="Profile.html" class="tab-item" aria-label="Profile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Profile
+  </a>
+</nav>
+
+<script>
+/* ── Char counter ── */
+function updateCharCount(el, countId, max) {
+  const n = el.value.length;
+  const el2 = document.getElementById(countId);
+  if (!el2) return;
+  el2.textContent = countId === 'desc-count' ? `${n} / ${max}` : `${n}`;
+  el2.style.color = n > max * 0.9 ? 'var(--warning)' : 'var(--text-muted)';
+}
+
+/* ── Players stepper ── */
+function stepPlayers(delta) {
+  const input = document.getElementById('players-val');
+  let v = parseInt(input.value) || 8;
+  v = Math.min(64, Math.max(2, v + delta));
+  input.value = v;
+}
+function toggleNoLimit(cb) {
+  const wrap = document.getElementById('stepper-wrap');
+  wrap.style.opacity = cb.checked ? '0.4' : '1';
+  wrap.style.pointerEvents = cb.checked ? 'none' : '';
+  document.getElementById('players-val').value = cb.checked ? '∞' : '8';
+}
+
+/* ── Skill display ── */
+function updateSkill() {
+  const minVal = parseFloat(document.getElementById('skill-min').value);
+  const maxVal = parseFloat(document.getElementById('skill-max').value);
+  document.getElementById('skill-min-display').textContent = minVal.toFixed(1);
+  document.getElementById('skill-max-display').textContent = Math.max(minVal + 0.5, maxVal).toFixed(1);
+}
+
+/* ── Game type selector ── */
+function selectType(btn) {
+  document.querySelectorAll('.type-option').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-pressed', 'false');
+  });
+  btn.classList.add('active');
+  btn.setAttribute('aria-pressed', 'true');
+}
+
+/* ── Visibility toggle ── */
+const visHelp = {
+  public:  'Anyone nearby can discover and join this game.',
+  private: 'Only players you invite can see the details and sign up.',
+};
+function setVis(v) {
+  document.getElementById('vis-public').classList.toggle('active', v === 'public');
+  document.getElementById('vis-private').classList.toggle('active', v === 'private');
+  document.getElementById('vis-public').setAttribute('aria-pressed', v === 'public');
+  document.getElementById('vis-private').setAttribute('aria-pressed', v === 'private');
+  document.getElementById('vis-help-text').textContent = visHelp[v];
+}
+
+/* ── Court toggle ── */
+function setCourt(v) {
+  const y = document.getElementById('court-yes');
+  const n = document.getElementById('court-no');
+  y.className = 'yn-btn' + (v === 'yes' ? ' active-yes' : '');
+  n.className = 'yn-btn' + (v === 'no' ? ' active-no' : '');
+  y.setAttribute('aria-pressed', v === 'yes');
+  n.setAttribute('aria-pressed', v === 'no');
+}
+
+/* ── Pro toggle ── */
+function togglePro(banner) {
+  const t = document.getElementById('pro-toggle');
+  const on = t.classList.toggle('on');
+  t.setAttribute('aria-pressed', on);
+}
+
+/* ── Submit ── */
+function handleSubmit() {
+  const name = document.getElementById('game-name').value.trim();
+  if (!name) {
+    document.getElementById('game-name').focus();
+    document.getElementById('game-name').style.borderColor = 'var(--error)';
+    return;
+  }
+  alert('🎉 Game created! Redirecting to game page…');
+}
+
+/* Keyboard nav for role=button divs */
+document.querySelectorAll('[role="button"]').forEach(el => {
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+  });
+});
+</script>
+</body>
+</html>

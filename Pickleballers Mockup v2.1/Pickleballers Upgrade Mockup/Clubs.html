@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pickleballers — Clubs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grandstander:wght@500;600;700;800;900&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     DESIGN TOKENS — Pickleballers Brand System
+  ============================================================ */
+  :root {
+    --blue:          #3355FF;
+    --blue-hover:    #2440D9;
+    --lime:          #CCFF33;
+    --lime-hover:    #B8E600;
+    --lime-active:   #A3CC00;
+    --ink:           #1A2138;
+
+    --bg-page:       #F3F5FA;
+    --bg-app:        #E9EDFF;
+    --bg-alt:        #E1E8FF;
+    --bg-feature:    #F4FFD6;
+    --surface:       #FFFFFF;
+
+    --text-primary:   #1A2138;
+    --text-secondary: #64748B;
+    --text-muted:     #94A3B8;
+
+    --border:        #CBD5E1;
+    --border-subtle: #E2EAF2;
+
+    --success:       #22C55E;
+    --warning:       #F97316;
+    --error:         #EF4444;
+
+    --radius-card: 16px;
+    --radius-lg:   20px;
+    --radius-pill: 9999px;
+
+    --shadow-sm: 0 2px 8px rgba(26,33,56,0.07);
+    --shadow-md: 0 4px 16px rgba(26,33,56,0.10);
+    --shadow-lg: 0 8px 28px rgba(26,33,56,0.14);
+
+    --ease-out:    cubic-bezier(0,0,0.2,1);
+    --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Lexend', sans-serif;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 80px;
+  }
+
+  h1,h2,h3,h4,.brand { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
+  p { margin: 0; }
+  a { text-decoration: none; color: inherit; }
+  button { font-family: inherit; cursor: pointer; border: none; }
+
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  /* ============================================================
+     TOP NAV — exact same style as Profile.html
+  ============================================================ */
+  .topnav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sm);
+  }
+  .topnav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    gap: 12px;
+    position: relative;
+  }
+  .brand {
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.3px;
+    color: var(--blue);
+  }
+  .brand span { color: var(--lime-active); }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: var(--ink);
+    position: relative;
+    transition: background 150ms var(--ease-out);
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--bg-app); }
+  .notif-dot {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--warning);
+    border: 2px solid var(--surface);
+  }
+
+  .fab {
+  position: fixed;
+  bottom: 80px;
+  right: max(16px, calc(50vw - 224px));
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  /* FIX #4 */
+  background: var(--lime);
+  color: var(--ink);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(163,204,0,0.45);
+  cursor: pointer;
+  z-index: 40;
+  transition: transform 150ms var(--ease-spring), box-shadow 150ms;
+}
+.fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(163,204,0,0.55);
+}
+.fab:active { transform: scale(0.95); }
+
+
+  /* ============================================================
+     BOTTOM TAB BAR — exact same style as Profile.html
+  ============================================================ */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--surface);
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    z-index: 45;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 150ms;
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .tab-item.active { color: var(--blue); }
+  .tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--lime-active);
+  }
+  .tab-item svg { width: 22px; height: 22px; }
+
+  /* ============================================================
+     PAGE CONTENT
+  ============================================================ */
+  .page-content {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  /* ============================================================
+     SEARCH BAR — improvement over original (no search in old UI)
+  ============================================================ */
+  .search-wrap {
+    padding: 14px 0 6px;
+  }
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 10px 16px;
+    transition: border-color 150ms;
+    box-shadow: var(--shadow-sm);
+  }
+  .search-bar:focus-within {
+    border-color: var(--blue);
+  }
+  .search-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Lexend', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    outline: none;
+  }
+  .search-bar input::placeholder { color: var(--text-muted); }
+  .search-bar svg { color: var(--text-muted); flex-shrink: 0; }
+
+  /* ============================================================
+     FILTER CHIPS — improvement: replaces "VIEW ALL" text link
+  ============================================================ */
+  .filter-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 0 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: all 150ms var(--ease-out);
+    cursor: pointer;
+  }
+  .filter-chip.active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+  }
+  .filter-chip:hover:not(.active) {
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+
+  /* ============================================================
+     SECTION HEADER
+  ============================================================ */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 0 10px;
+  }
+  .section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    font-family: 'Grandstander', cursive;
+  }
+  .view-all-btn {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* ============================================================
+     MY CLUBS CARDS — improvement: richer cards with member count
+     and a leave/manage action vs bare chevron
+  ============================================================ */
+  .club-card {
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 10px;
+    transition: box-shadow 150ms var(--ease-out), transform 150ms var(--ease-out);
+    cursor: pointer;
+  }
+  .club-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  .club-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+  }
+  .club-icon.lime { background: var(--lime); }
+  .club-icon.blue { background: var(--blue); }
+
+  .club-info { flex: 1; min-width: 0; }
+  .club-name {
+    font-family: 'Grandstander', cursive;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .club-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--bg-alt);
+    color: var(--blue);
+  }
+  .tag.lime-tag { background: var(--bg-feature); color: var(--lime-active); }
+  .tag.green-tag { background: rgba(34,197,94,0.1); color: var(--success); }
+
+  .club-members {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .club-chevron {
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ============================================================
+     UPCOMING EVENT BADGE — new improvement inside club card
+  ============================================================ */
+  .event-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--warning);
+    background: rgba(249,115,22,0.1);
+    border-radius: var(--radius-pill);
+    padding: 2px 8px;
+    margin-left: 2px;
+  }
+
+  /* ============================================================
+     FEATURED CLUB — redesigned: split image + info panel layout
+     FIX 1: Separate image zone from content zone — no more text
+            fighting the busy background illustration.
+     FIX 2: Featured badge pinned to top-left of image (absolute),
+            not buried inside the gradient zone.
+     FIX 3: Taller image (220px) for visual impact.
+     FIX 4: Rich gradient vignette only on the bottom 40% of image —
+            smooth dark-to-transparent so title reads cleanly.
+     FIX 5: Content panel is solid surface with proper padding,
+            not a translucent overlay — full contrast guaranteed.
+     FIX 6: Stats row uses pill chips with icon+label pairs,
+            readable at a glance.
+     FIX 7: Join CTA moves to the solid panel, given full width
+            and proper breathing room.
+  ============================================================ */
+  .featured-card {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 10px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
+    border: 1px solid var(--border-subtle);
+  }
+  .featured-card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+
+  /* IMAGE ZONE */
+  .featured-img-placeholder {
+    width: 100%;
+    height: 220px;
+    background-image: url('8.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  
+  /* Subtle lime glow top-left, soft white shimmer top-right */
+  .featured-img-placeholder::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(ellipse at 15% 40%, rgba(204,255,51,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 15%, rgba(255,255,255,0.07) 0%, transparent 45%);
+    pointer-events: none;
+  }
+  /* Strong bottom vignette so the court SVG fades cleanly */
+  .featured-img-placeholder::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 70px;
+    background: linear-gradient(to top, rgba(13,22,48,0.70) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  .court-illustration {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* FEATURED BADGE — pinned top-left over the image */
+  .featured-label {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--lime);
+    color: var(--ink);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    padding: 4px 11px;
+    border-radius: var(--radius-pill);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  }
+
+  /* CONTENT PANEL — solid white, lives below the image */
+  .featured-content {
+    padding: 16px 16px 18px;
+    background: var(--surface);
+    position: relative;
+  }
+
+  /* Club type tag row */
+  .featured-tags {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .featured-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--bg-alt);
+    color: var(--blue);
+  }
+  .featured-tag.open { background: rgba(34,197,94,0.12); color: var(--success); }
+
+  .featured-name {
+    font-family: 'Grandstander', cursive;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--ink);
+    margin-bottom: 5px;
+    line-height: 1.15;
+  }
+  .featured-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+
+  /* Stats row — pill chips on solid white, full contrast */
+  .featured-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .featured-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: var(--bg-app);
+    border-radius: var(--radius-pill);
+    padding: 5px 11px;
+  }
+  .featured-stat svg { color: var(--blue); flex-shrink: 0; }
+
+  /* Join CTA — full width lime button, plenty of breathing room */
+  .join-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-pill);
+    background: var(--lime);
+    color: var(--ink);
+    font-family: 'Grandstander', cursive;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(163,204,0,0.30);
+    transition: background 150ms var(--ease-out), transform 100ms var(--ease-out), box-shadow 150ms;
+  }
+  .join-btn:hover {
+    background: var(--lime-hover);
+    box-shadow: 0 4px 18px rgba(163,204,0,0.40);
+  }
+  .join-btn:active { transform: scale(0.98); background: var(--lime-active); }
+
+  /* ============================================================
+     NEARBY CLUBS HORIZONTAL SCROLL — improvement over static list
+  ============================================================ */
+  .nearby-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .nearby-scroll::-webkit-scrollbar { display: none; }
+
+  .nearby-card {
+    background: var(--surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+    padding: 14px;
+    min-width: 155px;
+    max-width: 155px;
+    cursor: pointer;
+    transition: box-shadow 150ms, transform 150ms;
+    flex-shrink: 0;
+  }
+  .nearby-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  .nearby-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+  .nearby-card-name {
+    font-family: 'Grandstander', cursive;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nearby-card-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .join-sm-btn {
+    display: block;
+    width: 100%;
+    padding: 7px;
+    border-radius: var(--radius-pill);
+    background: var(--blue);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    transition: background 150ms;
+  }
+  .join-sm-btn:hover { background: var(--blue-hover); }
+
+  /* ============================================================
+     CREATE CLUB CTA STRIP — new section
+  ============================================================ */
+  .create-club-strip {
+    background: var(--bg-feature);
+    border: 1.5px dashed var(--lime-active);
+    border-radius: var(--radius-card);
+    padding: 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 6px 0 20px;
+    cursor: pointer;
+    transition: background 150ms;
+  }
+  .create-club-strip:hover { background: #eaffd0; }
+  .create-icon-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: var(--lime);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--ink);
+  }
+  .create-text strong {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    font-family: 'Grandstander', cursive;
+    margin-bottom: 2px;
+  }
+  .create-text span {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ============================================================
+     EMPTY STATE (if no clubs)
+  ============================================================ */
+  .empty-state {
+    text-align: center;
+    padding: 30px 0 10px;
+  }
+  .empty-state-icon {
+    font-size: 44px;
+    margin-bottom: 12px;
+  }
+  .empty-state h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-bottom: 6px;
+    font-family: 'Grandstander', cursive;
+  }
+  .empty-state p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ============================================================
+     SECTION GAP
+  ============================================================ */
+  .section-gap { height: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP NAV — same style as Profile.html ============ -->
+<header class="topnav">
+  <div class="container topnav-inner">
+    <!-- Brand logo — centred -->
+    <a href="index.html" class="brand" style="position:absolute;left:50%;transform:translateX(-50%);">Pickle<span>Ballers</span></a>
+    <!-- Back button on left -->
+    <a href="index.html" class="icon-btn" aria-label="Go back" style="color:var(--ink);text-decoration:none;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <!-- Notifications on right -->
+    <div class="nav-actions">
+      <button class="icon-btn" aria-label="Notifications, 1 unread" style="position:relative">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-dot" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============ PAGE CONTENT ============ -->
+<div class="page-content">
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <div class="search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="search" placeholder="Find a club…" aria-label="Search clubs" />
+    </div>
+  </div>
+
+  <!-- Filter chips -->
+  <div class="filter-row" role="group" aria-label="Filter clubs">
+    <button class="filter-chip active" onclick="setFilter(this)">All</button>
+    <button class="filter-chip" onclick="setFilter(this)">My Clubs</button>
+    <button class="filter-chip" onclick="setFilter(this)">Competitive</button>
+    <button class="filter-chip" onclick="setFilter(this)">Social</button>
+    <button class="filter-chip" onclick="setFilter(this)">Beginner</button>
+  </div>
+
+  <!-- MY CLUBS -->
+  <div class="section-header">
+    <h2 class="section-title">My Clubs</h2>
+    <button class="view-all-btn" aria-label="View all my clubs">View All</button>
+  </div>
+
+  <!-- Club card 1 -->
+  <div class="club-card" role="button" tabindex="0" aria-label="Neon Smashers club">
+    <div class="club-icon lime" aria-hidden="true">⚡</div>
+    <div class="club-info">
+      <div class="club-name">Neon Smashers</div>
+      <div class="club-meta">
+        <span class="tag">Competitive</span>
+        <span class="event-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          3 Events
+        </span>
+      </div>
+      <div class="club-members">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        48 members
+      </div>
+    </div>
+    <svg class="club-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <!-- Club card 2 -->
+  <div class="club-card" role="button" tabindex="0" aria-label="Downtown Volleys club">
+    <div class="club-icon blue" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div>
+    <div class="club-info">
+      <div class="club-name">Downtown Volleys</div>
+      <div class="club-meta">
+        <span class="tag">Social</span>
+        <span class="tag green-tag">Friendly</span>
+      </div>
+      <div class="club-members">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        31 members
+      </div>
+    </div>
+    <svg class="club-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <!-- CREATE CLUB STRIP -->
+  <div class="create-club-strip" role="button" tabindex="0" aria-label="Create a new club">
+    <div class="create-icon-circle" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <div class="create-text">
+      <strong>Start a New Club</strong>
+      <span>Build your own community of players</span>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+
+  <!-- DISCOVER NEARBY — FEATURED -->
+  <div class="section-header" style="padding-top:4px;">
+    <h2 class="section-title">
+      <span style="display:inline-flex;align-items:center;gap:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        Discover Nearby
+      </span>
+    </h2>
+  </div>
+
+  <!-- Featured Club Card — redesigned split layout -->
+  <div class="featured-card" role="button" tabindex="0" aria-label="The Kitchen Kings featured club">
+
+    <!-- IMAGE ZONE: illustration + pinned badge -->
+    <div class="featured-img-placeholder" style="position:relative;">
+      <!-- Featured badge pinned top-left -->
+      <div class="featured-label" aria-label="Featured Club">⭐ Featured Club</div>
+      
+      
+    </div>
+
+    <!-- CONTENT PANEL — solid white, below the image -->
+    <div class="featured-content">
+      <div class="featured-tags">
+        <span class="featured-tag">Competitive</span>
+        <span class="featured-tag">Casual Play</span>
+        <span class="featured-tag open">Open Enrollment</span>
+      </div>
+
+      <div class="featured-name">The Kitchen Kings</div>
+      <div class="featured-desc">The city's largest community for competitive and casual play. 12 courts, pro coaches, and weekly mixers.</div>
+
+      <div class="featured-stats">
+        <div class="featured-stat">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          312 members
+        </div>
+        <div class="featured-stat">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          4.8 rating
+        </div>
+        <div class="featured-stat">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          1.2 km away
+        </div>
+      </div>
+
+      <button class="join-btn" onclick="alert('Joining The Kitchen Kings…')">Join Club</button>
+    </div>
+  </div>
+
+  <!-- NEARBY CLUBS — Horizontal Scroll -->
+  <div class="section-header">
+    <h2 class="section-title">More Nearby</h2>
+    <button class="view-all-btn">See All</button>
+  </div>
+
+  <div class="nearby-scroll" aria-label="Nearby clubs">
+
+    <div class="nearby-card" role="button" tabindex="0">
+      <div class="nearby-icon" style="background:#E1E8FF;">🏆</div>
+      <div class="nearby-card-name">Rally Royals</div>
+      <div class="nearby-card-meta">Competitive · 2.3 km</div>
+      <button class="join-sm-btn">Join</button>
+    </div>
+
+    <div class="nearby-card" role="button" tabindex="0">
+      <div class="nearby-icon" style="background:#F4FFD6;">☀️</div>
+      <div class="nearby-card-name">Sunday Slammers</div>
+      <div class="nearby-card-meta">Casual · 3.1 km</div>
+      <button class="join-sm-btn">Join</button>
+    </div>
+
+    <div class="nearby-card" role="button" tabindex="0">
+      <div class="nearby-icon" style="background:rgba(34,197,94,0.12);">🌿</div>
+      <div class="nearby-card-name">Bayside Ballers</div>
+      <div class="nearby-card-meta">Social · 4.8 km</div>
+      <button class="join-sm-btn">Join</button>
+    </div>
+
+    <div class="nearby-card" role="button" tabindex="0">
+      <div class="nearby-icon" style="background:rgba(239,68,68,0.1);">🔥</div>
+      <div class="nearby-card-name">The Burners</div>
+      <div class="nearby-card-meta">Competitive · 5.4 km</div>
+      <button class="join-sm-btn">Join</button>
+    </div>
+
+  </div>
+
+  <div style="height: 20px;"></div>
+
+</div><!-- /page-content -->
+
+<a href="CreateClub.html">
+  <button class="fab" aria-label="Create a new game">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+</a>
+
+<!-- ============ BOTTOM TAB BAR — exact same style as Profile.html ============ -->
+<nav class="tabbar" aria-label="Primary navigation">
+  <a href="index.html" class="tab-item" aria-label="Home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+    Home
+  </a>
+  <a href="Nearby.html" class="tab-item" aria-label="Nearby">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+    Nearby
+  </a>
+  <a href="Games.html" class="tab-item" aria-label="Games">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Games
+  </a>
+  <a href="Clubs.html" class="tab-item active" aria-label="Clubs" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+    Clubs
+  </a>
+  <a href="Profile.html" class="tab-item" aria-label="Profile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Profile
+  </a>
+</nav>
+
+<script>
+  function setFilter(btn) {
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // Card keyboard nav
+  document.querySelectorAll('[role="button"]').forEach(el => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        el.click();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>

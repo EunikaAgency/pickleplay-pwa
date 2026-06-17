@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pickleballers — Create a Club</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grandstander:wght@500;600;700;800;900&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:           #3355FF;
+  --blue-hover:     #2440D9;
+  --lime:           #CCFF33;
+  --lime-hover:     #B8E600;
+  --lime-active:    #A3CC00;
+  --ink:            #1A2138;
+  --bg-app:         #E9EDFF;
+  --bg-alt:         #E1E8FF;
+  --surface:        #FFFFFF;
+  --text-primary:   #1A2138;
+  --text-secondary: #64748B;
+  --text-muted:     #94A3B8;
+  --border:         #CBD5E1;
+  --border-subtle:  #E2EAF2;
+  --warning:        #F97316;
+  --error:          #EF4444;
+  --radius-card:    16px;
+  --radius-pill:    9999px;
+  --shadow-sm:      0 2px 8px rgba(26,33,56,0.07);
+  --ease-out:       cubic-bezier(0,0,0.2,1);
+  --ease-spring:    cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* === RESET: no page scroll, full viewport === */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: 'Lexend', sans-serif;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+h1,h2,h3 { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.15; }
+p { margin: 0; }
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+
+/* === TOP NAV === */
+.topnav {
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  z-index: 50;
+}
+.topnav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 12px;
+}
+.brand {
+  font-family: 'Grandstander', cursive;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.2px;
+  color: var(--blue);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.brand span { color: var(--lime-active); }
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: none;
+  color: var(--ink);
+  position: relative;
+  transition: background 150ms var(--ease-out);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.icon-btn:hover { background: var(--bg-app); }
+.notif-dot {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+  border: 2px solid var(--surface);
+}
+.nav-right { display: flex; align-items: center; }
+
+/* === SCROLLABLE WIZARD — ONLY this scrolls === */
+.wizard-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.wizard-scroll::-webkit-scrollbar { display: none; }
+.wizard-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+
+/* === STEP VISIBILITY === */
+.step { display: none; flex-direction: column; }
+.step.active { display: flex; animation: stepIn 220ms var(--ease-out) both; }
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* === STEP HEADER === */
+.step-header { padding: 20px 20px 0; }
+.step-bar { display: flex; gap: 5px; margin-bottom: 14px; }
+.step-seg {
+  height: 3px; flex: 1;
+  border-radius: var(--radius-pill);
+  background: var(--border);
+  transition: background 280ms var(--ease-out);
+}
+.step-seg.done   { background: var(--blue); }
+.step-seg.active { background: var(--lime-active); }
+.step-eyebrow {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-muted); margin: 0 0 4px;
+}
+.step-heading { font-size: 24px; font-weight: 800; color: var(--ink); letter-spacing: -0.3px; margin-bottom: 5px; }
+.step-hint { font-size: 13px; line-height: 1.55; color: var(--text-secondary); margin: 0; }
+
+/* === STEP BODY === */
+.step-body { padding: 18px 20px 0; display: flex; flex-direction: column; gap: 14px; }
+
+/* === SECTION CARD === */
+.section-card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-subtle);
+}
+.section-card-title {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); margin: 0 0 12px;
+}
+
+/* === FORM === */
+.field-group { display: flex; flex-direction: column; gap: 5px; }
+.field-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.field-input, .field-textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 13px 14px;
+  font-family: 'Lexend', sans-serif;
+  font-size: 14px; line-height: 1.4;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+  resize: none;
+  -webkit-appearance: none; appearance: none;
+}
+.field-input::placeholder, .field-textarea::placeholder { color: var(--text-muted); font-weight: 400; }
+.field-input:focus, .field-textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(51,85,255,0.10);
+}
+.field-textarea { min-height: 96px; }
+.field-footer { display: flex; justify-content: space-between; align-items: center; }
+.field-hint { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.char-count { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; padding-left: 8px; }
+
+/* === VISIBILITY TOGGLE === */
+.toggle-row { background: var(--bg-app); border-radius: 12px; padding: 3px; display: flex; gap: 3px; }
+.toggle-opt {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 8px; border-radius: 9px;
+  font-size: 13px; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; transition: all 180ms var(--ease-out); border: none; background: transparent;
+}
+.toggle-opt.active { background: var(--blue); color: #fff; box-shadow: 0 2px 6px rgba(51,85,255,0.28); }
+.toggle-opt svg { width: 15px; height: 15px; flex-shrink: 0; }
+.vis-hint { font-size: 12px; color: var(--text-muted); margin: 9px 0 0; line-height: 1.4; }
+
+/* === SKILL PILLS === */
+.skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.skill-pill {
+  padding: 12px 10px; border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border); background: var(--surface);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; transition: all 160ms var(--ease-out); text-align: center; line-height: 1;
+}
+.skill-pill:hover { border-color: var(--blue); color: var(--blue); background: rgba(51,85,255,0.04); }
+.skill-pill.active { background: var(--lime); border-color: var(--lime-active); color: var(--ink); }
+
+/* === PERMISSION ROWS === */
+.perm-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border-subtle);
+}
+.perm-row:last-child { border-bottom: none; padding-bottom: 0; }
+.perm-row:first-of-type { padding-top: 0; }
+.perm-label { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.3; }
+.perm-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.3; }
+.switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch-track {
+  position: absolute; inset: 0;
+  border-radius: var(--radius-pill); background: var(--border);
+  transition: background 200ms; cursor: pointer;
+}
+.switch input:checked + .switch-track { background: var(--blue); }
+.switch-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+  transition: transform 200ms var(--ease-spring);
+}
+.switch input:checked + .switch-track::after { transform: translateX(20px); }
+
+/* === COURT SEARCH === */
+.search-pill {
+  display: flex; align-items: center;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill); padding: 0 6px 0 14px; gap: 8px;
+  box-shadow: var(--shadow-sm); transition: border-color 150ms, box-shadow 150ms;
+}
+.search-pill:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(51,85,255,0.10); }
+.search-pill-icon { color: var(--text-muted); flex-shrink: 0; display: flex; }
+.search-pill input {
+  flex: 1; border: none; outline: none;
+  font-family: 'Lexend', sans-serif; font-size: 14px;
+  color: var(--ink); background: transparent; padding: 12px 0; min-width: 0;
+}
+.search-pill input::placeholder { color: var(--text-muted); }
+.search-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--blue); border: none;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; cursor: pointer; flex-shrink: 0; transition: background 150ms;
+}
+.search-btn:hover { background: var(--blue-hover); }
+.court-card {
+  background: var(--surface); border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-card); display: flex; align-items: center;
+  gap: 12px; padding: 12px; box-shadow: var(--shadow-sm);
+}
+.court-thumb {
+  width: 64px; height: 58px; border-radius: 10px;
+  background: var(--bg-alt); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); overflow: hidden;
+}
+.court-thumb svg { width: 24px; height: 24px; }
+.court-info { flex: 1; min-width: 0; }
+.court-name {
+  font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.court-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.court-tag {
+  font-size: 10px; font-weight: 600; padding: 3px 8px;
+  border-radius: var(--radius-pill); background: var(--bg-alt); color: var(--blue); line-height: 1;
+}
+.court-remove {
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: var(--bg-app); color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: background 150ms, color 150ms;
+}
+.court-remove:hover { background: rgba(239,68,68,0.1); color: var(--error); }
+.courts-meta { font-size: 11px; color: var(--text-muted); text-align: center; line-height: 1.4; }
+
+/* === PHOTO DROPZONE === */
+.photo-dropzone {
+  border: 2px dashed var(--border); border-radius: var(--radius-card);
+  background: var(--surface); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 7px;
+  padding: 28px 20px; cursor: pointer;
+  transition: border-color 180ms, background 180ms; text-align: center;
+}
+.photo-dropzone:hover { border-color: var(--blue); background: rgba(51,85,255,0.025); }
+.photo-dropzone-icon { color: var(--text-muted); }
+.photo-dropzone-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.photo-dropzone-sub { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.photo-pick-btn {
+  margin-top: 4px; background: var(--blue); color: #fff; border: none;
+  border-radius: var(--radius-pill); padding: 9px 20px;
+  font-family: 'Lexend', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 150ms;
+}
+.photo-pick-btn:hover { background: var(--blue-hover); }
+.skip-link {
+  font-size: 12px; color: var(--text-muted); text-align: center; cursor: pointer;
+  margin-top: 6px; transition: color 150ms; background: none; border: none;
+  padding: 4px; display: block; width: 100%;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.skip-link:hover { color: var(--blue); }
+
+/* === REVIEW CARD === */
+.review-card {
+  background: var(--surface); border-radius: var(--radius-card);
+  padding: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle);
+}
+.review-field { margin-bottom: 13px; }
+.review-field:last-child { margin-bottom: 0; }
+.review-key {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 3px;
+}
+.review-val { font-size: 14px; font-weight: 600; color: var(--ink); line-height: 1.4; }
+.review-val.placeholder { color: var(--text-muted); font-weight: 400; font-style: italic; }
+.review-divider { height: 1px; background: var(--border-subtle); margin: 13px 0; }
+.review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.review-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; padding: 4px 10px;
+  border-radius: var(--radius-pill); background: var(--bg-alt); color: var(--blue); margin-top: 3px;
+}
+
+/* === WIZARD FOOTER === */
+.wizard-footer { padding: 16px 20px 20px; display: flex; align-items: center; gap: 10px; }
+.btn-prev {
+  flex: 1; padding: 14px; border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border); background: transparent;
+  font-size: 14px; font-weight: 600; color: var(--text-secondary);
+  cursor: pointer; transition: border-color 150ms, color 150ms; line-height: 1;
+}
+.btn-prev:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.btn-prev:disabled { opacity: 0.3; pointer-events: none; }
+.btn-next {
+  flex: 1.6; padding: 14px; border-radius: var(--radius-pill); border: none;
+  background: var(--lime);
+  font-family: 'Grandstander', cursive;
+  font-size: 15px; font-weight: 800; color: var(--ink);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: background 150ms, transform 80ms;
+  box-shadow: 0 2px 10px rgba(163,204,0,0.30); line-height: 1; letter-spacing: 0.01em;
+}
+.btn-next:hover { background: var(--lime-hover); }
+.btn-next:active { transform: scale(0.97); }
+.btn-next.is-blue { background: var(--blue); color: #fff; box-shadow: 0 2px 10px rgba(51,85,255,0.26); }
+.btn-next.is-blue:hover { background: var(--blue-hover); }
+
+/* === SUCCESS === */
+.success-screen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 52px 28px 40px; gap: 10px;
+}
+.success-ring {
+  width: 80px; height: 80px; border-radius: 50%; background: var(--lime);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px; animation: popIn 420ms var(--ease-spring) both;
+}
+@keyframes popIn {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.success-title { font-size: 28px; font-weight: 900; color: var(--ink); letter-spacing: -0.3px; }
+.success-sub { font-size: 14px; color: var(--text-secondary); line-height: 1.55; max-width: 280px; }
+.success-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 14px; }
+.success-actions .btn-next { flex: none; width: 100%; }
+.success-share {
+  font-size: 12px; color: var(--text-muted); background: none; border: none;
+  cursor: pointer; padding: 4px; transition: color 150ms;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.success-share:hover { color: var(--blue); }
+
+/* === BOTTOM TAB BAR === */
+.tabbar {
+  flex-shrink: 0; height: 64px;
+  background: var(--surface); border-top: 1px solid var(--border-subtle);
+  display: flex; z-index: 45;
+}
+.tab-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; font-size: 10px; font-weight: 500; color: var(--text-muted);
+  transition: color 150ms; position: relative; cursor: pointer; text-decoration: none;
+}
+.tab-item.active { color: var(--blue); }
+.tab-item.active::after {
+  content: ''; position: absolute; bottom: 8px;
+  width: 4px; height: 4px; border-radius: 50%; background: var(--lime-active);
+}
+.tab-item svg { width: 22px; height: 22px; }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<header class="topnav">
+  <div class="topnav-inner">
+    <button class="icon-btn" aria-label="Close" id="close-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <span class="brand">Pickle<span>Ballers</span></span>
+    <div class="nav-right">
+      <button class="icon-btn" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="icon-btn" aria-label="Notifications" style="position:relative">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-dot" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- SCROLLABLE WIZARD AREA — the only element that scrolls -->
+<div class="wizard-scroll" id="wizard-scroll">
+<div class="wizard-wrap">
+
+  <!-- STEP 1: Name Your Club -->
+  <div class="step active" id="step-1">
+    <div class="step-header">
+      <div class="step-bar">
+        <div class="step-seg active"></div><div class="step-seg"></div>
+        <div class="step-seg"></div><div class="step-seg"></div>
+      </div>
+      <p class="step-eyebrow">Step 1 of 4</p>
+      <h1 class="step-heading">Name Your Club</h1>
+      <p class="step-hint">Give your club a name your players will recognize.</p>
+    </div>
+    <div class="step-body">
+      <div class="field-group">
+        <label class="field-label" for="club-name">Club Name</label>
+        <input class="field-input" id="club-name" type="text" placeholder="e.g. Neon Smashers" maxlength="60" autocomplete="off" />
+        <span class="field-hint">Keep it short, fun, and memorable.</span>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="club-desc">Description</label>
+        <textarea class="field-textarea" id="club-desc" placeholder="What's your club about? Tell players what to expect — skill level, vibe, play schedule..." maxlength="280"></textarea>
+        <div class="field-footer">
+          <span class="field-hint">Optional — helps players decide to join.</span>
+          <span class="char-count" id="desc-count">0 / 280</span>
+        </div>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn-prev" disabled>Prev</button>
+      <button class="btn-next" onclick="goTo(2)">
+        Next
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Club Details -->
+  <div class="step" id="step-2">
+    <div class="step-header">
+      <div class="step-bar">
+        <div class="step-seg done"></div><div class="step-seg active"></div>
+        <div class="step-seg"></div><div class="step-seg"></div>
+      </div>
+      <p class="step-eyebrow">Step 2 of 4</p>
+      <h1 class="step-heading">Club Details</h1>
+      <p class="step-hint">Who can join and what skill levels are welcome?</p>
+    </div>
+    <div class="step-body">
+      <div class="section-card">
+        <p class="section-card-title">Visibility</p>
+        <div class="toggle-row" role="group" aria-label="Club visibility">
+          <button class="toggle-opt active" id="vis-public" onclick="setVis('public')" aria-pressed="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Public
+          </button>
+          <button class="toggle-opt" id="vis-private" onclick="setVis('private')" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Private
+          </button>
+        </div>
+        <p class="vis-hint" id="vis-hint">Anyone can find and join this club.</p>
+      </div>
+      <div class="section-card">
+        <p class="section-card-title">Skill Level — select all that apply</p>
+        <div class="skill-grid">
+          <button class="skill-pill active" onclick="toggleSkill(this)">All Levels</button>
+          <button class="skill-pill" onclick="toggleSkill(this)">Beginner</button>
+          <button class="skill-pill" onclick="toggleSkill(this)">Intermediate</button>
+          <button class="skill-pill" onclick="toggleSkill(this)">Advanced</button>
+        </div>
+      </div>
+      <div class="section-card">
+        <p class="section-card-title">Member Permissions</p>
+        <div class="perm-row">
+          <div>
+            <div class="perm-label">Members can invite others</div>
+            <div class="perm-sub">Players can bring in new members</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked aria-label="Allow members to invite others"><span class="switch-track"></span></label>
+        </div>
+        <div class="perm-row">
+          <div>
+            <div class="perm-label">Members can schedule games</div>
+            <div class="perm-sub">Anyone in the club can create sessions</div>
+          </div>
+          <label class="switch"><input type="checkbox" checked aria-label="Allow members to create games"><span class="switch-track"></span></label>
+        </div>
+        <div class="perm-row">
+          <div>
+            <div class="perm-label">Require PRO to join</div>
+            <div class="perm-sub">Only Pickleballers PRO subscribers</div>
+          </div>
+          <label class="switch"><input type="checkbox" aria-label="Require PRO membership"><span class="switch-track"></span></label>
+        </div>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn-prev" onclick="goTo(1)">Prev</button>
+      <button class="btn-next" onclick="goTo(3)">Next <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Choose Courts -->
+  <div class="step" id="step-3">
+    <div class="step-header">
+      <div class="step-bar">
+        <div class="step-seg done"></div><div class="step-seg done"></div>
+        <div class="step-seg active"></div><div class="step-seg"></div>
+      </div>
+      <p class="step-eyebrow">Step 3 of 4</p>
+      <h1 class="step-heading">Choose Your Courts</h1>
+      <p class="step-hint">Where does your club play? Add one or more courts.</p>
+    </div>
+    <div class="step-body">
+      <div class="search-pill">
+        <span class="search-pill-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <input type="search" placeholder="Search by court name or location" aria-label="Search courts" />
+        <button class="search-btn" aria-label="Search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+      </div>
+      <div class="court-card">
+        <div class="court-thumb">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div class="court-info">
+          <div class="court-name">The PickleGround PH</div>
+          <div class="court-tags">
+            <span class="court-tag">6 Courts</span>
+            <span class="court-tag">Fee</span>
+            <span class="court-tag">Perm. Lines</span>
+            <span class="court-tag">Perm. Nets</span>
+          </div>
+        </div>
+        <button class="court-remove" aria-label="Remove court"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <p class="courts-meta">You can add more courts later from your club settings.</p>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn-prev" onclick="goTo(2)">Prev</button>
+      <button class="btn-next" onclick="goTo(4)">Next <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+  </div>
+
+  <!-- STEP 4: Photo + Review -->
+  <div class="step" id="step-4">
+    <div class="step-header">
+      <div class="step-bar">
+        <div class="step-seg done"></div><div class="step-seg done"></div>
+        <div class="step-seg done"></div><div class="step-seg active"></div>
+      </div>
+      <p class="step-eyebrow">Step 4 of 4 · Review &amp; Finish</p>
+      <h1 class="step-heading">Almost There!</h1>
+      <p class="step-hint">Add a cover photo and confirm your club details.</p>
+    </div>
+    <div class="step-body">
+      <div class="section-card">
+        <p class="section-card-title">Club Photo <span style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;">(optional)</span></p>
+        <div class="photo-dropzone" onclick="alert('Photo picker would open here.')">
+          <div class="photo-dropzone-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+          <div class="photo-dropzone-label">Upload a cover photo</div>
+          <div class="photo-dropzone-sub">JPEG or PNG · at least 800 × 600 px</div>
+          <button class="photo-pick-btn" onclick="event.stopPropagation();alert('Photo picker would open here.')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Select a Photo
+          </button>
+        </div>
+        <button class="skip-link">Skip for now</button>
+      </div>
+      <div class="review-card">
+        <div class="review-field">
+          <div class="review-key">Club Name</div>
+          <div class="review-val" id="rev-name">—</div>
+        </div>
+        <div class="review-field">
+          <div class="review-key">Description</div>
+          <div class="review-val placeholder" id="rev-desc">No description added.</div>
+        </div>
+        <div class="review-divider"></div>
+        <div class="review-grid">
+          <div>
+            <div class="review-key">Visibility</div>
+            <span class="review-badge" id="rev-vis">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              Public
+            </span>
+          </div>
+          <div>
+            <div class="review-key">Skill Range</div>
+            <span class="review-badge" id="rev-skill">All Levels</span>
+          </div>
+          <div>
+            <div class="review-key">Home Court</div>
+            <div class="review-val" style="font-size:13px;margin-top:3px;">The PickleGround PH</div>
+          </div>
+          <div>
+            <div class="review-key">Members</div>
+            <div class="review-val" style="font-size:13px;margin-top:3px;">Just you (for now)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn-prev" onclick="goTo(3)">Prev</button>
+      <button class="btn-next is-blue" onclick="goTo(5)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Create Club
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 5: Success -->
+  <div class="step" id="step-5">
+    <div class="success-screen">
+      <div class="success-ring" aria-hidden="true">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h1 class="success-title">Club Created! 🎉</h1>
+      <p class="success-sub">Your club is live. Start inviting players and scheduling your first game!</p>
+      <div class="success-actions">
+        <button class="btn-next" onclick="window.location.href='Clubs.html'">View Club</button>
+        <button class="btn-next is-blue" onclick="alert('Opening invite flow…')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/><line x1="20" y1="8" x2="20" y2="14"/></svg>
+          Invite Members
+        </button>
+        <button class="success-share">Share club link</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<nav class="tabbar" aria-label="Primary navigation">
+  <a href="index.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+    Home
+  </a>
+  <a href="Nearby.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+    Nearby
+  </a>
+  <a href="Games.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Games
+  </a>
+  <a href="Clubs.html" class="tab-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Clubs
+  </a>
+  <a href="Profile.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    Profile
+  </a>
+</nav>
+
+<script>
+  let currentStep = 1;
+
+  function goTo(n) {
+    if (n === 4) updateReview();
+    document.getElementById('step-' + currentStep).classList.remove('active');
+    currentStep = n;
+    document.getElementById('step-' + n).classList.add('active');
+    // Scroll only the inner container back to top — never window.scrollTo
+    document.getElementById('wizard-scroll').scrollTop = 0;
+  }
+
+  document.getElementById('close-btn').addEventListener('click', function() {
+    if (currentStep === 5) { history.back(); }
+    else if (confirm('Discard club creation?')) { history.back(); }
+  });
+
+  function setVis(val) {
+    var pub = document.getElementById('vis-public');
+    var priv = document.getElementById('vis-private');
+    var hint = document.getElementById('vis-hint');
+    if (val === 'public') {
+      pub.classList.add('active'); pub.setAttribute('aria-pressed','true');
+      priv.classList.remove('active'); priv.setAttribute('aria-pressed','false');
+      hint.textContent = 'Anyone can find and join this club.';
+    } else {
+      priv.classList.add('active'); priv.setAttribute('aria-pressed','true');
+      pub.classList.remove('active'); pub.setAttribute('aria-pressed','false');
+      hint.textContent = 'Only players you invite can join this club.';
+    }
+  }
+
+  function toggleSkill(btn) { btn.classList.toggle('active'); }
+
+  var descEl = document.getElementById('club-desc');
+  var countEl = document.getElementById('desc-count');
+  descEl.addEventListener('input', function() {
+    countEl.textContent = this.value.length + ' / 280';
+  });
+
+  function updateReview() {
+    var name = document.getElementById('club-name').value.trim();
+    var desc = document.getElementById('club-desc').value.trim();
+    var revName = document.getElementById('rev-name');
+    var revDesc = document.getElementById('rev-desc');
+    var revVis = document.getElementById('rev-vis');
+    var revSkill = document.getElementById('rev-skill');
+
+    revName.textContent = name || 'Unnamed Club';
+    revName.classList.toggle('placeholder', !name);
+
+    if (desc) { revDesc.textContent = desc; revDesc.classList.remove('placeholder'); }
+    else { revDesc.textContent = 'No description added.'; revDesc.classList.add('placeholder'); }
+
+    var isPublic = document.getElementById('vis-public').classList.contains('active');
+    revVis.innerHTML = isPublic
+      ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> Public'
+      : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Private';
+
+    var active = Array.from(document.querySelectorAll('.skill-pill.active')).map(function(b){ return b.textContent.trim(); });
+    revSkill.textContent = active.length ? active.join(', ') : 'Not set';
+  }
+</script>
+</body>
+</html>

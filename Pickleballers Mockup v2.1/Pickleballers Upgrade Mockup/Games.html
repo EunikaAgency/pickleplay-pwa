@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pickleballers — Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Grandstander:wght@500;600;700;800;900&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   DESIGN TOKENS
+================================================================ */
+:root {
+  --blue:           #3355FF;
+  --blue-hover:     #2440D9;
+  --lime:           #CCFF33;
+  --lime-hover:     #B8E600;
+  --lime-active:    #A3CC00;
+  --ink:            #1A2138;
+
+  --bg-app:         #E9EDFF;
+  --bg-alt:         #E1E8FF;
+  --bg-feature:     #F4FFD6;
+  --surface:        #FFFFFF;
+
+  --text-primary:   #1A2138;
+  --text-secondary: #64748B;
+  --text-muted:     #94A3B8;
+
+  --border:         #CBD5E1;
+  --border-subtle:  #E2EAF2;
+
+  --success:        #22C55E;
+  --warning:        #F97316;
+  --error:          #EF4444;
+  --info:           #3B82F6;
+
+  --radius-card:    16px;
+  --radius-pill:    9999px;
+
+  --shadow-sm:  0 2px 8px rgba(26,33,56,0.07);
+  --shadow-md:  0 4px 16px rgba(26,33,56,0.10);
+
+  --ease-out:    cubic-bezier(0,0,0.2,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Lexend', sans-serif;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  /* FIX #15: extra bottom padding so last card is never under the FAB */
+  padding-bottom: 148px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+h1,h2,h3,h4,.brand { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
+p { margin: 0; }
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; }
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ================================================================
+   TOP NAV — matches Profile.html exactly
+================================================================ */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+.topnav-inner {
+  display: flex;
+  align-items: center;
+  height: 60px;
+  padding: 0 16px;
+  position: relative;
+}
+.brand {
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.3px;
+  color: var(--blue);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.brand span { color: var(--lime-active); }
+
+.icon-btn{
+  width:40px;height:40px;border:none;background:transparent;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;cursor:pointer;color:#1A2138;position:relative;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+.notif-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--warning);
+  border: 2px solid var(--surface);
+}
+
+/* ================================================================
+   PAGE CONTENT
+================================================================ */
+.page-content {
+  padding: 16px 16px 0;
+}
+
+/* ================================================================
+   SEGMENT TABS — My Games / Upcoming / Completed
+   FIX #2, #6: date strip visibility now controlled per-tab
+================================================================ */
+.tab-group-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.tab-group {
+  display: flex;
+  background: var(--surface);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  gap: 2px;
+  flex: 1;
+  box-shadow: var(--shadow-sm);
+}
+.seg-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Lexend', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  transition: all 200ms var(--ease-out);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.seg-btn.active {
+  background: var(--lime);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+.filter-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 150ms, color 150ms;
+}
+.filter-btn:hover { border-color: var(--blue); color: var(--blue); }
+/* Active filter state */
+.filter-btn.has-filter {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--bg-alt);
+}
+
+/* ================================================================
+   DATE STRIP
+   FIX #3: removed bottom::after dot that was clipping — replaced
+   with a left border accent on the chip for visibility.
+   FIX #6: strip hidden when tab has no date context.
+   FIX #12: label no longer uppercase at tiny size, now 11px sentence case.
+================================================================ */
+.date-strip-wrap {
+  /* Extra bottom padding so nothing clips */
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.date-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.date-strip::-webkit-scrollbar { display: none; }
+
+.date-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  /* FIX #3: replaced invisible ::after dot with a visible left-border */
+  border: 1.5px solid var(--border-subtle);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 150ms var(--ease-out);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.date-chip:hover:not(.active) {
+  border-color: var(--blue);
+}
+.date-chip.has-games::before {
+  /* Dot above the chip label indicating games exist on this day */
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--lime-active);
+}
+.date-chip.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: var(--shadow-md);
+}
+.date-chip.active .date-day { color: #fff; }
+.date-chip.active .date-label { color: rgba(255,255,255,0.70); }
+/* FIX #16: active chip's game dot becomes white when selected */
+.date-chip.active.has-games::before { background: var(--lime); }
+
+.date-day {
+  font-family: 'Grandstander', cursive;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1;
+}
+/* FIX #12: sentence case, 11px, not uppercase */
+.date-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+/* ================================================================
+   SECTION HEADER
+   FIX #14: removed redundant "Your Games" title within My Games tab
+================================================================ */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-header h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+/* FIX #8: see-all is now a real <a> tag with proper role + focus */
+.see-all {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  transition: background 150ms;
+}
+.see-all:hover { background: var(--bg-alt); }
+
+/* ================================================================
+   GAME CARDS
+   FIX #5: card has min-height so thumb and body always align.
+   FIX #7: title now wraps 2 lines max instead of silent ellipsis.
+   FIX #13: placeholder uses a pickleball diamond pattern, not broken SVG.
+================================================================ */
+.game-card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  min-height: 112px;  /* FIX #5 */
+  transition: transform 150ms var(--ease-out), box-shadow 150ms;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.game-card:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.game-thumb {
+  width: 112px;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+/* Gradient scrim for badge readability */
+.game-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(26,33,56,0.60) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* FIX #13: Pattern placeholder — court diamond pattern, not icon */
+.game-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 112px;
+  position: relative;
+  overflow: hidden;
+}
+.game-thumb-placeholder .court-lines {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+}
+
+.game-type-badge {
+  position: absolute;
+  bottom: 9px;
+  left: 9px;
+  z-index: 2;
+  padding: 6px 9px;
+  border-radius: var(--radius-pill);
+  font-family: 'Grandstander', cursive;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #fff;
+  white-space: nowrap;
+}
+.badge-open        { background: #5C9E00; }
+.badge-competitive { background: var(--warning); }
+.badge-social      { background: var(--info); }
+
+.game-body {
+  flex: 1;
+  padding: 13px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+/* FIX #7: 2-line clamp instead of single-line ellipsis */
+.game-title {
+  font-family: 'Grandstander', cursive;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+
+.game-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.game-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+.game-meta-row svg { flex-shrink: 0; color: var(--text-muted); }
+
+/* Player fill bar */
+.players-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fill-track {
+  flex: 1;
+  height: 5px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.fill-bar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--lime-active);
+  transition: width 650ms var(--ease-out);
+}
+.fill-bar.near-full { background: var(--warning); }
+.players-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  min-width: 30px;
+  text-align: right;
+}
+.players-label.near-full { color: var(--warning); }
+
+/* ================================================================
+   UPCOMING — empty state with CTA
+   FIX #10: dead-end empty state now has a real action button
+================================================================ */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 24px 36px;
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.empty-icon-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--bg-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: var(--blue);
+}
+.empty-state h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.empty-state p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  max-width: 220px;
+  margin-bottom: 20px;
+}
+/* FIX #10: real browse button */
+.empty-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 22px;
+  background: var(--blue);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font-family: 'Grandstander', cursive;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 150ms;
+}
+.empty-cta:hover { background: var(--blue-hover); }
+
+/* ================================================================
+   COMPLETED TAB
+   FIX #9: removed opacity:0.75 that failed contrast. Use a subtle
+   left-border stripe + muted surface to signal "past" instead.
+================================================================ */
+.game-card.is-past {
+  /* No opacity — instead use a visual treatment that keeps contrast */
+  background: #F8F9FD;
+  border-left: 3px solid var(--border);
+}
+.game-card.is-past .game-title { color: var(--text-secondary); }
+.result-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+}
+.result-pill.win  { background: rgba(34,197,94,0.12); color: #16a34a; }
+.result-pill.loss { background: rgba(239,68,68,0.10); color: #dc2626; }
+
+/* ================================================================
+   FAB
+   FIX #4: lime = action, not blue. Blue is brand identity.
+================================================================ */
+.fab {
+  position: fixed;
+  bottom: 80px;
+  right: max(16px, calc(50vw - 224px));
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  /* FIX #4 */
+  background: var(--lime);
+  color: var(--ink);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(163,204,0,0.45);
+  cursor: pointer;
+  z-index: 40;
+  transition: transform 150ms var(--ease-spring), box-shadow 150ms;
+}
+.fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 24px rgba(163,204,0,0.55);
+}
+.fab:active { transform: scale(0.95); }
+
+/* ================================================================
+   BOTTOM TAB BAR — matches Profile.html exactly
+================================================================ */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: 64px;
+  background: var(--surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  z-index: 45;
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 150ms;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+}
+.tab-item.active { color: var(--blue); }
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--lime-active);
+}
+.tab-item svg { width: 22px; height: 22px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ====== TOP NAV ====== -->
+<header class="topnav">
+  <div class="topnav-inner">
+    <!-- Search left -->
+    <a href="index.html">
+  <button class="icon-btn" aria-label="Go back">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+    <!-- Brand centred -->
+    <a href="index.html" class="brand">Pickle<span>Ballers</span></a>
+    <!-- Actions right -->
+    <div class="nav-right">
+      <button class="icon-btn" aria-label="Notifications, 2 unread" style="position:relative">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span class="notif-dot" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ====== PAGE CONTENT ====== -->
+<main class="page-content">
+
+  <!-- SEGMENT TABS + FILTER -->
+  <div class="tab-group-row">
+    <div class="tab-group" role="tablist" aria-label="Games view">
+      <button class="seg-btn active" role="tab" aria-selected="true"
+              onclick="switchTab(this,'my-games')">My Games</button>
+      <button class="seg-btn" role="tab" aria-selected="false"
+              onclick="switchTab(this,'upcoming')">Upcoming</button>
+      <button class="seg-btn" role="tab" aria-selected="false"
+              onclick="switchTab(this,'completed')">Completed</button>
+    </div>
+    <button class="filter-btn" aria-label="Filter games" id="filterBtn" onclick="toggleFilter(this)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="6" x2="20" y2="6"/>
+        <line x1="8" y1="12" x2="16" y2="12"/>
+        <line x1="11" y1="18" x2="13" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- DATE STRIP — FIX #2,#3,#6,#12,#16 -->
+  <!-- Only shown for My Games and Upcoming tabs; hidden for Completed -->
+  <div class="date-strip-wrap" id="dateStripWrap">
+    <div class="date-strip" role="group" aria-label="Filter by date">
+      <!-- has-games class = there are real games on this day (honest indicator) -->
+      <button class="date-chip active" onclick="selectDate(this)" aria-pressed="true">
+        <span class="date-day">Today</span>
+        <span class="date-label">Jun 16</span>
+      </button>
+      <button class="date-chip has-games" onclick="selectDate(this)" aria-pressed="false">
+        <span class="date-day">Tmrw</span>
+        <span class="date-label">Jun 17</span>
+      </button>
+      <button class="date-chip" onclick="selectDate(this)" aria-pressed="false">
+        <span class="date-day">Wed</span>
+        <span class="date-label">Jun 18</span>
+      </button>
+      <button class="date-chip" onclick="selectDate(this)" aria-pressed="false">
+        <span class="date-day">Thu</span>
+        <span class="date-label">Jun 19</span>
+      </button>
+      <button class="date-chip" onclick="selectDate(this)" aria-pressed="false">
+        <span class="date-day">Fri</span>
+        <span class="date-label">Jun 20</span>
+      </button>
+      <button class="date-chip has-games" onclick="selectDate(this)" aria-pressed="false">
+        <span class="date-day">Sat</span>
+        <span class="date-label">Jun 21</span>
+      </button>
+      <button class="date-chip has-games" onclick="selectDate(this)" aria-pressed="false">
+        <span class="date-day">Sun</span>
+        <span class="date-label">Jun 22</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =================== MY GAMES TAB =================== -->
+  <div id="my-games">
+    <!-- FIX #14: no redundant "Your Games" heading — tab already says My Games -->
+
+    <!-- CARD 1: Today's game -->
+    <a class="game-card" href="#" role="button" aria-label="Saturday Morning Mix-In – Open Play, Sat Jun 21, 9 AM">
+      <div class="game-thumb">
+        <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('6.png') center center / cover no-repeat;
+">
+</div>
+        <span class="game-type-badge badge-open">Open Play</span>
+      </div>
+      <div class="game-body">
+        <div class="game-title">Saturday Morning Mix-In</div>
+        <div class="game-meta">
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Sat, Jun 21 · 9:00 AM
+          </div>
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Riverside Courts · 2.1 mi
+          </div>
+        </div>
+        <div class="players-row">
+          <div class="fill-track" aria-hidden="true">
+            <div class="fill-bar" data-width="66.7"></div>
+          </div>
+          <span class="players-label">8 / 12</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- CARD 2: Tomorrow's game — NEAR FULL warning -->
+    <a class="game-card" href="#" role="button" aria-label="Weekly Doubles League – Competitive, Tue Jun 17, 6:30 PM — almost full">
+      <div class="game-thumb">
+        <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('2.png') center center / cover no-repeat;
+">
+</div>
+        <span class="game-type-badge badge-competitive">Competitive</span>
+      </div>
+      <div class="game-body">
+        <div class="game-title">Weekly Doubles League</div>
+        <div class="game-meta">
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Tue, Jun 17 · 6:30 PM
+          </div>
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Central Hub · 0.8 mi
+          </div>
+        </div>
+        <div class="players-row">
+          <div class="fill-track" aria-hidden="true">
+            <div class="fill-bar near-full" data-width="87.5"></div>
+          </div>
+          <span class="players-label near-full">14 / 16</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- CARD 3 -->
+    <a class="game-card" href="#" role="button" aria-label="Sunday Social Mixer – Social, Sun Jun 22, 8 AM">
+      <div class="game-thumb">
+        <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('4.png') center center / cover no-repeat;
+">
+</div>
+        <span class="game-type-badge badge-social">Social</span>
+      </div>
+      <div class="game-body">
+        <div class="game-title">Sunday Social Mixer</div>
+        <div class="game-meta">
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Sun, Jun 22 · 8:00 AM
+          </div>
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Bay Courts · 3.4 mi
+          </div>
+        </div>
+        <div class="players-row">
+          <div class="fill-track" aria-hidden="true">
+            <div class="fill-bar" data-width="50"></div>
+          </div>
+          <span class="players-label">8 / 16</span>
+        </div>
+      </div>
+    </a>
+
+  </div><!-- /#my-games -->
+
+  <!-- =================== UPCOMING TAB =================== -->
+  <!-- FIX #6: date strip hidden in this tab; FIX #10: real CTA button -->
+  <div id="upcoming" style="display:none">
+    <div class="section-header">
+      <h2>Upcoming Near You</h2>
+      <a href="Nearby.html" class="see-all" role="link">See all</a>
+    </div>
+    <div class="empty-state">
+      <div class="empty-icon-ring">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <h3>No games this week</h3>
+      <p>No one's scheduled games in your area yet. Browse nearby courts or create your own.</p>
+      <!-- FIX #10: real action, not a dead end -->
+      <button class="empty-cta" onclick="goToNearby()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+        </svg>
+        Browse Nearby Courts
+      </button>
+    </div>
+  </div>
+
+  <!-- =================== COMPLETED TAB =================== -->
+  <!-- FIX #6: date strip hidden; FIX #9: no opacity, uses left-border treatment -->
+  <div id="completed" style="display:none">
+    <div class="section-header">
+      <h2>Past Games</h2>
+    </div>
+
+    <a class="game-card is-past" href="#" role="button" aria-label="Morning Round Robin – played Sat Jun 14">
+      <div class="game-thumb">
+        <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('5.png') center center / cover no-repeat;
+">
+</div>
+        <span class="game-type-badge badge-open" style="background:#888;">Open Play</span>
+      </div>
+      <div class="game-body">
+        <div class="game-title">Morning Round Robin</div>
+        <div class="game-meta">
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Sat, Jun 14 · 9:00 AM
+          </div>
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Sunset Park · 1.4 mi
+          </div>
+        </div>
+        <div class="players-row">
+          <span class="result-pill win">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Won · 11–7
+          </span>
+        </div>
+      </div>
+    </a>
+
+    <a class="game-card is-past" href="#" role="button" aria-label="Tuesday Night League – played Tue Jun 10">
+      <div class="game-thumb">
+        <div style="
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(rgba(0,0,0,.15), rgba(0,0,0,.15)),
+      url('3.png') center center / cover no-repeat;
+">
+</div>
+        <span class="game-type-badge badge-competitive" style="background:#888;">Competitive</span>
+      </div>
+      <div class="game-body">
+        <div class="game-title">Tuesday Night League</div>
+        <div class="game-meta">
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Tue, Jun 10 · 6:30 PM
+          </div>
+          <div class="game-meta-row">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Central Hub · 0.8 mi
+          </div>
+        </div>
+        <div class="players-row">
+          <span class="result-pill loss">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Lost · 8–11
+          </span>
+        </div>
+      </div>
+    </a>
+
+  </div><!-- /#completed -->
+
+</main>
+
+<!-- FIX #4: FAB is lime (action color), not blue (brand/identity color) -->
+<a href="CreateGame.html">
+  <button class="fab" aria-label="Create a new game">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  </button>
+</a>
+
+<!-- ====== BOTTOM TAB BAR — identical to Profile.html ====== -->
+<nav class="tabbar" aria-label="Primary navigation">
+  <a href="index.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>
+    </svg>
+    Home
+  </a>
+  <a href="Nearby.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+    </svg>
+    Nearby
+  </a>
+  <a href="Games.html" class="tab-item active" aria-current="page">
+    <!-- Active: filled icon per brand spec -->
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M19 4H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zm-7-2c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/>
+    </svg>
+    Games
+  </a>
+  <a href="Clubs.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    Clubs
+  </a>
+  <a href="Profile.html" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    Profile
+  </a>
+</nav>
+
+<script>
+  /* ============================================================
+     TAB SWITCHING
+     FIX #6: date strip visibility depends on active tab
+  ============================================================ */
+  const TABS = ['my-games', 'upcoming', 'completed'];
+  const DATE_TABS = new Set(['my-games', 'upcoming']); // show date strip here only
+
+  function switchTab(btn, panelId) {
+    document.querySelectorAll('.seg-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+
+    TABS.forEach(id => {
+      document.getElementById(id).style.display = id === panelId ? 'block' : 'none';
+    });
+
+    // FIX #6: hide/show date strip per tab
+    const strip = document.getElementById('dateStripWrap');
+    strip.style.display = DATE_TABS.has(panelId) ? 'block' : 'none';
+
+    // Animate fill bars when switching back to my-games
+    if (panelId === 'my-games') animateFillBars();
+  }
+
+  /* ============================================================
+     DATE SELECTION
+     FIX #2: date chip click now also filters the card list
+     FIX #16: dot only shows on has-games chips (not all)
+  ============================================================ */
+  // Map date labels to which card indices to show (index into .game-card[])
+  const DATE_TO_CARDS = {
+    'Jun 16': [0],       // Today — no games but show them (user's registered)
+    'Jun 17': [1],       // Tomorrow — doubles league
+    'Jun 18': [],
+    'Jun 19': [],
+    'Jun 20': [],
+    'Jun 21': [0],       // Saturday — mix-in
+    'Jun 22': [2],       // Sunday — social mixer
+  };
+
+  function selectDate(chip) {
+    document.querySelectorAll('.date-chip').forEach(c => {
+      c.classList.remove('active');
+      c.setAttribute('aria-pressed', 'false');
+    });
+    chip.classList.add('active');
+    chip.setAttribute('aria-pressed', 'true');
+
+    // FIX #2: actually filter cards
+    const label = chip.querySelector('.date-label').textContent.trim();
+    const visible = DATE_TO_CARDS[label] ?? 'all';
+    const cards = document.querySelectorAll('#my-games .game-card');
+    cards.forEach((card, i) => {
+      card.style.display = (visible === 'all' || visible.includes(i)) ? 'flex' : 'none';
+    });
+  }
+
+  /* ============================================================
+     FILTER BUTTON TOGGLE
+  ============================================================ */
+  function toggleFilter(btn) {
+    btn.classList.toggle('has-filter');
+  }
+
+  /* ============================================================
+     EMPTY STATE NAVIGATION
+  ============================================================ */
+  function goToNearby() {
+    // In a real app, navigate to Nearby tab
+    window.location.href = 'Nearby.html';
+  }
+
+  /* ============================================================
+     FILL BAR ANIMATION — triggered on load and tab return
+  ============================================================ */
+  function animateFillBars() {
+    document.querySelectorAll('.fill-bar').forEach(bar => {
+      const target = bar.dataset.width;
+      bar.style.width = '0%';
+      requestAnimationFrame(() => {
+        setTimeout(() => { bar.style.width = target + '%'; }, 80);
+      });
+    });
+  }
+
+  window.addEventListener('load', animateFillBars);
+</script>
+
+</body>
+</html>
