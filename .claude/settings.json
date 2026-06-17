@@ -20,7 +20,27 @@
       "Bash(node -e \"console.log\\(require\\('zustand/package.json'\\).version\\)\")",
       "Bash(node -e \"console.log\\(typeof require\\('zustand'\\).create\\)\")",
       "Read(//etc/**)",
-      "Bash(mongoexport --quiet --db pickleballers --collection games --query '{ \"$or\": [ { \"venueId\": null }, { \"venueId\": { \"$exists\": false } } ] }' --out /tmp/legacy-voteflow-games-backup.json)"
+      "Bash(mongoexport --quiet --db pickleballers --collection games --query '{ \"$or\": [ { \"venueId\": null }, { \"venueId\": { \"$exists\": false } } ] }' --out /tmp/legacy-voteflow-games-backup.json)",
+      "Bash(bash /tmp/checkin_test.sh)",
+      "Bash(bash /tmp/clubs_test.sh)",
+      "Bash(bash /tmp/clubs_test2.sh)",
+      "Bash(cat)",
+      "Bash(rm -f ./_verify.mjs)",
+      "Bash(sed -n '/const handleJoin = \\(\\) =>/,/};/p' src/features/games/GameDetailsScreen.tsx)",
+      "Bash(sed -n '/Booking-within-grace confirmation/,/<\\\\/BottomSheet>/p' src/features/games/GameDetailsScreen.tsx)",
+      "Bash(sed -n '1,120p' vite.config.ts)",
+      "Bash(cat src/pwaUpdate.ts)",
+      "Bash(grep -i vapid .env)",
+      "Bash(grep -i vapid ecosystem.config.json)",
+      "Bash(mongosh --quiet pickleballers --eval 'db.pushsubscriptions.countDocuments\\(\\)')",
+      "Bash(mongosh --quiet pickleballers --eval ' *)",
+      "Bash(kill %1)",
+      "Bash(pkill -f e2e-server.mjs)",
+      "Bash(node /tmp/e2e-server.mjs)",
+      "Bash(pkill -9 -f e2e-server.mjs)",
+      "Bash(pkill -9 -f \"ms-playwright\")",
+      "Bash(pkill -9 -f \"headless_shell\")",
+      "WebFetch(domain:api.anthropic.com)"
     ]
   }
 }
