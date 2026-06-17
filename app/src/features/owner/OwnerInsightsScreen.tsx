@@ -88,12 +88,12 @@ export function OwnerInsightsScreen({ onBack }: OwnerInsightsScreenProps) {
 
         {section === 'revenue' && (
           <OwnerSection title="Revenue trend" icon="trending_up" description="All venues combined">
-            <div className="flex items-center justify-between mb-3">
-              <span className={`text-[12px] font-bold ${combined.month >= combined.prevMonth ? 'text-[var(--lime-ink)]' : 'text-[var(--coral)]'}`}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className={`text-[12px] font-bold truncate min-w-0 ${combined.month >= combined.prevMonth ? 'text-[var(--lime-ink)]' : 'text-[var(--coral)]'}`}>
                 {pctChange(combined.month, combined.prevMonth) >= 0 ? '+' : ''}{pctChange(combined.month, combined.prevMonth)}% vs last month
               </span>
               <Segmented
-                className="shrink-0"
+                className="shrink-0 min-w-[210px]"
                 value={revMode}
                 onChange={setRevMode}
                 options={[{ value: 'day', label: 'Day' }, { value: 'week', label: 'Week' }, { value: 'month', label: 'Month' }]}

@@ -61,8 +61,9 @@ src/
                        #   MyBookings (list+cancel), bookingDisplay
     venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
     clubs/             # Clubs (live: my/discover lists), ClubDetails (live: detail +
-                       #   members + Facebook-style feed with post/like, join/leave),
-                       #   CreateClub (live: POST /clubs). All via the clubs client in api.ts.
+                       #   members + Facebook-style feed with post/like, join/leave,
+                       #   ⋯ menu: invite/share link + host delete), CreateClub (live:
+                       #   POST /clubs). All via the clubs client in api.ts.
     profile/           # Profile, EditProfile, Settings, Notifications
     search/            # SearchScreen
     owner/             # venue-owner console (the one feature with internal subfolders — it's
@@ -199,9 +200,12 @@ src/
   Discover directory (`listClubs()`, your clubs filtered out), with client-side search.
   `ClubDetailsScreen` (mounted with `clubId`) loads the club, members, and a
   **Facebook-style feed** — members post (`createClubPost`) and like (`react/unreactClubPost`),
-  and anyone can join/leave (`joinClub`/`leaveClub`); the host can't leave. `CreateClubScreen`
-  posts to `createClub` then opens the new club. Gated by the `player.clubs.*` permissions
-  (create/join/post/react). Clubs client lives in `shared/lib/api.ts`. (No club-events surface —
+  and anyone can join/leave (`joinClub`/`leaveClub`); the host can't leave but can **delete**
+  the club (`deleteClub`) from the ⋯ menu, which also carries an **invite/share** link
+  (`/clubs/<slug>`, native share or clipboard). Arriving via that link shows a welcome modal
+  (`invited` prop). Feed/members refetch on tab switch. `CreateClubScreen`
+  posts to `createClub` then opens the new club (`replace` so Back skips the wizard). Gated by
+  the `player.clubs.*` permissions (create/join/post/react). Clubs client lives in `shared/lib/api.ts`. (No club-events surface —
   the old Events tab was dropped; nested post replies aren't shown in the app yet.)
 - **Notifications are live** (Profile → bell): `NotificationsScreen` reads the user's real inbox
   (`listNotifications`/`markNotificationRead`/`markAllNotificationsRead` → `/api/v1/notifications`,
@@ -235,8 +239,9 @@ src/
   nearest-first with a distance on each card (heading flips to "Courts near you");
   with no location it falls back to the plain `listVenues({ pageSize: 6 })` list.
   The **check-in banner is live**: it shows the busiest venue right now from real
-  check-ins (`getCheckInHotspot`) and hides when nobody's checked in; players check
-  in/out on the court page (`CourtDetailsScreen`, gated by `player.venues.checkin`).
+  check-ins (`getCheckInHotspot`) and hides when nobody's checked in. (The in-app
+  check-in/out toggle was removed from the court page — `CourtDetailsScreen` is now
+  pure details + "Games here"; the `player.venues.checkin` perm/API still exist.)
   Only the streak card stays demo (no player-stats backend).
 - **Chrome:** TabBar (mobile) + Sidebar (desktop) render via `App.tsx`; hidden on
   `landing`/`login`/`onboarding`. The mobile TabBar's five tabs are **Today · Games ·

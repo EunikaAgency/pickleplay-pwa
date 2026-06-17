@@ -45,7 +45,9 @@ export function CreateClubScreen({ onNavigate, onBack }: CreateClubScreenProps) 
         title="Club created!"
         description="Your new club is live. Open it to make the first post and invite members."
         actions={[
-          { label: 'View club', variant: 'dark', onClick: () => onNavigate('club-details', { id: createdRef }) },
+          // `replace` drops the finished wizard from the back stack so Back from
+          // the club page doesn't re-open the create-club flow.
+          { label: 'View club', variant: 'dark', onClick: () => onNavigate('club-details', { id: createdRef }, { replace: true }) },
           { label: 'Done', variant: 'outline', onClick: onBack },
         ]}
       />

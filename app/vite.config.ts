@@ -42,6 +42,11 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Pulls our Web Push handlers (public/push-sw.js) into the generated SW.
         importScripts: ['push-sw.js'],
+        // Serve the app shell for deep links (e.g. /games/<id> from a notification
+        // click) so they load the SPA; the in-app screen-stack then resolves the
+        // path. API requests bypass the fallback so they hit the network.
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.tile\.openstreetmap\.org\/.*/i,
