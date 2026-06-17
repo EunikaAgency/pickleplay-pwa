@@ -32,6 +32,12 @@ const TYPES = [
 ] as const;
 type GameType = (typeof TYPES)[number]['v'];
 
+const MAX_OPEN_SPOTS = 16;
+/** Fixed player count a format seats: Singles 1v1 → 2, Doubles 2v2 → 4, Open → flexible (null). */
+function fixedSpotsFor(t: GameType): number | null {
+  return t === 'singles' ? 2 : t === 'doubles' ? 4 : null;
+}
+
 const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
 
 const TITLE_BY_STEP = ['Court & time', 'Game details', 'Payment'];
@@ -137,19 +143,33 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
 
   // Live availability for the chosen court (or the venue pool when none) on this
   // date → greys out hours that court is already taken.
-  const { availability, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
+  const { availability, minBookableHour, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
+  const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
   const isTest = settings?.paymentTestMode ?? false;
+
+  // Spots are fixed for Singles (2) / Doubles (4); only Open is adjustable.
+  // Picking a format snaps the count and locks the stepper.
+  const fixedSpots = fixedSpotsFor(type);
+  const spotsLocked = fixedSpots != null;
+  const minSpotsCreate = fixedSpots ?? 2;
+  const maxSpotsCreate = fixedSpots ?? MAX_OPEN_SPOTS;
+  const selectType = (v: GameType) => {
+    setType(v);
+    const fixed = fixedSpotsFor(v);
+    if (fixed != null) setSpots(fixed);
+  };
 
   // If the chosen court leaves the current start hour booked, jump the start to
   // the first free hour so the end picker isn't entirely blocked. End resets to
   // empty for the host to pick.
+  // Keep the start on a valid hour: prefer the first free + future hour when
+  // availability is loaded; otherwise just bump off an already-passed hour today.
   useEffect(() => {
-    if (!availability) return;
     const cur = Number(startTime.split(':')[0]);
-    const free = firstFreeHour(cur);
-    if (free != null && free !== cur) { setStartTime(`${String(free).padStart(2, '0')}:00`); setEndTime(''); }
-  }, [availability, startTime, firstFreeHour]);
+    const target = firstFreeHour(cur) ?? (cur < minBookableHour && minBookableHour <= 23 ? minBookableHour : null);
+    if (target != null && target !== cur) { setStartTime(`${String(target).padStart(2, '0')}:00`); setEndTime(''); }
+  }, [availability, startTime, firstFreeHour, minBookableHour]);
 
   const onStartChange = (v: string) => {
     setStartTime(v);
@@ -205,6 +225,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
       if (!date) { setError('Please pick a date.'); return; }
       if (!startTime || !endTime) { setError('Please pick a start and end time.'); return; }
       if (!(hours > 0)) { setError('End time must be after the start time.'); return; }
+      if (startInPast) { setError('That start time has already passed. Please pick a later time.'); return; }
       if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
     }
     setError(null);
@@ -377,7 +398,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
             <div className="lbl">Game type</div>
             <div className="grid grid-cols-3 gap-2">
               {TYPES.map((o) => (
-                <button key={o.v} className={`time-pick flex flex-col items-center gap-1 p-3.5! ${type === o.v ? 'active' : ''}`} onClick={() => setType(o.v)}>
+                <button key={o.v} className={`time-pick flex flex-col items-center gap-1 p-3.5! ${type === o.v ? 'active' : ''}`} onClick={() => selectType(o.v)}>
                   <div>{o.label}</div>
                   <div className="text-[11px] font-semibold opacity-70">{o.sub}</div>
                 </button>
@@ -402,14 +423,27 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
           <div className="field">
             <div className="lbl">Spots available · {spots}</div>
             <div className="flex items-center gap-3">
-              <button onClick={() => setSpots((s) => Math.max(2, s - 1))} className="w-11 h-11 rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] flex items-center justify-center">
+              <button
+                onClick={() => setSpots((s) => Math.max(minSpotsCreate, s - 1))}
+                disabled={spotsLocked || spots <= minSpotsCreate}
+                className="w-11 h-11 rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] flex items-center justify-center disabled:opacity-40"
+              >
                 <Icon name="minus" size={16} />
               </button>
               <div className="flex-1 text-center font-heading font-semibold text-[28px] text-[var(--ink)]">{spots}</div>
-              <button onClick={() => setSpots((s) => Math.min(16, s + 1))} className="w-11 h-11 rounded-xl bg-[var(--ink)] text-white flex items-center justify-center">
+              <button
+                onClick={() => setSpots((s) => Math.min(maxSpotsCreate, s + 1))}
+                disabled={spotsLocked || spots >= maxSpotsCreate}
+                className="w-11 h-11 rounded-xl bg-[var(--ink)] text-white flex items-center justify-center disabled:opacity-40"
+              >
                 <Icon name="plus" size={16} />
               </button>
             </div>
+            {spotsLocked && (
+              <div className="text-[11px] font-semibold text-[var(--muted)] mt-1.5">
+                {type === 'singles' ? 'Singles is 1 vs 1 — fixed at 2 players.' : 'Doubles is 2 vs 2 — fixed at 4 players.'}
+              </div>
+            )}
           </div>
 
           <div className="field">
@@ -547,6 +581,19 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
   const creatorId = game?.creatorId || game?.creator?.id;
   const minSpots = Math.max(2, participants.length);
 
+  // Singles/Doubles fix the seat count (but never below players already in); only
+  // Open is adjustable. Picking a format snaps the count and locks the stepper.
+  const fixedSpotsManage = fixedSpotsFor(type);
+  const lockedSpots = fixedSpotsManage != null ? Math.max(fixedSpotsManage, participants.length) : null;
+  const spotsLockedManage = lockedSpots != null;
+  const minManage = lockedSpots ?? minSpots;
+  const maxManage = lockedSpots ?? MAX_OPEN_SPOTS;
+  const selectTypeManage = (v: GameType) => {
+    setType(v);
+    const fixed = fixedSpotsFor(v);
+    if (fixed != null) setSpots(Math.max(fixed, participants.length));
+  };
+
   const save = async () => {
     setSaving(true);
     setError(null);
@@ -624,7 +671,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
         <div className="lbl">Game type</div>
         <div className="grid grid-cols-3 gap-2">
           {TYPES.map((o) => (
-            <button key={o.v} className={`time-pick flex flex-col items-center gap-1 p-3.5! ${type === o.v ? 'active' : ''}`} onClick={() => setType(o.v)}>
+            <button key={o.v} className={`time-pick flex flex-col items-center gap-1 p-3.5! ${type === o.v ? 'active' : ''}`} onClick={() => selectTypeManage(o.v)}>
               <div>{o.label}</div>
               <div className="text-[11px] font-semibold opacity-70">{o.sub}</div>
             </button>
@@ -649,15 +696,29 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
       <div className="field">
         <div className="lbl">Spots available · {spots}</div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setSpots((s) => Math.max(minSpots, s - 1))} className="w-11 h-11 rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] flex items-center justify-center">
+          <button
+            onClick={() => setSpots((s) => Math.max(minManage, s - 1))}
+            disabled={spotsLockedManage || spots <= minManage}
+            className="w-11 h-11 rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] flex items-center justify-center disabled:opacity-40"
+          >
             <Icon name="minus" size={16} />
           </button>
           <div className="flex-1 text-center font-heading font-semibold text-[28px] text-[var(--ink)]">{spots}</div>
-          <button onClick={() => setSpots((s) => Math.min(16, s + 1))} className="w-11 h-11 rounded-xl bg-[var(--ink)] text-white flex items-center justify-center">
+          <button
+            onClick={() => setSpots((s) => Math.min(maxManage, s + 1))}
+            disabled={spotsLockedManage || spots >= maxManage}
+            className="w-11 h-11 rounded-xl bg-[var(--ink)] text-white flex items-center justify-center disabled:opacity-40"
+          >
             <Icon name="plus" size={16} />
           </button>
         </div>
-        {minSpots > 2 && <div className="text-[11px] font-semibold text-[var(--muted)] mt-1.5">Can't go below the {participants.length} players already in.</div>}
+        {spotsLockedManage ? (
+          <div className="text-[11px] font-semibold text-[var(--muted)] mt-1.5">
+            {type === 'singles' ? 'Singles is 1 vs 1 — fixed at 2 players.' : 'Doubles is 2 vs 2 — fixed at 4 players.'}
+          </div>
+        ) : minSpots > 2 ? (
+          <div className="text-[11px] font-semibold text-[var(--muted)] mt-1.5">Can't go below the {participants.length} players already in.</div>
+        ) : null}
       </div>
 
       <div className="field">

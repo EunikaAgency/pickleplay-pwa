@@ -24,19 +24,32 @@ function hoursTouched(start: string, end: string): number[] {
 
 export interface VenueAvailabilityState {
   availability: VenueAvailability | null;
-  /** True for a start hour that has no free court. */
+  /**
+   * Earliest still-bookable hour on the selected date: 0 for a future date, or
+   * the next whole hour from now when the date is today (so a slot that has
+   * already started can't be picked). 24 means today is over — pick another day.
+   */
+  minBookableHour: number;
+  /** True for a start hour with no free court, or one that's already in the past today. */
   startDisabled: (hour: number) => boolean;
-  /** Given a chosen start, returns a predicate that's true for an end hour whose window hits a full hour. */
+  /** Given a chosen start, returns a predicate that's true for an end hour whose window hits a full (or past) hour. */
   endDisabledFor: (start: string) => (endHour: number) => boolean;
   /** Whether the chosen [start,end) window overlaps any full hour. */
   rangeBlocked: (start: string, end: string) => boolean;
   /**
-   * First hour (0–23) that still has a free court, searching from `from` onward
-   * and then wrapping to earlier hours. Returns `from` itself when it's free, or
-   * null when every hour is full / availability hasn't loaded. Used to bump a
-   * start time off an already-booked hour.
+   * First hour (0–23) that's still free AND not in the past, searching from `from`
+   * onward then wrapping (never before `minBookableHour`). Returns null when every
+   * remaining hour is full / availability hasn't loaded. Bumps a start time off an
+   * already-booked or elapsed hour.
    */
   firstFreeHour: (from: number) => number | null;
+}
+
+/** Local YYYY-MM-DD for "today" (matches how dates are stored/compared). */
+function localToday(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export function useVenueAvailability(venueId: string | undefined, date: string, courtId?: string): VenueAvailabilityState {
@@ -58,6 +71,15 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
   const currentKey = venueId && date ? `${venueId}|${date}|${courtId ?? ''}` : '';
   const availability = loaded && loaded.key === currentKey ? loaded.data : null;
 
+  // On today, you can't book an hour that has already begun: the floor is the
+  // next whole hour from now (or now's hour exactly on the hour). Future dates
+  // have no floor (0). `new Date()` here recomputes per render, which is fine —
+  // it only shifts at hour boundaries.
+  const now = new Date();
+  const isToday = !!date && date === localToday();
+  const minBookableHour = isToday ? now.getHours() + (now.getMinutes() > 0 ? 1 : 0) : 0;
+  const isPastHour = (h: number) => h < minBookableHour;
+
   const freeByHour = useMemo(() => {
     const m = new Map<number, number>();
     availability?.hours.forEach((h) => m.set(h.hour, h.free));
@@ -68,18 +90,23 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
 
   const firstFreeHour = useCallback((from: number): number | null => {
     if (!availability) return null;
-    const free = (h: number) => (freeByHour.get(h) ?? 0) > 0;
-    for (let h = Math.max(0, from); h < 24; h++) if (free(h)) return h;
-    for (let h = 0; h < from; h++) if (free(h)) return h; // wrap to an earlier free hour
+    const free = (h: number) => (freeByHour.get(h) ?? 0) > 0 && h >= minBookableHour;
+    const start = Math.max(from, minBookableHour);
+    for (let h = start; h < 24; h++) if (free(h)) return h;
+    for (let h = minBookableHour; h < start; h++) if (free(h)) return h; // wrap, but never into the past
     return null;
-  }, [availability, freeByHour]);
+  }, [availability, freeByHour, minBookableHour]);
 
   return {
     availability,
-    startDisabled: (h) => availability != null && isFull(h),
+    minBookableHour,
+    startDisabled: (h) => isPastHour(h) || (availability != null && isFull(h)),
     endDisabledFor: (start) => (endHour) =>
-      availability != null && hoursTouched(start, `${String(endHour).padStart(2, '0')}:00`).some(isFull),
-    rangeBlocked: (start, end) => availability != null && hoursTouched(start, end).some(isFull),
+      (isToday && endHour <= minBookableHour) ||
+      (availability != null && hoursTouched(start, `${String(endHour).padStart(2, '0')}:00`).some(isFull)),
+    rangeBlocked: (start, end) =>
+      (isToday && Number(start.split(':')[0]) < minBookableHour) ||
+      (availability != null && hoursTouched(start, end).some(isFull)),
     firstFreeHour,
   };
 }

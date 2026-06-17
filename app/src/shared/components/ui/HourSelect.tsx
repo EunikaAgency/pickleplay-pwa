@@ -17,7 +17,7 @@ interface HourSelectProps {
   onChange: (value: string) => void;
   /** When set (an "HH:MM" start time), only hours strictly after it are offered — for an end time. */
   after?: string;
-  /** Optional: return true for an hour (0–23) that can't be picked — greyed out (e.g. fully booked). */
+  /** Optional: return true for an hour (0–23) that can't be picked — it's hidden from the list (booked / past). */
   disabled?: (hour: number) => boolean;
   /** Shown when `value` is empty, so the field can start unset (e.g. an end time awaiting a start). */
   placeholder?: string;
@@ -42,9 +42,12 @@ export function HourSelect({ value, onChange, after, disabled, placeholder = 'Se
   const wrapRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
+  // Only offer hours that are actually selectable: after the start (for an end
+  // time) and not disabled (booked or already past). Unavailable hours are hidden
+  // entirely rather than greyed out.
   const minHour = after ? Number(after.split(':')[0]) : -1;
   const hours: number[] = [];
-  for (let h = 0; h < 24; h++) if (h > minHour) hours.push(h);
+  for (let h = 0; h < 24; h++) if (h > minHour && !(disabled?.(h) ?? false)) hours.push(h);
 
   // An empty value leaves the field unset — it renders the placeholder, not 12:00 AM.
   const hasValue = Boolean(value);
@@ -108,32 +111,28 @@ export function HourSelect({ value, onChange, after, disabled, placeholder = 'Se
           style={{ maxHeight: maxH }}
           className={`absolute z-50 left-0 right-0 overflow-y-auto rounded-2xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] shadow-lg p-1.5 ${placement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}
         >
-          {hours.map((h) => {
-            const selected = h === selectedHour;
-            const off = disabled?.(h) ?? false;
-            return (
-              <button
-                key={h}
-                ref={selected ? selectedRef : undefined}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                aria-disabled={off}
-                disabled={off}
-                onClick={() => !off && choose(h)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[15px] font-semibold ${
-                  off
-                    ? 'text-[var(--muted)] opacity-50 cursor-not-allowed line-through'
-                    : selected
-                      ? 'bg-[var(--primary)] text-white'
-                      : 'text-[var(--ink)] hover:bg-[var(--surface-2)]'
-                }`}
-              >
-                <span>{hourLabel(h)}</span>
-                {off && <span className="text-[11px] font-bold no-underline">Booked</span>}
-              </button>
-            );
-          })}
+          {hours.length === 0 ? (
+            <div className="px-3 py-3 text-center text-[14px] font-semibold text-[var(--muted)]">No times available</div>
+          ) : (
+            hours.map((h) => {
+              const selected = h === selectedHour;
+              return (
+                <button
+                  key={h}
+                  ref={selected ? selectedRef : undefined}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => choose(h)}
+                  className={`w-full flex items-center px-3 py-2 rounded-xl text-[15px] font-semibold ${
+                    selected ? 'bg-[var(--primary)] text-white' : 'text-[var(--ink)] hover:bg-[var(--surface-2)]'
+                  }`}
+                >
+                  <span>{hourLabel(h)}</span>
+                </button>
+              );
+            })
+          )}
         </div>
       )}
     </div>

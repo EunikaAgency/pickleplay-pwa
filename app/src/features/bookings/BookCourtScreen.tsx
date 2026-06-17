@@ -311,9 +311,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
           </div>
 
           <div className="field">
-            <div className="lbl flex items-center justify-between">
-              <span>Date</span>
-              <span className="normal-case tracking-normal text-[13px] font-bold text-[var(--ink)]">{prettyDate(date)}</span>
+            <div className="lbl">Date</div>
+            <div className="mb-3 flex items-center gap-2.5 rounded-2xl bg-[var(--lime-soft)] px-4 py-3 text-[var(--lime-ink)]">
+              <Icon name="calendar" size={20} />
+              <div className="flex flex-col leading-tight">
+                <span className="text-[11px] font-bold uppercase tracking-[0.06em] opacity-70">Selected date</span>
+                <span className="font-heading font-bold text-[18px]">{prettyDate(date)}</span>
+              </div>
             </div>
             <CalendarDatePicker value={date} min={todayYMD()} onChange={setDate} />
           </div>

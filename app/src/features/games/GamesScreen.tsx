@@ -136,13 +136,15 @@ function BrowseGameCard({ g, onTap }: { g: ApiGame; onTap: () => void }) {
 interface MyGameCardProps {
   g: ApiGame;
   meId?: string;
+  /** A past/finished game: shown read-only (no edit/delete/manage), greyed badge. */
+  done?: boolean;
   onOpen: () => void;
   onNavigate: Navigate;
   onDeleted: (id: string) => void;
 }
 
 /** "My Games" commitment card: status accent bar · date box · roster · Manage/Details. */
-function MyGameCard({ g, meId, onOpen, onNavigate, onDeleted }: MyGameCardProps) {
+function MyGameCard({ g, meId, done = false, onOpen, onNavigate, onDeleted }: MyGameCardProps) {
   const [managing, setManaging] = useState(false);
   const isHost = g.creatorId === meId || g.creator?.id === meId;
   const { day, num } = dayParts(g);
@@ -158,7 +160,9 @@ function MyGameCard({ g, meId, onOpen, onNavigate, onDeleted }: MyGameCardProps)
   // One colour story per card: the date box, accent bar, and badge all share the
   // status tone (host = lime, going = green, cancelled = grey).
   const status =
-    g.status === 'cancelled'
+    done
+      ? { label: 'DONE', badge: 'bg-[var(--surface-3)] text-[var(--muted)]', bar: 'bg-[var(--surface-3)]', box: 'bg-[var(--surface-3)] text-[var(--muted)]' }
+      : g.status === 'cancelled'
       ? { label: 'CANCELLED', badge: 'bg-[var(--surface-3)] text-[var(--muted)]', bar: 'bg-[var(--surface-3)]', box: 'bg-[var(--surface-3)] text-[var(--muted)]' }
       : isHost
       ? { label: 'HOSTING', badge: 'bg-[var(--lime)] text-[var(--lime-ink)]', bar: 'bg-[var(--lime)]', box: 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' }
@@ -204,7 +208,8 @@ function MyGameCard({ g, meId, onOpen, onNavigate, onDeleted }: MyGameCardProps)
             <AvatarStack people={people} total={count} />
             <span className="text-[13px] font-semibold text-[var(--ink-2)] truncate">{summary}</span>
           </div>
-          {isHost ? (
+          {/* A finished game is read-only — no editing/deleting a game that already happened. */}
+          {!done && isHost ? (
             <button
               type="button"
               onClick={() => setManaging((m) => !m)}
@@ -223,7 +228,7 @@ function MyGameCard({ g, meId, onOpen, onNavigate, onDeleted }: MyGameCardProps)
           )}
         </div>
 
-        {isHost && managing && (
+        {!done && isHost && managing && (
           <GameManageActions
             game={g}
             onNavigate={onNavigate}
@@ -236,8 +241,78 @@ function MyGameCard({ g, meId, onOpen, onNavigate, onDeleted }: MyGameCardProps)
   );
 }
 
+const MY_GAMES_PAGE = 6;
+
+/** My Games split into Upcoming (full manage) and Done (read-only) sections, each
+ *  with a separator header and a "Show more" page. A game is "done" once its date
+ *  has passed — you can't edit/delete a game that already happened. */
+function MyGamesSections({
+  games, meId, onOpen, onNavigate, onDeleted,
+}: {
+  games: ApiGame[];
+  meId?: string;
+  onOpen: (g: ApiGame) => void;
+  onNavigate: Navigate;
+  onDeleted: (id: string) => void;
+}) {
+  const today = todayYMD();
+  const upcoming = useMemo(
+    () => games.filter((g) => !g.date || g.date >= today).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? '')),
+    [games, today],
+  );
+  const done = useMemo(
+    () => games.filter((g) => g.date && g.date < today).sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
+    [games, today],
+  );
+  const [upShown, setUpShown] = useState(MY_GAMES_PAGE);
+  const [doneShown, setDoneShown] = useState(MY_GAMES_PAGE);
+
+  const section = (label: string, list: ApiGame[], shown: number, onMore: () => void, isDone: boolean) =>
+    list.length === 0 ? null : (
+      <div className="mb-6 last:mb-0">
+        <div className="flex items-center gap-3 mb-2.5">
+          <div className="text-[12px] font-extrabold tracking-[0.08em] text-[var(--muted)]">{label}</div>
+          <div className="flex-1 h-px bg-[var(--hairline)]" />
+          <div className="text-[12px] font-bold text-[var(--muted)]">{list.length}</div>
+        </div>
+        <div className="flex flex-col gap-3">
+          {list.slice(0, shown).map((g) => (
+            <MyGameCard
+              key={g.id}
+              g={g}
+              meId={meId}
+              done={isDone}
+              onOpen={() => onOpen(g)}
+              onNavigate={onNavigate}
+              onDeleted={onDeleted}
+            />
+          ))}
+        </div>
+        {list.length > shown && (
+          <button
+            type="button"
+            onClick={onMore}
+            className="mt-3 w-full py-2.5 rounded-xl bg-[var(--surface-2)] text-[var(--ink)] font-heading font-semibold text-[14px] active:scale-[0.99] transition-transform"
+          >
+            Show {Math.min(MY_GAMES_PAGE, list.length - shown)} more
+          </button>
+        )}
+      </div>
+    );
+
+  return (
+    <div className="flex flex-col">
+      {section('Upcoming', upcoming, upShown, () => setUpShown((n) => n + MY_GAMES_PAGE), false)}
+      {section('Done', done, doneShown, () => setDoneShown((n) => n + MY_GAMES_PAGE), true)}
+    </div>
+  );
+}
+
 /** A single court-booking card (date box · venue · duration/price · time range · status). */
 function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id: string) => void; cancelling: boolean }) {
+  // Two-step cancel: confirm before releasing the court (a paid reservation
+  // shouldn't vanish on a single accidental tap).
+  const [confirming, setConfirming] = useState(false);
   const { wd, d } = dateBox(b.date);
   const chip = bookingStatusChip(b);
   const sub = [bookingDuration(b), b.amount != null ? money(b.amount) : null].filter(Boolean).join(' · ');
@@ -261,17 +336,45 @@ function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id
         </div>
       </div>
       {isCancellable(b) && (
-        <div className="flex justify-end mt-2.5 pt-2.5 border-t-[0.5px] border-[var(--hairline)]">
-          <button
-            type="button"
-            onClick={() => onCancel(b.id)}
-            disabled={cancelling}
-            className="text-[13px] font-bold text-[var(--coral)] flex items-center gap-1 disabled:opacity-50"
-          >
-            {cancelling
-              ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={14} /></span> Cancelling…</>
-              : <><Icon name="close" size={14} /> Cancel</>}
-          </button>
+        <div className="mt-2.5 pt-2.5 border-t-[0.5px] border-[var(--hairline)]">
+          {confirming ? (
+            <div className="rounded-xl bg-[var(--surface-2)] p-3">
+              <div className="text-[13px] font-bold text-[var(--ink)]">Cancel this booking?</div>
+              <div className="text-[12px] text-[var(--muted)] mt-0.5">
+                Your court reservation will be released and the time freed up. This can’t be undone.
+              </div>
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirming(false)}
+                  disabled={cancelling}
+                  className="flex-1 h-9 rounded-lg bg-[var(--surface-3)] text-[var(--ink)] font-heading font-semibold text-[13px] disabled:opacity-50"
+                >
+                  Keep booking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCancel(b.id)}
+                  disabled={cancelling}
+                  className="flex-1 h-9 rounded-lg bg-[var(--coral)] text-white font-heading font-semibold text-[13px] flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  {cancelling
+                    ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={14} /></span> Cancelling…</>
+                    : 'Yes, cancel'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirming(true)}
+                className="text-[13px] font-bold text-[var(--coral)] flex items-center gap-1"
+              >
+                <Icon name="close" size={14} /> Cancel
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -359,11 +462,16 @@ function BookingCalendar({ year, month, bookingsByDate, selected, today, onSelec
 
 export function GamesScreen({ onNavigate }: GamesScreenProps) {
   const me = useAuthStore((s) => s.user);
+  const isLoggedIn = !!me;
   // Honor a one-shot intent from the home screen ("Join game" / "Browse all
   // games" land on Games → Browse instead of the default Booking tab).
   const [initialTab] = useState(() => takePendingGamesTab());
-  const [topTab, setTopTab] = useState<TopTab>(initialTab ?? 'booking');
-  const [gamesView, setGamesView] = useState<GamesView>(initialTab === 'games' ? 'browse' : 'mine');
+  // Guests have no bookings, so land them on Games → Browse (the Booking tab
+  // would otherwise show a sign-in wall on the default view).
+  const [topTab, setTopTab] = useState<TopTab>(initialTab ?? (isLoggedIn ? 'booking' : 'games'));
+  const [gamesView, setGamesView] = useState<GamesView>(
+    initialTab === 'games' ? 'browse' : isLoggedIn ? 'mine' : 'browse',
+  );
   const [filters, setFilters] = useState<GameFilters>(makeDefaultGameFilters);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -388,7 +496,9 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
     let alive = true;
     setLoading(true);
     setError(null);
-    const params = gamesView === 'mine' ? { mine: true } : { status: 'published' };
+    // Browse: no status filter → the server returns upcoming public games that
+    // are open OR full (full ones show a "Full" badge), not just open ones.
+    const params = gamesView === 'mine' ? { mine: true } : {};
     listGames(params)
       .then((rows) => { if (alive) setGames(rows); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load games.'); })
@@ -397,7 +507,8 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
   }, [gamesView, reloadKey]);
 
   useEffect(() => {
-    if (topTab !== 'booking') return;
+    // Bookings are auth-only; a guest on this tab gets a sign-in prompt, not a fetch.
+    if (topTab !== 'booking' || !isLoggedIn) return;
     let alive = true;
     setBookingsLoading(true);
     setBookingsError(null);
@@ -406,7 +517,7 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
       .catch((e) => { if (alive) setBookingsError(e instanceof Error ? e.message : 'Could not load your bookings.'); })
       .finally(() => { if (alive) setBookingsLoading(false); });
     return () => { alive = false; };
-  }, [topTab, bookingsReloadKey]);
+  }, [topTab, bookingsReloadKey, isLoggedIn]);
 
   // Filters apply client-side to whatever games are loaded (Browse or My Games).
   const filteredGames = useMemo(() => games.filter((g) => matchesGameFilters(g, filters)), [games, filters]);
@@ -574,7 +685,14 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
 
       <div className="section mt-4!">
         {topTab === 'booking' ? (
-          bookingsLoading ? (
+          !isLoggedIn ? (
+            <EmptyState
+              icon="user"
+              title="Sign in to see your bookings"
+              description="Your court reservations show up here once you’re signed in."
+              action={{ label: 'Sign in', onPress: () => onNavigate('login') }}
+            />
+          ) : bookingsLoading ? (
             <LoadingSkeleton variant="card" count={4} />
           ) : bookingsError ? (
             <ErrorState title="Couldn't load bookings" message={bookingsError} onRetry={() => setBookingsReloadKey((k) => k + 1)} />
@@ -651,18 +769,13 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
                 action={{ label: 'Clear filters', onPress: () => setFilters(makeDefaultGameFilters()) }}
               />
             ) : gamesView === 'mine' ? (
-              <div className="flex flex-col gap-3">
-                {filteredGames.map((g) => (
-                  <MyGameCard
-                    key={g.id}
-                    g={g}
-                    meId={me?.id}
-                    onOpen={() => openGame(g)}
-                    onNavigate={onNavigate}
-                    onDeleted={(id) => setGames((prev) => prev.filter((x) => x.id !== id))}
-                  />
-                ))}
-              </div>
+              <MyGamesSections
+                games={filteredGames}
+                meId={me?.id}
+                onOpen={openGame}
+                onNavigate={onNavigate}
+                onDeleted={(id) => setGames((prev) => prev.filter((x) => x.id !== id))}
+              />
             ) : (
               <div className="flex flex-col">
                 {grouped.map((section) => (
