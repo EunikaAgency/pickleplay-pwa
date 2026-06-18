@@ -11,7 +11,9 @@
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
+    "@types/croppie": "^2.6.4",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "croppie": "^2.6.5",
     "leaflet": "^1.9.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

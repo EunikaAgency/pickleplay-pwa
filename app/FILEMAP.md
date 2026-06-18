@@ -129,6 +129,7 @@ src/
 
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
+                        # AvatarCropper (circular photo crop via croppie; used by EditProfile),
                         # EmptyState/ErrorState/LoadingSkeleton, DemoBranch, Toast,
                         # NotificationBadge (live unread-count bubble — reads notificationStore),
                         # HourSelect, CourtPicker (pick which court to book/host),

@@ -1,13 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { FormField } from '../../shared/components/forms/FormField';
 import { FormTierPicker } from '../../shared/components/forms/FormTierPicker';
+import { AvatarCropper } from '../../shared/components/ui/AvatarCropper';
 import { useForm } from '../../shared/hooks/useForm';
 import { duprForTier, skillTiers, tierForDupr, type SkillTier } from '../../shared/lib/skillTiers';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { getInitials } from '../../shared/lib/initials';
-import { ApiError } from '../../shared/lib/api';
+import { ApiError, uploadAvatar } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 
 interface EditProfileScreenProps {
@@ -20,6 +21,35 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Photo change: pick a file → crop to a circle (Croppie) → upload → PATCH /me.
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const pickPhoto = () => fileRef.current?.click();
+  const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file
+    if (f) { setPhotoError(null); setCropFile(f); }
+  };
+  const onCropped = async (blob: Blob) => {
+    if (!currentUser?.id) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const file = new File([blob], 'avatar.png', { type: 'image/png' });
+      const url = await uploadAvatar(currentUser.id, file);
+      if (!url) throw new Error('Upload failed');
+      await updateProfile({ avatarUrl: url });
+      setCropFile(null);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : 'Could not update your photo.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   const nameParts = (currentUser?.displayName ?? '').trim().split(/\s+/).filter(Boolean);
   const initialTier = currentUser?.skillLevel != null ? tierForDupr(currentUser.skillLevel).id : 'solid';
@@ -79,15 +109,27 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
           <button
             type="button"
             aria-label="Change photo"
+            onClick={pickPhoto}
             className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-[var(--ink)] text-white flex items-center justify-center border-[3px] border-[var(--surface)]"
           >
             <Icon name="camera" size={16} />
           </button>
         </div>
-        <button type="button" className="mt-2.5 text-[12px] font-bold text-[var(--primary)]">
-          Change photo
+        <button type="button" onClick={pickPhoto} disabled={photoBusy} className="mt-2.5 text-[12px] font-bold text-[var(--primary)] disabled:opacity-50">
+          {photoBusy ? 'Updating…' : 'Change photo'}
         </button>
+        {photoError && <div className="mt-1 text-[12px] font-semibold text-[var(--coral)]">{photoError}</div>}
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickFile} />
       </div>
+
+      {cropFile && (
+        <AvatarCropper
+          file={cropFile}
+          busy={photoBusy}
+          onCancel={() => setCropFile(null)}
+          onCropped={onCropped}
+        />
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="field grid grid-cols-2 gap-2.5">

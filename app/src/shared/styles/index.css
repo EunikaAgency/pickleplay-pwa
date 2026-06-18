@@ -531,10 +531,8 @@
   bottom: calc(14px + env(safe-area-inset-bottom));
   height: 64px;
   border-radius: 22px;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 0.5px solid rgba(255,255,255,0.6);
+  background: var(--surface);
+  border: 0.5px solid var(--hairline);
   box-shadow: var(--shadow-pop);
   display: flex;
   align-items: center;
@@ -545,9 +543,9 @@
   margin: 0 auto;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .tabbar { background: rgba(30,33,40,0.85); border-color: rgba(255,255,255,0.08); }
+  :root:not([data-theme="light"]) .tabbar { background: #1e2128; border-color: rgba(255,255,255,0.08); }
 }
-[data-theme="dark"] .tabbar { background: rgba(30,33,40,0.85); border-color: rgba(255,255,255,0.08); }
+[data-theme="dark"] .tabbar { background: #1e2128; border-color: rgba(255,255,255,0.08); }
 
 .tabbar .tab {
   flex: 1;

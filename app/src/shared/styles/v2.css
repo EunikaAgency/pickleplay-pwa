@@ -2507,6 +2507,9 @@
   box-shadow: var(--shadow-md);
   overflow: hidden;
   background: var(--lime);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .pb-v2.v2-profile .profile-avatar img {
   width: 100%;

@@ -321,6 +321,7 @@ export interface ProfileUpdate {
   skillLevel?: string;
   skillLevelLabel?: string;
   hasOnboarded?: boolean;
+  avatarUrl?: string;
 }
 
 /**
@@ -822,6 +823,12 @@ export function uploadVenueMedia(venueId: string, file: File): Promise<UploadedM
  */
 export function uploadCourtMedia(courtId: string, file: File): Promise<UploadedMedia | null> {
   return uploadMedia('court', courtId, file);
+}
+
+/** Upload a (cropped) avatar image for the current user; returns its URL. */
+export async function uploadAvatar(userId: string, file: File): Promise<string | null> {
+  const m = await uploadMedia('user', userId, file);
+  return m?.url ?? null;
 }
 
 /* ─── Games (open-play) ─────────────────────────────────────── */
