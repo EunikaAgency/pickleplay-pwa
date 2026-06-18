@@ -20,6 +20,9 @@ import { SettingsScreen } from './features/profile/SettingsScreen';
 import { SearchScreen } from './features/search/SearchScreen';
 import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
 import { NotificationsScreen } from './features/profile/NotificationsScreen';
+import { ConversationsScreen } from './features/messages/ConversationsScreen';
+import { ChatScreen } from './features/messages/ChatScreen';
+import { GameChatScreen } from './features/games/GameChatScreen';
 import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
 import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
 import { OwnerNotificationsScreen } from './features/owner/OwnerNotificationsScreen';
@@ -38,8 +41,22 @@ import { DemoStateControl } from './shared/components/ui/DemoStateControl';
 import { DemoStateProvider, useDemoState } from './shared/lib/demoState';
 import { userHasPermission, type Permission } from './shared/lib/permissions';
 import { useAuthStore } from './shared/lib/authStore';
+import { useNotificationPolling } from './shared/hooks/useNotificationPolling';
+import { useRealtimeStream } from './shared/hooks/useRealtimeStream';
+import { usePlayerDesign } from './shared/lib/playerDesign';
 import { useTheme } from './shared/hooks/useTheme';
 import { tabScreens, screenFromPath, deepLinkParent, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
+// v2.1 redesign ("Pickleballers Mockup v2.1") — player-side screens + the design toggle.
+import { DesignSwitch } from './features/home/DesignSwitch';
+import { HomeScreenV2 } from './features/home/v2/HomeScreenV2';
+import { NearbyScreenV2 } from './features/venues/v2/NearbyScreenV2';
+import { GamesScreenV2 } from './features/games/v2/GamesScreenV2';
+import { ClubsScreenV2 } from './features/clubs/v2/ClubsScreenV2';
+import { ProfileScreenV2 } from './features/profile/v2/ProfileScreenV2';
+import { SettingsScreenV2 } from './features/profile/v2/SettingsScreenV2';
+import { CreateGameV2 } from './features/games/v2/CreateGameV2';
+import { CreateClubV2 } from './features/clubs/v2/CreateClubV2';
+import type { V2ScreenChrome } from './shared/components/layout/V2Chrome';
 
 const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'create-game': 'player.games.create',
@@ -50,6 +67,9 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'edit-profile': 'player.profile.manage',
   settings: 'player.profile.manage',
   notifications: 'user.notifications.manage',
+  messages: 'user.messages.send',
+  chat: 'user.messages.send',
+  'game-chat': 'player.games.chat',
   'invite-players': 'player.games.create',
   'owner-venues': 'owner.access',
   'owner-venue': 'owner.venues.manage',
@@ -72,6 +92,9 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'edit-profile': 'manage your profile',
   settings: 'manage your settings',
   notifications: 'see your notifications',
+  messages: 'see your messages',
+  chat: 'send a message',
+  'game-chat': 'open the game chat',
   'owner-venues': 'manage your venues',
   'owner-venue': 'manage your venue',
   'owner-new-venue': 'add a venue',
@@ -91,6 +114,20 @@ export default function App() {
   );
 }
 
+// The screen-stack nav lives in memory, so a page reload would otherwise drop
+// you back on home. Persist the current screen/history to sessionStorage so a
+// refresh restores where you were (survives reload, not tab close). A deep-link
+// path still wins on first load; this only fills in when the path is '/'.
+const NAV_KEY = 'pb-nav';
+function loadNav(): { screen: Screen; history: Screen[]; activeTab: TabId } | null {
+  try {
+    const raw = sessionStorage.getItem(NAV_KEY);
+    return raw ? (JSON.parse(raw) as { screen: Screen; history: Screen[]; activeTab: TabId }) : null;
+  } catch {
+    return null;
+  }
+}
+
 function AppInner() {
   const { state: demoState } = useDemoState();
   useTheme();
@@ -98,18 +135,28 @@ function AppInner() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const restoreSession = useAuthStore((s) => s.restore);
   const logout = useAuthStore((s) => s.logout);
+  // Keep the unread-notification badge live while signed in (polls + refreshes
+  // on focus/visibility); clears on logout.
+  useNotificationPolling(isLoggedIn);
+  // Realtime push of new notifications + incoming messages over one SSE stream
+  // (the 30s poll above stays as a fallback if the stream drops).
+  useRealtimeStream(isLoggedIn);
   // A deep link (notification click / shared URL) opens the PWA at a path like
   // `/games/<id>`; resolve it to the initial screen, else cold-start on home so
   // guests can browse. Detail-screen deep links seed a Back target so the back
   // arrow returns somewhere sane instead of dead-ending.
-  const [screen, setScreen] = useState<Screen>(() => screenFromPath(window.location.pathname) ?? { id: 'home' });
+  const [screen, setScreen] = useState<Screen>(
+    () => screenFromPath(window.location.pathname) ?? loadNav()?.screen ?? { id: 'home' },
+  );
   const [activeTab, setActiveTab] = useState<TabId>(() => {
     const s = screenFromPath(window.location.pathname);
-    return s && isTabScreen(s.id) ? s.id : 'home';
+    if (s) return isTabScreen(s.id) ? s.id : 'home';
+    return loadNav()?.activeTab ?? 'home';
   });
   const [history, setHistory] = useState<Screen[]>(() => {
     const s = screenFromPath(window.location.pathname);
-    return s && !isTabScreen(s.id) ? [deepLinkParent(s.id)] : [];
+    if (s) return !isTabScreen(s.id) ? [deepLinkParent(s.id)] : [];
+    return loadNav()?.history ?? [];
   });
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
@@ -182,6 +229,18 @@ function AppInner() {
     }
   }, []);
 
+  // Persist the current screen so a reload restores it instead of dropping back
+  // to home. Skip the transient auth-flow screens (we never want to reload into
+  // login/landing/onboarding).
+  useEffect(() => {
+    if (screen.id === 'landing' || screen.id === 'login' || screen.id === 'onboarding') return;
+    try {
+      sessionStorage.setItem(NAV_KEY, JSON.stringify({ screen, history, activeTab }));
+    } catch {
+      /* sessionStorage may be unavailable (private mode) — reload just falls back to home */
+    }
+  }, [screen, history, activeTab]);
+
   // Called by LoginScreen after the store's `login` action has set the user.
   // Only first-time users (who haven't onboarded on this account yet) see the
   // onboarding flow; everyone else lands straight on home. Read the freshly
@@ -212,6 +271,8 @@ function AppInner() {
     setScreen({ id: 'home' });
     setActiveTab('home');
     setHistory([]);
+    // Drop the saved nav so a guest doesn't reload back into a signed-in screen.
+    try { sessionStorage.removeItem(NAV_KEY); } catch { /* ignore */ }
   };
 
   // Enter the sign-in / sign-up flow from a guest screen, remembering where we
@@ -221,6 +282,12 @@ function AppInner() {
     setScreen({ id: 'login' });
     setAuthIntent(null);
   };
+
+  // Player-side design selector. v2.1 is only offered to players/guests (owners
+  // keep their dedicated dashboards), so it's gated by !owner.access.
+  const design = usePlayerDesign((s) => s.design);
+  const isOwner = userHasPermission(currentUser, 'owner.access');
+  const playerV2 = design === 'v2' && !isOwner;
 
   const canCreateGame = userHasPermission(currentUser, 'player.games.create');
   const handleCreate = () => {
@@ -234,9 +301,19 @@ function AppInner() {
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
   const hideChrome = ['landing', 'onboarding', 'login'].includes(screen.id);
   // Guests get the full chrome while browsing — that's how they roam the app.
-  const showTabBar = !hideChrome && isTabScreen(screen.id);
+  // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
+  // app's mobile TabBar (and the install prompt riding above it) are suppressed.
+  const showTabBar = !hideChrome && isTabScreen(screen.id) && !playerV2;
   const showSidebar = !hideChrome;
   const frame = screen.id === 'landing' ? 'wide' : 'standard';
+
+  // The chrome/handlers every v2 player screen needs (tab bar, FAB, auth gate,
+  // and the universal header back button — bound to the app's absolute history).
+  const v2Chrome: V2ScreenChrome = {
+    activeTab, onNavigate: navigate, onTabPress: handleTabPress,
+    onCreate: handleCreate, isLoggedIn, requireAuth,
+    onBack: goBack, canGoBack: history.length > 0,
+  };
 
   const renderScreen = () => {
     // Auth + onboarding surfaces render full-bleed regardless of login state.
@@ -255,26 +332,23 @@ function AppInner() {
     switch (screen.id) {
       case 'home':
         // Owners get their dashboard on the Home tab (in the homepage design);
-        // players/guests get the normal player home.
-        return userHasPermission(currentUser, 'owner.access')
-          ? <OwnerHomeScreen onNavigate={navigate} />
-          : <HomeScreenSwitch onNavigate={navigate} />;
+        // players/guests get the player home (v2.1 redesign when toggled on).
+        if (userHasPermission(currentUser, 'owner.access')) return <OwnerHomeScreen onNavigate={navigate} />;
+        return playerV2 ? <HomeScreenV2 {...v2Chrome} /> : <HomeScreenSwitch onNavigate={navigate} />;
       case 'nearby':
         // Owners get a local market map (their venues vs nearby competitors);
         // players/guests get the normal discover-courts-near-me view.
-        return userHasPermission(currentUser, 'owner.market.view')
-          ? <OwnerNearbyScreen onNavigate={navigate} />
-          : <NearbyScreen onNavigate={navigate} />;
+        if (userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
+        return playerV2 ? <NearbyScreenV2 {...v2Chrome} /> : <NearbyScreen onNavigate={navigate} />;
       case 'games':
         // Owners get "Your courts" (games + bookings at their venues); players
         // get the normal browse/join games view.
-        return userHasPermission(currentUser, 'owner.games.view')
-          ? <OwnerGamesScreen onNavigate={navigate} />
-          : <GamesScreen onNavigate={navigate} />;
+        if (userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
+        return playerV2 ? <GamesScreenV2 {...v2Chrome} /> : <GamesScreen onNavigate={navigate} />;
       case 'clubs':
-        return <ClubsScreen onNavigate={navigate} onBack={goBack} />;
+        return playerV2 ? <ClubsScreenV2 {...v2Chrome} /> : <ClubsScreen onNavigate={navigate} onBack={goBack} />;
       case 'profile':
-        return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
+        return playerV2 ? <ProfileScreenV2 {...v2Chrome} /> : <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'court-details':
@@ -282,7 +356,7 @@ function AppInner() {
       case 'club-details':
         return <ClubDetailsScreen key={screen.params.id} clubId={screen.params.id} invited={screen.params.invited} onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
-        return <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
+        return playerV2 ? <CreateGameV2 {...v2Chrome} onBack={goBack} /> : <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-game':
         return <CreateGameScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'my-games':
@@ -301,17 +375,25 @@ function AppInner() {
       case 'my-bookings':
         return <MyBookingsScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
-        return <CreateClubScreen onNavigate={navigate} onBack={goBack} />;
+        return playerV2 ? <CreateClubV2 {...v2Chrome} onBack={goBack} /> : <CreateClubScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-profile':
         return <EditProfileScreen onBack={goBack} />;
       case 'settings':
-        return <SettingsScreen onBack={goBack} onLogout={handleLogout} onNavigate={navigate} />;
+        return playerV2
+          ? <SettingsScreenV2 {...v2Chrome} onLogout={handleLogout} />
+          : <SettingsScreen onBack={goBack} onLogout={handleLogout} onNavigate={navigate} />;
       case 'search':
         return <SearchScreen onNavigate={navigate} onBack={goBack} />;
       case 'invite-players':
         return <InvitePlayersScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'messages':
+        return <ConversationsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'chat':
+        return <ChatScreen key={screen.params.id} conversationId={screen.params.id} name={screen.params.name} onBack={goBack} />;
+      case 'game-chat':
+        return <GameChatScreen key={screen.params.id} gameId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'owner-venues':
         return <OwnerVenuesScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-venue':
@@ -337,7 +419,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={history.length > 0} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={history.length > 0} onOpenMessages={() => navigate('messages')} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
@@ -356,6 +438,10 @@ function AppInner() {
         onClose={() => setAuthIntent(null)}
         onContinue={goToLogin}
       />
+
+      {/* Floating player-design toggle (New · Classic · v2.1). Owners keep their
+          dashboards, so it's hidden for them and on the auth/onboarding surfaces. */}
+      {!hideChrome && !isOwner && <DesignSwitch />}
 
       <DemoStateControl />
     </div>

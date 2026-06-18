@@ -21,6 +21,9 @@ export type Screen =
   | { id: 'search' }
   | { id: 'invite-players'; params: { id: string } }
   | { id: 'notifications' }
+  | { id: 'messages' }
+  | { id: 'chat'; params: { id: string; name?: string } }
+  | { id: 'game-chat'; params: { id: string; name?: string } }
   | { id: 'owner-venues' }
   | { id: 'owner-venue'; params: { id: string; tab?: string } }
   | { id: 'owner-new-venue' }
@@ -43,9 +46,14 @@ export function screenFromPath(pathname: string): Screen | null {
   const [head, tail] = pathname.replace(/^\/+|\/+$/g, '').split('/');
   if (!head) return null;
   const isObjectId = (s: string | undefined): s is string => !!s && /^[0-9a-fA-F]{24}$/.test(s);
+  // A game-chat message deep link is /games/<id>/chat — open the group chat.
+  const seg3 = pathname.replace(/^\/+|\/+$/g, '').split('/')[2];
   switch (head) {
     case 'games':
-      return isObjectId(tail) ? { id: 'game-details', params: { id: tail } } : { id: 'games' };
+      if (isObjectId(tail)) {
+        return seg3 === 'chat' ? { id: 'game-chat', params: { id: tail } } : { id: 'game-details', params: { id: tail } };
+      }
+      return { id: 'games' };
     case 'clubs':
       // Clubs link by slug or id — ClubDetails resolves either via getClub().
       // Landing here from a link is an invite → flag it so the club page can
@@ -56,6 +64,9 @@ export function screenFromPath(pathname: string): Screen | null {
       return tail ? { id: 'court-details', params: { id: tail } } : { id: 'nearby' };
     case 'notifications':
       return { id: 'notifications' };
+    case 'messages':
+      // A message notification deep-links to /messages/<conversationId>.
+      return isObjectId(tail) ? { id: 'chat', params: { id: tail } } : { id: 'messages' };
     default:
       return null;
   }
@@ -65,6 +76,8 @@ export function screenFromPath(pathname: string): Screen | null {
 export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'club-details') return { id: 'clubs' };
   if (id === 'court-details') return { id: 'nearby' };
+  if (id === 'chat') return { id: 'messages' };
+  if (id === 'game-chat') return { id: 'games' };
   return { id: 'home' };
 }
 

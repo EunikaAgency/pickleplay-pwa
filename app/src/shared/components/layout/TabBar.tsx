@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { NotificationBadge } from '../ui/NotificationBadge';
 import type { TabId } from '../../lib/navigation';
 
 interface TabBarProps {
@@ -34,7 +35,11 @@ export function TabBar({ activeTab, onTabPress, isLoggedIn }: TabBarProps) {
             onClick={() => onTabPress(t.id)}
             aria-current={isActive ? 'page' : undefined}
           >
-            <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={22} />
+            <span className="relative inline-flex">
+              <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={22} />
+              {/* Live unread badge on the "You" tab (notifications live under profile). */}
+              {t.id === 'profile' && isLoggedIn && <NotificationBadge className="-top-1.5 -right-2" />}
+            </span>
             {label && <span className="label">{label}</span>}
           </button>
         );

@@ -47,15 +47,23 @@ src/
   features/<slice>/    # vertical slices; each owns its screens + slice-only UI (filter sheets)
     auth/              # LandingScreen, LoginScreen, OnboardingScreen
     home/              # HomeScreenSwitch (picks ↓; App.tsx routes owners to owner/OwnerHomeScreen
-                       #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic)
+                       #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic),
+                       #   DesignSwitch (floating New·Classic·v2.1 toggle), v2/HomeScreenV2
+    # NOTE: each player slice has a v2/ folder with its "Pickleballers Mockup v2.1"
+    #   redesign screen (venues/v2, games/v2 incl. CreateGameV2, clubs/v2 incl.
+    #   CreateClubV2, profile/v2 incl. SettingsScreenV2). Active when the design
+    #   switch = v2.1. See the
+    #   "Design switch" note below + shared/components/layout/V2Chrome + shared/styles/v2.css.
     games/             # Games (player browse/join — owners get owner/OwnerGames instead via App.tsx),
                        #   GameDetails, CreateGame (venue-first: pick a priced court → date +
                        #   start/end time → details → PAY to book the court → game posts; with a
                        #   gameId prop it switches to the MANAGE form: edit details + kick players,
                        #   venue/time locked), MyGames (manage games you created: status + edit/delete),
-                       #   InvitePlayers, GameFilterSheet + gameFilters (when/skill/type/openings
+                       #   InvitePlayers, GameChat (per-game group chat for the roster — opened from
+                       #   GameDetails' "Chat"; realtime via realtimeBus 'game.message'; gated by
+                       #   player.games.chat), GameFilterSheet + gameFilters (when/skill/type/openings
                        #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
-                       #   list/detail/join/kick; chat + invite-send still demo)
+                       #   list/detail/join/kick/group-chat; invite-send still demo)
     bookings/          # BookCourt (pick venue→court (CourtPicker)→whole-hour start/end via HourSelect,
                        #   taken hours greyed out from that court's live availability→pay test-checkout),
                        #   MyBookings (list+cancel), bookingDisplay
@@ -65,7 +73,18 @@ src/
                        #   ⋯ menu: invite/share link + host delete), CreateClub (live:
                        #   POST /clubs). All via the clubs client in api.ts.
     profile/           # Profile, EditProfile, Settings, Notifications
-    search/            # SearchScreen
+    messages/          # direct 1:1 chat: ConversationsScreen (thread list, from Profile → Messages or
+                       # the desktop Sidebar "Messages"; has a "New message" ✏️ that searches any
+                       # player (searchPlayers) → startConversation → chat, so you can DM someone you've
+                       # never met in a game),
+                       # ChatScreen (thread + composer; reached from a game's "Message organizer" or
+                       # a message notification → /messages/:id). Realtime: both screens subscribe to
+                       # the realtime bus ('message') so new messages append / the list reorders live
+                       # (see shared/lib/realtimeBus.ts + shared/hooks/useRealtimeStream.ts). Gated by
+                       # user.messages.send.
+    search/            # SearchScreen — live global search across courts/games/clubs/players
+                       #   (crossSearch → GET /api/v1/search?type=all); debounced, recent
+                       #   searches in localStorage, player rows open a DM. Gated by player.search.use
     owner/             # venue-owner console (the one feature with internal subfolders — it's
                        # ~3x any other slice). Root = the 8 screens: OwnerHome (the Home tab for
                        # owners — dashboard: revenue hero + KPIs + cross-venue pending/upcoming +
@@ -93,6 +112,7 @@ src/
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
                         # EmptyState/ErrorState/LoadingSkeleton, DemoBranch, Toast,
+                        # NotificationBadge (live unread-count bubble — reads notificationStore),
                         # HourSelect, CourtPicker (pick which court to book/host),
                         # CalendarDatePicker (month-grid date picker),
                         # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap), … (see folder)
@@ -100,9 +120,15 @@ src/
     components/forms/   # FormField, FormSelect, FormTierPicker
     hooks/              # useForm, useTheme, usePrefersReducedMotion, useVenueAvailability
                         #   (per-hour availability → greys out taken hours; pass a courtId to
-                        #    scope it to that court, else the whole-venue pool)
+                        #    scope it to that court, else the whole-venue pool),
+                        #   useNotificationPolling (keeps the unread badge live: polls +
+                        #    refreshes on focus/visibility while signed in — now a fallback),
+                        #   useRealtimeStream (one app-wide EventSource to GET /api/v1/me/stream;
+                        #    fans new notifications + incoming messages onto the realtime bus)
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
-                        # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts
+                        # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts,
+                        # notificationStore.ts (Zustand: live unread count + refresh, for the badge),
+                        # realtimeBus.ts (tiny in-app pub/sub; useRealtimeStream publishes, screens subscribe)
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
     styles/index.css    # Tailwind + all design tokens (--primary, --lime, --coral, shadows…)
 ```
@@ -226,8 +252,22 @@ src/
   `OwnerNewVenueScreen` creates one. All gated by `SCREEN_PERMISSIONS` in `App.tsx`.
   Same API the web `/owner/` console uses; no API changes. (Known gaps mirror web: photos
   are upload-only, address text/city are staff-managed, no token refresh on 401.)
-- **Home A/B:** `HomeScreenSwitch` shows a floating New/Classic toggle and persists
-  the choice in `localStorage` (`pb-home-design`); "New" = `HomeScreenRefined`. The
+- **Design switch (New · Classic · v2.1):** a floating reviewer toggle —
+  `features/home/DesignSwitch.tsx`, mounted app-wide from `App.tsx` for non-owner
+  browse screens — picks the player design and persists it in `localStorage`
+  (`pb-home-design`) via `shared/lib/playerDesign.ts` (`usePlayerDesign`, value
+  `new|classic|v2`). **New/Classic** keep today's UI (`HomeScreenSwitch` picks
+  `HomeScreenRefined` vs `HomeScreen` for Home only). **v2.1** swaps the whole
+  player side to the "Pickleballers Mockup v2.1" redesign: `features/*/v2/*Screen V2`
+  (Home/Nearby/Games/Clubs/Profile/Settings + `CreateGameV2`/`CreateClubV2`, all wired to the
+  same live API + formatters as the v1 screens; create-game keeps the real
+  book→pay→create flow). The v2 screens share chrome from
+  `shared/components/layout/V2Chrome.tsx` (`V2Shell`/`V2TopNav`/`V2TabBar`/`V2Fab`)
+  and styling from `shared/styles/v2.css` — every rule scoped under `.pb-v2.v2-<screen>`
+  (auto-ported from the mockup) so v2 fonts/tokens never leak into New/Classic. While
+  v2 is active `App.tsx` suppresses the app's own mobile TabBar; the desktop Sidebar
+  stays. Owners never see v2 (gated by `!owner.access`).
+- **Home A/B (v1):** `HomeScreenSwitch` renders New vs Classic Home. "New" = `HomeScreenRefined`. The
   refined home's **hero is live**: your next commitment is the **soonest of your
   games (`listGames({ mine: true })`) and court bookings (`listBookings()`)** —
   a court booking renders the same hero (party size instead of a roster, opens
@@ -263,11 +303,16 @@ src/
 | Task | Open first |
 |---|---|
 | Navigation / new screen / auth-or-guest flow | `App.tsx`, `shared/lib/navigation.ts` |
+| Player design toggle / "Pickleballers Mockup v2.1" redesign | `features/home/DesignSwitch.tsx`, `shared/lib/playerDesign.ts`, `shared/components/layout/V2Chrome.tsx`, `shared/styles/v2.css`, `features/*/v2/*` (v2 branches wired in `App.tsx`) |
 | Login / current user / session | `shared/lib/authStore.ts`, `shared/lib/api.ts`, `LoginScreen.tsx` |
 | Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` (owners get `features/owner/OwnerNearbyScreen.tsx` — a "your venues" ops map) |
 | Games tab (browse/mine, create, detail, join) | `features/games/{GamesScreen,GameDetailsScreen,CreateGameScreen}.tsx`, `gameDisplay.ts`; games endpoints in `shared/lib/api.ts` |
 | Create a game (venue-first + pay) | `features/games/CreateGameScreen.tsx` — `CreateGameWizard`: court → date/start-end → details → `createBooking`+`checkout`+`createGame`; gated by `player.games.create` (+ `player.bookings.create`) |
 | Manage games you created (edit details, kick, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows (`GameManageActions.tsx`); editing reuses `CreateGameScreen` with a `gameId` prop (the `ManageGameScreen` form: edit details + remove players via `kickPlayer`); `updateGame`/`deleteGame`/`kickPlayer` in `shared/lib/api.ts`; gated by `player.games.manage` |
+| Direct messages / chat (realtime) | `features/messages/{ConversationsScreen,ChatScreen}.tsx`; messaging endpoints in `shared/lib/api.ts`; entry from `GameDetailsScreen` "Message organizer" + Profile → Messages; deep-link `/messages/:id` via `navigation.ts`; gated by `user.messages.send`. Realtime via `shared/hooks/useRealtimeStream.ts` + `shared/lib/realtimeBus.ts` (SSE `GET /api/v1/me/stream`) |
+| Realtime stream (chat + notifications) | `shared/hooks/useRealtimeStream.ts` (one EventSource, mounted in `App.tsx`) + `shared/lib/realtimeBus.ts` (in-app pub/sub); backed by API `GET /api/v1/me/stream` |
+| Live notification badge (unread) | `shared/lib/notificationStore.ts` + `shared/hooks/useNotificationPolling.ts` (started in `App.tsx`); `shared/components/ui/NotificationBadge.tsx` on the home bell + TabBar "You" tab |
+| Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |

@@ -9,8 +9,10 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
-import { getGame, joinGame, leaveGame, ApiError, type ApiGame } from '../../shared/lib/api';
+import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
+import { getGame, joinGame, leaveGame, startConversation, ApiError, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 import {
   dayParts, gameTitle, gameTypeLabel, timeLine, gameLocation, spotsLabel,
   LOBBY_LEAVE_GRACE_PERIOD_DAYS, isLobbyFull, isWithinGracePeriod, canLeaveLobby,
@@ -39,6 +41,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [leaving, setLeaving] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [duprOpen, setDuprOpen] = useState(false);
+  const [messaging, setMessaging] = useState(false);
   // Joining inside the grace window makes the joiner acknowledge the no-refund
   // rule first; this gates the actual join behind a confirmation modal.
   const [confirmJoinOpen, setConfirmJoinOpen] = useState(false);
@@ -111,6 +114,22 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
     }
   };
 
+  // Open (or create) a DM thread with the game's host, then jump into the chat.
+  const messageOrganizer = async () => {
+    if (!game?.creator?.id || messaging) return;
+    if (onRequireAuth && !onRequireAuth('message the organizer')) return;
+    setMessaging(true);
+    setActionError(null);
+    try {
+      const conv = await startConversation(game.creator.id);
+      onNavigate('chat', { id: conv.id, name: conv.otherParticipant?.displayName ?? game.creator.displayName });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not open the conversation.');
+    } finally {
+      setMessaging(false);
+    }
+  };
+
   const isFull = spotsLeft <= 0 && !isJoined;
 
   // A single grace-period notice whose wording adapts to the viewer's state
@@ -139,6 +158,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
       }
       error={
         <div className="scroll safe-top safe-bottom">
+          <ScreenHeader onBack={onBack} title="Game" />
           <ErrorState
             title="Couldn't load this game"
             message="We couldn't fetch this game's details. Pull down to retry."
@@ -148,6 +168,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
       }
       empty={
         <div className="scroll safe-top safe-bottom">
+          <ScreenHeader onBack={onBack} title="Game" />
           <EmptyState
             icon="paddle"
             title="This game is no longer available"
@@ -164,6 +185,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
         </div>
       ) : notFound || !game ? (
         <div className="scroll safe-top safe-bottom">
+          <ScreenHeader onBack={onBack} title="Game" />
           <EmptyState
             icon="paddle"
             title="This game is no longer available"
@@ -173,6 +195,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
         </div>
       ) : error ? (
         <div className="scroll safe-top safe-bottom">
+          <ScreenHeader onBack={onBack} title="Game" />
           <ErrorState
             title="Couldn't load this game"
             message={error}
@@ -267,17 +290,43 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
             </div>
 
             <div className="organizer">
-              <Avatar name={game.creator?.displayName || 'Host'} size={48} variant="lime" />
+              <Avatar src={game.creator?.avatarUrl} name={game.creator?.displayName || 'Host'} size={48} variant="lime" />
               <div className="meta">
                 <div className="role">Hosted by</div>
                 <div className="name">{game.creator?.displayName || 'Host'}</div>
               </div>
-              <div className="actions">
-                <button className="icon-btn" aria-label="Message organizer">
-                  <Icon name="message" size={16} />
-                </button>
-              </div>
+              {/* Message the host — hidden on your own game and for guests/roles
+                  without messaging. */}
+              {game.creator?.id && game.creator.id !== me?.id && userHasPermission(me, 'user.messages.send') && (
+                <div className="actions">
+                  <button
+                    className="icon-btn"
+                    aria-label={`Message ${game.creator.displayName || 'organizer'}`}
+                    onClick={messageOrganizer}
+                    disabled={messaging}
+                  >
+                    <Icon name="message" size={16} />
+                  </button>
+                </div>
+              )}
             </div>
+
+            {/* Prominent group-chat entry for roster members (host + joined). */}
+            {(isJoined || isHost) && (
+              <button
+                onClick={() => onNavigate('game-chat', { id: game.id, name: gameTitle(game) })}
+                className="w-full mb-4 flex items-center gap-3 rounded-2xl bg-[var(--primary)] text-white px-4 py-3.5 active:scale-[0.99] transition-transform"
+              >
+                <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <Icon name="chat" size={18} />
+                </span>
+                <span className="flex-1 text-left">
+                  <span className="block text-[15px] font-bold">Group chat</span>
+                  <span className="block text-[12px] text-white/80">Talk with the players in this game</span>
+                </span>
+                <Icon name="chevron" size={18} />
+              </button>
+            )}
 
             <div className="location-card">
               <div className="map-preview">

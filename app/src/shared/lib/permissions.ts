@@ -28,6 +28,8 @@ export const ALL_PERMISSIONS = [
   'player.dashboard.access',
   'player.games.create',
   'player.games.manage',
+  'player.games.invite',
+  'player.games.chat',
   'player.clubs.create',
   'player.clubs.join',
   'player.clubs.post',
@@ -38,7 +40,9 @@ export const ALL_PERMISSIONS = [
   'player.tournaments.join',
   'player.bookings.create',
   'player.venues.checkin',
+  'player.search.use',
   'user.notifications.manage',
+  'user.messages.send',
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -48,6 +52,8 @@ const PLAYER_PERMISSIONS: Permission[] = [
   'player.dashboard.access',
   'player.games.create',
   'player.games.manage',
+  'player.games.invite',
+  'player.games.chat',
   'player.clubs.create',
   'player.clubs.join',
   'player.clubs.post',
@@ -57,7 +63,9 @@ const PLAYER_PERMISSIONS: Permission[] = [
   'player.tournaments.join',
   'player.bookings.create',
   'player.venues.checkin',
+  'player.search.use',
   'user.notifications.manage',
+  'user.messages.send',
 ];
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {

@@ -13,6 +13,8 @@ interface SidebarProps {
   onBack: () => void;
   /** Whether there's a previous screen to return to. */
   canGoBack: boolean;
+  /** Open the direct-messages screen (shown only when signed in). */
+  onOpenMessages?: () => void;
 }
 
 interface SideTab {
@@ -30,7 +32,7 @@ const tabs: SideTab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
@@ -78,6 +80,14 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
             </button>
           );
         })}
+        {isLoggedIn && onOpenMessages && (
+          <button className="side-tab" onClick={onOpenMessages}>
+            <span className="ico">
+              <Icon name="chat" size={20} />
+            </span>
+            Messages
+          </button>
+        )}
       </nav>
 
       <button className="side-create disabled:cursor-not-allowed disabled:opacity-50" onClick={onCreate} disabled={!canCreate}>

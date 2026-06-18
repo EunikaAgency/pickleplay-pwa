@@ -10,6 +10,13 @@ import { normalizeRole, resolveRolePermissions, type AppUser } from './permissio
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const AUTH_PREFIX = '/api/v1/auth';
 
+/** Resolve an API path to a full URL using the same base as fetch requests
+ *  (relative in dev so Vite proxies it; the API origin in prod). Used for
+ *  EventSource, which needs an absolute URL in prod. */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 // Image/asset files (e.g. "/images/venues/<slug>/court.jpg") are served by the
 // API itself and are NOT proxied at the app's own origin (only `/api` is), so a
 // relative path would 404 against the PWA. Resolve them against the API host —
@@ -865,10 +872,23 @@ export interface ApiGame {
   venue?: ApiGameVenue | null;
   venueId?: string | null;
   venueName?: string | null;       // free-text fallback when no venue link
+  /** The host's booked court photo (servable path); cards prefer it over the venue image. */
+  courtImage?: string | null;
   visibility?: string | null;
   status?: GameStatus | string | null;
   /** The host's court reservation, made + paid when the game was created. */
   bookingId?: string | null;
+  /** Player ids the host has invited (notified) but who haven't joined yet. */
+  invitedUserIds?: string[];
+}
+
+/** A player result from people/invite search (`/search?type=players`). */
+export interface ApiPlayer {
+  id: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  skillLevel?: number | null;
+  skillLevelLabel?: string | null;
 }
 
 export interface ListGamesParams {
@@ -939,6 +959,128 @@ export async function kickPlayer(id: string, userId: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/kick`, { method: 'POST', body: { userId }, auth: true });
 }
 
+/* ─── Game group chat (roster) ───────────────────────────────── */
+
+/** One message in a game's group chat. Carries the sender's name/avatar since a
+ *  group thread has many senders (unlike the 1:1 ApiChatMessage). */
+export interface ApiGameMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatarUrl?: string | null;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+/** Load a game's group chat (roster only). Returns the game's title (for the
+ *  chat header) alongside the messages. */
+export async function listGameMessages(gameId: string): Promise<{ title: string | null; messages: ApiGameMessage[] }> {
+  const env = await rawRequest<{ title?: string | null; messages?: ApiGameMessage[] }>(`${GAMES_PREFIX}/${encodeURIComponent(gameId)}/messages`, { auth: true });
+  return { title: env.data?.title ?? null, messages: env.data?.messages ?? [] };
+}
+
+/** Post to a game's group chat — realtime-fans-out to the other roster members. */
+export async function sendGameMessage(gameId: string, body: string): Promise<ApiGameMessage> {
+  return request<ApiGameMessage>(`${GAMES_PREFIX}/${encodeURIComponent(gameId)}/messages`, { method: 'POST', body: { body }, auth: true });
+}
+
+/** Search players by name, for invites/people search. Excludes the current user. */
+export async function searchPlayers(q: string): Promise<ApiPlayer[]> {
+  const env = await rawRequest<{ players?: ApiPlayer[] }>(
+    `/api/v1/search${toQuery({ q, type: 'players' })}`,
+    { auth: true },
+  );
+  return env.data?.players ?? [];
+}
+
+/* ─── Cross-entity search (global search screen) ─────────────── */
+//
+// One call (`?type=all`) fans out across courts/games/clubs/players and returns
+// a normalized, render-ready shape the SearchScreen groups into sections. Sent
+// with the token so the signed-in user is excluded from their own people search.
+
+export type SearchResultKind = 'court' | 'game' | 'club' | 'player';
+
+/** A single normalized search hit — `id` + the action target depends on `kind`. */
+export interface SearchResult {
+  kind: SearchResultKind;
+  id: string;
+  name: string;
+  subtitle: string;
+}
+
+export interface CrossSearchResults {
+  courts: SearchResult[];
+  games: SearchResult[];
+  clubs: SearchResult[];
+  players: SearchResult[];
+}
+
+// Raw rows from `/search?type=all`. Venues keep the legacy full-doc shape
+// (`_id`); games/clubs are the lean card shapes the search controller returns.
+interface RawSearchVenue { id?: string; _id?: string; slug?: string; displayName?: string; area?: string; courtCount?: number }
+interface RawSearchGame { id: string; title?: string; gameType?: string | null; skillLabel?: string | null; whenLabel?: string | null; timeLabel?: string | null; date?: string | null; venueName?: string | null; capacity?: number; spotsLeft?: number }
+interface RawSearchClub { id: string; name: string; memberCount?: number; visibility?: string; coverImageUrl?: string | null }
+
+interface RawSearchResponse {
+  venues?: RawSearchVenue[];
+  games?: RawSearchGame[];
+  clubs?: RawSearchClub[];
+  players?: ApiPlayer[];
+}
+
+function gameSubtitle(g: RawSearchGame): string {
+  const when = [g.whenLabel, g.timeLabel].filter(Boolean).join(' · ');
+  const spots = g.capacity ? `${g.spotsLeft ?? 0}/${g.capacity} open` : null;
+  return [when || g.date, g.skillLabel, spots].filter(Boolean).join(' · ') || 'Open play';
+}
+
+function courtSubtitle(v: RawSearchVenue): string {
+  const courts = v.courtCount ? `${v.courtCount} court${v.courtCount === 1 ? '' : 's'}` : null;
+  return [v.area, courts].filter(Boolean).join(' · ') || 'Court';
+}
+
+/** Search every entity at once for the global search screen. */
+export async function crossSearch(q: string): Promise<CrossSearchResults> {
+  const env = await rawRequest<RawSearchResponse>(
+    `/api/v1/search${toQuery({ q, type: 'all' })}`,
+    { auth: true },
+  );
+  const data = env.data ?? {};
+  return {
+    courts: (data.venues ?? []).map((v) => ({
+      kind: 'court' as const,
+      id: v.slug || String(v.id ?? v._id),
+      name: v.displayName || 'Court',
+      subtitle: courtSubtitle(v),
+    })),
+    games: (data.games ?? []).map((g) => ({
+      kind: 'game' as const,
+      id: String(g.id),
+      name: g.title || 'Pickleball game',
+      subtitle: gameSubtitle(g),
+    })),
+    clubs: (data.clubs ?? []).map((c) => ({
+      kind: 'club' as const,
+      id: String(c.id),
+      name: c.name,
+      subtitle: c.memberCount != null ? `${c.memberCount} member${c.memberCount === 1 ? '' : 's'}` : 'Club',
+    })),
+    players: (data.players ?? []).map((p) => ({
+      kind: 'player' as const,
+      id: String(p.id),
+      name: p.displayName,
+      subtitle: p.skillLevelLabel || (p.skillLevel != null ? `Skill ${p.skillLevel}` : 'Player'),
+    })),
+  };
+}
+
+/** Host invites players to a game — each gets an in-app notification + push. */
+export async function inviteToGame(id: string, userIds: string[]): Promise<{ invited: number }> {
+  return request<{ invited: number }>(`${GAMES_PREFIX}/${id}/invite`, { method: 'POST', body: { userIds }, auth: true });
+}
+
 /* ─── Notifications (inbox) ──────────────────────────────────── */
 //
 // The current user's notification feed (e.g. "your lobby is full"). All routes
@@ -964,6 +1106,12 @@ export async function listNotifications(): Promise<ApiNotification[]> {
   return env.data ?? [];
 }
 
+/** Unread notification count — cheap to poll for the live badge. */
+export async function getUnreadNotificationCount(): Promise<number> {
+  const env = await rawRequest<{ count: number }>(`${NOTIFICATIONS_PREFIX}/unread-count`, { auth: true });
+  return env.data?.count ?? 0;
+}
+
 /** Mark a single notification read. */
 export async function markNotificationRead(id: string): Promise<void> {
   await request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body: {}, auth: true });
@@ -972,6 +1120,82 @@ export async function markNotificationRead(id: string): Promise<void> {
 /** Mark every unread notification read. */
 export async function markAllNotificationsRead(): Promise<void> {
   await request(`${NOTIFICATIONS_PREFIX}/mark-all-read`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/* ─── Direct messages (1:1 chat) ─────────────────────────────── */
+//
+// Player ↔ player threads (e.g. "message the organizer" of a game). Each send
+// also raises a `message` notification, so arrivals show in the notification
+// inbox + push + the live unread badge; these endpoints back the chat UI.
+
+const MESSAGES_PREFIX = '/api/v1/messages';
+
+export interface ApiChatParticipant {
+  id: string;
+  displayName: string;
+  avatarUrl?: string | null;
+}
+
+export interface ApiConversationSummary {
+  id: string;
+  otherParticipant: ApiChatParticipant | null;
+  lastBody?: string | null;
+  lastSenderId?: string | null;
+  lastAt?: string | null;
+  unread: number;
+}
+
+export interface ApiChatMessage {
+  id: string;
+  senderId: string;
+  body: string;
+  createdAt?: string;
+  mine: boolean;
+}
+
+export interface ApiConversation {
+  id: string;
+  otherParticipant: ApiChatParticipant | null;
+  messages: ApiChatMessage[];
+}
+
+/** The current user's conversation threads, newest first. */
+export async function listConversations(): Promise<ApiConversationSummary[]> {
+  const env = await rawRequest<ApiConversationSummary[]>(`${MESSAGES_PREFIX}/conversations`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Find or create a 1:1 thread with another user. */
+export async function startConversation(userId: string): Promise<{ id: string; otherParticipant: ApiChatParticipant | null }> {
+  return request<{ id: string; otherParticipant: ApiChatParticipant | null }>(
+    `${MESSAGES_PREFIX}/conversations`, { method: 'POST', body: { userId }, auth: true },
+  );
+}
+
+/** Load a thread (other participant + messages); marks it read. */
+export async function getConversation(id: string): Promise<ApiConversation> {
+  return request<ApiConversation>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}`, { auth: true });
+}
+
+/** Send a message in a thread — notifies the recipient. */
+export async function sendMessage(id: string, body: string): Promise<ApiChatMessage> {
+  return request<ApiChatMessage>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/messages`, { method: 'POST', body: { body }, auth: true });
+}
+
+/** Total unread messages across the user's threads. */
+export async function getUnreadMessageCount(): Promise<number> {
+  const env = await rawRequest<{ count: number }>(`${MESSAGES_PREFIX}/unread-count`, { auth: true });
+  return env.data?.count ?? 0;
+}
+
+/** Delete a thread for the current user only (the other side keeps it). */
+export async function deleteConversation(id: string): Promise<void> {
+  await request(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+/** Delete one of your own messages (removed for both participants). */
+export async function deleteMessage(conversationId: string, messageId: string): Promise<void> {
+  await request(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE', auth: true });
 }
 
 /* ─── Web Push (OS notifications) ────────────────────────────── */

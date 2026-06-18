@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
+import { NotificationBadge } from '../../shared/components/ui/NotificationBadge';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 // import { CourtIllustration } from '../../shared/components/ui/CourtIllustration';
@@ -378,9 +379,10 @@ export function HomeScreenRefined({ onNavigate }: HomeScreenRefinedProps) {
         <button
           onClick={() => onNavigate('notifications')}
           aria-label="Notifications"
-          className="w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
+          className="relative w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
         >
           <Icon name="bell" size={18} />
+          <NotificationBadge className="-top-1 -right-1" />
         </button>
       </div>
 

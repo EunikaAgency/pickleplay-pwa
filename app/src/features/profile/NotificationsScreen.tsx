@@ -8,6 +8,7 @@ import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { listNotifications, markNotificationRead, markAllNotificationsRead, type ApiNotification } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { useNotificationStore } from '../../shared/lib/notificationStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import { enablePush, isPushSupported, pushPermission } from '../../shared/lib/push';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -53,8 +54,13 @@ function relativeTime(iso?: string): string {
 /** Map a stored linkUrl (e.g. "/games/<id>") to an in-app navigation. */
 function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Navigate): boolean {
   if (!linkUrl) return false;
+  // Game chat message → straight into the game's group chat, not the lobby.
+  const gameChat = linkUrl.match(/^\/games\/([0-9a-fA-F]{24})\/chat$/);
+  if (gameChat) { onNavigate('game-chat', { id: gameChat[1] }); return true; }
   const game = linkUrl.match(/^\/games\/([0-9a-fA-F]{24})$/);
   if (game) { onNavigate('game-details', { id: game[1] }); return true; }
+  const chat = linkUrl.match(/^\/messages\/([0-9a-fA-F]{24})$/);
+  if (chat) { onNavigate('chat', { id: chat[1] }); return true; }
   return false;
 }
 
@@ -104,6 +110,12 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
 
   const unread = items.filter((n) => !n.isRead).length;
   const visible = filter === 'Unread' ? items.filter((n) => !n.isRead) : items;
+
+  // Keep the global unread badge in lockstep with what this screen shows (the
+  // user is looking at the authoritative list here), so marking read updates the
+  // bell/tab badge instantly without waiting for the next poll.
+  const setUnread = useNotificationStore((s) => s.setUnread);
+  useEffect(() => { setUnread(unread); }, [unread, setUnread]);
 
   const markAll = async () => {
     if (unread === 0) return;
@@ -211,7 +223,7 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
           />
         ) : (
           visible.map((n) => {
-            const hasTarget = /^\/games\/[0-9a-fA-F]{24}$/.test(n.linkUrl || '');
+            const hasTarget = /^\/(games\/[0-9a-fA-F]{24}(\/chat)?|messages\/[0-9a-fA-F]{24})$/.test(n.linkUrl || '');
             return (
               <button
                 key={n.id}

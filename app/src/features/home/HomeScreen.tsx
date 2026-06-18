@@ -6,6 +6,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { GameRow } from '../../shared/components/ui/GameRow';
 import { CourtIllustration } from '../../shared/components/ui/CourtIllustration';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
+import { NotificationBadge } from '../../shared/components/ui/NotificationBadge';
 import type { Navigate } from '../../shared/lib/navigation';
 import { firstNameOf } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
@@ -90,7 +91,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             className="relative w-10 h-10 rounded-xl bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)]"
           >
             <Icon name="bell" size={18} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--coral)] border-2 border-[var(--surface)]" />
+            <NotificationBadge className="top-1 right-1" />
           </button>
           <button onClick={() => onNavigate('profile')} aria-label="Open profile" className="relative">
             <Avatar src={currentUser?.avatarUrl} name={currentUser?.displayName ?? 'Guest'} size={40} />
