@@ -368,7 +368,7 @@ function AppInner() {
       case 'clubs':
         return playerV2 ? <ClubsScreenV2 {...v2Chrome} /> : <ClubsScreen onNavigate={navigate} onBack={goBack} />;
       case 'profile':
-        return playerV2 ? <ProfileScreenV2 {...v2Chrome} /> : <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
+        return playerV2 ? <ProfileScreenV2 {...v2Chrome} onLogout={handleLogout} /> : <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'court-details':

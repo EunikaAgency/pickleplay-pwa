@@ -11,6 +11,17 @@ interface LoginScreenProps {
   onBack?: () => void;
 }
 
+// Dev-only one-tap logins, one per role, so any role's surfaces can be reviewed
+// fast. Seeded emails (password123) except admin; re-running the user seed
+// regenerates the random ones — refresh these from web/TEST_CREDENTIALS.txt.
+const TEST_ACCOUNTS: { label: string; email: string; password: string }[] = [
+  { label: 'Player',    email: '84a3be4a.hernandez@example.com',  password: 'password123' },
+  { label: 'Owner',     email: 'test@example.com',                password: 'password123' },
+  { label: 'Organizer', email: '556b9e79.matthews@example.com',   password: 'password123' },
+  { label: 'Coach',     email: 'christianian.i.alcazar@gmail.com', password: 'password123' },
+  { label: 'Admin',     email: 'info@eunika.agency',              password: 'justinianthegreat!' },
+];
+
 export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
@@ -206,25 +217,22 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
           </div>
 
           {mode === 'signin' && (
-            <div className="px-5 mt-2.5 flex gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => signIn('test@example.com', 'password123')}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
-              >
-                <Icon name="bolt" size={14} />
-                Test Owner Account
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => signIn('84a3be4a.hernandez@example.com', 'password123')}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
-              >
-                <Icon name="bolt" size={14} />
-                Test Player Account
-              </button>
+            <div className="px-5 mt-3">
+              <div className="t-eyebrow mb-1.5 text-center">Quick test login</div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {TEST_ACCOUNTS.map((a) => (
+                  <button
+                    key={a.label}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => signIn(a.email, a.password)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border-[0.5px] border-dashed border-[var(--hairline)] px-3 py-2.5 text-[12px] font-bold text-[var(--muted)] disabled:opacity-60"
+                  >
+                    <Icon name="bolt" size={14} />
+                    {a.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </form>
