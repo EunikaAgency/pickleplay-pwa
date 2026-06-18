@@ -90,6 +90,9 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
         ...(isOwner
           ? [{ key: 'owner-venues', icon: 'storefront', label: 'My venues', color: 'var(--primary)', onClick: () => onNavigate('owner-venues') } as MenuItem]
           : []),
+        ...(userHasPermission(currentUser, 'organizer.access')
+          ? [{ key: 'organize', icon: 'trophy', label: 'Organize', color: '#c89000', onClick: () => onNavigate('organizer-hub') } as MenuItem]
+          : []),
       ],
     },
     {

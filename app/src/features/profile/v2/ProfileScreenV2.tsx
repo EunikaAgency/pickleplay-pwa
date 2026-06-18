@@ -1,5 +1,6 @@
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { useAuthStore } from '../../../shared/lib/authStore';
+import { userHasPermission } from '../../../shared/lib/permissions';
 import { getInitials } from '../../../shared/lib/initials';
 
 // Demo match history — the API exposes no match results yet (same limitation the
@@ -56,6 +57,20 @@ export function ProfileScreenV2(chrome: V2ScreenChrome) {
       {/* CONTENT (demo metrics) */}
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
         <div className="section-gap" />
+
+        {userHasPermission(user, 'organizer.access') && (
+          <div className="content-section">
+            <h2 className="section-title">Organize</h2>
+            <button
+              className="edit-profile-btn"
+              onClick={() => onNavigate('organizer-hub')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
+              Organizer console
+            </button>
+          </div>
+        )}
 
         <div className="content-section">
           <h2 className="section-title">Win Rate</h2>

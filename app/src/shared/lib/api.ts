@@ -1481,3 +1481,457 @@ export interface AppSettings {
 export async function getSettings(): Promise<AppSettings> {
   return request<AppSettings>('/api/v1/settings');
 }
+
+/* ─── Organizer: tournaments, brackets, open play, rosters, venue requests ──
+ *
+ * The organizer console (app `features/organizer/`) talks to the same endpoints
+ * the website uses — no new routes. Writes are gated server-side by
+ * `organizer.tournaments.manage` / `organizer.brackets.manage` /
+ * `organizer.events.manage`; the app additionally gates the screens via
+ * SCREEN_PERMISSIONS + `organizer.access`. All calls pass `auth: true`. */
+
+const TOURNAMENTS_PREFIX = '/api/v1/tournaments';
+const OPEN_PLAY_PREFIX = '/api/v1/open-play';
+const ROSTERS_PREFIX = '/api/v1/rosters';
+const TOURNAMENT_APPLICATIONS_PREFIX = '/api/v1/tournament-applications';
+
+const tBase = (idOrSlug: string) => `${TOURNAMENTS_PREFIX}/${encodeURIComponent(idOrSlug)}`;
+
+/* ---- Tournaments ---- */
+
+export type TournamentStatus =
+  | 'draft' | 'pending_venue_approval' | 'approved' | 'registration_open'
+  | 'ongoing' | 'completed' | 'cancelled' | 'rejected';
+
+export interface ApiTournament {
+  id: string;
+  slug?: string;
+  name: string;
+  description?: string;
+  status: TournamentStatus;
+  visibility?: string;
+  tournamentType?: string;
+  skillLevel?: string;
+  ageDivision?: string;
+  genderDivision?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  registrationOpenDate?: string;
+  registrationCloseDate?: string;
+  checkInTime?: string;
+  matchStartTime?: string;
+  courtsRequired?: number | string;
+  maxPlayers?: number | string;
+  price?: number | string;
+  allowWaitlist?: boolean;
+  format?: string;
+  matchFormat?: string;
+  pointsPerGame?: number | string;
+  prizeChampion?: string;
+  prizeRunnerUp?: string;
+  prizeThird?: string;
+  organizerName?: string;
+  organizerPhone?: string;
+  contactEmail?: string;
+  rules?: string;
+  refundPolicy?: string;
+  bannerUrl?: string;
+  venueId?: string | null;
+  venueName?: string;
+  venueSlug?: string;
+  registeredCount?: number;
+  createdAt?: string;
+}
+
+function normalizeTournament(t: Record<string, unknown> | null): ApiTournament | null {
+  if (!t) return null;
+  const venueIdRaw = t.venueId as { _id?: string } | string | null | undefined;
+  return {
+    ...(t as object),
+    id: String(t.id ?? t._id ?? ''),
+    name: (t.name as string) ?? '',
+    status: (t.status as TournamentStatus) ?? 'draft',
+    bannerUrl: apiImageUrl((t.bannerUrl as string) || (t.imageUrl as string)),
+    venueId: (typeof venueIdRaw === 'object' ? venueIdRaw?._id : venueIdRaw) ?? null,
+  } as ApiTournament;
+}
+
+/** The current organizer's tournaments, newest first. */
+export async function listMyTournaments(): Promise<ApiTournament[]> {
+  const env = await rawRequest<Record<string, unknown>[]>(`${TOURNAMENTS_PREFIX}/mine`, { auth: true });
+  return (env.data ?? []).map(normalizeTournament).filter(Boolean) as ApiTournament[];
+}
+
+/** A single tournament by _id or slug. */
+export async function getTournament(idOrSlug: string): Promise<ApiTournament> {
+  return normalizeTournament(await request<Record<string, unknown>>(tBase(idOrSlug), { auth: true })) as ApiTournament;
+}
+
+export async function createTournament(body: Record<string, unknown>): Promise<ApiTournament> {
+  return normalizeTournament(await request<Record<string, unknown>>(TOURNAMENTS_PREFIX, { method: 'POST', body, auth: true })) as ApiTournament;
+}
+
+export async function updateTournament(id: string, body: Record<string, unknown>): Promise<ApiTournament> {
+  return normalizeTournament(await request<Record<string, unknown>>(tBase(id), { method: 'PATCH', body, auth: true })) as ApiTournament;
+}
+
+export async function cancelTournament(id: string): Promise<unknown> {
+  return request(`${tBase(id)}/cancel`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/** Open registration on an approved tournament (approved → registration_open). */
+export async function openTournamentRegistration(id: string): Promise<unknown> {
+  return request(`${tBase(id)}/open-registration`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/* ---- Registrations (participants) ---- */
+
+export interface ApiRegistrationPlayer {
+  userId?: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface ApiTournamentRegistration {
+  id: string;
+  status: string;               // 'pending' | 'registered' | 'waitlisted' | 'declined' | ...
+  attended: boolean;
+  paid?: boolean;
+  paymentNote?: string;
+  createdAt?: string;
+  player: ApiRegistrationPlayer | null;
+}
+
+function normalizeRegistration(r: Record<string, unknown>): ApiTournamentRegistration {
+  const p = r.player as Record<string, unknown> | null;
+  return {
+    id: String(r.id ?? r._id ?? ''),
+    status: (r.status as string) ?? 'pending',
+    attended: !!r.attended,
+    paid: !!r.paid,
+    paymentNote: (r.paymentNote as string) ?? '',
+    createdAt: r.createdAt as string,
+    player: p
+      ? { userId: p.userId as string, name: (p.name as string) ?? '', email: (p.email as string) ?? '', avatar: apiImageUrl(p.avatar as string) }
+      : null,
+  };
+}
+
+export async function getTournamentRegistrations(id: string): Promise<ApiTournamentRegistration[]> {
+  const env = await rawRequest<Record<string, unknown>[]>(`${tBase(id)}/registrations`, { auth: true });
+  return (env.data ?? []).map(normalizeRegistration);
+}
+
+/** Manage one registration: `{action:'approve'|'decline'}` | `{attended}` | `{paid, paymentNote}`. */
+export type ManageRegistrationBody =
+  | { action: 'approve' | 'decline' }
+  | { attended: boolean }
+  | { paid: boolean; paymentNote?: string };
+
+export async function manageTournamentRegistration(id: string, regId: string, body: ManageRegistrationBody): Promise<unknown> {
+  return request(`${tBase(id)}/registrations/${encodeURIComponent(regId)}`, { method: 'PATCH', body, auth: true });
+}
+
+/* ---- Announcements (organizer → registrants) ---- */
+
+export interface ApiAnnouncement {
+  id: string;
+  kind: 'general' | 'schedule' | 'venue';
+  title: string;
+  body: string;
+  recipientCount: number;
+  createdAt?: string;
+}
+
+export async function sendTournamentAnnouncement(
+  id: string,
+  body: { title: string; body: string; kind: 'general' | 'schedule' | 'venue' },
+): Promise<{ recipientCount?: number }> {
+  return request<{ recipientCount?: number }>(`${tBase(id)}/announcements`, { method: 'POST', body, auth: true });
+}
+
+export async function getTournamentAnnouncements(id: string): Promise<ApiAnnouncement[]> {
+  const env = await rawRequest<ApiAnnouncement[]>(`${tBase(id)}/announcements`, { auth: true });
+  return env.data ?? [];
+}
+
+/* ---- Recurring open play ---- */
+
+export interface ApiOpenPlaySeries {
+  id: string;
+  title: string;
+  venueId?: string | null;
+  venueName?: string;
+  venueSlug?: string;
+  daysOfWeek: number[];
+  startTime?: string;
+  endTime?: string;
+  levelLabel?: string;
+  price?: number;
+  capacity?: number;
+  weeksAhead?: number;
+  description?: string;
+  status?: string;
+  createdAt?: string;
+}
+
+export interface ApiOpenPlaySession {
+  id: string;
+  seriesId: string | null;
+  title: string;
+  venueName?: string;
+  venueSlug?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  capacity?: number;
+  joinedCount?: number;
+  price?: number;
+  levelLabel?: string;
+  status?: string;
+}
+
+export interface ApiOpenPlayMine {
+  series: ApiOpenPlaySeries[];
+  sessions: ApiOpenPlaySession[];
+}
+
+/** The organizer's open-play series + every generated session instance. */
+export async function getMyOpenPlay(): Promise<ApiOpenPlayMine> {
+  const d = await request<{ series?: ApiOpenPlaySeries[]; sessions?: Record<string, unknown>[] }>(`${OPEN_PLAY_PREFIX}/mine`, { auth: true });
+  return {
+    series: (d?.series ?? []).map((s) => { const r = s as unknown as Record<string, unknown>; return { ...s, id: String(r.id ?? r._id ?? '') }; }),
+    sessions: (d?.sessions ?? []).map((s) => ({ ...s, id: String(s.id ?? s._id ?? ''), seriesId: s.seriesId ? String(s.seriesId) : null })) as ApiOpenPlaySession[],
+  };
+}
+
+/** Create a recurring series; the API stamps out the session instances. */
+export async function createOpenPlaySeries(body: Record<string, unknown>): Promise<unknown> {
+  return request(OPEN_PLAY_PREFIX, { method: 'POST', body, auth: true });
+}
+
+export async function cancelOpenPlaySeries(id: string): Promise<unknown> {
+  return request(`${OPEN_PLAY_PREFIX}/series/${encodeURIComponent(id)}/cancel`, { method: 'PATCH', body: {}, auth: true });
+}
+
+export async function cancelOpenPlaySession(id: string): Promise<unknown> {
+  return request(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/cancel`, { method: 'PATCH', body: {}, auth: true });
+}
+
+export async function getOpenPlayRegistrations(id: string): Promise<ApiTournamentRegistration[]> {
+  const env = await rawRequest<Record<string, unknown>[]>(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/registrations`, { auth: true });
+  return (env.data ?? []).map(normalizeRegistration);
+}
+
+export async function manageOpenPlayRegistration(id: string, regId: string, body: ManageRegistrationBody): Promise<unknown> {
+  return request(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/registrations/${encodeURIComponent(regId)}`, { method: 'PATCH', body, auth: true });
+}
+
+/* ---- Reusable player rosters ---- */
+
+export interface ApiRosterMember {
+  id: string;
+  userId?: string | null;
+  name: string;
+  email?: string;
+}
+
+export interface ApiRoster {
+  id: string;
+  name: string;
+  description?: string;
+  memberCount: number;
+  members: ApiRosterMember[];
+  createdAt?: string;
+}
+
+function normalizeRoster(r: Record<string, unknown> | null): ApiRoster | null {
+  if (!r) return null;
+  const members = (r.members as Record<string, unknown>[] | undefined) ?? [];
+  return {
+    id: String(r.id ?? r._id ?? ''),
+    name: (r.name as string) ?? '',
+    description: (r.description as string) ?? '',
+    memberCount: (r.memberCount as number) ?? members.length,
+    members: members.map((m) => ({
+      id: String(m.id ?? m._id ?? ''),
+      userId: (m.userId as string) ?? null,
+      name: (m.name as string) ?? '',
+      email: (m.email as string) ?? '',
+    })),
+    createdAt: r.createdAt as string,
+  };
+}
+
+export async function listRosters(): Promise<ApiRoster[]> {
+  const env = await rawRequest<Record<string, unknown>[]>(ROSTERS_PREFIX, { auth: true });
+  return (env.data ?? []).map(normalizeRoster).filter(Boolean) as ApiRoster[];
+}
+
+export async function createRoster(body: { name: string; description?: string }): Promise<ApiRoster> {
+  return normalizeRoster(await request<Record<string, unknown>>(ROSTERS_PREFIX, { method: 'POST', body, auth: true })) as ApiRoster;
+}
+
+export async function updateRoster(id: string, body: { name?: string; description?: string }): Promise<ApiRoster> {
+  return normalizeRoster(await request<Record<string, unknown>>(`${ROSTERS_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true })) as ApiRoster;
+}
+
+export async function deleteRoster(id: string): Promise<unknown> {
+  return request(`${ROSTERS_PREFIX}/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+export async function addRosterMember(id: string, body: { name: string; email?: string; userId?: string }): Promise<ApiRoster> {
+  return normalizeRoster(await request<Record<string, unknown>>(`${ROSTERS_PREFIX}/${encodeURIComponent(id)}/members`, { method: 'POST', body, auth: true })) as ApiRoster;
+}
+
+export async function removeRosterMember(id: string, memberId: string): Promise<ApiRoster> {
+  return normalizeRoster(await request<Record<string, unknown>>(`${ROSTERS_PREFIX}/${encodeURIComponent(id)}/members/${encodeURIComponent(memberId)}`, { method: 'DELETE', auth: true })) as ApiRoster;
+}
+
+/* ---- Venue requests (tournament applications) ---- */
+
+export interface ApiTournamentApplication {
+  id: string;
+  status: string;               // 'pending' | 'approved' | 'rejected' | 'cancelled'
+  requestedStartDate?: string;
+  requestedEndDate?: string;
+  timeSlotStart?: string;
+  timeSlotEnd?: string;
+  courtsRequired?: number;
+  message?: string;
+  remarks?: string;
+  createdAt?: string;
+  decidedAt?: string | null;
+  tournament?: { id: string; name: string; slug?: string; status?: string } | null;
+  venue?: { id: string; name: string; slug?: string; location?: string; image?: string; courtCount?: number } | null;
+}
+
+function normalizeApplication(a: Record<string, unknown>): ApiTournamentApplication {
+  const v = a.venue as Record<string, unknown> | null;
+  return {
+    ...(a as object),
+    id: String(a.id ?? a._id ?? ''),
+    status: (a.status as string) ?? 'pending',
+    venue: v ? { ...(v as object), id: String(v.id ?? v._id ?? ''), name: (v.name as string) ?? '', image: apiImageUrl(v.image as string) } as ApiTournamentApplication['venue'] : null,
+  } as ApiTournamentApplication;
+}
+
+export async function getMyVenueRequests(): Promise<ApiTournamentApplication[]> {
+  const env = await rawRequest<Record<string, unknown>[]>(`${TOURNAMENT_APPLICATIONS_PREFIX}/mine`, { auth: true });
+  return (env.data ?? []).map(normalizeApplication);
+}
+
+export async function submitVenueRequest(body: {
+  tournamentId: string; venueId: string; requestedStartDate: string; requestedEndDate: string;
+  timeSlotStart: string; timeSlotEnd: string; courtsRequired: number; message?: string;
+}): Promise<unknown> {
+  return request(TOURNAMENT_APPLICATIONS_PREFIX, { method: 'POST', body, auth: true });
+}
+
+export async function cancelVenueRequest(id: string): Promise<unknown> {
+  return request(`${TOURNAMENT_APPLICATIONS_PREFIX}/${encodeURIComponent(id)}/cancel`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/* ---- Bracket: entrants, generation, results, standings ---- */
+
+export interface ApiEntrant {
+  id: string;
+  displayName: string;
+  seed?: number | null;
+  players?: { name: string; userId?: string }[];
+  withdrawn?: boolean;
+}
+
+export interface ApiMatch {
+  id: string;
+  round: number;
+  slot?: number;
+  bracket?: string;            // 'winners' | 'losers' | 'main' | pool id
+  entrantA?: { id: string; displayName: string } | null;
+  entrantB?: { id: string; displayName: string } | null;
+  games?: { a: number; b: number }[];
+  winner?: 'A' | 'B' | null;
+  walkover?: 'A' | 'B' | null;
+  status?: string;
+}
+
+export interface ApiStanding {
+  rank?: number;
+  entrantId?: string;
+  displayName: string;
+  wins?: number;
+  losses?: number;
+  points?: number;
+}
+
+export interface ApiBracketData {
+  bracket: Record<string, unknown> | null;
+  entrants: ApiEntrant[];
+  matches: ApiMatch[];
+  standings: ApiStanding[];
+}
+
+export type BracketFormat = 'single_elimination' | 'double_elimination' | 'round_robin' | 'pool_play';
+export type MatchFormat = 'bo1' | 'bo3' | 'bo5';
+
+export async function getEntrants(tid: string): Promise<ApiEntrant[]> {
+  const env = await rawRequest<ApiEntrant[]>(`${tBase(tid)}/entrants`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Build entrants from approved registrations. mode 'auto' (singles) | 'pairs' (doubles). */
+export async function buildEntrants(tid: string, body: { mode: 'auto' | 'pairs'; pairs?: string[][] }): Promise<ApiEntrant[]> {
+  const env = await rawRequest<ApiEntrant[]>(`${tBase(tid)}/entrants/build`, { method: 'POST', body, auth: true });
+  return env.data ?? [];
+}
+
+export async function addEntrant(tid: string, body: { displayName: string; players?: { name: string; userId?: string }[] }): Promise<unknown> {
+  return request(`${tBase(tid)}/entrants`, { method: 'POST', body, auth: true });
+}
+
+export async function updateEntrant(tid: string, entrantId: string, body: { seed?: number; displayName?: string; withdrawn?: boolean }): Promise<unknown> {
+  return request(`${tBase(tid)}/entrants/${encodeURIComponent(entrantId)}`, { method: 'PATCH', body, auth: true });
+}
+
+export async function removeEntrant(tid: string, entrantId: string): Promise<unknown> {
+  return request(`${tBase(tid)}/entrants/${encodeURIComponent(entrantId)}`, { method: 'DELETE', auth: true });
+}
+
+export async function seedEntrants(tid: string, body: { method: 'auto' | 'manual'; seeds?: { entrantId: string; seed: number }[] }): Promise<ApiEntrant[]> {
+  const env = await rawRequest<ApiEntrant[]>(`${tBase(tid)}/entrants/seed`, { method: 'POST', body, auth: true });
+  return env.data ?? [];
+}
+
+/** Full bracket — meta + entrants + matches + standings (or null when none). */
+export async function getBracket(tid: string): Promise<ApiBracketData | null> {
+  return request<ApiBracketData | null>(`${tBase(tid)}/bracket`, { auth: true });
+}
+
+export async function generateBracket(tid: string, body: { format: BracketFormat; matchFormat: MatchFormat; poolCount?: number; advancersPerPool?: number }): Promise<unknown> {
+  return request(`${tBase(tid)}/bracket`, { method: 'POST', body, auth: true });
+}
+
+export async function deleteBracket(tid: string): Promise<unknown> {
+  return request(`${tBase(tid)}/bracket`, { method: 'DELETE', auth: true });
+}
+
+export async function swapEntrants(tid: string, body: { a: { matchId: string; slot: 'A' | 'B' }; b: { matchId: string; slot: 'A' | 'B' } }): Promise<unknown> {
+  return request(`${tBase(tid)}/bracket/swap`, { method: 'POST', body, auth: true });
+}
+
+export async function getStandings(tid: string): Promise<ApiStanding[]> {
+  const env = await rawRequest<ApiStanding[]>(`${tBase(tid)}/standings`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Enter a match result: `{games:[{a,b}]}` or `{walkover:'A'|'B'}`. */
+export async function submitMatchResult(tid: string, matchId: string, body: { games: { a: number; b: number }[] } | { walkover: 'A' | 'B' }): Promise<unknown> {
+  return request(`${tBase(tid)}/matches/${encodeURIComponent(matchId)}/result`, { method: 'POST', body, auth: true });
+}
+
+export async function clearMatchResult(tid: string, matchId: string): Promise<unknown> {
+  return request(`${tBase(tid)}/matches/${encodeURIComponent(matchId)}/result`, { method: 'DELETE', auth: true });
+}

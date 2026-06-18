@@ -32,6 +32,16 @@ import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
 import { OwnerNearbyScreen } from './features/owner/OwnerNearbyScreen';
 import { OwnerVenueScreen } from './features/owner/OwnerVenueScreen';
 import { OwnerNewVenueScreen } from './features/owner/OwnerNewVenueScreen';
+import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
+import { TournamentsScreen } from './features/organizer/tournaments/TournamentsScreen';
+import { CreateTournamentScreen } from './features/organizer/tournaments/CreateTournamentScreen';
+import { TournamentDetailScreen } from './features/organizer/tournaments/TournamentDetailScreen';
+import { BracketScreen } from './features/organizer/tournaments/BracketScreen';
+import { OpenPlayScreen } from './features/organizer/openplay/OpenPlayScreen';
+import { SessionRosterScreen } from './features/organizer/openplay/SessionRosterScreen';
+import { RostersScreen } from './features/organizer/rosters/RostersScreen';
+import { RosterDetailScreen } from './features/organizer/rosters/RosterDetailScreen';
+import { VenueRequestsScreen } from './features/organizer/venues/VenueRequestsScreen';
 import { TabBar } from './shared/components/layout/TabBar';
 import { Sidebar } from './shared/components/layout/Sidebar';
 import { InstallPrompt } from './shared/components/ui/InstallPrompt';
@@ -77,6 +87,16 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-bookings': 'owner.bookings.manage',
   'owner-insights': 'owner.analytics.view',
   'owner-notifications': 'owner.notifications.view',
+  'organizer-hub': 'organizer.access',
+  'organizer-tournaments': 'organizer.tournaments.manage',
+  'organizer-tournament': 'organizer.tournaments.manage',
+  'organizer-tournament-new': 'organizer.tournaments.manage',
+  'organizer-bracket': 'organizer.brackets.manage',
+  'organizer-open-play': 'organizer.events.manage',
+  'organizer-session': 'organizer.events.manage',
+  'organizer-rosters': 'organizer.events.manage',
+  'organizer-roster': 'organizer.events.manage',
+  'organizer-venue-requests': 'organizer.tournaments.manage',
 };
 
 // Human-readable verb phrases for the guest auth prompt ("You'll need an
@@ -406,6 +426,26 @@ function AppInner() {
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-notifications':
         return <OwnerNotificationsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-hub':
+        return <OrganizerHubScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-tournaments':
+        return <TournamentsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-tournament-new':
+        return <CreateTournamentScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-tournament':
+        return <TournamentDetailScreen key={screen.params.id} tournamentId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-bracket':
+        return <BracketScreen key={screen.params.tournamentId} tournamentId={screen.params.tournamentId} onBack={goBack} />;
+      case 'organizer-open-play':
+        return <OpenPlayScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-session':
+        return <SessionRosterScreen key={screen.params.id} sessionId={screen.params.id} onBack={goBack} />;
+      case 'organizer-rosters':
+        return <RostersScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-roster':
+        return <RosterDetailScreen key={screen.params.id} rosterId={screen.params.id} onBack={goBack} />;
+      case 'organizer-venue-requests':
+        return <VenueRequestsScreen tournamentId={screen.params?.tournamentId} onNavigate={navigate} onBack={goBack} />;
       default:
         return <HomeScreenSwitch onNavigate={navigate} />;
     }

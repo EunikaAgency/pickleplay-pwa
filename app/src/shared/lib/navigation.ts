@@ -29,7 +29,17 @@ export type Screen =
   | { id: 'owner-new-venue' }
   | { id: 'owner-bookings'; params: { status?: string } }
   | { id: 'owner-insights' }
-  | { id: 'owner-notifications' };
+  | { id: 'owner-notifications' }
+  | { id: 'organizer-hub' }
+  | { id: 'organizer-tournaments' }
+  | { id: 'organizer-tournament'; params: { id: string } }
+  | { id: 'organizer-tournament-new' }
+  | { id: 'organizer-bracket'; params: { tournamentId: string } }
+  | { id: 'organizer-open-play' }
+  | { id: 'organizer-session'; params: { id: string } }
+  | { id: 'organizer-rosters' }
+  | { id: 'organizer-roster'; params: { id: string } }
+  | { id: 'organizer-venue-requests'; params: { tournamentId?: string } };
 
 export type ScreenId = Screen['id'];
 
@@ -78,6 +88,11 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'court-details') return { id: 'nearby' };
   if (id === 'chat') return { id: 'messages' };
   if (id === 'game-chat') return { id: 'games' };
+  if (id === 'organizer-tournament' || id === 'organizer-tournament-new') return { id: 'organizer-tournaments' };
+  if (id === 'organizer-bracket') return { id: 'organizer-tournaments' };
+  if (id === 'organizer-session') return { id: 'organizer-open-play' };
+  if (id === 'organizer-roster') return { id: 'organizer-rosters' };
+  if (id.startsWith('organizer-')) return { id: 'organizer-hub' };
   return { id: 'home' };
 }
 

@@ -108,6 +108,24 @@ src/
       hooks/           # useOwnerDashboard.ts (shared venues+analytics+bookings+games hook; opts
                        # withBookings/withGames/withAnalytics; exposes analyticsByVenue, bookings, games)
       utils/           # ownerMetrics.ts (revenue bucketing + cross-venue merge helpers)
+    organizer/         # organizer console (Phase 3) — entry from Profile "Organize" row →
+                       # organizer-hub (gated by organizer.access). Organizers are players who
+                       # ALSO run events, so this is an entry point, NOT a tab takeover (cf. owner).
+                       # Root = OrganizerHubScreen (tool cards) + organizerDisplay.ts (status
+                       # chips + date/time/days formatters). Reuses the same API the web
+                       # /organizer console uses — no API changes, no new permissions.
+      hooks/           # useOrganizerHub (aggregate hub counts), useVenueOptions (venue picker)
+      components/      # OrganizerSection, StatusChip, ParticipantRow (approve/decline OR
+                       # attendance+paid — shared by tournaments + open play), AnnouncementsPanel
+      tournaments/     # TournamentsScreen (list), CreateTournamentScreen (draft form),
+                       # TournamentDetailScreen (overview + participants + announcements +
+                       # venue-request + Manage bracket), BracketScreen (orchestrator);
+        bracket/       #   EntrantsManager (build/seed), BracketGenerator (format → generate),
+                       #   BracketView (round-by-round match cards + standings; no pan/zoom),
+                       #   MatchScoreSheet (enter games/walkover in a BottomSheet)
+      openplay/        # OpenPlayScreen (series list + create), SessionRosterScreen (roster mgmt)
+      rosters/         # RostersScreen (lists + create), RosterDetailScreen (members CRUD)
+      venues/          # VenueRequestsScreen (submit + track tournament venue requests)
 
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
@@ -252,6 +270,15 @@ src/
   `OwnerNewVenueScreen` creates one. All gated by `SCREEN_PERMISSIONS` in `App.tsx`.
   Same API the web `/owner/` console uses; no API changes. (Known gaps mirror web: photos
   are upload-only, address text/city are staff-managed, no token refresh on 401.)
+- **Organizer console (Phase 3):** users with `organizer.access` see an **"Organize"** row
+  in Profile (both designs) → `organizer-hub`. From the hub: **Tournaments** (create draft →
+  request venue → open registration → manage participants/payments → announcements →
+  bracket: build/seed/generate/score → standings), **Open Play** (recurring series + per-session
+  roster), **Player Lists** (reusable rosters), **Venue Requests**. All `features/organizer/`,
+  gated by `organizer.*` via `SCREEN_PERMISSIONS`; reuses the web `/organizer` + bracket API
+  (no API/route/permission changes). The bracket is mobile-adapted (round-by-round cards +
+  a score BottomSheet, not the web's pan/zoom canvas). Out of scope: co-host assignment
+  (net-new, needs API), leagues/seasons, and v2.1-redesigned variants of these screens.
 - **Design switch (New · Classic · v2.1):** a floating reviewer toggle —
   `features/home/DesignSwitch.tsx`, mounted app-wide from `App.tsx` for non-owner
   browse screens — picks the player design and persists it in `localStorage`
@@ -315,6 +342,7 @@ src/
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
+| Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |
