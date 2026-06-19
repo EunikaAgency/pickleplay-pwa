@@ -66,33 +66,42 @@ const TAB_ICONS: Record<TabId, ReactNode> = {
   profile: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
 };
 const TAB_LABELS: Record<TabId, string> = { home: 'Home', nearby: 'Nearby', games: 'Games', clubs: 'Clubs', profile: 'Profile' };
-const TAB_ORDER: TabId[] = ['home', 'nearby', 'games', 'clubs', 'profile'];
 
+// The v2.1 tab bar renders the five player tabs — Home · Nearby · Games · Clubs ·
+// Profile. Creating a game lives on the floating green FAB instead (see V2Fab).
 export function V2TabBar({ activeTab, onTabPress }: { activeTab: TabId; onTabPress: (tab: TabId) => void }) {
+  const tab = (id: TabId) => {
+    const isActive = id === activeTab;
+    return (
+      <button
+        key={id}
+        className={`v2c-tab${isActive ? ' active' : ''}`}
+        aria-current={isActive ? 'page' : undefined}
+        onClick={() => onTabPress(id)}
+      >
+        {TAB_ICONS[id]}
+        {TAB_LABELS[id]}
+      </button>
+    );
+  };
   return (
     <nav className="v2c-tabbar" aria-label="Primary navigation">
-      {TAB_ORDER.map((tab) => (
-        <button
-          key={tab}
-          className={`v2c-tab${tab === activeTab ? ' active' : ''}`}
-          aria-current={tab === activeTab ? 'page' : undefined}
-          onClick={() => onTabPress(tab)}
-        >
-          {TAB_ICONS[tab]}
-          {TAB_LABELS[tab]}
-        </button>
-      ))}
+      {tab('home')}
+      {tab('nearby')}
+      {tab('games')}
+      {tab('clubs')}
+      {tab('profile')}
     </nav>
   );
 }
 
-export function V2Fab({ onClick, label = 'Create a game' }: { onClick: () => void; label?: string }) {
+// The floating green FAB is the "Game On" action — it opens the join-or-host
+// chooser (CreateChoiceSheet; gated by player.games.create). Booking a venue is
+// still reachable from the Nearby tab.
+export function V2Fab({ onClick, label = 'Game on — join or host' }: { onClick: () => void; label?: string }) {
   return (
     <button className="v2c-fab" aria-label={label} onClick={onClick}>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19" />
-        <line x1="5" y1="12" x2="19" y2="12" />
-      </svg>
+      <span className="v2c-fab-label">Game<br />On</span>
     </button>
   );
 }

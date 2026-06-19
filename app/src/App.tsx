@@ -14,6 +14,7 @@ import { CreateGameScreen } from './features/games/CreateGameScreen';
 import { MyGamesScreen } from './features/games/MyGamesScreen';
 import { BookCourtScreen } from './features/bookings/BookCourtScreen';
 import { MyBookingsScreen } from './features/bookings/MyBookingsScreen';
+import { PaymentHistoryScreen } from './features/profile/PaymentHistoryScreen';
 import { CreateClubScreen } from './features/clubs/CreateClubScreen';
 import { ProfileScreen } from './features/profile/ProfileScreen';
 import { EditProfileScreen } from './features/profile/EditProfileScreen';
@@ -66,6 +67,7 @@ import { ClubsScreenV2 } from './features/clubs/v2/ClubsScreenV2';
 import { ProfileScreenV2 } from './features/profile/v2/ProfileScreenV2';
 import { SettingsScreenV2 } from './features/profile/v2/SettingsScreenV2';
 import { CreateGameV2 } from './features/games/v2/CreateGameV2';
+import { CreateChoiceSheet } from './features/games/v2/CreateChoiceSheet';
 import { CreateClubV2 } from './features/clubs/v2/CreateClubV2';
 import type { V2ScreenChrome } from './shared/components/layout/V2Chrome';
 
@@ -74,6 +76,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'edit-game': 'player.games.manage',
   'my-games': 'player.games.manage',
   'book-court': 'player.bookings.create',
+  'payment-history': 'player.payments.view',
   'create-club': 'player.clubs.create',
   'edit-profile': 'player.profile.manage',
   settings: 'player.profile.manage',
@@ -108,6 +111,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'my-games': 'see your games',
   'book-court': 'book a court',
   'my-bookings': 'see your bookings',
+  'payment-history': 'see your payment history',
   'create-club': 'start a club',
   'invite-players': 'invite players',
   'edit-profile': 'manage your profile',
@@ -184,6 +188,9 @@ function AppInner() {
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
+  // The v2.1 "Game On" chooser (join a game vs host a lobby) — an app-level sheet
+  // so every create entry point (FAB, home quick action, empty states) opens it.
+  const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
 
   // Animated launch splash — shown once per browser session on cold start, then
   // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
@@ -326,7 +333,11 @@ function AppInner() {
   const canCreateGame = userHasPermission(currentUser, 'player.games.create');
   const handleCreate = () => {
     if (!requireAuth('create a game')) return;
-    if (canCreateGame) navigate('create-game');
+    if (!canCreateGame) return;
+    // v2.1: ask "join a game or host a lobby?" first. Hosting requires a booked
+    // court (see CreateChoiceSheet). Classic/New designs keep the direct form.
+    if (playerV2) { setCreateChoiceOpen(true); return; }
+    navigate('create-game');
   };
   // Guests see an enabled create button (it opens the auth prompt); logged-in
   // users see it enabled only when their role can actually create games.
@@ -373,7 +384,7 @@ function AppInner() {
         // Owners get a local market map (their venues vs nearby competitors);
         // players/guests get the normal discover-courts-near-me view.
         if (userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
-        return playerV2 ? <NearbyScreenV2 {...v2Chrome} /> : <NearbyScreen onNavigate={navigate} />;
+        return playerV2 ? <NearbyScreenV2 {...v2Chrome} intent={screen.params?.intent} /> : <NearbyScreen onNavigate={navigate} />;
       case 'games':
         // Owners get "Your courts" (games + bookings at their venues); players
         // get the normal browse/join games view.
@@ -386,11 +397,11 @@ function AppInner() {
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'court-details':
-        return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
+        return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} intent={screen.params.intent} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
         return <ClubDetailsScreen key={screen.params.id} clubId={screen.params.id} invited={screen.params.invited} onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
-        return playerV2 ? <CreateGameV2 {...v2Chrome} onBack={goBack} /> : <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
+        return playerV2 ? <CreateGameV2 {...v2Chrome} bookingId={screen.params?.bookingId} onBack={goBack} /> : <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-game':
         return <CreateGameScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'my-games':
@@ -402,12 +413,15 @@ function AppInner() {
             date={screen.params.date}
             time={screen.params.time}
             hours={screen.params.hours}
+            intent={screen.params.intent}
             onNavigate={navigate}
             onBack={goBack}
           />
         );
       case 'my-bookings':
         return <MyBookingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'payment-history':
+        return <PaymentHistoryScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
         return playerV2 ? <CreateClubV2 {...v2Chrome} onBack={goBack} /> : <CreateClubScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-profile':
@@ -492,6 +506,15 @@ function AppInner() {
         onClose={() => setAuthIntent(null)}
         onContinue={goToLogin}
       />
+
+      {/* v2.1 "Game On" chooser — join a game vs host a lobby on a booked court. */}
+      {playerV2 && (
+        <CreateChoiceSheet
+          open={createChoiceOpen}
+          onClose={() => setCreateChoiceOpen(false)}
+          onNavigate={navigate}
+        />
+      )}
 
       {/* Floating player-design toggle (New · Classic · v2.1). Owners keep their
           dashboards, so it's hidden for them and on the auth/onboarding surfaces. */}

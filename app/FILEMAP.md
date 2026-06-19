@@ -73,7 +73,9 @@ src/
                        #   members + Facebook-style feed with post/like, join/leave,
                        #   ⋯ menu: invite/share link + host delete), CreateClub (live:
                        #   POST /clubs). All via the clubs client in api.ts.
-    profile/           # Profile, EditProfile, Settings, Notifications
+    profile/           # Profile, EditProfile, Settings, Notifications, PaymentHistory
+                       #   (player spend report: KPIs + 6-month BarChart + receipts,
+                       #    from listPayments; gated by player.payments.view)
     messages/          # direct 1:1 chat: ConversationsScreen (thread list, from Profile → Messages or
                        # the desktop Sidebar "Messages"; has a "New message" ✏️ that searches any
                        # player (searchPlayers) → startConversation → chat, so you can DM someone you've
@@ -91,7 +93,9 @@ src/
                        # owners — dashboard: revenue hero + KPIs + cross-venue pending/upcoming +
                        # venue cards), OwnerBookings (all-venues inbox: When tabs
                        # upcoming/ongoing/past + OwnerBookingsFilterSheet for
-                       # status/sort/venue) + OwnerInsights (all-venues
+                       # status/sort/venue; tap a row → OwnerBookingDetailSheet:
+                       # full checkout-style breakdown + the player who booked +
+                       # confirm/decline/cancel) + OwnerInsights (all-venues
                        # analytics: combined trends + per-venue compare) — the Home Bookings/Insights
                        # buttons open these; OwnerGames (the Games tab for owners — "Your courts":
                        # Schedule agenda of bookings+games per day + Games list at their venues);
@@ -338,6 +342,7 @@ src/
 | Games tab (browse/mine, create, detail, join) | `features/games/{GamesScreen,GameDetailsScreen,CreateGameScreen}.tsx`, `gameDisplay.ts`; games endpoints in `shared/lib/api.ts` |
 | Create a game (venue-first + pay) | `features/games/CreateGameScreen.tsx` — `CreateGameWizard`: court → date/start-end → details → `createBooking`+`checkout`+`createGame`; gated by `player.games.create` (+ `player.bookings.create`) |
 | Manage games you created (edit details, kick, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows (`GameManageActions.tsx`); editing reuses `CreateGameScreen` with a `gameId` prop (the `ManageGameScreen` form: edit details + remove players via `kickPlayer`); `updateGame`/`deleteGame`/`kickPlayer` in `shared/lib/api.ts`; gated by `player.games.manage` |
+| Payment history / spend report (player) | `features/profile/PaymentHistoryScreen.tsx` (entry rows in `ProfileScreen.tsx` + `v2/ProfileScreenV2.tsx`); `listPayments` in `shared/lib/api.ts` → `GET /api/v1/payments` (self-scoped); `shared/components/ui/Chart.tsx` `BarChart`; gated by `player.payments.view` (`SCREEN_PERMISSIONS` in `App.tsx`) |
 | Direct messages / chat (realtime) | `features/messages/{ConversationsScreen,ChatScreen}.tsx`; messaging endpoints in `shared/lib/api.ts`; entry from `GameDetailsScreen` "Message organizer" + Profile → Messages; deep-link `/messages/:id` via `navigation.ts`; gated by `user.messages.send`. Realtime via `shared/hooks/useRealtimeStream.ts` + `shared/lib/realtimeBus.ts` (SSE `GET /api/v1/me/stream`) |
 | Realtime stream (chat + notifications) | `shared/hooks/useRealtimeStream.ts` (one EventSource, mounted in `App.tsx`) + `shared/lib/realtimeBus.ts` (in-app pub/sub); backed by API `GET /api/v1/me/stream` |
 | Live notification badge (unread) | `shared/lib/notificationStore.ts` + `shared/hooks/useNotificationPolling.ts` (started in `App.tsx`); `shared/components/ui/NotificationBadge.tsx` on the home bell + TabBar "You" tab |

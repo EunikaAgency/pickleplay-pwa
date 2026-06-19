@@ -41,6 +41,7 @@ export const ALL_PERMISSIONS = [
   'player.bookings.create',
   'player.venues.checkin',
   'player.search.use',
+  'player.payments.view',
   'user.notifications.manage',
   'user.messages.send',
 ] as const;
@@ -64,6 +65,7 @@ const PLAYER_PERMISSIONS: Permission[] = [
   'player.bookings.create',
   'player.venues.checkin',
   'player.search.use',
+  'player.payments.view',
   'user.notifications.manage',
   'user.messages.send',
 ];
@@ -97,6 +99,32 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   admin: [...ALL_PERMISSIONS],
 };
 
+/**
+ * Self-service account preferences (persisted on the user via `PATCH /me`).
+ * Defined here next to `AppUser` so both `permissions.ts` and `api.ts` can share
+ * it without a circular import (`api.ts` already imports from this module).
+ */
+export interface UserPreferences {
+  notifications: {
+    gameReminders: boolean;
+    chatMessages: boolean;
+    announcements: boolean;
+  };
+  units: 'km' | 'mi';
+  /** Preferred default "Near me" radius (km), applied as the Nearby filter default. */
+  searchRadiusKm: number;
+}
+
+/** Fallback used until the API user payload provides real preferences. */
+export const DEFAULT_PREFERENCES: UserPreferences = {
+  notifications: { gameReminders: true, chatMessages: true, announcements: true },
+  units: 'km',
+  searchRadiusKm: 10,
+};
+
+/** Who can see the player's profile. Persisted on the account via `PATCH /me`. */
+export type PrivacySetting = 'public' | 'friends' | 'private';
+
 export interface AppUser {
   id: string;
   displayName: string;
@@ -108,6 +136,10 @@ export interface AppUser {
   bio?: string;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean;
+  /** Account preferences (notification toggles + display units + search radius). */
+  preferences: UserPreferences;
+  /** Profile visibility (public / friends / private). */
+  privacySetting?: PrivacySetting;
   roleDefault: Role;
   roles: Role[];
   permissions: Permission[];

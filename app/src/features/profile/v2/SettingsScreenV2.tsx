@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { useTheme, type ThemePreference } from '../../../shared/hooks/useTheme';
 import { useNotificationStore } from '../../../shared/lib/notificationStore';
+import { useAuthStore } from '../../../shared/lib/authStore';
+import { DEFAULT_PREFERENCES, type PrivacySetting, type UserPreferences } from '../../../shared/lib/permissions';
+import type { ProfileUpdate } from '../../../shared/lib/api';
 
 /**
  * v2.1 Settings shell. Reuses the `v2-profile` style scope (the mockup kept the
@@ -10,6 +14,10 @@ import { useNotificationStore } from '../../../shared/lib/notificationStore';
  *
  * Carries the **logout path**: the destructive "Log out" row calls `onLogout`
  * (App's `handleLogout` → clears the session + returns to guest browsing).
+ *
+ * Notification toggles + display units **persist to the account** via
+ * `authStore.updateProfile()` → `PATCH /me { preferences }` (optimistic, with
+ * revert on failure). Theme stays client-side (`useTheme` → localStorage).
  */
 
 const THEMES: { id: ThemePreference; label: string }[] = [
@@ -18,9 +26,96 @@ const THEMES: { id: ThemePreference; label: string }[] = [
   { id: 'system', label: 'System' },
 ];
 
+const UNITS: { id: UserPreferences['units']; label: string }[] = [
+  { id: 'km', label: 'Kilometres' },
+  { id: 'mi', label: 'Miles' },
+];
+
+const NOTIFICATIONS: { key: keyof UserPreferences['notifications']; label: string; hint: string }[] = [
+  { key: 'gameReminders', label: 'Game reminders', hint: 'Upcoming games & booking times' },
+  { key: 'chatMessages', label: 'Chat messages', hint: 'New direct & group messages' },
+  { key: 'announcements', label: 'Announcements', hint: 'Club & organizer updates' },
+];
+
+const PRIVACY: { id: PrivacySetting; label: string }[] = [
+  { id: 'public', label: 'Public' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'private', label: 'Private' },
+];
+
+const PRIVACY_HINT: Record<PrivacySetting, string> = {
+  public: 'Anyone can find and view your profile.',
+  friends: 'Only players you’ve connected with can see your profile.',
+  private: 'Your profile is hidden from discovery and search.',
+};
+
+// Preset "Near me" radii (stored in km). Labelled in the user's chosen unit.
+const RADII_KM = [5, 10, 25, 50] as const;
+const KM_TO_MI = 0.621371;
+
 const Chevron = () => (
   <svg className="settings-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
 );
+
+/** A pill-style segmented control reused for theme + units. */
+function Segmented<T extends string>({ options, value, onChange }: {
+  options: { id: T; label: string }[];
+  value: T;
+  onChange: (id: T) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map((opt) => {
+        const active = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            onClick={() => onChange(opt.id)}
+            aria-pressed={active}
+            style={{
+              flex: 1,
+              padding: '10px 0',
+              borderRadius: 'var(--radius-pill)',
+              fontWeight: 700,
+              fontSize: 13,
+              background: active ? 'var(--lime)' : 'var(--bg-app)',
+              color: active ? 'var(--on-accent)' : 'var(--ink)',
+              border: `1px solid ${active ? 'var(--lime-active)' : 'var(--border-subtle)'}`,
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A simple on/off switch. */
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      style={{
+        flexShrink: 0,
+        width: 44,
+        height: 26,
+        borderRadius: 'var(--radius-pill)',
+        border: 'none',
+        padding: 2,
+        background: checked ? 'var(--lime-active)' : 'var(--border-subtle)',
+        transition: 'background 0.15s ease',
+        display: 'flex',
+        justifyContent: checked ? 'flex-end' : 'flex-start',
+      }}
+    >
+      <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+    </button>
+  );
+}
 
 interface SettingsV2Props extends V2ScreenChrome {
   onLogout: () => void;
@@ -31,35 +126,68 @@ export function SettingsScreenV2(props: SettingsV2Props) {
   const { theme, setTheme } = useTheme();
   const unread = useNotificationStore((s) => s.unread);
 
+  const user = useAuthStore((s) => s.user);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
+
+  // Local mirrors of the saved settings so controls feel instant; we persist in
+  // the background and revert the mirror if the request fails.
+  const [prefs, setPrefs] = useState<UserPreferences>(user?.preferences ?? DEFAULT_PREFERENCES);
+  const [privacy, setPrivacy] = useState<PrivacySetting>(user?.privacySetting ?? 'public');
+  const [saveError, setSaveError] = useState(false);
+
+  // Persist a preferences patch optimistically: apply `next` locally, send only
+  // the changed slice to the server, and roll back to `prev` on failure.
+  const persist = (next: UserPreferences, patch: ProfileUpdate['preferences']) => {
+    const prev = prefs;
+    setPrefs(next);
+    setSaveError(false);
+    updateProfile({ preferences: patch }).catch(() => {
+      setPrefs(prev);
+      setSaveError(true);
+    });
+  };
+
+  const toggleNotification = (key: keyof UserPreferences['notifications']) => {
+    const value = !prefs.notifications[key];
+    persist(
+      { ...prefs, notifications: { ...prefs.notifications, [key]: value } },
+      { notifications: { [key]: value } },
+    );
+  };
+
+  const setUnits = (units: UserPreferences['units']) => {
+    if (units === prefs.units) return;
+    persist({ ...prefs, units }, { units });
+  };
+
+  const setRadius = (searchRadiusKm: number) => {
+    if (searchRadiusKm === prefs.searchRadiusKm) return;
+    persist({ ...prefs, searchRadiusKm }, { searchRadiusKm });
+  };
+
+  // Privacy lives at the top level of the user (not under preferences), so it
+  // persists via its own optimistic path.
+  const setPrivacySetting = (next: PrivacySetting) => {
+    if (next === privacy) return;
+    const prev = privacy;
+    setPrivacy(next);
+    setSaveError(false);
+    updateProfile({ privacySetting: next }).catch(() => {
+      setPrivacy(prev);
+      setSaveError(true);
+    });
+  };
+
+  // Label a km radius in the user's chosen unit (value persisted stays km).
+  const radiusLabel = (km: number) =>
+    prefs.units === 'mi' ? `${Math.round(km * KM_TO_MI)} mi` : `${km} km`;
+
   return (
     <V2Shell screen="v2-profile" chrome={props} title="Settings" hideTabBar hideFab>
       {/* APPEARANCE */}
       <div className="content-section">
         <h2 className="section-title">Appearance</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {THEMES.map((opt) => {
-            const active = theme === opt.id;
-            return (
-              <button
-                key={opt.id}
-                onClick={() => setTheme(opt.id)}
-                aria-pressed={active}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: 'var(--radius-pill)',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  background: active ? 'var(--lime)' : 'var(--bg-app)',
-                  color: 'var(--ink)',
-                  border: `1px solid ${active ? 'var(--lime-active)' : 'var(--border-subtle)'}`,
-                }}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        <Segmented options={THEMES} value={theme} onChange={setTheme} />
       </div>
 
       {/* ACCOUNT */}
@@ -90,6 +218,56 @@ export function SettingsScreenV2(props: SettingsV2Props) {
           </li>
         </ul>
       </div>
+
+      {/* NOTIFICATION PREFERENCES */}
+      <div className="content-section">
+        <h2 className="section-title">Notify me about</h2>
+        <ul className="settings-list">
+          {NOTIFICATIONS.map(({ key, label, hint }) => (
+            <li key={key} className="settings-item" style={{ cursor: 'default' }}>
+              <div className="settings-label">
+                <strong>{label}</strong>
+                <span>{hint}</span>
+              </div>
+              <Toggle checked={prefs.notifications[key]} onChange={() => toggleNotification(key)} label={label} />
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* DISPLAY UNITS */}
+      <div className="content-section">
+        <h2 className="section-title">Distance units</h2>
+        <Segmented options={UNITS} value={prefs.units} onChange={setUnits} />
+      </div>
+
+      {/* SEARCH RADIUS */}
+      <div className="content-section">
+        <h2 className="section-title">Search radius</h2>
+        <Segmented
+          options={RADII_KM.map((km) => ({ id: String(km), label: radiusLabel(km) }))}
+          value={String(prefs.searchRadiusKm)}
+          onChange={(id) => setRadius(Number(id))}
+        />
+        <p style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>
+          Default distance for “Near me” when browsing courts.
+        </p>
+      </div>
+
+      {/* PRIVACY & VISIBILITY */}
+      <div className="content-section">
+        <h2 className="section-title">Privacy &amp; visibility</h2>
+        <Segmented options={PRIVACY} value={privacy} onChange={setPrivacySetting} />
+        <p style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>
+          {PRIVACY_HINT[privacy]}
+        </p>
+      </div>
+
+      {saveError && (
+        <div className="content-section" role="alert" style={{ color: 'var(--error)', fontSize: 13, fontWeight: 600 }}>
+          Couldn’t save your preferences. Check your connection and try again.
+        </div>
+      )}
 
       {/* SESSION */}
       <div className="content-section">

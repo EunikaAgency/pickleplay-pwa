@@ -1,37 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { CompletionScreen } from '../../../shared/components/ui/CompletionScreen';
-import { useVenueAvailability } from '../../../shared/hooks/useVenueAvailability';
-import {
-  listAllVenues, listCourts, getSettings, createBooking, checkout, createGame,
-  type ApiVenue, type AppSettings, type CheckoutCard, type OwnerCourt,
-} from '../../../shared/lib/api';
-import { locationLine } from '../../../shared/lib/venueDisplay';
-import { addHours, hoursBetween, money, to12h, todayYMD } from '../../bookings/bookingDisplay';
+import { getBooking, createGame, type ApiBooking } from '../../../shared/lib/api';
+import { hoursBetween, prettyDate, timeRange, to12h } from '../../bookings/bookingDisplay';
 
 type GameType = 'open' | 'doubles' | 'singles';
-const isBookable = (v: ApiVenue) => v.priceFrom != null;
 const fixedSpotsFor = (t: GameType): number | null => (t === 'singles' ? 2 : t === 'doubles' ? 4 : null);
-const HOURS = Array.from({ length: 17 }, (_, i) => 6 + i); // 6:00 → 22:00
-const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`;
 
 const SKILLS = ['All levels', 'Beginner (2.0–3.0)', 'Intermediate (3.0–4.0)', 'Advanced (4.0+)'];
 
-interface Props extends V2ScreenChrome { onBack: () => void; }
+interface Props extends V2ScreenChrome {
+  onBack: () => void;
+  /** The court reservation this lobby is hosted on (chosen in the Game On sheet). */
+  bookingId?: string;
+}
 
+/**
+ * Host a lobby on a court the player has already booked. Booking + payment now
+ * happen up-front in the Book flow (reached via the "Game On" chooser), so this
+ * screen no longer books or charges — it loads the reservation, locks the
+ * venue/date/time to it, and only collects the game-specific details (name,
+ * format, players, skill, visibility) before calling `createGame({ bookingId })`.
+ */
 export function CreateGameV2(props: Props) {
-  const { onNavigate, onBack } = props;
-  const [venues, setVenues] = useState<ApiVenue[]>([]);
-  const [selectedId, setSelectedId] = useState('');
-  const [courts, setCourts] = useState<OwnerCourt[]>([]);
-  const [courtId, setCourtId] = useState('');
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [card, setCard] = useState<CheckoutCard>({ number: '', expiry: '', cvc: '' });
+  const { onNavigate, onBack, bookingId } = props;
+
+  const [booking, setBooking] = useState<ApiBooking | null>(null);
+  const [loading, setLoading] = useState(!!bookingId);
+  const [loadError, setLoadError] = useState(false);
 
   const [name, setName] = useState('');
-  const [date, setDate] = useState(todayYMD());
-  const [startTime, setStartTime] = useState('18:00');
-  const [endTime, setEndTime] = useState('19:00');
   const [type, setType] = useState<GameType>('open');
   const [spots, setSpots] = useState(8);
   const [skill, setSkill] = useState(SKILLS[0]);
@@ -41,65 +39,48 @@ export function CreateGameV2(props: Props) {
   const [error, setError] = useState<string | null>(null);
   const [doneId, setDoneId] = useState<string | null>(null);
 
+  // Load the booking this lobby is hosted on (venue/date/time come from it).
   useEffect(() => {
+    if (!bookingId) { setLoading(false); return; }
     let alive = true;
-    listAllVenues()
-      .then((items) => { if (!alive) return; const b = items.filter(isBookable); setVenues(b); setSelectedId((p) => p || b[0]?.id || ''); })
-      .catch(() => { /* empty-state */ });
-    getSettings().then((s) => { if (!alive) return; setSettings(s); if (s.paymentTestMode) setCard({ ...s.testCard }); }).catch(() => {});
+    setLoading(true); setLoadError(false);
+    getBooking(bookingId)
+      .then((b) => { if (alive) setBooking(b); })
+      .catch(() => { if (alive) setLoadError(true); })
+      .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedId) { setCourts([]); setCourtId(''); return; }
-    let alive = true;
-    setCourts([]); setCourtId('');
-    listCourts(selectedId).then((rows) => { if (!alive) return; setCourts(rows); setCourtId(rows[0]?.id ?? ''); }).catch(() => {});
-    return () => { alive = false; };
-  }, [selectedId]);
-
-  const selected = useMemo(() => venues.find((v) => v.id === selectedId) ?? null, [venues, selectedId]);
-  const currency = selected?.pricingCurrency ?? 'PHP';
-  const rate = selected?.priceFrom ?? 0;
-  const hours = hoursBetween(startTime, endTime);
-  const total = Math.round(rate * hours * 100) / 100;
-  const isTest = settings?.paymentTestMode ?? false;
-
-  const { minBookableHour, rangeBlocked } = useVenueAvailability(selected?.id, date, courtId || undefined);
-  const slotUnavailable = rangeBlocked(startTime, endTime);
-  const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
+  }, [bookingId]);
 
   const fixedSpots = fixedSpotsFor(type);
   const selectType = (v: GameType) => { setType(v); const f = fixedSpotsFor(v); if (f != null) setSpots(f); };
-  const onStartChange = (v: string) => { setStartTime(v); if (hoursBetween(v, endTime) <= 0) setEndTime(addHours(v, 1)); };
+
+  const hours = useMemo(
+    () => (booking ? hoursBetween(booking.startTime ?? '', booking.endTime ?? '') : 0),
+    [booking],
+  );
+  const court = booking?.courtName || (booking?.courtNumber ? `Court ${booking.courtNumber}` : '');
 
   const submit = async () => {
-    if (!selected) { setError('Please choose a court.'); return; }
-    if (!date) { setError('Please pick a date.'); return; }
-    if (!(hours > 0)) { setError('End time must be after the start time.'); return; }
-    if (startInPast) { setError('That start time has already passed. Pick a later time.'); return; }
-    if (slotUnavailable) { setError('That time is fully booked. Pick a free slot.'); return; }
-    if (!isTest && !(card.number && card.expiry && card.cvc)) { setError('Enter card details to reserve the court.'); return; }
+    if (!booking) { setError('Your booked court could not be loaded.'); return; }
     setSubmitting(true);
     setError(null);
     try {
-      const booking = await createBooking({ venueId: selected.id, courtId: courtId || undefined, date, startTime, endTime, amount: total });
-      await checkout({ bookingId: booking.id, amount: total, currency, method: isTest ? 'test_card' : 'card', card });
       const game = await createGame({
         title: name.trim() || undefined,
-        venueId: selected.id,
+        venueId: booking.venueId ?? undefined,
+        venueName: booking.venueName ?? undefined,
         gameType: type,
         skillLabel: skill,
-        timeLabel: to12h(startTime),
-        durationLabel: `${hours} hr`,
-        date,
+        timeLabel: booking.startTime ? to12h(booking.startTime) : undefined,
+        durationLabel: hours > 0 ? `${hours} hr` : undefined,
+        date: booking.date ?? undefined,
         capacity: spots,
         visibility: vis,
         bookingId: booking.id,
       });
       setDoneId(game.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create your game. Please try again.');
+      setError(e instanceof Error ? e.message : 'Could not create your lobby. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -109,8 +90,8 @@ export function CreateGameV2(props: Props) {
     return (
       <CompletionScreen
         icon="check"
-        title="Game created!"
-        description="Your court is booked and your game is live. Invite players or view the details."
+        title="Lobby created!"
+        description="Your game is live on your booked court. Invite players or view the details."
         actions={[
           { label: 'View game', variant: 'dark', onClick: () => onNavigate('game-details', { id: doneId }, { replace: true }) },
           { label: 'Done', variant: 'outline', onClick: onBack },
@@ -119,21 +100,62 @@ export function CreateGameV2(props: Props) {
     );
   }
 
-  const noVenues = venues.length === 0;
+  // No reservation to host on (or it failed to load): point the user at the
+  // booking flow, which hands back here once a court is reserved.
+  if (!bookingId || loadError) {
+    return (
+      <V2Shell screen="v2-creategame" chrome={props} onBack={onBack} hideFab>
+        <div className="page">
+          <div className="page-hero" role="banner">
+            <div className="page-hero-eyebrow">Games</div>
+            <h1>Host a lobby</h1>
+            <p className="page-hero-sub">Open a game on a court you’ve booked.</p>
+          </div>
+          <div className="form-card" style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>🎾</div>
+            <div className="form-section-label" style={{ textAlign: 'center' }}>
+              {loadError ? 'We couldn’t load that booking' : 'Book a court first'}
+            </div>
+            <p className="page-hero-sub" style={{ color: 'var(--text-secondary)', margin: '4px 0 16px' }}>
+              Hosting a lobby needs a reserved court. Book one and we’ll bring you right back to set up your game.
+            </p>
+            <button className="submit-btn" onClick={() => onNavigate('nearby', { intent: 'lobby' })}>
+              Find a court to book
+            </button>
+          </div>
+        </div>
+      </V2Shell>
+    );
+  }
 
   return (
-    <V2Shell screen="v2-creategame" chrome={props} onBack={onBack} hideTabBar hideFab>
+    <V2Shell screen="v2-creategame" chrome={props} onBack={onBack} hideFab>
       <div className="page">
         <div className="page-hero" role="banner">
           <div className="page-hero-eyebrow">Games</div>
-          <h1>Create a Game</h1>
-          <p className="page-hero-sub">Book a court and set up your session.</p>
-          <div className="step-row" aria-hidden="true">
-            <div className="step-dot active" /><div className="step-dot" /><div className="step-dot" />
-          </div>
+          <h1>Set up your lobby</h1>
+          <p className="page-hero-sub">Your court’s booked — just set up the game.</p>
         </div>
 
         <div className="form-card">
+          {/* Locked reservation — venue, date and time come from the booking. */}
+          <div className="field-group">
+            {loading || !booking ? (
+              <div className="booked-court booked-court--loading">Loading your booked court…</div>
+            ) : (
+              <div className="booked-court">
+                <div className="booked-court-badge">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  Your booked court
+                </div>
+                <div className="booked-court-name">{booking.venueName || 'Booked court'}</div>
+                <div className="booked-court-meta">
+                  {[prettyDate(booking.date), timeRange(booking), court].filter(Boolean).join(' · ')}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="form-section-label">Basic Info</div>
 
           <div className="field-group">
@@ -143,57 +165,6 @@ export function CreateGameV2(props: Props) {
             </div>
             <div className="char-count">{name.length} / 60</div>
           </div>
-
-          <div className="field-group">
-            <div className="field-label"><span className="field-label-text">Court</span></div>
-            <div className="input-wrap">
-              <select className="field-input" value={selectedId} onChange={(e) => setSelectedId(e.target.value)} aria-label="Court" disabled={noVenues}>
-                {noVenues && <option value="">No bookable courts available</option>}
-                {venues.map((v) => <option key={v.id} value={v.id}>{v.displayName} · {locationLine(v)}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {courts.length > 0 && (
-            <div className="field-group">
-              <div className="field-label"><span className="field-label-text">Court area</span></div>
-              <div className="input-wrap">
-                <select className="field-input" value={courtId} onChange={(e) => setCourtId(e.target.value)} aria-label="Court area">
-                  {courts.map((c) => <option key={c.id} value={c.id}>{c.courtName || `Court ${c.courtNumber}`}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-
-          <hr className="form-divider" />
-          <div className="form-section-label">Date &amp; Time</div>
-
-          <div className="field-group">
-            <div className="field-label"><span className="field-label-text">Date</span></div>
-            <div className="input-wrap">
-              <input className="field-input" type="date" value={date} min={todayYMD()} onChange={(e) => setDate(e.target.value)} aria-label="Game date" />
-            </div>
-          </div>
-
-          <div className="field-row-2">
-            <div className="field-group" style={{ marginBottom: 0 }}>
-              <div className="field-label"><span className="field-label-text">Start</span></div>
-              <div className="input-wrap">
-                <select className="field-input" value={startTime} onChange={(e) => onStartChange(e.target.value)} aria-label="Start time">
-                  {HOURS.map((h) => <option key={h} value={hhmm(h)}>{to12h(hhmm(h))}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="field-group" style={{ marginBottom: 0 }}>
-              <div className="field-label"><span className="field-label-text">End</span></div>
-              <div className="input-wrap">
-                <select className="field-input" value={endTime} onChange={(e) => setEndTime(e.target.value)} aria-label="End time">
-                  {HOURS.concat(23).map((h) => <option key={h} value={hhmm(h)}>{to12h(hhmm(h))}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-          {slotUnavailable && <div className="vis-help" style={{ color: 'var(--warning)' }}>That time is fully booked — pick a free slot.</div>}
 
           <hr className="form-divider" />
           <div className="form-section-label">Players &amp; Skill</div>
@@ -240,35 +211,16 @@ export function CreateGameV2(props: Props) {
             <div className="vis-help">{vis === 'public' ? 'Anyone nearby can discover and join this game.' : 'Only people you invite can join.'}</div>
           </div>
 
-          <hr className="form-divider" />
-          <div className="form-section-label">Payment</div>
-          {isTest ? (
-            <div className="vis-help">Test mode — your card won't be charged.</div>
-          ) : (
-            <div className="field-row-2">
-              <div className="field-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-                <div className="field-label"><span className="field-label-text">Card number</span></div>
-                <div className="input-wrap"><input className="field-input" inputMode="numeric" placeholder="4242 4242 4242 4242" value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} /></div>
-              </div>
-              <div className="field-group" style={{ marginBottom: 0 }}>
-                <div className="field-label"><span className="field-label-text">Expiry</span></div>
-                <div className="input-wrap"><input className="field-input" placeholder="MM/YY" value={card.expiry} onChange={(e) => setCard({ ...card, expiry: e.target.value })} /></div>
-              </div>
-              <div className="field-group" style={{ marginBottom: 0 }}>
-                <div className="field-label"><span className="field-label-text">CVC</span></div>
-                <div className="input-wrap"><input className="field-input" inputMode="numeric" placeholder="123" value={card.cvc} onChange={(e) => setCard({ ...card, cvc: e.target.value })} /></div>
-              </div>
-            </div>
-          )}
-
           {error && <div className="vis-help" style={{ color: 'var(--warning)' }} role="alert">{error}</div>}
         </div>
 
         <div className="submit-wrap">
-          <button className="submit-btn" onClick={submit} disabled={submitting || noVenues}>
-            {submitting ? 'Creating…' : `Book & Create${total > 0 ? ` · ${money(total, currency)}` : ''}`}
+          <button className="submit-btn" onClick={submit} disabled={submitting || loading || !booking}>
+            {submitting ? 'Creating…' : 'Create lobby'}
           </button>
-          <div className="submit-help">{hours > 0 ? `${money(rate, currency)}/hr × ${hours} hr` : 'Pick a start and end time'}</div>
+          <div className="submit-help">
+            {booking ? `Hosting at ${booking.venueName || 'your booked court'}${booking.startTime ? ` · ${to12h(booking.startTime)}` : ''}` : 'Your court is already booked — no extra charge.'}
+          </div>
         </div>
       </div>
     </V2Shell>

@@ -3,6 +3,7 @@ import { Chip } from '../../../shared/components/ui/Chip';
 import { Toast } from '../../../shared/components/ui/Toast';
 import { OwnerSection } from '../components/OwnerSection';
 import { OwnerBookingRow } from '../components/OwnerBookingRow';
+import { OwnerBookingDetailSheet } from '../OwnerBookingDetailSheet';
 import { getVenueBookings, type ApiBooking } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
@@ -31,6 +32,7 @@ export function BookingsInboxTab({ venueId }: BookingsInboxTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
+  const [detail, setDetail] = useState<ApiBooking | null>(null);
   const [toast, setToast] = useState(false);
 
   useEffect(() => {
@@ -72,11 +74,18 @@ export function BookingsInboxTab({ venueId }: BookingsInboxTabProps) {
         ) : (
           <div className="space-y-3">
             {bookings.map((b) => (
-              <OwnerBookingRow key={b.id} booking={b} canManage={canManage} onChanged={onChanged} />
+              <OwnerBookingRow key={b.id} booking={b} canManage={canManage} onChanged={onChanged} onOpen={setDetail} />
             ))}
           </div>
         )}
       </OwnerSection>
+
+      <OwnerBookingDetailSheet
+        booking={detail}
+        canManage={canManage}
+        onClose={() => setDetail(null)}
+        onChanged={onChanged}
+      />
 
       <Toast message="Booking updated" show={toast} />
     </div>

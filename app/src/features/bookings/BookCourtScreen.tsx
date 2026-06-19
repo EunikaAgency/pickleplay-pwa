@@ -23,6 +23,9 @@ interface BookCourtScreenProps {
   date?: string;
   time?: string;            // 12h label like "6:30 PM"
   hours?: number;
+  /** 'lobby' = the booking is a step toward hosting a lobby; the confirmation
+   *  offers "Create your lobby" instead of just "View my bookings". */
+  intent?: 'lobby';
   onNavigate: Navigate;
   onBack: () => void;
 }
@@ -34,7 +37,7 @@ function isBookable(v: ApiVenue): boolean {
   return v.priceFrom != null;
 }
 
-export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNavigate, onBack }: BookCourtScreenProps) {
+export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, intent, onNavigate, onBack }: BookCourtScreenProps) {
   const [step, setStep] = useState(0);
 
   // Bookable venues (priced only) for the picker.
@@ -200,19 +203,33 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
   };
 
   if (done) {
+    // When the booking was a step toward hosting a lobby, lead with "Create your
+    // lobby" (only once the court is actually confirmed) so the flow hands
+    // straight back to the create form, pre-locked to this reservation.
+    const lobbyHandoff = intent === 'lobby' && done.confirmed && done.bookingId;
+    const lobbyAction = lobbyHandoff
+      ? [{
+          label: 'Create your lobby',
+          variant: 'dark' as const,
+          onClick: () => onNavigate('create-game', { bookingId: done.bookingId! }, { replace: true }),
+        }]
+      : [];
     return (
       <CompletionScreen
         icon={done.confirmed ? 'check' : 'clock'}
         title={done.confirmed ? 'Booking confirmed!' : 'Booking requested'}
         description={
           done.confirmed
-            ? 'Your court is booked. You can see it under My bookings.'
+            ? lobbyHandoff
+              ? 'Your court is booked — now set up the game you want to host.'
+              : 'Your court is booked. You can see it under My bookings.'
             : 'Your request was sent and is awaiting venue approval.'
         }
         actions={[
+          ...lobbyAction,
           // `replace` drops the finished wizard from the back stack so Back from
           // My bookings doesn't re-open it at step 1.
-          { label: 'View my bookings', variant: 'dark' as const, onClick: () => onNavigate('my-bookings', undefined, { replace: true }) },
+          { label: 'View my bookings', variant: lobbyHandoff ? ('outline' as const) : ('dark' as const), onClick: () => onNavigate('my-bookings', undefined, { replace: true }) },
           { label: 'Done', variant: 'outline' as const, onClick: onBack },
         ]}
       />

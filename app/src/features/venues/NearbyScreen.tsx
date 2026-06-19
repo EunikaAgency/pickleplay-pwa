@@ -210,7 +210,14 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);
   // Applied Courts filters (the chip row + the filter sheet both edit these).
-  const [filters, setFilters] = useState<VenueFilters>(makeDefaultFilters);
+  // Seed the distance cap from the user's saved search-radius preference so
+  // "Near me" defaults to the radius they chose in Settings (falls back to the
+  // shared default for guests / unset accounts).
+  const [filters, setFilters] = useState<VenueFilters>(() => {
+    const base = makeDefaultFilters();
+    const saved = currentUser?.preferences?.searchRadiusKm;
+    return saved ? { ...base, maxDistanceKm: saved } : base;
+  });
 
   const search = query.trim();
   const activeFilterCount = countActiveFilters(filters);

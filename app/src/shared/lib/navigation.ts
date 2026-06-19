@@ -3,18 +3,24 @@ export type Screen =
   | { id: 'login' }
   | { id: 'onboarding' }
   | { id: 'home' }
-  | { id: 'nearby' }
+  // `intent: 'lobby'` = the user came here to book a court so they can then host a
+  // lobby; Nearby shows a "select a court" banner and the booking flow hands back
+  // to create-game on completion.
+  | { id: 'nearby'; params?: { intent?: 'lobby' } }
   | { id: 'games' }
   | { id: 'clubs' }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
-  | { id: 'court-details'; params: { id: string } }
+  | { id: 'court-details'; params: { id: string; intent?: 'lobby' } }
   | { id: 'club-details'; params: { id: string; invited?: boolean } }
-  | { id: 'create-game' }
+  // `bookingId` = host a lobby on an already-booked court (skips the inline
+  // book+pay step); the create form locks venue/date/time to that reservation.
+  | { id: 'create-game'; params?: { bookingId?: string } }
   | { id: 'edit-game'; params: { id: string } }
   | { id: 'my-games' }
-  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number } }
+  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number; intent?: 'lobby' } }
   | { id: 'my-bookings' }
+  | { id: 'payment-history' }
   | { id: 'create-club' }
   | { id: 'edit-profile' }
   | { id: 'settings' }
@@ -96,9 +102,6 @@ export function deepLinkParent(id: ScreenId): Screen {
   return { id: 'home' };
 }
 
-type ScreensWithParams = Extract<Screen, { params: unknown }>;
-type ScreensWithoutParams = Exclude<Screen, { params: unknown }>;
-
 /** Options for a navigation. `replace` swaps the current screen out of the back
  *  stack instead of pushing on top — use it after finishing a flow so backing out
  *  of the result doesn't return to the (now-stale) form. */
@@ -106,11 +109,21 @@ export interface NavigateOptions {
   replace?: boolean;
 }
 
-export type Navigate = {
-  (id: ScreensWithoutParams['id'], params?: undefined, opts?: NavigateOptions): void;
-  <K extends ScreensWithParams['id']>(
-    id: K,
-    params: Extract<Screen, { id: K }>['params'],
-    opts?: NavigateOptions,
-  ): void;
-};
+// The params type a screen declares (or `never` if it has no params key).
+type ScreenParams<S> = S extends { params?: infer P } ? P : never;
+
+/**
+ * The trailing args a given screen id accepts, derived from its `Screen` member:
+ * - no `params` key  → params omitted (tab/leaf screens, e.g. `navigate('home')`)
+ * - **required** `params` (`params: {…}`) → params required (e.g. `game-details`)
+ * - **optional** `params?` (`params?: {…}`) → params optional, so the screen can be
+ *   reached both bare and with params (e.g. `nearby` as a tab vs. with `{intent}`).
+ */
+type NavigateRest<K extends ScreenId, S = Extract<Screen, { id: K }>> =
+  'params' extends keyof S
+    ? {} extends Pick<S, 'params' & keyof S>
+      ? [params?: ScreenParams<S>, opts?: NavigateOptions]
+      : [params: ScreenParams<S>, opts?: NavigateOptions]
+    : [params?: undefined, opts?: NavigateOptions];
+
+export type Navigate = <K extends ScreenId>(id: K, ...rest: NavigateRest<K>) => void;

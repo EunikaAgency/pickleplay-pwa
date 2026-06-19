@@ -5,7 +5,7 @@
 // live on different subdomains, so set VITE_API_BASE_URL to the API origin
 // (e.g. https://pickleballer-api.eunika.xyz) — CORS already allows the PWA host.
 
-import { normalizeRole, resolveRolePermissions, type AppUser } from './permissions';
+import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, type AppUser, type PrivacySetting, type UserPreferences } from './permissions';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const AUTH_PREFIX = '/api/v1/auth';
@@ -209,6 +209,8 @@ export interface ApiUser {
   bio?: string | null;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean | null;
+  preferences?: UserPreferences | null;
+  privacySetting?: string | null;
 }
 
 interface AuthTokens {
@@ -222,6 +224,11 @@ interface AuthTokens {
  * `resolveRolePermissions` so the client stays the single source of truth for
  * its permission gating (and stays correct even if the two lists drift).
  */
+/** Coerce the API's free-string privacy field to a known value (default public). */
+function normalizePrivacy(value?: string | null): PrivacySetting {
+  return value === 'private' || value === 'friends' ? value : 'public';
+}
+
 export function toAppUser(api: ApiUser): AppUser {
   const sourceRoles = api.roles?.length ? api.roles : [api.roleDefault ?? api.role ?? 'player'];
   const roles = [...new Set(sourceRoles.map(normalizeRole))];
@@ -234,6 +241,8 @@ export function toAppUser(api: ApiUser): AppUser {
     skillLevelLabel: api.skillLevelLabel ?? undefined,
     bio: api.bio ?? undefined,
     hasOnboarded: api.hasOnboarded ?? false,
+    preferences: api.preferences ?? DEFAULT_PREFERENCES,
+    privacySetting: normalizePrivacy(api.privacySetting),
     roleDefault: normalizeRole(api.roleDefault ?? api.role),
     roles,
     permissions: resolveRolePermissions(roles),
@@ -322,6 +331,14 @@ export interface ProfileUpdate {
   skillLevelLabel?: string;
   hasOnboarded?: boolean;
   avatarUrl?: string;
+  /** Profile visibility — public / friends / private. */
+  privacySetting?: PrivacySetting;
+  /** Partial preferences patch — merged into the saved preferences server-side. */
+  preferences?: {
+    notifications?: Partial<UserPreferences['notifications']>;
+    units?: UserPreferences['units'];
+    searchRadiusKm?: number;
+  };
 }
 
 /**
@@ -1475,6 +1492,31 @@ export interface CheckoutResult {
 /** Pay for a booking. In test mode this completes instantly and confirms it. */
 export async function checkout(body: CheckoutPayload): Promise<CheckoutResult> {
   return request<CheckoutResult>(`${PAYMENTS_PREFIX}/checkout`, { method: 'POST', body, auth: true });
+}
+
+/* ─── Payment history ───────────────────────────────────────── */
+//
+// Every checkout records a Payment row scoped to the current user (court
+// bookings and the court a game host pays for). The list is self-scoped server
+// side — `GET /api/v1/payments` only ever returns the caller's own payments —
+// so it powers the player's spend report. Gated in the UI by player.payments.view.
+
+export interface ApiPayment {
+  id: string;
+  bookingId?: string | null;
+  amount: number;
+  currency?: string | null;
+  method?: string | null;
+  provider?: string | null;
+  status?: string | null;          // 'pending' | 'completed' | 'failed' | 'refunded'
+  notes?: string | null;
+  createdAt?: string | null;
+}
+
+/** The current user's payments, newest first (optionally filtered by status). */
+export async function listPayments(params: { status?: string } = {}): Promise<ApiPayment[]> {
+  const env = await rawRequest<ApiPayment[]>(`${PAYMENTS_PREFIX}${toQuery({ ...params })}`, { auth: true });
+  return env.data ?? [];
 }
 
 /* ─── App settings (payment mode) ───────────────────────────── */

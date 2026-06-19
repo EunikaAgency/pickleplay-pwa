@@ -83,6 +83,9 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
       items: [
         { key: 'my-games', icon: 'paddle', label: 'My games', color: 'var(--primary)', onClick: () => onNavigate('my-games') },
         { key: 'my-bookings', icon: 'calendar', label: 'My bookings', color: '#5b7400', onClick: () => onNavigate('my-bookings') },
+        ...(userHasPermission(currentUser, 'player.payments.view')
+          ? [{ key: 'payment-history', icon: 'payments', label: 'Payment history', color: '#c89000', onClick: () => onNavigate('payment-history') } as MenuItem]
+          : []),
         ...(userHasPermission(currentUser, 'user.messages.send')
           ? [{ key: 'messages', icon: 'chat', label: 'Messages', color: 'var(--primary)', onClick: () => onNavigate('messages') } as MenuItem]
           : []),

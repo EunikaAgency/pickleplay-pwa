@@ -84,8 +84,25 @@ function whenLabel(mins: number): string {
 function gameTitle(g: ApiGame): string {
   return (g.title && g.title.trim()) || 'Pickleball game';
 }
+// Format a YYYY-MM-DD game date as a friendly day label ("Today" / "Tomorrow" /
+// "Sat, Jun 20"). Parsed from local date parts so it doesn't shift by timezone.
+function dayLabel(ymd?: string | null): string {
+  if (!ymd) return '';
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const dt = new Date(y, m - 1, d);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((dt.getTime() - today.getTime()) / 86_400_000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+// Always show the date when we have one; only the time falls back to "TBA".
 function gameWhen(g: ApiGame): string {
-  return [g.whenLabel, g.timeLabel].filter(Boolean).join(' · ') || 'Time TBA';
+  const day = dayLabel(g.date) || g.whenLabel || '';
+  const time = g.timeLabel || '';
+  if (day) return `${day} · ${time || 'Time TBA'}`;
+  return time || 'Time TBA';
 }
 function gameVenue(g: ApiGame): string {
   return g.venue?.displayName || g.venueName || 'Venue TBA';
@@ -151,7 +168,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
                 {loading ? 'Loading games…' : `${games.length} open game${games.length === 1 ? '' : 's'} near you`}
               </div>
             </div>
-            <div className="hero-mascot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Grandstander', cursive", fontWeight: 800, color: 'var(--ink)' }}>
+            <div className="hero-mascot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Grandstander', cursive", fontWeight: 800, color: 'var(--on-accent)' }}>
               {user ? getInitials(user.displayName) : '👋'}
             </div>
           </div>
@@ -165,25 +182,13 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
             <span className="qa-icon">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             </span>
-            <span className="qa-label">Create Game</span>
+            <span className="qa-label">Game On</span>
           </button>
-          <button className="qa-card qa-blue" onClick={() => onNavigate('games')}>
+          <button className="qa-card qa-blue" onClick={() => onNavigate('nearby')}>
             <span className="qa-icon">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
             </span>
-            <span className="qa-label">Find Games</span>
-          </button>
-          <button className="qa-card qa-neutral" onClick={() => onNavigate('create-club')}>
-            <span className="qa-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /></svg>
-            </span>
-            <span className="qa-label">Create Club</span>
-          </button>
-          <button className="qa-card qa-neutral" onClick={() => onNavigate('nearby')}>
-            <span className="qa-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 1 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-            </span>
-            <span className="qa-label">Find Courts</span>
+            <span className="qa-label">Book</span>
           </button>
         </section>
 

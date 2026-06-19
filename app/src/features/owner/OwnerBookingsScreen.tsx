@@ -6,6 +6,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { OwnerStat } from './components/OwnerStat';
 import { OwnerBookingRow } from './components/OwnerBookingRow';
+import { OwnerBookingDetailSheet } from './OwnerBookingDetailSheet';
 import { OwnerBookingsFilterSheet, type SortBy, type StatusFilter } from './OwnerBookingsFilterSheet';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
@@ -76,6 +77,7 @@ export function OwnerBookingsScreen({ onBack, initialStatus = 'all' }: OwnerBook
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [venueFilter, setVenueFilter] = useState<string>('all');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [detail, setDetail] = useState<ApiBooking | null>(null);
   const [toast, setToast] = useState(false);
 
   // Snapshot "now" once per mount so filtering/sorting is stable across renders.
@@ -183,7 +185,7 @@ export function OwnerBookingsScreen({ onBack, initialStatus = 'all' }: OwnerBook
                   </span>
                 </div>
                 {g.items.map((b) => (
-                  <OwnerBookingRow key={b.id} booking={b} canManage={canManage} showVenue onChanged={onChanged} />
+                  <OwnerBookingRow key={b.id} booking={b} canManage={canManage} showVenue onChanged={onChanged} onOpen={setDetail} />
                 ))}
               </div>
             ))}
@@ -203,6 +205,13 @@ export function OwnerBookingsScreen({ onBack, initialStatus = 'all' }: OwnerBook
         onSortChange={setSortBy}
         onReset={() => { setStatusFilter('all'); setSortBy('date'); setVenueFilter('all'); }}
         resultCount={rows.length}
+      />
+
+      <OwnerBookingDetailSheet
+        booking={detail}
+        canManage={canManage}
+        onClose={() => setDetail(null)}
+        onChanged={onChanged}
       />
 
       <Toast message="Booking updated" show={toast} />

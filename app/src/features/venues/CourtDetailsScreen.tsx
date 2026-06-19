@@ -13,6 +13,8 @@ import { indoorLabel, priceLabel, locationLine, venueAmenities, mapsUrl, venueIm
 
 interface CourtDetailsScreenProps {
   courtId: string;
+  /** 'lobby' = booking this court should hand back to create-game afterwards. */
+  intent?: 'lobby';
   onNavigate: Navigate;
   onBack: () => void;
 }
@@ -57,7 +59,7 @@ function gameSpots(g: ApiGame): string {
   return g.skillLabel || g.durationLabel || '';
 }
 
-export function CourtDetailsScreen({ courtId, onNavigate, onBack }: CourtDetailsScreenProps) {
+export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: CourtDetailsScreenProps) {
   const [venue, setVenue] = useState<ApiVenueDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
 
@@ -126,17 +128,19 @@ export function CourtDetailsScreen({ courtId, onNavigate, onBack }: CourtDetails
 
   return (
     <DemoBranch loading={loadingUI} error={errorUI} empty={notFoundUI}>
-      {realState ?? (venue && <CourtDetail venue={venue} onNavigate={onNavigate} onBack={onBack} />)}
+      {realState ?? (venue && <CourtDetail venue={venue} intent={intent} onNavigate={onNavigate} onBack={onBack} />)}
     </DemoBranch>
   );
 }
 
 function CourtDetail({
   venue,
+  intent,
   onNavigate,
   onBack,
 }: {
   venue: ApiVenueDetail;
+  intent?: 'lobby';
   onNavigate: Navigate;
   onBack: () => void;
 }) {
@@ -366,8 +370,8 @@ function CourtDetail({
 
       <div className="app-action-bar">
         {price ? (
-          <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id })}>
-            <Icon name="calendar" size={16} /> Book this court
+          <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}>
+            <Icon name="calendar" size={16} /> {intent === 'lobby' ? 'Book & set up lobby' : 'Book this court'}
           </Button>
         ) : (
           <>

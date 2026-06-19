@@ -3,17 +3,9 @@ import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 import { getInitials } from '../../../shared/lib/initials';
-import { listBookings, type ApiBooking } from '../../../shared/lib/api';
+import { listBookings, listGames, type ApiBooking, type ApiGame } from '../../../shared/lib/api';
 import { useTheme, type ThemePreference } from '../../../shared/hooks/useTheme';
 import { useNotificationStore } from '../../../shared/lib/notificationStore';
-
-// Demo match history — the API exposes no match results yet (same limitation the
-// current ProfileScreen accepts). Booking history below this is real (listBookings).
-const DEMO_MATCHES = [
-  { result: 'win', title: 'Sunset Park Round Robin', sub: 'Sat · Doubles', score: '11–7' },
-  { result: 'win', title: 'Morning Social Mixer', sub: 'Thu · Mixed Doubles', score: '11–4' },
-  { result: 'loss', title: 'Competitive Singles Ladder', sub: 'Tue · Singles', score: '8–11' },
-];
 
 const THEMES: { id: ThemePreference; label: string }[] = [
   { id: 'light', label: 'Light' },
@@ -71,6 +63,100 @@ function bookingTs(b: ApiBooking): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
+const DAY_MS = 86_400_000;
+
+/** Midnight (local) for a YYYY-MM-DD; NaN when missing/unparseable. */
+function dayTs(ymd?: string | null): number {
+  if (!ymd) return NaN;
+  const t = new Date(`${ymd}T00:00:00`).getTime();
+  return Number.isNaN(t) ? NaN : t;
+}
+
+/** Month/day parts for a date badge, e.g. { mon: 'JUN', day: '7' }. */
+function dateParts(ymd?: string | null): { mon: string; day: string } {
+  const t = dayTs(ymd);
+  if (Number.isNaN(t)) return { mon: '—', day: '' };
+  const d = new Date(t);
+  return { mon: d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase(), day: String(d.getDate()) };
+}
+
+/** "Today" / "Yesterday" / "3d ago" / "2w ago" / "Mar 4" relative to today. */
+function relDay(ts: number, todayStart: number): string {
+  const days = Math.round((todayStart - new Date(ts).setHours(0, 0, 0, 0)) / DAY_MS);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 28) return `${Math.floor(days / 7)}w ago`;
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** Monday-anchored week bucket key, for the "best week" tally. */
+function weekKey(ts: number): string {
+  const d = new Date(ts);
+  const back = (d.getDay() + 6) % 7; // days since Monday
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - back);
+  return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
+}
+
+interface GameRow { id: string; mon: string; day: string; title: string; sub: string; role: 'Hosted' | 'Joined' }
+
+interface ProfileMetrics {
+  gamesPlayed: number;
+  played: number;        // total past sessions (games + bookings)
+  lastPlayed: string;    // relative label, '' when none
+  frequency: string;     // "1.5" sessions/week over the trailing window, '' when none
+  bestWeek: number;
+  recentGames: GameRow[];
+}
+
+/** Derive the profile's activity metrics + recent-games list from the player's
+ *  past games and bookings. Pure (now/today passed in) so it stays out of render. */
+function deriveMetrics(games: ApiGame[], bookings: ApiBooking[], userId: string, now: number): ProfileMetrics {
+  const todayStart = new Date(now).setHours(0, 0, 0, 0);
+  const isPast = (ymd?: string | null, status?: string | null) => {
+    const t = dayTs(ymd);
+    return !Number.isNaN(t) && t < todayStart && status !== 'cancelled';
+  };
+
+  const pastGames = games.filter((g) => isPast(g.date, g.status));
+  const sessionTs = [
+    ...pastGames.map((g) => dayTs(g.date)),
+    ...bookings.filter((b) => isPast(b.date, b.status)).map((b) => dayTs(b.date)),
+  ].filter((t) => !Number.isNaN(t));
+
+  const played = sessionTs.length;
+  const lastPlayed = played ? relDay(Math.max(...sessionTs), todayStart) : '';
+
+  const windowStart = now - 8 * 7 * DAY_MS;
+  const recentSessions = sessionTs.filter((t) => t >= windowStart).length;
+  const frequency = played ? (recentSessions / 8).toFixed(1) : '';
+
+  const byWeek = new Map<string, number>();
+  for (const t of sessionTs) byWeek.set(weekKey(t), (byWeek.get(weekKey(t)) ?? 0) + 1);
+  const bestWeek = byWeek.size ? Math.max(...byWeek.values()) : 0;
+
+  const recentGames: GameRow[] = [...pastGames]
+    .sort((a, b) => dayTs(b.date) - dayTs(a.date))
+    .slice(0, 4)
+    .map((g) => {
+      const { mon, day } = dateParts(g.date);
+      const type = g.gameType ? g.gameType[0].toUpperCase() + g.gameType.slice(1) : '';
+      const title = g.title || (type ? `${type} game` : 'Pickleball game');
+      const venue = g.venue?.displayName || g.venueName || '';
+      const when = relDay(dayTs(g.date), todayStart);
+      return {
+        id: g.id,
+        mon,
+        day,
+        title,
+        sub: [when, venue].filter(Boolean).join(' · '),
+        role: g.creatorId === userId ? 'Hosted' : 'Joined',
+      };
+    });
+
+  return { gamesPlayed: pastGames.length, played, lastPlayed, frequency, bestWeek, recentGames };
+}
+
 const Chevron = () => (
   <svg className="settings-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
 );
@@ -90,45 +176,50 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   // Processed at fetch time (Date.now() must not run during render — purity rule).
   const [history, setHistory] = useState<{ b: ApiBooking; mon: string; day: string; line: string; badge: { label: string; color: string; bg: string } }[]>([]);
   const [hasBookings, setHasBookings] = useState(false);
-  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [metrics, setMetrics] = useState<ProfileMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoggedIn) return;
     let alive = true;
-    setBookingsLoading(true);
-    listBookings()
-      .then((rows) => {
+    setLoading(true);
+    Promise.all([
+      listBookings().catch(() => [] as ApiBooking[]),
+      listGames({ mine: true }).catch(() => [] as ApiGame[]),
+    ])
+      .then(([bookings, games]) => {
         if (!alive) return;
         const now = Date.now();
-        const processed = [...rows]
-          .sort((a, b) => bookingTs(b) - bookingTs(a))
-          .slice(0, 6)
-          .map((b) => ({ b, ...bookingWhen(b), badge: bookingBadge(b, now) }));
-        setHistory(processed);
-        setHasBookings(rows.length > 0);
+        setHistory(
+          [...bookings]
+            .sort((a, b) => bookingTs(b) - bookingTs(a))
+            .slice(0, 6)
+            .map((b) => ({ b, ...bookingWhen(b), badge: bookingBadge(b, now) })),
+        );
+        setHasBookings(bookings.length > 0);
+        setMetrics(deriveMetrics(games, bookings, user?.id ?? '', now));
       })
-      .catch(() => { if (alive) { setHistory([]); setHasBookings(false); } })
-      .finally(() => { if (alive) setBookingsLoading(false); });
+      .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user?.id]);
 
   return (
     <V2Shell screen="v2-profile" chrome={props}>
       {/* HEADER */}
       <div className="profile-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '12px 0 8px', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '12px 16px 8px', position: 'relative', zIndex: 1 }}>
           <button className="icon-btn" aria-label="Notifications" onClick={() => onNavigate('notifications')} style={{ color: '#fff' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
           </button>
         </div>
 
-        <div className="profile-card" style={{ maxWidth: 480, margin: '0 auto' }}>
+        <div className="profile-card" style={{ margin: 0 }}>
           <div className="avatar-positioner">
             <div className="profile-avatar-wrap">
               <div className="profile-avatar">
                 {user?.avatarUrl
                   ? <img src={user.avatarUrl} alt={name} />
-                  : <span style={{ fontFamily: "'Grandstander', cursive", fontWeight: 800, fontSize: 28, color: 'var(--ink)' }}>{getInitials(name)}</span>}
+                  : <span style={{ fontFamily: "'Grandstander', cursive", fontWeight: 800, fontSize: 28, color: 'var(--on-accent)' }}>{getInitials(name)}</span>}
               </div>
               {level && <div className="level-badge">{level}</div>}
             </div>
@@ -136,7 +227,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
           <h1 className="profile-name">{name}</h1>
           {user?.bio && <p className="profile-tagline">{user.bio}</p>}
           <div className="stats-row">
-            <div className="stat-col"><span className="stat-col-number games">—</span><span className="stat-col-label">Games</span></div>
+            <div className="stat-col"><span className="stat-col-number games">{metrics ? metrics.gamesPlayed : '—'}</span><span className="stat-col-label">Games</span></div>
             <div className="stat-col"><span className="stat-col-number wins">—</span><span className="stat-col-label">Wins</span></div>
             <div className="stat-col"><span className="stat-col-number losses">—</span><span className="stat-col-label">Losses</span></div>
           </div>
@@ -146,8 +237,9 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         </div>
       </div>
 
-      {/* CONTENT (demo metrics) */}
-      <div style={{ maxWidth: 480, margin: '0 auto' }}>
+      {/* CONTENT — Win Rate stays demo (no results API); Activity, Booking
+          History + Recent Games are live (derived from games + bookings). */}
+      <div>
         <div className="section-gap" />
 
         {userHasPermission(user, 'organizer.access') && (
@@ -178,10 +270,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         <div className="content-section">
           <h2 className="section-title">Activity</h2>
           <div className="activity-grid">
-            <div className="activity-card"><div className="activity-card-label">Last Played</div><div className="activity-card-value">—</div><div className="activity-card-sub">&nbsp;</div></div>
-            <div className="activity-card"><div className="activity-card-label">Played</div><div className="activity-card-value">—</div><div className="activity-card-sub">sessions</div></div>
-            <div className="activity-card"><div className="activity-card-label">Frequency</div><div className="activity-card-value">—</div><div className="activity-card-sub">per week</div></div>
-            <div className="activity-card"><div className="activity-card-label">Best Week</div><div className="activity-card-value">—</div><div className="activity-card-sub">sessions</div></div>
+            <div className="activity-card"><div className="activity-card-label">Last Played</div><div className="activity-card-value">{metrics?.lastPlayed || '—'}</div><div className="activity-card-sub">&nbsp;</div></div>
+            <div className="activity-card"><div className="activity-card-label">Played</div><div className="activity-card-value">{metrics ? metrics.played : '—'}</div><div className="activity-card-sub">sessions</div></div>
+            <div className="activity-card"><div className="activity-card-label">Frequency</div><div className="activity-card-value">{metrics?.frequency || '—'}</div><div className="activity-card-sub">per week</div></div>
+            <div className="activity-card"><div className="activity-card-label">Best Week</div><div className="activity-card-value">{metrics ? metrics.bestWeek : '—'}</div><div className="activity-card-sub">sessions</div></div>
           </div>
         </div>
 
@@ -199,7 +291,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
                 </button>
               )}
             </div>
-            {bookingsLoading ? (
+            {loading ? (
               <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Loading your bookings…</p>
             ) : history.length === 0 ? (
               <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
@@ -252,21 +344,55 @@ export function ProfileScreenV2(props: ProfileV2Props) {
 
         <div className="section-gap" />
 
-        <div className="content-section">
-          <h2 className="section-title">Recent Matches</h2>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {DEMO_MATCHES.map((m, i) => (
-              <li key={i} className="match-item">
-                <div className={`match-result-badge ${m.result}`}>{m.result === 'win' ? 'W' : 'L'}</div>
-                <div className="match-info">
-                  <div className="match-info-top">{m.title}</div>
-                  <div className="match-info-sub">{m.sub}</div>
-                </div>
-                <div className="match-score">{m.score}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {/* RECENT GAMES — the player's past games (listGames mine), newest first.
+            No scores yet (the API exposes no match results), so rows show the
+            game + a Hosted/Joined tag instead of a W/L result. */}
+        {isLoggedIn && (
+          <div className="content-section">
+            <h2 className="section-title">Recent Games</h2>
+            {loading ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Loading your games…</p>
+            ) : !metrics || metrics.recentGames.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>
+                No games played yet. Join or host one from the Games tab.
+              </p>
+            ) : (
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {metrics.recentGames.map((g) => {
+                  const hosted = g.role === 'Hosted';
+                  return (
+                    <li key={g.id} className="match-item">
+                      <div
+                        className="match-result-badge"
+                        style={{ flexDirection: 'column', gap: 0, lineHeight: 1, background: 'var(--bg-app)', color: 'var(--blue)' }}
+                      >
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.3 }}>{g.mon}</span>
+                        <span style={{ fontSize: 15 }}>{g.day}</span>
+                      </div>
+                      <div className="match-info">
+                        <div className="match-info-top">{g.title}</div>
+                        <div className="match-info-sub">{g.sub || '—'}</div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: '4px 10px',
+                          borderRadius: 'var(--radius-pill)',
+                          color: hosted ? 'var(--on-accent)' : 'var(--blue)',
+                          background: hosted ? 'var(--lime)' : 'rgba(59,130,246,0.12)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {g.role}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="section-gap" />
 
@@ -289,7 +415,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
                     fontWeight: 700,
                     fontSize: 13,
                     background: active ? 'var(--lime)' : 'var(--bg-app)',
-                    color: 'var(--ink)',
+                    color: active ? 'var(--on-accent)' : 'var(--ink)',
                     border: `1px solid ${active ? 'var(--lime-active)' : 'var(--border-subtle)'}`,
                   }}
                 >
@@ -336,6 +462,19 @@ export function ProfileScreenV2(props: ProfileV2Props) {
               </div>
               <Chevron />
             </li>
+
+            {userHasPermission(user, 'player.payments.view') && (
+              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('payment-history')}>
+                <div className="settings-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                </div>
+                <div className="settings-label">
+                  <strong>Payment History</strong>
+                  <span>Your spend report &amp; receipts</span>
+                </div>
+                <Chevron />
+              </li>
+            )}
           </ul>
         </div>
 

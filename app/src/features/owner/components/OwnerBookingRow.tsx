@@ -9,8 +9,9 @@ function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'pr
     : tone === 'lime'
       ? 'bg-[var(--lime)] text-[var(--ink)]'
       : 'bg-[var(--surface-2)] text-[var(--ink-2)]';
+  // Stop the click from bubbling to the row's open-detail handler.
   return (
-    <button type="button" onClick={onClick} disabled={busy} className={`h-9 px-3.5 rounded-2xl font-bold text-[13px] disabled:opacity-60 ${cls}`}>
+    <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} disabled={busy} className={`h-9 px-3.5 rounded-2xl font-bold text-[13px] disabled:opacity-60 ${cls}`}>
       {label}
     </button>
   );
@@ -20,11 +21,13 @@ function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'pr
 // already paid, so there's no "mark paid" step — the owner can only cancel.
 // `showVenue` tags the row with its venue name (the cross-venue inbox uses it).
 // Shared by BookingsInboxTab (per-venue) and OwnerBookingsScreen (all venues).
-export function OwnerBookingRow({ booking, canManage, showVenue, onChanged }: {
+export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOpen }: {
   booking: ApiBooking;
   canManage: boolean;
   showVenue?: boolean;
   onChanged: (b: ApiBooking) => void;
+  /** Tap the row body to open the full booking detail (omitted = not tappable). */
+  onOpen?: (b: ApiBooking) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +48,15 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged }: {
 
   const st = booking.status;
   const courtLabel = booking.courtName || (booking.courtNumber ? `Court ${booking.courtNumber}` : null);
+  const openable = !!onOpen;
   return (
-    <div className="rounded-xl border-[0.5px] border-[var(--hairline)] p-3">
+    <div
+      className={`rounded-xl border-[0.5px] border-[var(--hairline)] p-3 ${openable ? 'cursor-pointer active:bg-[var(--surface-2)] transition-colors' : ''}`}
+      onClick={openable ? () => onOpen!(booking) : undefined}
+      onKeyDown={openable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen!(booking); } } : undefined}
+      role={openable ? 'button' : undefined}
+      tabIndex={openable ? 0 : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
           <Avatar src={booking.userAvatarUrl} name={booking.userName || 'Player'} size={38} className="shrink-0" />
