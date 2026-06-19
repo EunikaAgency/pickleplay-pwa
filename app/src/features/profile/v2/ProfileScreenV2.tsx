@@ -207,11 +207,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
     <V2Shell screen="v2-profile" chrome={props}>
       {/* HEADER */}
       <div className="profile-header">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '12px 16px 8px', position: 'relative', zIndex: 1 }}>
-          <button className="icon-btn" aria-label="Notifications" onClick={() => onNavigate('notifications')} style={{ color: '#fff' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
-          </button>
-        </div>
+        {/* Spacer only — the notifications bell lives in the top chrome header,
+            so the banner doesn't repeat it. Height matches the old bell row
+            (12px + 22px icon + 8px) so the blue banner keeps its full height. */}
+        <div style={{ height: 42 }} />
 
         <div className="profile-card" style={{ margin: 0 }}>
           <div className="avatar-positioner">

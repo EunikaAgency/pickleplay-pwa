@@ -28,11 +28,11 @@ function bookedOn(b: ApiBooking): string {
 
 function Row({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="flex items-start justify-between gap-3 px-4 py-3.5 border-b-[0.5px] border-[var(--hairline)]">
-      <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)] shrink-0 pt-0.5">{label}</div>
+    <div className="obook-row">
+      <div className="obook-row-label">{label}</div>
       <div className="text-right min-w-0">
-        <div className="font-heading font-semibold text-[14px] text-[var(--ink)] break-words">{value}</div>
-        {sub && <div className="text-[11px] font-semibold text-[var(--muted)]">{sub}</div>}
+        <div className="obook-row-val">{value}</div>
+        {sub && <div className="obook-row-sub">{sub}</div>}
       </div>
     </div>
   );
@@ -83,42 +83,48 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
     <BottomSheet
       open={!!b}
       onClose={onClose}
+      // The sheet's backdrop covers the tab bar, so the 96px tab-bar clearance
+      // under the footer is unnecessary — it just steals height and pushes the
+      // Total below the fold. Flush keeps the whole breakdown (incl. Total) in view.
+      flushFooter
+      // Size the body to its content (only scroll when it actually overflows the
+      // sheet's max-height) instead of the default flex-fill scroll container.
+      sheetClassName="obook-sheet"
       title="Booking details"
       subtitle={courtLabel ? `${b?.venueName ?? ''}${b?.venueName && courtLabel ? ' · ' : ''}${courtLabel}` : (b?.venueName ?? undefined)}
       footer={b && canManage && st !== 'cancelled' ? (
-        <div className="flex items-center gap-2">
+        <div className="obook-actions">
           {st === 'pending_approval' && (
-            <button type="button" disabled={busy} onClick={() => act('confirmed')}
-              className="flex-1 h-12 rounded-2xl font-bold text-[15px] bg-[var(--primary)] text-white disabled:opacity-60">
+            <button type="button" disabled={busy} onClick={() => act('confirmed')} className="obook-btn obook-btn-confirm">
               Confirm
             </button>
           )}
           <button type="button" disabled={busy} onClick={() => act('cancelled')}
-            className={`${st === 'pending_approval' ? '' : 'flex-1 '}h-12 px-4 rounded-2xl font-bold text-[15px] bg-[var(--surface-2)] text-[var(--ink-2)] disabled:opacity-60`}>
+            className={`obook-btn obook-btn-cancel${st === 'pending_approval' ? '' : ' full'}`}>
             {st === 'pending_approval' ? 'Decline' : 'Cancel booking'}
           </button>
         </div>
       ) : undefined}
     >
       {b && (
-        <div className="space-y-4 pb-2">
+        <div className="obook">
           {/* Player */}
-          <div className="flex items-center gap-3 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3.5">
+          <div className="obook-card obook-player">
             <Avatar src={b.userAvatarUrl} name={b.userName || 'Player'} size={48} className="shrink-0" />
             <div className="min-w-0">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Player</div>
-              <div className="font-heading font-semibold text-[17px] text-[var(--ink)] truncate">{b.userName || 'Player'}</div>
+              <div className="obook-eyebrow">Player</div>
+              <div className="obook-name truncate">{b.userName || 'Player'}</div>
               {typeof b.playerCount === 'number' && b.playerCount > 0 && (
-                <div className="t-sm">{b.playerCount} {b.playerCount === 1 ? 'player' : 'players'}</div>
+                <div className="obook-sub">{b.playerCount} {b.playerCount === 1 ? 'player' : 'players'}</div>
               )}
             </div>
             {chip && (
-              <span className={`ml-auto shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold ${chip.className}`}>{chip.label}</span>
+              <span className={`obook-chip ${chip.className}`}>{chip.label}</span>
             )}
           </div>
 
           {/* Summary — mirrors the checkout review the player confirmed */}
-          <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+          <div className="obook-card obook-summary">
             <Row label="Court" value={courtLabel || b.venueName || '—'} sub={courtLabel && b.venueName ? b.venueName : undefined} />
             <Row label="Date" value={prettyDate(b.date) || '—'} />
             {timeLabel && <Row label="Time" value={timeLabel} sub={bookingDuration(b) || undefined} />}
@@ -126,13 +132,13 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
             {b.paymentMethod && <Row label="Payment" value={paymentLabel(b.paymentMethod)} />}
             {booked && <Row label="Booked on" value={booked} />}
             {b.status === 'cancelled' && b.cancellationReason && <Row label="Cancelled" value={b.cancellationReason} />}
-            <div className="flex items-center justify-between px-4 py-4 bg-[var(--ink)] text-white">
-              <div className="font-heading font-semibold text-[15px]">Total</div>
-              <div className="font-heading font-bold text-[22px] tabular-nums">{money(b.amount)}</div>
+            <div className="obook-total">
+              <div className="obook-total-label">Total</div>
+              <div className="obook-total-val tabular-nums">{money(b.amount)}</div>
             </div>
           </div>
 
-          {error && <div className="t-sm text-[var(--coral)] font-bold px-1">{error}</div>}
+          {error && <div className="obook-error">{error}</div>}
         </div>
       )}
     </BottomSheet>

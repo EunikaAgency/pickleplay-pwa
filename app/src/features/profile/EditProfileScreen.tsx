@@ -21,6 +21,9 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Header is flat at the top; its hairline + shadow only appear once content
+  // scrolls underneath it (standard app-bar behaviour).
+  const [scrolled, setScrolled] = useState(false);
 
   // Photo change: pick a file → crop to a circle (Croppie) → upload → PATCH /me.
   const fileRef = useRef<HTMLInputElement>(null);
@@ -96,10 +99,19 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   };
 
   return (
-    <div className="scroll pb-[100px] pt-[calc(20px+env(safe-area-inset-top))]">
-      <ScreenHeader onBack={onBack} eyebrow="Profile" title="Edit your profile" />
+    <div className="scroll pb-[100px]" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 2)}>
+      {/* Sticky header: this screen has no bottom nav, so the header stays
+          pinned. It carries the safe-area inset so its background covers the
+          notch, and only gains a hairline + shadow once the page is scrolled. */}
+      <div
+        className={`sticky top-0 z-20 safe-top bg-[var(--surface)] transition-shadow duration-200 ${
+          scrolled ? 'border-b border-[var(--field-border)] shadow-[0_2px_6px_-2px_rgba(15,23,42,0.12)]' : ''
+        }`}
+      >
+        <ScreenHeader onBack={onBack} eyebrow="Profile" title="Edit your profile" />
+      </div>
 
-      <div className="flex flex-col items-center mb-[18px]">
+      <div className="flex flex-col items-center mt-6 mb-[18px]">
         <div className="avatar-xl w-24 h-24 overflow-hidden">
           {currentUser?.avatarUrl ? (
             <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover" />

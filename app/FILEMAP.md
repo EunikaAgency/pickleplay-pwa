@@ -51,9 +51,9 @@ src/
                        #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic),
                        #   DesignSwitch (floating New·Classic·v2.1 toggle), v2/HomeScreenV2
     # NOTE: each player slice has a v2/ folder with its "Pickleballers Mockup v2.1"
-    #   redesign screen (venues/v2, games/v2 incl. CreateGameV2, clubs/v2 incl.
-    #   CreateClubV2, profile/v2 incl. SettingsScreenV2). Active when the design
-    #   switch = v2.1. See the
+    #   redesign screen (venues/v2, games/v2 incl. CreateGameV2 + CreateChoiceSheet
+    #   "Game On" join-vs-host chooser, clubs/v2 incl. CreateClubV2, profile/v2 incl.
+    #   SettingsScreenV2). Active when the design switch = v2.1. See the
     #   "Design switch" note below + shared/components/layout/V2Chrome + shared/styles/v2.css.
     games/             # Games (player browse/join — owners get owner/OwnerGames instead via App.tsx),
                        #   GameDetails, CreateGame (venue-first: pick a priced court → date +
@@ -293,8 +293,16 @@ src/
   `HomeScreenRefined` vs `HomeScreen` for Home only). **v2.1** swaps the whole
   player side to the "Pickleballers Mockup v2.1" redesign: `features/*/v2/*Screen V2`
   (Home/Nearby/Games/Clubs/Profile/Settings + `CreateGameV2`/`CreateClubV2`, all wired to the
-  same live API + formatters as the v1 screens; create-game keeps the real
-  book→pay→create flow). The v2 screens share chrome from
+  same live API + formatters as the v1 screens). In v2.1 the **"Game On"** create
+  action opens `games/v2/CreateChoiceSheet` (an app-level BottomSheet, `App.tsx`):
+  **Join** → Games browse; **Host a lobby** → pick one of your hostable bookings
+  (`listBookings` minus already-hosted/cancelled/past) or, with none, go to
+  **Nearby** (`intent:'lobby'` → "select a court" banner + a book→create-lobby
+  hand-off via `court-details`/`book-court`). `CreateGameV2` then hosts a lobby on
+  that **existing booking** — it loads the reservation (`getBooking`), locks
+  venue/date/time, and only `createGame({ bookingId })` (no inline book/pay; that
+  happened up-front in the Book flow). New/Classic keep the v1 book→pay→create
+  `CreateGameScreen`. The v2 screens share chrome from
   `shared/components/layout/V2Chrome.tsx` (`V2Shell`/`V2TopNav`/`V2TabBar`/`V2Fab`)
   and styling from `shared/styles/v2.css` — every rule scoped under `.pb-v2.v2-<screen>`
   (auto-ported from the mockup) so v2 fonts/tokens never leak into New/Classic. While

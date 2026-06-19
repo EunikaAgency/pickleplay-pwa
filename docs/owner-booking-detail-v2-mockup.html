@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Booking detail — v2.1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Grandstander:wght@500;600;700;800;900&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#cfd6e6;font-family:'Lexend',sans-serif;display:flex;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+  .sheet{width:412px;background:#F3F5FA;border-radius:24px 24px 0 0;overflow:hidden;box-shadow:0 24px 70px rgba(26,33,56,.35)}
+  .handle{width:40px;height:5px;border-radius:9999px;background:#CBD5E1;margin:10px auto 4px}
+  .sheet-head{display:flex;align-items:flex-start;justify-content:space-between;padding:8px 20px 14px;border-bottom:1px solid #E2EAF2;background:#fff}
+  .sheet-head h2{font-family:'Grandstander',cursive;font-weight:800;font-size:20px;color:#1A2138;margin:0}
+  .sheet-head .sub{font-size:13px;color:#64748B;margin-top:2px}
+  .close{width:32px;height:32px;border-radius:50%;border:none;background:#EEF1F8;color:#64748B;font-size:16px;cursor:pointer;flex-shrink:0}
+  .body{padding:16px 0}
+  .footer{padding:12px 20px 22px;border-top:1px solid #E2EAF2;background:#fff}
+
+  .obook{display:flex;flex-direction:column;gap:16px;padding:6px 18px 20px}
+  .obook-card{background:#fff;border:1px solid #E2EAF2;border-radius:16px;box-shadow:0 2px 8px rgba(26,33,56,.07)}
+  .obook-player{display:flex;align-items:center;gap:14px;padding:16px}
+  .av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#E1E8FF,#C7B8FF);flex-shrink:0}
+  .obook-eyebrow{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#94A3B8}
+  .obook-name{font-family:'Grandstander',cursive;font-weight:700;font-size:18px;line-height:1.15;color:#1A2138}
+  .obook-sub{font-size:13px;color:#64748B;margin-top:1px}
+  .obook-chip{margin-left:auto;flex-shrink:0;padding:5px 12px;border-radius:9999px;font-size:11px;font-weight:800;background:#CCFF33;color:#1A2138}
+  .obook-summary{overflow:hidden}
+  .obook-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid #EEF2F7}
+  .obook-summary .obook-row:last-of-type{border-bottom:none}
+  .obook-row-label{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#94A3B8;flex-shrink:0;padding-top:2px}
+  .obook-row-val{font-family:'Grandstander',cursive;font-weight:600;font-size:15px;color:#1A2138;text-align:right}
+  .obook-row-sub{font-size:11px;font-weight:600;color:#94A3B8;margin-top:2px}
+  .obook-total{display:flex;align-items:center;justify-content:space-between;padding:18px;background:#3355FF;color:#fff;position:relative}
+  .obook-total::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#CCFF33}
+  .obook-total-label{font-family:'Grandstander',cursive;font-weight:700;font-size:16px}
+  .obook-total-val{font-family:'Grandstander',cursive;font-weight:900;font-size:24px}
+  .obook-actions{display:flex;gap:10px}
+  .obook-btn{height:48px;border-radius:14px;font-family:'Grandstander',cursive;font-weight:800;font-size:15px;border:none;cursor:pointer}
+  .obook-btn-cancel{background:#EEF1FB;color:#64748B;flex:1}
+</style></head>
+<body>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-head">
+      <div><h2>Booking details</h2><div class="sub">The Dink Lab · Court 2</div></div>
+      <button class="close">✕</button>
+    </div>
+    <div class="body">
+      <div class="obook">
+        <div class="obook-card obook-player">
+          <div class="av"></div>
+          <div>
+            <div class="obook-eyebrow">Player</div>
+            <div class="obook-name">Kenneth Hernandez</div>
+            <div class="obook-sub">1 player</div>
+          </div>
+          <span class="obook-chip">Complete</span>
+        </div>
+        <div class="obook-card obook-summary">
+          <div class="obook-row"><div class="obook-row-label">Court</div><div style="text-align:right"><div class="obook-row-val">Court 2</div><div class="obook-row-sub">The Dink Lab</div></div></div>
+          <div class="obook-row"><div class="obook-row-label">Date</div><div class="obook-row-val">Fri, Jun 19</div></div>
+          <div class="obook-row"><div class="obook-row-label">Time</div><div style="text-align:right"><div class="obook-row-val">7:00 PM – 9:00 PM</div><div class="obook-row-sub">2 hr</div></div></div>
+          <div class="obook-row"><div class="obook-row-label">Rate</div><div style="text-align:right"><div class="obook-row-val">₱185/hr</div><div class="obook-row-sub">2 hr</div></div></div>
+          <div class="obook-row"><div class="obook-row-label">Payment</div><div class="obook-row-val">Test card</div></div>
+          <div class="obook-row"><div class="obook-row-label">Booked on</div><div class="obook-row-val">Mon, Jun 15, 2026</div></div>
+          <div class="obook-total"><div class="obook-total-label">Total</div><div class="obook-total-val">₱370</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="obook-actions"><button class="obook-btn obook-btn-cancel">Cancel booking</button></div>
+    </div>
+  </div>
+</body></html>

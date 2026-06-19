@@ -53,38 +53,138 @@ export const tabScreens = ['home', 'nearby', 'games', 'clubs', 'profile'] as con
 export type TabId = (typeof tabScreens)[number];
 
 /**
- * Map a URL path to a Screen for deep links — notification clicks open the PWA at
- * paths like `/games/<id>` or `/clubs/<slug>` (see the API's `linkUrl`s), and the
- * custom screen-stack nav needs to turn that path into the right screen on load.
- * Returns null for `/` or anything without a matching screen (→ default home).
+ * Build the canonical URL path for a screen — the inverse of
+ * `screenFromLocation`. Entity IDs go in the path (`/games/:id`); optional
+ * modifiers (intent, tab, status, …) ride in the query string. The app is
+ * URL-routed, so this is exactly what `navigate()` pushes to the History API.
  */
-export function screenFromPath(pathname: string): Screen | null {
-  const [head, tail] = pathname.replace(/^\/+|\/+$/g, '').split('/');
-  if (!head) return null;
-  const isObjectId = (s: string | undefined): s is string => !!s && /^[0-9a-fA-F]{24}$/.test(s);
-  // A game-chat message deep link is /games/<id>/chat — open the group chat.
-  const seg3 = pathname.replace(/^\/+|\/+$/g, '').split('/')[2];
-  switch (head) {
-    case 'games':
-      if (isObjectId(tail)) {
-        return seg3 === 'chat' ? { id: 'game-chat', params: { id: tail } } : { id: 'game-details', params: { id: tail } };
-      }
-      return { id: 'games' };
-    case 'clubs':
-      // Clubs link by slug or id — ClubDetails resolves either via getClub().
-      // Landing here from a link is an invite → flag it so the club page can
-      // greet the visitor with a "you're invited" prompt.
-      return tail ? { id: 'club-details', params: { id: tail, invited: true } } : { id: 'clubs' };
-    case 'venues':
+export function pathFromScreen(screen: Screen): string {
+  const q = (obj: Record<string, string | number | boolean | undefined>) => {
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(obj)) {
+      if (v !== undefined && v !== '' && v !== false) sp.set(k, String(v));
+    }
+    const s = sp.toString();
+    return s ? `?${s}` : '';
+  };
+  switch (screen.id) {
+    case 'home': return '/';
+    case 'landing': return '/welcome';
+    case 'login': return '/login';
+    case 'onboarding': return '/onboarding';
+    case 'nearby': return `/nearby${q({ intent: screen.params?.intent })}`;
+    case 'games': return '/games';
+    case 'clubs': return '/clubs';
+    case 'profile': return '/profile';
+    case 'game-details': return `/games/${screen.params.id}`;
+    case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent })}`;
+    case 'club-details': return `/clubs/${screen.params.id}${q({ invited: screen.params.invited })}`;
+    case 'create-game': return `/games/create${q({ bookingId: screen.params?.bookingId })}`;
+    case 'edit-game': return `/games/${screen.params.id}/edit`;
+    case 'my-games': return '/my-games';
+    case 'book-court': return `/book${q({ venueId: screen.params.venueId, date: screen.params.date, time: screen.params.time, hours: screen.params.hours, intent: screen.params.intent })}`;
+    case 'my-bookings': return '/my-bookings';
+    case 'payment-history': return '/payments';
+    case 'create-club': return '/clubs/create';
+    case 'edit-profile': return '/profile/edit';
+    case 'settings': return '/settings';
+    case 'search': return '/search';
+    case 'invite-players': return `/games/${screen.params.id}/invite`;
+    case 'notifications': return '/notifications';
+    case 'messages': return '/messages';
+    case 'chat': return `/messages/${screen.params.id}${q({ name: screen.params.name })}`;
+    case 'game-chat': return `/games/${screen.params.id}/chat${q({ name: screen.params.name })}`;
+    case 'owner-venues': return '/owner/venues';
+    case 'owner-venue': return `/owner/venues/${screen.params.id}${q({ tab: screen.params.tab })}`;
+    case 'owner-new-venue': return '/owner/venues/new';
+    case 'owner-bookings': return `/owner/bookings${q({ status: screen.params?.status })}`;
+    case 'owner-insights': return '/owner/insights';
+    case 'owner-notifications': return '/owner/notifications';
+    case 'organizer-hub': return '/organizer';
+    case 'organizer-tournaments': return '/organizer/tournaments';
+    case 'organizer-tournament-new': return '/organizer/tournaments/new';
+    case 'organizer-tournament': return `/organizer/tournaments/${screen.params.id}`;
+    case 'organizer-bracket': return `/organizer/tournaments/${screen.params.tournamentId}/bracket`;
+    case 'organizer-open-play': return '/organizer/open-play';
+    case 'organizer-session': return `/organizer/sessions/${screen.params.id}`;
+    case 'organizer-rosters': return '/organizer/rosters';
+    case 'organizer-roster': return `/organizer/rosters/${screen.params.id}`;
+    case 'organizer-venue-requests': return `/organizer/venue-requests${q({ tournamentId: screen.params?.tournamentId })}`;
+  }
+  return '/';
+}
+
+/**
+ * Resolve the current URL to a Screen — the inverse of `pathFromScreen`, and the
+ * single source of truth for which screen is shown (the app renders off the URL).
+ * Drives first paint, refresh, deep links (notification/share URLs like
+ * `/games/<id>` or `/clubs/<slug>`), and browser back/forward. `/venues/:id` and
+ * `/nearby/:id` both open a court (deep-link aliases). Unknown paths → home.
+ */
+export function screenFromLocation(pathname: string, search = ''): Screen {
+  const sp = new URLSearchParams(search);
+  const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+  const [a, b, c, d] = segs;
+  const opt = (v: string | null) => (v == null || v === '' ? undefined : v);
+  const lobby = sp.get('intent') === 'lobby' ? ('lobby' as const) : undefined;
+  if (!a) return { id: 'home' };
+  switch (a) {
+    case 'home': return { id: 'home' };
+    case 'welcome': return { id: 'landing' };
+    case 'login': return { id: 'login' };
+    case 'onboarding': return { id: 'onboarding' };
     case 'nearby':
-      return tail ? { id: 'court-details', params: { id: tail } } : { id: 'nearby' };
-    case 'notifications':
-      return { id: 'notifications' };
-    case 'messages':
-      // A message notification deep-links to /messages/<conversationId>.
-      return isObjectId(tail) ? { id: 'chat', params: { id: tail } } : { id: 'messages' };
-    default:
-      return null;
+      if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
+      return { id: 'nearby', params: lobby ? { intent: lobby } : undefined };
+    case 'venues':
+      if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
+      return { id: 'nearby' };
+    case 'games':
+      if (!b) return { id: 'games' };
+      if (b === 'create') return { id: 'create-game', params: opt(sp.get('bookingId')) ? { bookingId: sp.get('bookingId')! } : undefined };
+      if (c === 'edit') return { id: 'edit-game', params: { id: b } };
+      if (c === 'chat') return { id: 'game-chat', params: { id: b, name: opt(sp.get('name')) } };
+      if (c === 'invite') return { id: 'invite-players', params: { id: b } };
+      return { id: 'game-details', params: { id: b } };
+    case 'clubs':
+      if (!b) return { id: 'clubs' };
+      if (b === 'create') return { id: 'create-club' };
+      // A bare `/clubs/<slug>` cold-load is treated as an invite arrival (see
+      // App.tsx) so the "you're invited" prompt still greets share-link visitors.
+      return { id: 'club-details', params: { id: b, invited: sp.get('invited') === '1' || undefined } };
+    case 'my-games': return { id: 'my-games' };
+    case 'book': return { id: 'book-court', params: { venueId: opt(sp.get('venueId')), date: opt(sp.get('date')), time: opt(sp.get('time')), hours: opt(sp.get('hours')) ? Number(sp.get('hours')) : undefined, intent: lobby } };
+    case 'my-bookings': return { id: 'my-bookings' };
+    case 'payments': return { id: 'payment-history' };
+    case 'profile': return b === 'edit' ? { id: 'edit-profile' } : { id: 'profile' };
+    case 'settings': return { id: 'settings' };
+    case 'search': return { id: 'search' };
+    case 'notifications': return { id: 'notifications' };
+    case 'messages': return b ? { id: 'chat', params: { id: b, name: opt(sp.get('name')) } } : { id: 'messages' };
+    case 'owner':
+      if (b === 'venues') {
+        if (!c) return { id: 'owner-venues' };
+        if (c === 'new') return { id: 'owner-new-venue' };
+        return { id: 'owner-venue', params: { id: c, tab: opt(sp.get('tab')) } };
+      }
+      if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : undefined };
+      if (b === 'insights') return { id: 'owner-insights' };
+      if (b === 'notifications') return { id: 'owner-notifications' };
+      return { id: 'home' };
+    case 'organizer':
+      if (!b) return { id: 'organizer-hub' };
+      if (b === 'tournaments') {
+        if (!c) return { id: 'organizer-tournaments' };
+        if (c === 'new') return { id: 'organizer-tournament-new' };
+        if (d === 'bracket') return { id: 'organizer-bracket', params: { tournamentId: c } };
+        return { id: 'organizer-tournament', params: { id: c } };
+      }
+      if (b === 'open-play') return { id: 'organizer-open-play' };
+      if (b === 'sessions' && c) return { id: 'organizer-session', params: { id: c } };
+      if (b === 'rosters') return c ? { id: 'organizer-roster', params: { id: c } } : { id: 'organizer-rosters' };
+      if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : undefined };
+      return { id: 'organizer-hub' };
+    default: return { id: 'home' };
   }
 }
 
@@ -121,6 +221,9 @@ type ScreenParams<S> = S extends { params?: infer P } ? P : never;
  */
 type NavigateRest<K extends ScreenId, S = Extract<Screen, { id: K }>> =
   'params' extends keyof S
+    // `{}` here is the standard "are all keys optional?" probe — an empty object
+    // satisfies `Pick<S,'params'>` only when `params` is itself optional.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     ? {} extends Pick<S, 'params' & keyof S>
       ? [params?: ScreenParams<S>, opts?: NavigateOptions]
       : [params: ScreenParams<S>, opts?: NavigateOptions]

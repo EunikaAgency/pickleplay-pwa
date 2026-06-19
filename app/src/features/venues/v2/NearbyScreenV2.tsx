@@ -411,13 +411,6 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             </div>
           )}
 
-          {/* Courts / Games toggle */}
-          <div className="tab-toggle">
-            <div className="toggle-track" role="tablist">
-              <button className="toggle-btn active" role="tab" aria-selected="true">Courts</button>
-              <button className="toggle-btn" role="tab" aria-selected="false" onClick={() => onNavigate('games')}>Games</button>
-            </div>
-          </div>
 
           <div className="section-head">
             <div>

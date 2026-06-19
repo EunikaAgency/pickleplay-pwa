@@ -1,25 +1,56 @@
-import { useState } from 'react';
-import { Avatar } from '../../shared/components/ui/Avatar';
-import { Icon } from '../../shared/components/ui/Icon';
+import { useState, type ReactNode } from 'react';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { Toast } from '../../shared/components/ui/Toast';
 import { Sparkline } from '../../shared/components/ui/Chart';
-import { OwnerStat } from './components/OwnerStat';
-import { VenueCard } from './components/VenueCard';
 import { useOwnerDashboard, type OwnerBookingRow } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { firstNameOf, userHasPermission } from '../../shared/lib/permissions';
 import { updateBookingStatus } from '../../shared/lib/api';
 import { money, prettyDate, to12h } from '../bookings/bookingDisplay';
 import { pctChange } from './utils/ownerMetrics';
+import { getInitials } from '../../shared/lib/initials';
+import { locationLine, venueImage } from '../../shared/lib/venueDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
+import type { ApiVenue } from '../../shared/lib/api';
+import type { Glance } from './hooks/useOwnerDashboard';
 
 interface OwnerHomeScreenProps {
   onNavigate: Navigate;
 }
 
-const HERO_GRADIENT = 'linear-gradient(135deg, #2455f4 0%, #5F7CFF 90%)';
+// ── Inline stroke icons (Lucide-style, matching the v2.1 player design) ──
+type IcoProps = { size?: number };
+const Bell = ({ size = 22 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+);
+const Chevron = ({ size = 14 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+);
+const TrendUp = ({ size = 16 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+);
+const Storefront = ({ size = 24 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path d="M19 21V11l-6-4" /><path d="M9 9h0M9 12h0M9 15h0" /></svg>
+);
+const CalendarIco = ({ size = 24 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+);
+const Plus = ({ size = 24 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+);
+const CardIco = ({ size = 18 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+);
+const PinIco = ({ size = 13 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+);
+const CourtIco = ({ size = 14 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /></svg>
+);
+
+const QA_ICONS: Record<string, ReactNode> = { storefront: <Storefront />, calendar: <CalendarIco />, plus: <Plus /> };
+const QA_TONES = ['ohome-qa-lime', 'ohome-qa-blue', 'ohome-qa-neutral'];
 
 // Inline pending-booking row with Confirm / Decline (owner home only).
 function PendingRow({ row, onDone, notify }: { row: OwnerBookingRow; onDone: (id: string) => void; notify: () => void }) {
@@ -35,24 +66,64 @@ function PendingRow({ row, onDone, notify }: { row: OwnerBookingRow; onDone: (id
     }
   };
   return (
-    <div className="bg-[var(--surface)] rounded-[18px] p-3.5 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)]">
-      <div className="flex items-start justify-between gap-3">
+    <div className="ohome-row">
+      <div className="ohome-row-top">
         <div className="min-w-0">
-          <div className="font-semibold text-[14px] text-[var(--ink)] truncate">{row.userName || 'Player'}</div>
-          <div className="t-sm truncate">{row.venueName} · {prettyDate(row.date)}{row.startTime ? ` · ${to12h(row.startTime)}` : ''}</div>
+          <div className="ohome-row-name truncate">{row.userName || 'Player'}</div>
+          <div className="ohome-row-sub truncate">{row.venueName} · {prettyDate(row.date)}{row.startTime ? ` · ${to12h(row.startTime)}` : ''}</div>
         </div>
-        <div className="font-semibold text-[14px] text-[var(--ink)] tabular-nums shrink-0">{money(row.amount)}</div>
+        <div className="ohome-row-amount tabular-nums">{money(row.amount)}</div>
       </div>
-      <div className="flex items-center gap-2 mt-3">
-        <button type="button" disabled={busy} onClick={() => act('confirmed')} className="h-9 px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60">Confirm</button>
-        <button type="button" disabled={busy} onClick={() => act('cancelled')} className="h-9 px-4 rounded-2xl bg-[var(--surface-2)] text-[var(--ink-2)] font-bold text-[13px] disabled:opacity-60">Decline</button>
+      <div className="ohome-row-actions">
+        <button type="button" disabled={busy} onClick={() => act('confirmed')} className="ohome-btn-confirm">Confirm</button>
+        <button type="button" disabled={busy} onClick={() => act('cancelled')} className="ohome-btn-decline">Decline</button>
       </div>
     </div>
   );
 }
 
-// Owner's Home tab — the owner dashboard rendered in the homepage design.
-// Players/guests never see this (HomeScreenSwitch branches on owner.access).
+// Inline v2.1 venue card (owner home only) — image/state badges, name/location,
+// court count, plus the optional business glance. Keeps OwnerVenuesScreen's
+// shared VenueCard untouched while the home dashboard wears the player design.
+function VenueGlanceCard({ venue, glance, onOpen }: { venue: ApiVenue; glance: Glance | null; onOpen: () => void }) {
+  const img = venueImage(venue);
+  const state = venue.state || 'unclaimed';
+  return (
+    <button type="button" onClick={onOpen} className="ohome-venue">
+      <div className="ohome-venue-media">
+        {img ? (
+          <img src={img} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        ) : (
+          <CourtIco size={40} />
+        )}
+        <div className="ohome-venue-badges">
+          <span className="ohome-badge ohome-badge-state">{state}</span>
+          {venue.isVerified && <span className="ohome-badge ohome-badge-verified">Verified</span>}
+        </div>
+      </div>
+      <div className="ohome-venue-body">
+        <div className="ohome-venue-name">{venue.displayName}</div>
+        <div className="ohome-venue-loc"><PinIco /> {locationLine(venue) || '—'}</div>
+        <div className="ohome-venue-foot">
+          <span className="ohome-venue-courts"><CourtIco /> {venue.courtCount ?? 0} courts</span>
+          <span className="ohome-venue-manage">Manage <Chevron /></span>
+        </div>
+        {glance && (
+          <div className="ohome-venue-glance">
+            <span className="ohome-muted"><b className="tabular-nums">{glance.todayCount}</b> today</span>
+            {glance.pendingCount > 0 && <span className="ohome-pending tabular-nums">{glance.pendingCount} pending</span>}
+            <span className="ohome-muted" style={{ marginLeft: 'auto' }}><b className="tabular-nums">{money(glance.todayRevenue)}</b> today</span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// Owner's Home tab — the owner dashboard rendered in the player's v2.1 design.
+// Content/logic is unchanged; only the visual language (fonts/colors/spacing/
+// cards) was swapped to match the player home. Players/guests never see this
+// (HomeScreenSwitch branches on owner.access).
 export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   const user = useAuthStore((s) => s.user);
   const firstName = firstNameOf(user);
@@ -73,37 +144,50 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
     ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];
 
-  const header = (
-    <div className="app-header">
-      <div className="flex items-center gap-3">
-        <button onClick={() => onNavigate('profile')} aria-label="Open profile">
-          <Avatar src={user?.avatarUrl} name={user?.displayName ?? 'Owner'} size={40} />
+  const topnav = (
+    <header className="ohome-topnav">
+      <div className="ohome-topnav-inner">
+        <span style={{ width: 40 }} aria-hidden="true" />
+        <button className="ohome-brand" onClick={() => onNavigate('owner-venues')} aria-label="My venues">Pickle<span>Ballers</span></button>
+        <button
+          onClick={() => onNavigate('owner-notifications')}
+          aria-label="Notifications"
+          className="ohome-iconbtn"
+        >
+          <Bell />
+          {canBookings && pendingCount > 0 && <span className="ohome-notif-dot" aria-hidden="true" />}
         </button>
-        <div>
-          <div className="font-heading font-extrabold text-[20px] tracking-[-0.01em] leading-tight text-[var(--primary)]">
-            {firstName ? `Hey ${firstName} 👋` : 'Hey there 👋'}
-          </div>
-          <div className="text-[13px] text-[var(--muted)] mt-0.5">Here's how your venues are doing</div>
-        </div>
       </div>
-      <button
-        onClick={() => onNavigate('owner-notifications')}
-        aria-label="Notifications"
-        className="relative w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
-      >
-        <Icon name="bell" size={18} />
-        {canBookings && pendingCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[var(--coral)] border-2 border-[var(--surface)]" aria-hidden="true" />
-        )}
-      </button>
-    </div>
+    </header>
+  );
+
+  const hero = (
+    <section className="ohome-hero">
+      <div className="ohome-hero-inner">
+        <div className="ohome-hero-text">
+          <h1>{firstName ? `Hey ${firstName} 👋` : 'Hey there 👋'}</h1>
+          <p>Here's how your venues are doing.</p>
+          {venues.length > 0 && (
+            <div className="ohome-live-chip">
+              <span className="ohome-live-dot" />
+              {venues.length} venue{venues.length === 1 ? '' : 's'}
+              {canBookings && statsReady ? ` · ${combined.todayBookings} booking${combined.todayBookings === 1 ? '' : 's'} today` : ''}
+            </div>
+          )}
+        </div>
+        <button className="ohome-mascot" onClick={() => onNavigate('profile')} aria-label="Open profile">
+          {user ? getInitials(user.displayName) : '👋'}
+        </button>
+      </div>
+    </section>
   );
 
   if (status === 'loading') {
     return (
-      <div className="scroll safe-top safe-bottom home-refined">
-        {header}
-        <div className="px-5 lg:px-0 mt-4 space-y-3">
+      <div className="pb-v2 v2-owner-home">
+        {topnav}
+        {hero}
+        <div className="ohome-container" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <LoadingSkeleton variant="block" count={1} />
           <LoadingSkeleton variant="card" count={3} />
         </div>
@@ -112,9 +196,10 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   }
   if (status === 'error') {
     return (
-      <div className="scroll safe-top safe-bottom home-refined">
-        {header}
-        <div className="px-5 lg:px-0 mt-4">
+      <div className="pb-v2 v2-owner-home">
+        {topnav}
+        {hero}
+        <div className="ohome-container" style={{ marginTop: 16 }}>
           <ErrorState title="Couldn't load your dashboard" message="We couldn't reach your venues. Tap to retry." onRetry={retry} />
         </div>
       </div>
@@ -122,145 +207,144 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   }
 
   return (
-    <div className="scroll safe-top safe-bottom home-refined">
-      {header}
+    <div className="pb-v2 v2-owner-home">
+      {topnav}
+      {hero}
 
-      <div className="px-5 lg:px-0 mt-4 space-y-6 lg:space-y-8">
-        {venues.length === 0 ? (
-          <div className="bg-[var(--surface)] rounded-[22px] p-6 text-center shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)]">
-            <div className="hd-2">No venues yet</div>
-            <div className="t-sm mt-1 mb-4">List your venue to start taking bookings and tracking revenue.</div>
-            <button onClick={() => onNavigate('owner-new-venue')} className="h-12 px-6 rounded-full bg-[var(--primary)] text-white font-heading font-semibold text-[15px]">Create a venue</button>
+      {venues.length === 0 ? (
+        <div className="ohome-container">
+          <div className="ohome-empty">
+            <h2>No venues yet</h2>
+            <p>List your venue to start taking bookings and tracking revenue.</p>
+            <button className="ohome-empty-btn" onClick={() => onNavigate('owner-new-venue')}>Create a venue</button>
           </div>
-        ) : (
-          <>
-            {/* Revenue hero */}
-            {canAnalytics && (
-              <button
-                onClick={() => onNavigate('owner-venues')}
-                className="relative overflow-hidden rounded-[28px] p-5 lg:p-7 min-h-[190px] w-full flex flex-col justify-between text-left text-white shadow-[var(--shadow-pop)] active:scale-[0.99] transition-transform"
-                style={{ background: HERO_GRADIENT }}
-              >
-                <div className="relative z-[2]">
-                  <div className="text-[12px] font-extrabold tracking-[0.08em] uppercase opacity-90">Revenue • This month</div>
-                  <div className="mt-2 flex items-end gap-2.5">
-                    <span className="font-heading text-[34px] font-extrabold leading-none tracking-[-0.01em]">{statsReady ? money(combined.month) : '—'}</span>
-                    {statsReady && (
-                      <span className="inline-flex items-center gap-0.5 text-[13px] font-extrabold pb-0.5 opacity-95">
-                        <Icon name={mom >= 0 ? 'trending_up' : 'trending_down'} size={15} />{mom >= 0 ? '+' : ''}{mom}%
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="relative z-[2] mt-5">
-                  {combinedRevenueDaily.length > 1 && <Sparkline points={combinedRevenueDaily} color="rgba(255,255,255,0.92)" />}
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="flex flex-col gap-0.5 text-[12px] opacity-90 min-w-0">
-                      <span className="font-extrabold">{statsReady ? monthBookings : 0} booking{monthBookings === 1 ? '' : 's'} this month</span>
-                      <span>{venues.length} venue{venues.length === 1 ? '' : 's'} · {structural.courts} court{structural.courts === 1 ? '' : 's'} · {statsReady ? money(combined.week) : '₱0'} this week</span>
-                    </div>
-                    <span className="h-10 px-5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-extrabold text-[clamp(12px,3.5vw,14px)] whitespace-nowrap shrink-0 inline-flex items-center">Manage my venues</span>
-                  </div>
-                </div>
-              </button>
-            )}
-
-            {/* Quick actions */}
-            <div className="flex justify-start gap-3 lg:gap-5 overflow-x-auto scrollbar-none pb-1">
-              {quick.map((q) => (
-                <button key={q.label} onClick={q.onPress} className="flex-shrink-0 flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-[var(--shadow-card)] active:scale-90 transition-transform bg-[var(--surface)] text-[var(--primary)] border-[0.5px] border-[var(--hairline)]">
-                    <Icon name={q.icon} size={26} />
-                  </div>
-                  <span className="w-16 text-center text-[10px] font-extrabold tracking-[0.06em] uppercase leading-tight text-[var(--ink-2)]">{q.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* My revenue (combined KPIs) */}
-            {canAnalytics && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="hd-2">My revenue</div>
-                  {/* Light "floating" pill — the Insights entry point (replaces the
-                      old Quick-actions Insights button). */}
-                  <button
-                    onClick={() => onNavigate('owner-insights')}
-                    aria-label="See insights"
-                    className="inline-flex items-center gap-1 h-8 px-3 rounded-full bg-[var(--surface)] text-[var(--primary)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] text-[12px] font-extrabold active:scale-95 transition-transform"
-                  >
-                    Insights <Icon name="forward" size={14} />
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <OwnerStat label="Revenue this month" value={statsReady ? money(combined.month) : '—'} icon="payments" tone="primary" onClick={() => onNavigate('owner-insights')} />
-                  <OwnerStat label="Revenue this week" value={statsReady ? money(combined.week) : '—'} icon="trending_up" tone="lime" onClick={() => onNavigate('owner-insights')} />
-                  <OwnerStat label="Bookings today" value={statsReady ? combined.todayBookings : '—'} icon="calendar" tone="neutral" onClick={() => { if (canBookings) onNavigate('owner-bookings', {}); else onNavigate('owner-insights'); }} />
-                  <OwnerStat label="Awaiting approval" value={statsReady ? pendingCount : '—'} icon="bell" tone="coral" onClick={() => { if (canBookings) onNavigate('owner-bookings', { status: 'pending_approval' }); else onNavigate('owner-insights'); }} />
-                </div>
-              </section>
-            )}
-
-            {/* Awaiting approval */}
-            {canBookings && pending.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="hd-2">Awaiting approval</div>
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-[var(--coral)]/15 text-[var(--coral)]">{pending.length}</span>
-                </div>
-                <div className="space-y-2.5">
-                  {pending.slice(0, 5).map((b) => (
-                    <PendingRow key={b.id} row={b} onDone={removeBooking} notify={notify} />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Upcoming bookings */}
-            {canBookings && upcoming.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="hd-2">Bookings</div>
-                  <button className="text-[var(--primary)] font-bold text-[13px]" onClick={() => onNavigate('owner-bookings', {})}>View all</button>
-                </div>
-                {/* Up to 10 bookings in a fixed scroll box ~4 cards tall — keeps
-                    the section compact while letting the rest scroll within.
-                    #1 peek: the box height lands mid-card so the next row peeks.
-                    #2 fade: a bottom gradient (only when overflowing) hints scroll. */}
-                <div className="relative">
-                  <div className="space-y-2.5 max-h-[300px] overflow-y-auto scrollbar-none">
-                    {upcoming.slice(0, 10).map((b) => (
-                      <div key={b.id} className="bg-[var(--surface)] rounded-[18px] p-3.5 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="font-semibold text-[14px] text-[var(--ink)] truncate">{b.userName || 'Player'}</div>
-                          <div className="t-sm truncate">{b.venueName} · {prettyDate(b.date)}{b.startTime ? ` · ${to12h(b.startTime)}` : ''}</div>
-                        </div>
-                        <div className="font-semibold text-[14px] text-[var(--ink)] tabular-nums shrink-0">{money(b.amount)}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {upcoming.length > 4 && (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[var(--bg)] to-transparent" />
-                  )}
-                </div>
-              </section>
-            )}
-
-            {/* Your venues */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="hd-2">My venues</div>
-                {venues.length > 4 && <button className="text-[var(--primary)] font-bold text-[13px]" onClick={() => onNavigate('owner-venues')}>View all</button>}
+        </div>
+      ) : (
+        <div className="ohome-container">
+          {/* Revenue hero → v2.1 blue stats-banner */}
+          {canAnalytics && (
+            <button className="ohome-revenue" onClick={() => onNavigate('owner-venues')}>
+              <div className="ohome-rb-eyebrow">Revenue • This month</div>
+              <div className="ohome-rb-amount-row">
+                <span className="ohome-rb-amount">{statsReady ? money(combined.month) : '—'}</span>
+                {statsReady && (
+                  <span className="ohome-rb-delta">
+                    <TrendUp size={14} />{mom >= 0 ? '+' : ''}{mom}%
+                  </span>
+                )}
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                {venues.slice(0, 4).map((v) => (
-                  <VenueCard key={v.id || v.slug} venue={v} glance={glanceFor(v)} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
+              {combinedRevenueDaily.length > 1 && (
+                <div className="ohome-rb-spark"><Sparkline points={combinedRevenueDaily} color="rgba(255,255,255,0.92)" /></div>
+              )}
+              <div className="ohome-rb-foot">
+                <div className="ohome-rb-meta">
+                  <span><b>{statsReady ? monthBookings : 0} booking{monthBookings === 1 ? '' : 's'}</b> this month</span>
+                  <span>{venues.length} venue{venues.length === 1 ? '' : 's'} · {structural.courts} court{structural.courts === 1 ? '' : 's'} · <b>{statsReady ? money(combined.week) : '₱0'}</b> this week</span>
+                </div>
+                <span className="ohome-rb-btn">Manage my venues</span>
+              </div>
+            </button>
+          )}
+
+          {/* Quick actions */}
+          <section className="ohome-qa" aria-label="Quick actions">
+            {quick.map((q, i) => (
+              <button key={q.label} onClick={q.onPress} className={`ohome-qa-card ${QA_TONES[i] ?? 'ohome-qa-neutral'}`}>
+                <span className="ohome-qa-icon">{QA_ICONS[q.icon]}</span>
+                <span className="ohome-qa-label">{q.label}</span>
+              </button>
+            ))}
+          </section>
+
+          {/* My revenue (combined KPIs) */}
+          {canAnalytics && (
+            <section className="ohome-section">
+              <div className="ohome-section-head">
+                <h2>My revenue</h2>
+                <button className="ohome-pill-link" onClick={() => onNavigate('owner-insights')} aria-label="See insights">
+                  Insights <Chevron />
+                </button>
+              </div>
+              <div className="ohome-kpi-grid">
+                <button className="ohome-kpi" onClick={() => onNavigate('owner-insights')}>
+                  <span className="ohome-kpi-icon ohome-kpi-ic-primary"><CardIco /></span>
+                  <span className="ohome-kpi-value">{statsReady ? money(combined.month) : '—'}</span>
+                  <span className="ohome-kpi-label">Revenue this month</span>
+                </button>
+                <button className="ohome-kpi" onClick={() => onNavigate('owner-insights')}>
+                  <span className="ohome-kpi-icon ohome-kpi-ic-lime"><TrendUp size={18} /></span>
+                  <span className="ohome-kpi-value">{statsReady ? money(combined.week) : '—'}</span>
+                  <span className="ohome-kpi-label">Revenue this week</span>
+                </button>
+                <button className="ohome-kpi" onClick={() => { if (canBookings) onNavigate('owner-bookings', {}); else onNavigate('owner-insights'); }}>
+                  <span className="ohome-kpi-icon ohome-kpi-ic-neutral"><CalendarIco size={18} /></span>
+                  <span className="ohome-kpi-value">{statsReady ? combined.todayBookings : '—'}</span>
+                  <span className="ohome-kpi-label">Bookings today</span>
+                </button>
+                <button className="ohome-kpi" onClick={() => { if (canBookings) onNavigate('owner-bookings', { status: 'pending_approval' }); else onNavigate('owner-insights'); }}>
+                  <span className="ohome-kpi-icon ohome-kpi-ic-coral"><Bell size={18} /></span>
+                  <span className="ohome-kpi-value">{statsReady ? pendingCount : '—'}</span>
+                  <span className="ohome-kpi-label">Awaiting approval</span>
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* Awaiting approval */}
+          {canBookings && pending.length > 0 && (
+            <section className="ohome-section">
+              <div className="ohome-section-head">
+                <h2>Awaiting approval</h2>
+                <span className="ohome-count-pill">{pending.length}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pending.slice(0, 5).map((b) => (
+                  <PendingRow key={b.id} row={b} onDone={removeBooking} notify={notify} />
                 ))}
               </div>
             </section>
-          </>
-        )}
-      </div>
+          )}
+
+          {/* Upcoming bookings */}
+          {canBookings && upcoming.length > 0 && (
+            <section className="ohome-section">
+              <div className="ohome-section-head">
+                <h2>Bookings</h2>
+                <button className="ohome-see-all" onClick={() => onNavigate('owner-bookings', {})}>View all</button>
+              </div>
+              <div className="ohome-scrollbox">
+                <div className="ohome-scrollbox-inner">
+                  {upcoming.slice(0, 10).map((b) => (
+                    <div key={b.id} className="ohome-row">
+                      <div className="ohome-row-top">
+                        <div className="min-w-0">
+                          <div className="ohome-row-name truncate">{b.userName || 'Player'}</div>
+                          <div className="ohome-row-sub truncate">{b.venueName} · {prettyDate(b.date)}{b.startTime ? ` · ${to12h(b.startTime)}` : ''}</div>
+                        </div>
+                        <div className="ohome-row-amount tabular-nums">{money(b.amount)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {upcoming.length > 4 && <div className="ohome-scrollfade" />}
+              </div>
+            </section>
+          )}
+
+          {/* Your venues */}
+          <section className="ohome-section">
+            <div className="ohome-section-head">
+              <h2>My venues</h2>
+              {venues.length > 4 && <button className="ohome-see-all" onClick={() => onNavigate('owner-venues')}>View all</button>}
+            </div>
+            <div>
+              {venues.slice(0, 4).map((v) => (
+                <VenueGlanceCard key={v.id || v.slug} venue={v} glance={glanceFor(v)} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       <Toast message="Booking updated" show={toast} />
     </div>

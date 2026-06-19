@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { apiImageUrl, listGames, type ApiGame } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
@@ -15,6 +15,12 @@ function gameImage(g: ApiGame): string {
 //  - joined   : lobbies the user has joined  (sort: soonest-event)
 type Tab = 'discover' | 'mine' | 'joined';
 type MineSort = 'created' | 'event';
+
+const MINE_SORT_LABELS: Record<MineSort, string> = {
+  event: 'Soonest event',
+  created: 'Recently created',
+};
+const MINE_SORT_OPTIONS: MineSort[] = ['event', 'created'];
 
 function typeBadge(g: ApiGame): { cls: string; label: string } {
   const t = (g.gameType || '').toLowerCase();
@@ -92,10 +98,29 @@ export function GamesScreenV2(chrome: V2ScreenChrome) {
   const [loadingMine, setLoadingMine] = useState(isLoggedIn);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [mineSort, setMineSort] = useState<MineSort>('event');
+  // Custom sort dropdown (replaces a native <select>, whose popup rendered
+  // outside the device-preview frame). Mirrors the v2-nearby sort.
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
   // User location → Discover ranks the nearest lobby first.
   const [userLoc, setUserLoc] = useState<LatLng | null>(null);
   const [locStatus, setLocStatus] = useState<'locating' | 'on' | 'denied'>('locating');
   const days = useMemo(() => nextDays(7), []);
+
+  // Close the sort menu on an outside click or Escape.
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSortOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [sortOpen]);
 
   // Open, joinable lobbies for Discover (the default tab, so fetch on mount).
   useEffect(() => {
@@ -258,13 +283,40 @@ export function GamesScreenV2(chrome: V2ScreenChrome) {
             {tab === 'discover' ? (
               <button className="games-locate" onClick={locate}>📍 Turn on location for nearest games</button>
             ) : (
-              <label className="games-sort-label">
-                Sort:
-                <select className="games-sort" value={mineSort} onChange={(e) => setMineSort(e.target.value as MineSort)} aria-label="Sort my games">
-                  <option value="event">Soonest event</option>
-                  <option value="created">Recently created</option>
-                </select>
-              </label>
+              <div className="games-sort-control-row" ref={sortRef}>
+                <span className="games-sort-label">Sort:</span>
+                <div className="games-sort-control">
+                  <button
+                    type="button"
+                    className="games-sort-btn"
+                    aria-haspopup="listbox"
+                    aria-expanded={sortOpen}
+                    aria-label={`Sort my games: ${MINE_SORT_LABELS[mineSort]}`}
+                    onClick={() => setSortOpen((o) => !o)}
+                  >
+                    {MINE_SORT_LABELS[mineSort]}
+                    <svg className="games-sort-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+                  </button>
+                  {sortOpen && (
+                    <ul className="games-sort-menu" role="listbox" aria-label="Sort my games">
+                      {MINE_SORT_OPTIONS.map((key) => (
+                        <li key={key} role="option" aria-selected={mineSort === key}>
+                          <button
+                            type="button"
+                            className={`games-sort-menu-item${mineSort === key ? ' active' : ''}`}
+                            onClick={() => { setMineSort(key); setSortOpen(false); }}
+                          >
+                            {MINE_SORT_LABELS[key]}
+                            {mineSort === key && (
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

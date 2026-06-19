@@ -40,10 +40,11 @@ export function CreateGameV2(props: Props) {
   const [doneId, setDoneId] = useState<string | null>(null);
 
   // Load the booking this lobby is hosted on (venue/date/time come from it).
+  // `bookingId` is a stable route param, so this runs once; the initial state
+  // (loading = !!bookingId) means the effect body never sets state synchronously.
   useEffect(() => {
-    if (!bookingId) { setLoading(false); return; }
+    if (!bookingId) return;
     let alive = true;
-    setLoading(true); setLoadError(false);
     getBooking(bookingId)
       .then((b) => { if (alive) setBooking(b); })
       .catch(() => { if (alive) setLoadError(true); })

@@ -236,7 +236,10 @@ export function toAppUser(api: ApiUser): AppUser {
     id: String(api.id),
     displayName: api.displayName || api.email,
     firstName: api.firstName ?? undefined,
-    avatarUrl: api.avatarUrl ?? undefined,
+    // Stored as a relative '/uploads/<file>' path (served by the API host, not
+    // the PWA origin), so resolve it to an absolute URL like venue images do —
+    // otherwise a freshly cropped avatar 404s against the app origin.
+    avatarUrl: apiImageUrl(api.avatarUrl) || undefined,
     skillLevel: typeof api.skillLevel === 'number' ? api.skillLevel : undefined,
     skillLevelLabel: api.skillLevelLabel ?? undefined,
     bio: api.bio ?? undefined,

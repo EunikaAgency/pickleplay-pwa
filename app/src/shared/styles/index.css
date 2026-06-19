@@ -31,6 +31,7 @@
   --ink-2:          #2b3340;
   --muted:          #6b7280;
   --hairline:       rgba(15, 23, 42, 0.08);
+  --field-border:   #cbd2dc; /* clearly-visible input outline (vs the faint hairline) */
 
   /* Type scale */
   --font-heading: 'Fredoka', system-ui, sans-serif;
@@ -59,6 +60,7 @@
   --ink-2:     #d1d5db;
   --muted:     #9ca3af;
   --hairline:  rgba(255,255,255,0.08);
+  --field-border: rgba(255,255,255,0.16);
   --primary-tint: rgba(184, 195, 255, 0.14);
   --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px -8px rgba(0,0,0,0.5);
   --shadow-pop:  0 8px 30px -6px rgba(0,0,0,0.55);
@@ -562,6 +564,44 @@
 .tabbar .tab:active { transform: scale(0.94); }
 .tabbar .tab.active { color: var(--primary); }
 .tabbar .tab .label { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+
+/* Owner variant — the v2.1 player tab-bar look (flat, full-width, lime active
+   dot). Owners use this skin so their bar matches the redesigned owner screens.
+   Colours are the v2.1 palette (blue #3355FF / lime-active #A3CC00), kept literal
+   to mirror shared/styles/v2.css. */
+.tabbar.tabbar--owner {
+  left: 0; right: 0; bottom: 0;
+  height: calc(64px + env(safe-area-inset-bottom));
+  padding: 0 0 env(safe-area-inset-bottom);
+  border-radius: 0;
+  max-width: none;
+  margin: 0;
+  background: #FFFFFF;
+  border: none;
+  border-top: 1px solid #E2EAF2;
+  box-shadow: none;
+  align-items: stretch;
+  justify-content: space-between;
+}
+[data-theme="dark"] .tabbar.tabbar--owner { background: #FFFFFF; border-top-color: #E2EAF2; }
+.tabbar.tabbar--owner .tab {
+  height: 100%;
+  border-radius: 0;
+  gap: 3px;
+  color: #94A3B8;
+  position: relative;
+  font-family: 'Lexend', sans-serif;
+}
+.tabbar.tabbar--owner .tab.active { color: #3355FF; }
+.tabbar.tabbar--owner .tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: #A3CC00;
+}
+.tabbar.tabbar--owner .tab .label { font-weight: 500; letter-spacing: 0; color: inherit; }
 .tabbar .fab {
   width: 56px; height: 56px;
   border-radius: 50%;
@@ -1145,7 +1185,7 @@
 .field .control {
   background: var(--surface);
   border-radius: 14px;
-  border: 0.5px solid var(--hairline);
+  border: 1px solid var(--field-border);
   padding: 14px 16px;
   font-size: 16px; /* >= 16px avoids iOS focus auto-zoom */
   width: 100%;
@@ -1697,3 +1737,45 @@
 /* The design uses heavier heading weights than Fredoka's 600. */
 .home-refined .hd-2 { font-weight: 800; }
 .home-refined .hd-3 { font-weight: 700; }
+
+/* ============================================================================
+   .obook — v2.1 skin for the owner Booking-details sheet content
+   (OwnerBookingDetailSheet). Lives outside `.pb-v2` (which is position:absolute)
+   so it can sit inside a BottomSheet. Literal v2.1 palette (blue #3355FF / lime
+   #CCFF33 / ink #1A2138), Grandstander numerics — matches the owner redesign.
+   ========================================================================= */
+/* Side padding here (the shared .sheet-body has none) + room above the footer
+   so the card stack breathes instead of running edge-to-edge. */
+.obook { display: flex; flex-direction: column; gap: 16px; padding: 6px 18px 20px; }
+.obook-card { background: #FFFFFF; border: 1px solid #E2EAF2; border-radius: 16px; box-shadow: 0 2px 8px rgba(26,33,56,0.07); }
+.obook-player { display: flex; align-items: center; gap: 14px; padding: 16px; }
+.obook-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #94A3B8; }
+.obook-name { font-family: 'Grandstander', cursive; font-weight: 700; font-size: 18px; line-height: 1.15; color: #1A2138; }
+.obook-sub { font-size: 13px; color: #64748B; margin-top: 1px; }
+.obook-chip { margin-left: auto; flex-shrink: 0; padding: 5px 12px; border-radius: 9999px; font-size: 11px; font-weight: 800; }
+.obook-summary { overflow: hidden; }
+.obook-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid #EEF2F7; }
+.obook-row-label { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: #94A3B8; flex-shrink: 0; padding-top: 2px; }
+.obook-row-val { font-family: 'Grandstander', cursive; font-weight: 600; font-size: 15px; color: #1A2138; text-align: right; min-width: 0; word-break: break-word; }
+.obook-row-sub { font-size: 11px; font-weight: 600; color: #94A3B8; margin-top: 2px; }
+.obook-total { display: flex; align-items: center; justify-content: space-between; padding: 18px; background: #3355FF; color: #fff; position: relative; }
+.obook-total::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #CCFF33; }
+.obook-total-label { font-family: 'Grandstander', cursive; font-weight: 700; font-size: 16px; }
+.obook-total-val { font-family: 'Grandstander', cursive; font-weight: 900; font-size: 24px; }
+.obook-error { font-size: 13px; font-weight: 700; color: #FF5A6E; padding: 0 4px; }
+.obook-actions { display: flex; align-items: center; gap: 10px; }
+.obook-btn { height: 48px; border-radius: 14px; font-family: 'Grandstander', cursive; font-weight: 800; font-size: 15px; transition: transform 150ms cubic-bezier(0.34,1.56,0.64,1), background 150ms; }
+.obook-btn:active { transform: scale(0.98); }
+.obook-btn:disabled { opacity: 0.6; }
+.obook-btn-confirm { flex: 1; background: #CCFF33; color: #1A2138; }
+.obook-btn-confirm:hover { background: #B8E600; }
+.obook-btn-cancel { background: #EEF1FB; color: #64748B; padding: 0 20px; }
+.obook-btn-cancel.full { flex: 1; }
+.obook-btn-cancel:hover { background: #E1E8FF; }
+.obook-summary .obook-row:last-of-type { border-bottom: none; }
+
+/* Booking-detail sheet: size the body to its content so it isn't a forced
+   scroll container when the breakdown fits — it only scrolls when content
+   genuinely exceeds the sheet's max-height (then flex-shrink + min-height:0
+   let it become scrollable). Overrides the global `.sheet-body { flex: 1 }`. */
+.obook-sheet .sheet-body { flex: 0 1 auto; min-height: 0; }

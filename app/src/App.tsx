@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
@@ -57,7 +57,7 @@ import { useNotificationPolling } from './shared/hooks/useNotificationPolling';
 import { useRealtimeStream } from './shared/hooks/useRealtimeStream';
 import { usePlayerDesign } from './shared/lib/playerDesign';
 import { useTheme } from './shared/hooks/useTheme';
-import { tabScreens, screenFromPath, deepLinkParent, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
+import { tabScreens, pathFromScreen, screenFromLocation, deepLinkParent, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
 // v2.1 redesign ("Pickleballers Mockup v2.1") — player-side screens + the design toggle.
 import { DesignSwitch } from './features/home/DesignSwitch';
 import { HomeScreenV2 } from './features/home/v2/HomeScreenV2';
@@ -139,20 +139,62 @@ export default function App() {
   );
 }
 
-// The screen-stack nav lives in memory, so a page reload would otherwise drop
-// you back on home. Persist the current screen/history to sessionStorage so a
-// refresh restores where you were (survives reload, not tab close). A deep-link
-// path still wins on first load; this only fills in when the path is '/'.
-const NAV_KEY = 'pb-nav';
+// ── URL routing ─────────────────────────────────────────────────────────────
+// The PWA is fully URL-routed: every screen has its own path (see
+// `pathFromScreen`/`screenFromLocation` in navigation.ts), so the browser
+// back/forward buttons, refresh, deep links and shareable URLs all just work.
+// We drive the History API directly (no router library) and surface the current
+// location through `useSyncExternalStore`, so React re-renders on every push,
+// replace, and popstate. The rendered screen is derived purely from the URL —
+// there is no in-memory screen/history state anymore.
+const NAV_EVENT = 'pb:navigate';
 // Once-per-session flag so the launch splash doesn't replay on every reload.
 const SPLASH_KEY = 'pb-splash-seen';
-function loadNav(): { screen: Screen; history: Screen[]; activeTab: TabId } | null {
-  try {
-    const raw = sessionStorage.getItem(NAV_KEY);
-    return raw ? (JSON.parse(raw) as { screen: Screen; history: Screen[]; activeTab: TabId }) : null;
-  } catch {
-    return null;
-  }
+
+const locationKey = () => window.location.pathname + window.location.search;
+
+function subscribeLocation(onChange: () => void) {
+  window.addEventListener('popstate', onChange);
+  window.addEventListener(NAV_EVENT, onChange);
+  return () => {
+    window.removeEventListener('popstate', onChange);
+    window.removeEventListener(NAV_EVENT, onChange);
+  };
+}
+
+// In-app history depth, kept on `history.state` so it survives reload and is
+// restored by the browser on back/forward. Lets `goBack` tell a deep-link
+// cold-start (idx 0 → back should go to a sane parent, not off-site) from a
+// screen we pushed (idx > 0 → just pop).
+function historyIndex(): number {
+  const s = window.history.state as { pbIdx?: number } | null;
+  return typeof s?.pbIdx === 'number' ? s.pbIdx : 0;
+}
+
+// Push (or replace) a path and notify subscribers. Navigating to the path we're
+// already on is a no-op so re-tapping a tab doesn't pile up history entries.
+function routerNavigate(to: string, opts?: { replace?: boolean }) {
+  if (to === locationKey()) return;
+  const idx = historyIndex();
+  if (opts?.replace) window.history.replaceState({ pbIdx: idx }, '', to);
+  else window.history.pushState({ pbIdx: idx + 1 }, '', to);
+  window.dispatchEvent(new Event(NAV_EVENT));
+}
+
+// Subscribe to the URL and resolve it to the active Screen.
+function useCurrentScreen(): Screen {
+  const key = useSyncExternalStore(subscribeLocation, locationKey, locationKey);
+  return useMemo(() => screenFromLocation(window.location.pathname, window.location.search), [key]);
+}
+
+// Which tab to highlight for a given screen — tab screens map to themselves;
+// detail/flow screens map to the tab they belong under (purely cosmetic).
+function tabForScreen(id: ScreenId): TabId {
+  if (isTabScreen(id)) return id;
+  if (id === 'court-details' || id === 'book-court') return 'nearby';
+  if (id === 'club-details' || id === 'create-club') return 'clubs';
+  if (id === 'game-details' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
+  return 'profile';
 }
 
 function AppInner() {
@@ -172,19 +214,12 @@ function AppInner() {
   // `/games/<id>`; resolve it to the initial screen, else cold-start on home so
   // guests can browse. Detail-screen deep links seed a Back target so the back
   // arrow returns somewhere sane instead of dead-ending.
-  const [screen, setScreen] = useState<Screen>(
-    () => screenFromPath(window.location.pathname) ?? loadNav()?.screen ?? { id: 'home' },
-  );
-  const [activeTab, setActiveTab] = useState<TabId>(() => {
-    const s = screenFromPath(window.location.pathname);
-    if (s) return isTabScreen(s.id) ? s.id : 'home';
-    return loadNav()?.activeTab ?? 'home';
-  });
-  const [history, setHistory] = useState<Screen[]>(() => {
-    const s = screenFromPath(window.location.pathname);
-    if (s) return !isTabScreen(s.id) ? [deepLinkParent(s.id)] : [];
-    return loadNav()?.history ?? [];
-  });
+  // The active screen is derived from the URL (single source of truth); the tab
+  // to highlight and whether Back is available fall out of it. No screen/history
+  // state — the browser owns history now.
+  const screen = useCurrentScreen();
+  const activeTab = tabForScreen(screen.id);
+  const canGoBack = !isTabScreen(screen.id) || historyIndex() > 0;
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
@@ -212,7 +247,7 @@ function AppInner() {
     return false;
   };
 
-  const navigate = ((id: ScreenId, params?: { id: string }, opts?: { replace?: boolean }) => {
+  const navigate = ((id: ScreenId, params?: Record<string, unknown>, opts?: { replace?: boolean }) => {
     const requiredPermission = SCREEN_PERMISSIONS[id];
     if (requiredPermission && !userHasPermission(currentUser, requiredPermission)) {
       // A guest hit a gated screen — prompt them to sign up instead of silently
@@ -220,26 +255,21 @@ function AppInner() {
       if (!isLoggedIn) setAuthIntent(SCREEN_AUTH_INTENT[id] ?? 'do that');
       return;
     }
-
-    // `replace` swaps the current screen out of the back stack (don't push it),
-    // so backing out of the destination skips it — e.g. after creating a game,
-    // back from the new game's details goes to where the user started, not the form.
-    if (!opts?.replace) setHistory((prev) => [...prev, screen]);
-    if (isTabScreen(id)) {
-      setActiveTab(id);
-      setScreen({ id } as Screen);
-    } else {
-      setScreen({ id, params } as Screen);
-    }
+    // Drive the URL. `replace` swaps the current entry instead of pushing, so
+    // backing out of the destination skips it — e.g. after creating a game, back
+    // from the new game's details goes where the user started, not the form.
+    routerNavigate(pathFromScreen({ id, params } as Screen), { replace: opts?.replace });
   }) as Navigate;
 
   const goBack = () => {
-    const prev = history[history.length - 1];
-    if (prev) {
-      setHistory((h) => h.slice(0, -1));
-      if (isTabScreen(prev.id)) setActiveTab(prev.id);
-      setScreen(prev);
+    // Real browser history: pop it when there's an in-app entry to return to.
+    if (historyIndex() > 0) {
+      window.history.back();
+      return;
     }
+    // Cold-start / deep-link landing (nothing to pop) — go to a sane parent
+    // instead of stepping off the app entirely.
+    routerNavigate(pathFromScreen(deepLinkParent(screen.id)), { replace: true });
   };
 
   const handleTabPress = (tab: TabId) => {
@@ -249,38 +279,42 @@ function AppInner() {
       goToLogin();
       return;
     }
-    setHistory((prev) => [...prev, screen]);
-    setActiveTab(tab);
-    setScreen({ id: tab });
+    routerNavigate(pathFromScreen({ id: tab } as Screen));
   };
+
+  // Tracks when session restore has settled, so the route guard below doesn't
+  // bounce a logged-in user off a gated deep link before their token revalidates.
+  const [restored, setRestored] = useState(false);
 
   // Restore a session on cold start: the store validates any stored token
   // against /me and rehydrates the user (incl. their `hasOnboarded` flag). A
   // stale/invalid token just falls back to guest browsing (tokens cleared).
   useEffect(() => {
-    restoreSession();
+    Promise.resolve(restoreSession()).finally(() => setRestored(true));
   }, [restoreSession]);
 
-  // Consume the deep-link path once: the screen-stack owns navigation (not the
-  // URL), so reset to `/` after the initial screen is resolved — otherwise a
-  // refresh or a service-worker re-navigation would re-trigger the same deep link.
+  // Seed the in-app history index on the first entry so back/forward can tell a
+  // cold-start from a screen we pushed (see `historyIndex`/`goBack`). The URL is
+  // left exactly as loaded — deep links and refresh land on the right screen.
   useEffect(() => {
-    if (window.location.pathname !== '/') {
-      window.history.replaceState({}, '', '/');
+    const s = window.history.state as { pbIdx?: number } | null;
+    if (typeof s?.pbIdx !== 'number') {
+      window.history.replaceState({ ...(s ?? {}), pbIdx: 0 }, '');
     }
   }, []);
 
-  // Persist the current screen so a reload restores it instead of dropping back
-  // to home. Skip the transient auth-flow screens (we never want to reload into
-  // login/landing/onboarding).
+  // Route guard for direct URL loads / browser-back into a gated screen: the
+  // per-tap gate in `navigate` can't catch a hard navigation straight to a
+  // permissioned path, so once restore settles, redirect home (and prompt guests
+  // to sign in) when the current screen needs a permission the user lacks.
   useEffect(() => {
-    if (screen.id === 'landing' || screen.id === 'login' || screen.id === 'onboarding') return;
-    try {
-      sessionStorage.setItem(NAV_KEY, JSON.stringify({ screen, history, activeTab }));
-    } catch {
-      /* sessionStorage may be unavailable (private mode) — reload just falls back to home */
+    if (!restored) return;
+    const perm = SCREEN_PERMISSIONS[screen.id];
+    if (perm && !userHasPermission(currentUser, perm)) {
+      if (!isLoggedIn) setAuthIntent(SCREEN_AUTH_INTENT[screen.id] ?? 'do that');
+      routerNavigate('/', { replace: true });
     }
-  }, [screen, history, activeTab]);
+  }, [restored, screen.id, currentUser, isLoggedIn]);
 
   // Called by LoginScreen after the store's `login` action has set the user.
   // Only first-time users (who haven't onboarded on this account yet) see the
@@ -288,40 +322,29 @@ function AppInner() {
   // logged-in user from the store — this render's `currentUser` is still stale.
   const handleLoginSuccess = () => {
     const user = useAuthStore.getState().user;
-    if (user && !user.hasOnboarded) {
-      setScreen({ id: 'onboarding' });
-    } else {
-      setScreen({ id: 'home' });
-      setActiveTab('home');
-    }
-    setHistory([]);
+    // Replace so backing out of the destination doesn't return to the login form.
+    routerNavigate(pathFromScreen({ id: user && !user.hasOnboarded ? 'onboarding' : 'home' }), { replace: true });
   };
 
   // Onboarding persists the `hasOnboarded` flag to the account itself (see
   // OnboardingScreen → completeOnboarding), so it's remembered across sessions.
   const handleOnboardingComplete = () => {
-    setScreen({ id: 'home' });
-    setActiveTab('home');
-    setHistory([]);
+    routerNavigate('/', { replace: true });
   };
 
   const handleLogout = () => {
     // Store clears the user + tokens (best-effort server logout).
     logout();
-    // Logout returns to guest browsing on the home tab, not the landing page.
-    setScreen({ id: 'home' });
-    setActiveTab('home');
-    setHistory([]);
-    // Drop the saved nav so a guest doesn't reload back into a signed-in screen.
-    try { sessionStorage.removeItem(NAV_KEY); } catch { /* ignore */ }
+    // Return to guest browsing on the home tab (not the landing page). Any stale
+    // signed-in URL still in history is caught by the route guard above on back.
+    routerNavigate('/', { replace: true });
   };
 
-  // Enter the sign-in / sign-up flow from a guest screen, remembering where we
-  // were so the back arrow returns to browsing. Also dismisses the auth sheet.
+  // Enter the sign-in / sign-up flow from a guest screen. Pushed (not replaced)
+  // so the back arrow returns to browsing. Also dismisses the auth sheet.
   const goToLogin = () => {
-    setHistory((prev) => [...prev, screen]);
-    setScreen({ id: 'login' });
     setAuthIntent(null);
+    routerNavigate(pathFromScreen({ id: 'login' }));
   };
 
   // Player-side design selector. v2.1 is only offered to players/guests (owners
@@ -357,7 +380,7 @@ function AppInner() {
   const v2Chrome: V2ScreenChrome = {
     activeTab, onNavigate: navigate, onTabPress: handleTabPress,
     onCreate: handleCreate, isLoggedIn, requireAuth,
-    onBack: goBack, canGoBack: history.length > 0,
+    onBack: goBack, canGoBack,
   };
 
   const renderScreen = () => {
@@ -487,13 +510,13 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={history.length > 0} onOpenMessages={() => navigate('messages')} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} />
       )}
 
       {/* Tab screens only: detail/wizard screens carry a sticky bottom CTA the

@@ -63,6 +63,12 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
   return (
     <V2Shell screen="v2-clubs" chrome={chrome}>
       <div className="page-content">
+        {/* Section heading + descriptive subheading (mirrors the Games section) */}
+        <div className="clubs-intro">
+          <h1 className="clubs-heading">Clubs</h1>
+          <p className="clubs-subheading">Join a community, share posts, and meet players near you.</p>
+        </div>
+
         {/* Search */}
         <div className="search-wrap">
           <div className="search-bar">

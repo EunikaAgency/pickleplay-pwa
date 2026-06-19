@@ -168,9 +168,17 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
                 {loading ? 'Loading games…' : `${games.length} open game${games.length === 1 ? '' : 's'} near you`}
               </div>
             </div>
-            <div className="hero-mascot" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Grandstander', cursive", fontWeight: 800, color: 'var(--on-accent)' }}>
-              {user ? getInitials(user.displayName) : '👋'}
-            </div>
+            <button
+              type="button"
+              className="hero-mascot"
+              onClick={() => chrome.onTabPress('profile')}
+              aria-label={user ? 'Open your profile' : 'Sign in'}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontFamily: "'Grandstander', cursive", fontWeight: 800, fontSize: 24, color: 'var(--on-accent)' }}
+            >
+              {user?.avatarUrl
+                ? <img src={user.avatarUrl} alt={user.displayName} />
+                : user ? getInitials(user.displayName) : '👋'}
+            </button>
           </div>
         </div>
       </section>

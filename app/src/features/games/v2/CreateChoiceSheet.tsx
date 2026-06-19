@@ -38,16 +38,19 @@ export function CreateChoiceSheet({ open, onClose, onNavigate }: CreateChoiceShe
   // null = not loaded yet (distinguishes "loading" from "loaded, empty").
   const [bookings, setBookings] = useState<ApiBooking[] | null>(null);
 
-  // Reset to the first step each time the sheet opens.
-  useEffect(() => {
-    if (open) { setStep('choice'); setBookings(null); }
-  }, [open]);
+  // Close + reset to the first step, so the next open always starts at the choice
+  // (state changes here are in an event handler, not an effect, by design).
+  const close = () => { setStep('choice'); setBookings(null); setLoading(false); onClose(); };
 
-  // When the user chooses "Host", load their hostable bookings once.
+  // "Host": switch to the picker and kick off the booking fetch (the fetch itself
+  // runs in the effect below; loading is flipped here so the effect body stays
+  // free of synchronous state writes).
+  const goHost = () => { setStep('host'); setLoading(true); };
+
+  // Load the user's hostable bookings once the picker is shown.
   useEffect(() => {
     if (!open || step !== 'host' || bookings !== null) return;
     let alive = true;
-    setLoading(true);
     const today = todayYMD();
     Promise.all([
       listBookings().catch(() => [] as ApiBooking[]),
@@ -65,9 +68,9 @@ export function CreateChoiceSheet({ open, onClose, onNavigate }: CreateChoiceShe
     return () => { alive = false; };
   }, [open, step, bookings]);
 
-  const goJoin = () => { onClose(); onNavigate('games'); };
-  const goBookFirst = () => { onClose(); onNavigate('nearby', { intent: 'lobby' }); };
-  const pickBooking = (b: ApiBooking) => { onClose(); onNavigate('create-game', { bookingId: b.id }); };
+  const goJoin = () => { close(); onNavigate('games'); };
+  const goBookFirst = () => { close(); onNavigate('nearby', { intent: 'lobby' }); };
+  const pickBooking = (b: ApiBooking) => { close(); onNavigate('create-game', { bookingId: b.id }); };
 
   const subtitle = step === 'choice'
     ? 'Jump into an open game, or host your own on a court you’ve booked.'
@@ -76,7 +79,7 @@ export function CreateChoiceSheet({ open, onClose, onNavigate }: CreateChoiceShe
   return (
     <BottomSheet
       open={open}
-      onClose={onClose}
+      onClose={close}
       title={step === 'choice' ? 'Game on!' : 'Host a lobby'}
       subtitle={subtitle}
     >
@@ -95,7 +98,7 @@ export function CreateChoiceSheet({ open, onClose, onNavigate }: CreateChoiceShe
               tone="primary"
               title="Host a lobby"
               desc="Open a game on a court you’ve booked."
-              onClick={() => setStep('host')}
+              onClick={goHost}
             />
           </div>
         ) : loading || bookings === null ? (

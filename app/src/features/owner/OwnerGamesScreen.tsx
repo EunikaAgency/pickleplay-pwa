@@ -2,14 +2,18 @@ import { useCallback, useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Segmented } from '../../shared/components/ui/Segmented';
 import { Chip } from '../../shared/components/ui/Chip';
+import { Toast } from '../../shared/components/ui/Toast';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { OwnerStat } from './components/OwnerStat';
 import { OwnerGameCard } from './components/OwnerGameCard';
-import { useOwnerDashboard, type OwnerBookingRow } from './hooks/useOwnerDashboard';
+import { OwnerBookingRow } from './components/OwnerBookingRow';
+import { OwnerBookingDetailSheet } from './OwnerBookingDetailSheet';
+import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
-import { money, to12h, statusChip, todayYMD } from '../bookings/bookingDisplay';
+import { todayYMD } from '../bookings/bookingDisplay';
+import type { ApiBooking } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface OwnerGamesScreenProps {
@@ -27,36 +31,25 @@ const CALENDAR = (() => {
   });
 })();
 
-// A booking shown as an agenda line in the Schedule view.
-function AgendaBooking({ b }: { b: OwnerBookingRow }) {
-  const chip = statusChip(b.status);
-  return (
-    <div className="bg-[var(--surface)] rounded-[18px] p-3.5 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] flex items-center gap-3">
-      <div className="w-12 shrink-0 text-center">
-        <div className="font-heading font-bold text-[14px] text-[var(--primary)] leading-tight">{b.startTime ? to12h(b.startTime) : '—'}</div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="font-semibold text-[14px] text-[var(--ink)] truncate">{b.userName || 'Player'}</div>
-        <div className="t-sm truncate">{b.venueName}{b.playerCount ? ` · ${b.playerCount}p` : ''}</div>
-      </div>
-      <div className="text-right shrink-0">
-        <div className="font-semibold text-[14px] text-[var(--ink)] tabular-nums">{money(b.amount)}</div>
-        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.className}`}>{chip.label}</span>
-      </div>
-    </div>
-  );
-}
-
 // Owner's Games tab — "Your courts": a Schedule (bookings + games agenda per
 // day) and a Games list (community games at the owner's venues). Replaces the
 // player GamesScreen for owners (gated by owner.games.view in App.tsx).
 export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
   const user = useAuthStore((s) => s.user);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
-  const { venues, status, retry, bookings, games } = useOwnerDashboard({ withGames: true, withBookings: true, withAnalytics: false });
+  const { venues, status, retry, bookings, games, updateBookingRow } = useOwnerDashboard({ withGames: true, withBookings: true, withAnalytics: false });
   const [mode, setMode] = useState<Mode>('schedule');
   const [dayIdx, setDayIdx] = useState(0);
   const [venueFilter, setVenueFilter] = useState<string>('all');
+  const [detail, setDetail] = useState<ApiBooking | null>(null);
+  const [toast, setToast] = useState(false);
+
+  // Reflect a status change from the row/detail-sheet into the loaded list.
+  const onBookingChanged = useCallback((updated: ApiBooking) => {
+    updateBookingRow(updated);
+    setToast(true);
+    setTimeout(() => setToast(false), 1800);
+  }, [updateBookingRow]);
 
   const matchesVenue = useCallback((vid?: string | null) => venueFilter === 'all' || (vid || '') === venueFilter, [venueFilter]);
   const today = todayYMD();
@@ -135,7 +128,9 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
                 {dayBookings.length > 0 && (
                   <section className="space-y-2.5">
                     <div className="t-eyebrow flex items-center gap-1.5"><Icon name="calendar" size={13} /> Bookings</div>
-                    {dayBookings.map((b) => <AgendaBooking key={b.id} b={b} />)}
+                    {dayBookings.map((b) => (
+                      <OwnerBookingRow key={b.id} booking={b} canManage={canBookings} showVenue onChanged={onBookingChanged} onOpen={setDetail} />
+                    ))}
                   </section>
                 )}
                 {dayGames.length > 0 && (
@@ -166,6 +161,14 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
           </>
         )}
       </div>
+
+      <OwnerBookingDetailSheet
+        booking={detail}
+        canManage={canBookings}
+        onClose={() => setDetail(null)}
+        onChanged={onBookingChanged}
+      />
+      <Toast message="Booking updated" show={toast} />
     </div>
   );
 }

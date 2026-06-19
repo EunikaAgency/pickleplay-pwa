@@ -869,37 +869,6 @@
 }
 .pb-v2.v2-nearby .map-btn:hover { background: var(--blue-dark); }
 .pb-v2.v2-nearby .map-btn svg { width: 16px; height: 16px; }
-.pb-v2.v2-nearby .tab-toggle {
-  background: var(--bg-white);
-  padding: 0 16px 12px;
-  border-bottom: 1px solid var(--border-sub);
-}
-.pb-v2.v2-nearby .toggle-track {
-  display: flex;
-  background: var(--bg-wash);
-  border-radius: var(--r-pill);
-  padding: 3px;
-  gap: 3px;
-  border: 1px solid var(--border-sub);
-}
-.pb-v2.v2-nearby .toggle-btn {
-  flex: 1;
-  height: 36px;
-  border: none;
-  border-radius: var(--r-pill);
-  font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 150ms;
-  background: transparent;
-  color: var(--slate);
-}
-.pb-v2.v2-nearby .toggle-btn.active {
-  background: var(--blue);
-  color: #fff;
-  box-shadow: var(--shadow-sm);
-}
 .pb-v2.v2-nearby .scroll-body {
   flex: 1;
   background:#fafafa;
@@ -937,7 +906,7 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--blue);
-  background: #fff;
+  background: var(--bg-white);
   border: 1.5px solid var(--blue);
   border-radius: var(--r-pill);
   padding: 0 10px;
@@ -1550,17 +1519,38 @@
 .pb-v2.v2-games .games-sort-row {
   display: flex; align-items: center; margin: 2px 0 12px;
 }
+/* Sort control — a custom dropdown (not a native <select>, whose popup escaped
+   the device-preview frame). Mirrors the v2-nearby sort dropdown. */
+.pb-v2.v2-games .games-sort-control-row { display: flex; align-items: center; gap: 8px; }
 .pb-v2.v2-games .games-sort-label {
-  display: inline-flex; align-items: center; gap: 8px;
   font-size: 12px; color: var(--text-secondary); font-weight: 500;
 }
-.pb-v2.v2-games .games-sort {
+.pb-v2.v2-games .games-sort-control { position: relative; }
+.pb-v2.v2-games .games-sort-btn {
   height: 30px; padding: 0 10px;
   border: 1.5px solid var(--blue); border-radius: var(--radius-pill);
   background: var(--surface); color: var(--blue);
-  font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer; outline: none;
-  appearance: none; -webkit-appearance: none;
+  font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
 }
+.pb-v2.v2-games .games-sort-btn:focus-visible { border-color: var(--blue-hover); }
+.pb-v2.v2-games .games-sort-caret { width: 12px; height: 12px; transition: transform 150ms; }
+.pb-v2.v2-games .games-sort-btn[aria-expanded="true"] .games-sort-caret { transform: rotate(180deg); }
+.pb-v2.v2-games .games-sort-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 40;
+  min-width: 180px; margin: 0; padding: 6px; list-style: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+.pb-v2.v2-games .games-sort-menu-item {
+  width: 100%; text-align: left;
+  font-family: var(--font-body); font-size: 13px; font-weight: 600;
+  color: var(--text-primary); background: none; border: none; border-radius: 9px;
+  padding: 9px 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.pb-v2.v2-games .games-sort-menu-item:hover { background: var(--bg-alt); }
+.pb-v2.v2-games .games-sort-menu-item.active { background: var(--blue); color: #fff; }
 .pb-v2.v2-games .games-locate {
   background: none; border: 1.5px solid var(--blue); border-radius: var(--radius-pill);
   color: var(--blue); font-size: 12px; font-weight: 600; padding: 6px 12px; cursor: pointer;
@@ -2119,6 +2109,18 @@
     width: 100%;
     padding: 0 16px;
   }
+/* Section heading + descriptive subheading (matches the Games section). The
+   clubs page-content has no top padding (unlike Games' 16px), so the intro adds
+   it here; margin-bottom is 0 because the search row below already has a 14px
+   top — together that mirrors Games' heading rhythm (16px above, 14px below). */
+.pb-v2.v2-clubs .clubs-intro { margin-bottom: 0; padding-top: 16px; }
+.pb-v2.v2-clubs .clubs-heading {
+  font-family: var(--font-display); font-weight: 800; font-size: 26px;
+  color: var(--text-primary); line-height: 1.1;
+}
+.pb-v2.v2-clubs .clubs-subheading {
+  font-size: 13px; color: var(--text-secondary); margin-top: 4px;
+}
 .pb-v2.v2-clubs .search-wrap {
     padding: 14px 0 6px;
   }
@@ -4330,6 +4332,12 @@
   --text-muted: #8A93A3;
   --muted: #8A93A3;
   --ink-fill: #26314F;
+  /* v2-nearby-only surface/text tokens — defined only in that scope, so they
+     must flip here too or the Nearby list sheet + cards stay light in dark mode. */
+  --bg-white: #1A1D24;
+  --bg-wash: #2C313B;
+  --slate: #AEB6C4;
+  --border-sub: rgba(255,255,255,0.09);
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.45);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.50);
   --shadow-lg: 0 8px 28px rgba(0,0,0,0.55);
@@ -4351,6 +4359,11 @@
     --text-muted: #8A93A3;
     --muted: #8A93A3;
     --ink-fill: #26314F;
+    /* v2-nearby-only surface/text tokens — see the [data-theme="dark"] block. */
+    --bg-white: #1A1D24;
+    --bg-wash: #2C313B;
+    --slate: #AEB6C4;
+    --border-sub: rgba(255,255,255,0.09);
     --shadow-sm: 0 2px 8px rgba(0,0,0,0.45);
     --shadow-md: 0 4px 16px rgba(0,0,0,0.50);
     --shadow-lg: 0 8px 28px rgba(0,0,0,0.55);
@@ -4410,3 +4423,138 @@
     color: var(--on-accent);
   }
 }
+
+/* ============================================================================
+   .pb-v2.v2-owner-home — the OWNER Home dashboard in the v2.1 player design.
+   Reuses the shared `.pb-v2` tokens/fonts (lime/blue/ink, Grandstander+Lexend);
+   classes are `ohome-*` prefixed so they never collide with the player's
+   `.v2-home` rules. Owner CONTENT/logic is unchanged — this is skin only.
+   ========================================================================= */
+.pb-v2.v2-owner-home {
+  --coral: #FF5A6E;
+  font-family: 'Lexend', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  /* Clear the fixed owner tab bar (64px + its safe-area pad) without the old
+     .safe-bottom utility. The sticky top nav owns the top safe-area inset, so
+     the wrapper carries no top padding (that was the gap above the header). */
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  min-height: 100%;
+}
+.pb-v2.v2-owner-home * { box-sizing: border-box; }
+.pb-v2.v2-owner-home h1, .pb-v2.v2-owner-home h2, .pb-v2.v2-owner-home h3 { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
+.pb-v2.v2-owner-home p { margin: 0; }
+.pb-v2.v2-owner-home button { font-family: inherit; cursor: pointer; border: none; }
+.pb-v2.v2-owner-home .ohome-container { width: 100%; max-width: none; padding: 0 16px; }
+
+/* top nav */
+.pb-v2.v2-owner-home .ohome-topnav { position: sticky; top: 0; z-index: 50; background: var(--surface); border-bottom: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm); padding-top: env(safe-area-inset-top); }
+.pb-v2.v2-owner-home .ohome-topnav-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 12px; padding: 0 16px; }
+.pb-v2.v2-owner-home .ohome-brand { font-family: 'Grandstander', cursive; font-weight: 800; font-size: 22px; letter-spacing: 0.3px; color: var(--blue); background: none; }
+.pb-v2.v2-owner-home .ohome-brand span { color: var(--lime-active); }
+.pb-v2.v2-owner-home .ohome-iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: transparent; color: var(--ink); position: relative; transition: background 150ms var(--ease-out); }
+.pb-v2.v2-owner-home .ohome-iconbtn:hover { background: var(--bg-app); }
+.pb-v2.v2-owner-home .ohome-notif-dot { position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--coral); border: 2px solid var(--surface); }
+
+/* hero */
+.pb-v2.v2-owner-home .ohome-hero { background: var(--bg-app); padding: 24px 0 22px; }
+.pb-v2.v2-owner-home .ohome-hero-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 0 16px; }
+.pb-v2.v2-owner-home .ohome-hero-text h1 { font-size: 26px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
+.pb-v2.v2-owner-home .ohome-hero-text p { color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+.pb-v2.v2-owner-home .ohome-live-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1.5px solid var(--border-subtle); border-radius: var(--radius-pill); padding: 6px 12px; font-size: 12px; font-weight: 600; color: var(--text-primary); margin-top: 10px; box-shadow: var(--shadow-sm); }
+.pb-v2.v2-owner-home .ohome-live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+.pb-v2.v2-owner-home .ohome-mascot { width: 74px; height: 74px; border-radius: 50%; flex-shrink: 0; border: 3px solid var(--surface); box-shadow: var(--shadow-md); background: var(--lime); display: flex; align-items: center; justify-content: center; font-family: 'Grandstander', cursive; font-weight: 800; font-size: 26px; color: var(--ink); }
+
+/* revenue banner (owner revenue hero → v2.1 blue stats-banner) */
+.pb-v2.v2-owner-home .ohome-revenue { background: var(--blue); color: #fff; border-radius: var(--radius-lg); padding: 22px 20px 20px; position: relative; overflow: hidden; margin-top: 20px; display: block; width: 100%; text-align: left; transition: transform 150ms var(--ease-spring); }
+.pb-v2.v2-owner-home .ohome-revenue:active { transform: scale(0.99); }
+.pb-v2.v2-owner-home .ohome-revenue::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--lime); }
+.pb-v2.v2-owner-home .ohome-rb-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: rgba(255,255,255,0.75); }
+.pb-v2.v2-owner-home .ohome-rb-amount-row { display: flex; align-items: flex-end; gap: 10px; margin-top: 8px; }
+.pb-v2.v2-owner-home .ohome-rb-amount { font-family: 'Grandstander', cursive; font-size: 36px; font-weight: 900; line-height: 1; color: #fff; }
+.pb-v2.v2-owner-home .ohome-rb-delta { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 800; color: var(--lime); padding-bottom: 3px; }
+.pb-v2.v2-owner-home .ohome-rb-spark { margin-top: 14px; }
+.pb-v2.v2-owner-home .ohome-rb-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.pb-v2.v2-owner-home .ohome-rb-meta { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: rgba(255,255,255,0.85); min-width: 0; }
+.pb-v2.v2-owner-home .ohome-rb-meta b { font-weight: 800; color: #fff; }
+.pb-v2.v2-owner-home .ohome-rb-btn { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 13px; padding: 10px 18px; border-radius: var(--radius-pill); white-space: nowrap; flex-shrink: 0; }
+
+/* quick actions */
+.pb-v2.v2-owner-home .ohome-qa { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 20px 0 4px; }
+.pb-v2.v2-owner-home .ohome-qa-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px 8px 16px; border-radius: var(--radius-card); text-align: center; min-height: 104px; transition: transform 200ms var(--ease-spring), box-shadow 200ms var(--ease-out); }
+.pb-v2.v2-owner-home .ohome-qa-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.pb-v2.v2-owner-home .ohome-qa-card:active { transform: scale(0.97); }
+.pb-v2.v2-owner-home .ohome-qa-icon { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.pb-v2.v2-owner-home .ohome-qa-label { font-family: 'Grandstander', cursive; font-weight: 700; font-size: 13px; line-height: 1.2; }
+.pb-v2.v2-owner-home .ohome-qa-lime { background: var(--lime); color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-qa-lime .ohome-qa-icon { background: rgba(26,33,56,0.10); }
+.pb-v2.v2-owner-home .ohome-qa-blue { background: var(--blue); color: #fff; }
+.pb-v2.v2-owner-home .ohome-qa-blue .ohome-qa-icon { background: rgba(255,255,255,0.18); }
+.pb-v2.v2-owner-home .ohome-qa-neutral { background: var(--surface); color: var(--ink); border: 1.5px solid var(--border-subtle); box-shadow: var(--shadow-sm); }
+.pb-v2.v2-owner-home .ohome-qa-neutral .ohome-qa-icon { background: var(--bg-app); }
+
+/* sections */
+.pb-v2.v2-owner-home .ohome-section { margin: 28px 0; }
+.pb-v2.v2-owner-home .ohome-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.pb-v2.v2-owner-home .ohome-section-head h2 { font-size: 20px; font-weight: 800; }
+.pb-v2.v2-owner-home .ohome-see-all { color: var(--blue); font-weight: 600; font-size: 13px; background: none; }
+.pb-v2.v2-owner-home .ohome-see-all:hover { text-decoration: underline; }
+.pb-v2.v2-owner-home .ohome-pill-link { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 12px; border-radius: var(--radius-pill); background: var(--surface); color: var(--blue); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-sm); font-size: 12px; font-weight: 700; }
+.pb-v2.v2-owner-home .ohome-count-pill { padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 800; background: rgba(255,90,110,0.14); color: var(--coral); }
+
+/* KPI grid */
+.pb-v2.v2-owner-home .ohome-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.pb-v2.v2-owner-home .ohome-kpi { background: var(--surface); border-radius: var(--radius-card); padding: 14px; text-align: left; box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 8px; transition: transform 150ms var(--ease-out); }
+.pb-v2.v2-owner-home .ohome-kpi:active { transform: scale(0.98); }
+.pb-v2.v2-owner-home .ohome-kpi-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.pb-v2.v2-owner-home .ohome-kpi-ic-primary { background: rgba(51,85,255,0.12); color: var(--blue); }
+.pb-v2.v2-owner-home .ohome-kpi-ic-lime { background: #F0FFC2; color: var(--lime-active); }
+.pb-v2.v2-owner-home .ohome-kpi-ic-neutral { background: var(--bg-app); color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-kpi-ic-coral { background: rgba(255,90,110,0.14); color: var(--coral); }
+.pb-v2.v2-owner-home .ohome-kpi-value { font-family: 'Grandstander', cursive; font-size: 24px; font-weight: 900; line-height: 1; color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-kpi-label { font-size: 11px; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; color: var(--text-muted); }
+
+/* booking rows */
+.pb-v2.v2-owner-home .ohome-row { background: var(--surface); border-radius: var(--radius-card); padding: 14px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle); }
+.pb-v2.v2-owner-home .ohome-row + .ohome-row { margin-top: 10px; }
+.pb-v2.v2-owner-home .ohome-row-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pb-v2.v2-owner-home .ohome-row-name { font-weight: 700; font-size: 14px; color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-row-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.pb-v2.v2-owner-home .ohome-row-amount { font-family: 'Grandstander', cursive; font-weight: 800; font-size: 15px; color: var(--ink); flex-shrink: 0; }
+.pb-v2.v2-owner-home .ohome-row-actions { display: flex; gap: 8px; margin-top: 12px; }
+.pb-v2.v2-owner-home .ohome-btn-confirm { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 13px; padding: 9px 18px; border-radius: var(--radius-pill); }
+.pb-v2.v2-owner-home .ohome-btn-confirm:disabled { opacity: 0.6; }
+.pb-v2.v2-owner-home .ohome-btn-decline { background: var(--bg-app); color: var(--text-secondary); font-weight: 700; font-size: 13px; padding: 9px 18px; border-radius: var(--radius-pill); }
+.pb-v2.v2-owner-home .ohome-btn-decline:disabled { opacity: 0.6; }
+.pb-v2.v2-owner-home .ohome-scrollbox { position: relative; }
+.pb-v2.v2-owner-home .ohome-scrollbox-inner { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; }
+.pb-v2.v2-owner-home .ohome-scrollbox-inner::-webkit-scrollbar { display: none; }
+.pb-v2.v2-owner-home .ohome-scrollfade { pointer-events: none; position: absolute; inset-inline: 0; bottom: 0; height: 48px; background: linear-gradient(to top, var(--bg-page), transparent); }
+
+/* venue cards */
+.pb-v2.v2-owner-home .ohome-venue { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; width: 100%; text-align: left; transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out); }
+.pb-v2.v2-owner-home .ohome-venue + .ohome-venue { margin-top: 14px; }
+.pb-v2.v2-owner-home .ohome-venue:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.pb-v2.v2-owner-home .ohome-venue-media { position: relative; height: 120px; background: linear-gradient(135deg,#0040e0,#6c83ff); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); }
+.pb-v2.v2-owner-home .ohome-venue-media img { width: 100%; height: 100%; object-fit: cover; }
+.pb-v2.v2-owner-home .ohome-venue-badges { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+.pb-v2.v2-owner-home .ohome-badge { font-size: 10px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 4px 9px; border-radius: var(--radius-pill); }
+.pb-v2.v2-owner-home .ohome-badge-state { background: rgba(255,255,255,0.92); color: var(--blue); }
+.pb-v2.v2-owner-home .ohome-badge-verified { background: var(--lime); color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-venue-body { padding: 14px; }
+.pb-v2.v2-owner-home .ohome-venue-name { font-family: 'Grandstander', cursive; font-weight: 700; font-size: 16px; color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-venue-loc { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
+.pb-v2.v2-owner-home .ohome-venue-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.pb-v2.v2-owner-home .ohome-venue-courts { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-secondary); }
+.pb-v2.v2-owner-home .ohome-venue-manage { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 800; color: var(--blue); }
+.pb-v2.v2-owner-home .ohome-venue-glance { display: flex; align-items: center; gap: 12px; font-size: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.pb-v2.v2-owner-home .ohome-venue-glance b { font-weight: 800; color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-venue-glance .ohome-muted { color: var(--text-secondary); }
+.pb-v2.v2-owner-home .ohome-venue-glance .ohome-pending { color: var(--coral); font-weight: 800; }
+
+/* empty state */
+.pb-v2.v2-owner-home .ohome-empty { background: var(--surface); border-radius: var(--radius-lg); padding: 28px 22px; text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle); margin-top: 20px; }
+.pb-v2.v2-owner-home .ohome-empty h2 { font-size: 19px; font-weight: 800; }
+.pb-v2.v2-owner-home .ohome-empty p { font-size: 13px; color: var(--text-secondary); margin: 6px 0 16px; }
+.pb-v2.v2-owner-home .ohome-empty-btn { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: var(--radius-pill); }
