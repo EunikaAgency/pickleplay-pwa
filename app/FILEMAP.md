@@ -45,7 +45,8 @@ src/
   pwaUpdate.ts         # service-worker auto-update
 
   features/<slice>/    # vertical slices; each owns its screens + slice-only UI (filter sheets)
-    auth/              # LandingScreen, LoginScreen, OnboardingScreen
+    auth/              # LandingScreen, LoginScreen, OnboardingScreen, SplashScreen (+splash.css —
+                       #   animated launch intro, once-per-session overlay from App.tsx)
     home/              # HomeScreenSwitch (picks ↓; App.tsx routes owners to owner/OwnerHomeScreen
                        #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic),
                        #   DesignSwitch (floating New·Classic·v2.1 toggle), v2/HomeScreenV2

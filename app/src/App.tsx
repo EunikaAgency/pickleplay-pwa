@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
+import { SplashScreen } from './features/auth/SplashScreen';
 import { HomeScreenSwitch } from './features/home/HomeScreenSwitch';
 import { NearbyScreen } from './features/venues/NearbyScreen';
 import { GamesScreen } from './features/games/GamesScreen';
@@ -139,6 +140,8 @@ export default function App() {
 // refresh restores where you were (survives reload, not tab close). A deep-link
 // path still wins on first load; this only fills in when the path is '/'.
 const NAV_KEY = 'pb-nav';
+// Once-per-session flag so the launch splash doesn't replay on every reload.
+const SPLASH_KEY = 'pb-splash-seen';
 function loadNav(): { screen: Screen; history: Screen[]; activeTab: TabId } | null {
   try {
     const raw = sessionStorage.getItem(NAV_KEY);
@@ -181,6 +184,17 @@ function AppInner() {
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
+
+  // Animated launch splash — shown once per browser session on cold start, then
+  // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
+  // restore etc. run during the intro); the splash just sits on top.
+  const [showSplash, setShowSplash] = useState(() => {
+    try { return sessionStorage.getItem(SPLASH_KEY) !== '1'; } catch { return true; }
+  });
+  const dismissSplash = () => {
+    try { sessionStorage.setItem(SPLASH_KEY, '1'); } catch { /* private mode — splash just shows again next load */ }
+    setShowSplash(false);
+  };
 
   // Soft auth gate: returns true if the action may proceed, otherwise opens the
   // "create an account" sheet and returns false. Guests can browse freely — we
@@ -484,6 +498,9 @@ function AppInner() {
       {!hideChrome && !isOwner && <DesignSwitch />}
 
       <DemoStateControl />
+
+      {/* Animated launch splash, on top of everything (waits for the CTA tap). */}
+      {showSplash && <SplashScreen onDone={dismissSplash} />}
     </div>
   );
 }
