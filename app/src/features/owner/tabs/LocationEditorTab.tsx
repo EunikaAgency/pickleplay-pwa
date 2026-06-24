@@ -6,7 +6,8 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Toast } from '../../../shared/components/ui/Toast';
 import { FormField } from '../../../shared/components/forms/FormField';
 import { OwnerSection } from '../components/OwnerSection';
-import { updateVenue, geocodePlace, type OwnerVenueDetail } from '../../../shared/lib/api';
+import { AddressAutocomplete } from '../components/AddressAutocomplete';
+import { updateVenue, type OwnerVenueDetail, type GeocodeSuggestion } from '../../../shared/lib/api';
 
 interface LocationEditorTabProps {
   venue: OwnerVenueDetail;
@@ -51,7 +52,8 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const [query, setQuery] = useState(venue.fullAddress || [venue.area, venue.region].filter(Boolean).join(', '));
-  const [geo, setGeo] = useState<{ state: 'idle' | 'searching' | 'found' | 'notfound' | 'error'; label: string }>({ state: 'idle', label: '' });
+  // The label of the suggestion the owner last picked, for a "Pin moved to …" confirmation.
+  const [picked, setPicked] = useState<string | null>(null);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
 
   const latNum = toNum(lat);
@@ -65,22 +67,10 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
     setStatus('idle');
   };
 
-  const onSearch = async () => {
-    const q = query.trim();
-    if (!q) return;
-    setGeo({ state: 'searching', label: '' });
-    try {
-      const hit = await geocodePlace(q, 'ph');
-      if (!hit) {
-        setGeo({ state: 'notfound', label: '' });
-        return;
-      }
-      setPin(hit.lat, hit.lng);
-      setFlyTarget({ lat: hit.lat, lng: hit.lng });
-      setGeo({ state: 'found', label: hit.label });
-    } catch {
-      setGeo({ state: 'error', label: '' });
-    }
+  const handleAddressSelect = (s: GeocodeSuggestion) => {
+    setPin(s.lat, s.lng);
+    setFlyTarget({ lat: s.lat, lng: s.lng });
+    setPicked(s.label);
   };
 
   const onSave = async () => {
@@ -97,23 +87,16 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
 
   return (
     <div className="space-y-4">
-      <OwnerSection title="Map pin" icon="location" description="Search an address to drop the pin, or tap the map / drag the pin to fine-tune. Nothing saves until you tap “Save pin”.">
-        <div className="flex gap-2 mb-3">
-          <input
-            className="control"
+      <OwnerSection title="Map pin" icon="location" description="Start typing your address for suggestions to drop the pin, or tap the map / drag the pin to fine-tune. Nothing saves until you tap “Save pin”.">
+        <div className="mb-3">
+          <AddressAutocomplete
             value={query}
-            onChange={(e) => { setQuery(e.target.value); if (geo.state !== 'idle') setGeo({ state: 'idle', label: '' }); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSearch(); } }}
+            onChange={(v) => { setQuery(v); if (picked) setPicked(null); }}
+            onSelect={handleAddressSelect}
             placeholder="Search an address or place"
-            aria-label="Search for an address or place"
           />
-          <button type="button" onClick={onSearch} disabled={geo.state === 'searching' || !query.trim()} className="px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] shrink-0 disabled:opacity-60">
-            {geo.state === 'searching' ? '…' : 'Search'}
-          </button>
         </div>
-        {geo.state === 'found' && <div className="mb-3 t-sm text-[var(--ink-2)]"><Icon name="check" size={13} className="text-[var(--primary)] inline" /> Pin moved to: {geo.label}. Drag to fine-tune, then “Save pin”.</div>}
-        {geo.state === 'notfound' && <div className="mb-3 t-sm text-[var(--coral)]">No match — try adding the city or a more specific address.</div>}
-        {geo.state === 'error' && <div className="mb-3 t-sm text-[var(--coral)]">Search failed. Check your connection and try again.</div>}
+        {picked && <div className="mb-3 t-sm text-[var(--ink-2)]"><Icon name="check" size={13} className="text-[var(--primary)] inline" /> Pin moved to: {picked}. Drag to fine-tune, then “Save pin”.</div>}
 
         <div className="h-[320px] overflow-hidden rounded-xl border-[0.5px] border-[var(--hairline)]">
           <MapContainer center={center} zoom={hasPin ? 16 : 11} className="w-full h-full" scrollWheelZoom>

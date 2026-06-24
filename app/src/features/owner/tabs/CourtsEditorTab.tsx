@@ -23,6 +23,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const id = entityId(court);
   const [courtNumber, setCourtNumber] = useState(court.courtNumber || '');
   const [surfaceType, setSurfaceType] = useState(court.surfaceType || '');
+  const [hourlyRate, setHourlyRate] = useState(court.hourlyRate != null ? String(court.hourlyRate) : '');
   const [indoor, setIndoor] = useState(!!court.indoor);
   const [isActive, setIsActive] = useState(court.isActive !== false);
   const [mainImageUrl, setMainImageUrl] = useState(court.mainImageUrl || '');
@@ -35,7 +36,8 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const save = async () => {
     setStatus('saving');
     try {
-      const updated = await updateCourt(id, { courtNumber, surfaceType: surfaceType || undefined, indoor, isActive, mainImageUrl });
+      // Blank rate clears the override (null) → this court falls back to the venue rate.
+      const updated = await updateCourt(id, { courtNumber, surfaceType: surfaceType || undefined, hourlyRate: hourlyRate.trim() === '' ? null : Number(hourlyRate), indoor, isActive, mainImageUrl });
       setStatus('saved');
       onSaved(updated);
       setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1800);
@@ -71,7 +73,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     }
   };
 
-  const dirty = courtNumber !== (court.courtNumber || '') || surfaceType !== (court.surfaceType || '') || indoor !== !!court.indoor || isActive !== (court.isActive !== false) || mainImageUrl !== (court.mainImageUrl || '');
+  const dirty = courtNumber !== (court.courtNumber || '') || surfaceType !== (court.surfaceType || '') || hourlyRate !== (court.hourlyRate != null ? String(court.hourlyRate) : '') || indoor !== !!court.indoor || isActive !== (court.isActive !== false) || mainImageUrl !== (court.mainImageUrl || '');
 
   return (
     <div className="rounded-xl border-[0.5px] border-[var(--hairline)] p-3 space-y-3">
@@ -97,15 +99,19 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
             <button type="button" onClick={() => { setMainImageUrl(''); setStatus('idle'); }} className="mt-1 t-sm text-[var(--muted)] hover:text-[var(--coral)] font-semibold">Remove</button>
           )}
         </div>
-        <div className="flex-1 flex gap-3">
-        <div className="field p-0! w-20">
-          <label className="lbl">Court #</label>
-          <input className="control" value={courtNumber} maxLength={10} onChange={(e) => { setCourtNumber(e.target.value); setStatus('idle'); }} />
-        </div>
-        <div className="field p-0! flex-1">
-          <label className="lbl">Surface</label>
-          <input className="control" value={surfaceType} maxLength={50} onChange={(e) => { setSurfaceType(e.target.value); setStatus('idle'); }} placeholder="hard, wood…" />
-        </div>
+        <div className="flex-1 flex gap-2 min-w-0">
+          <div className="field p-0! w-16">
+            <label className="lbl">Court #</label>
+            <input className="control" value={courtNumber} maxLength={10} onChange={(e) => { setCourtNumber(e.target.value); setStatus('idle'); }} />
+          </div>
+          <div className="field p-0! w-24">
+            <label className="lbl">Rate (₱/hr)</label>
+            <input className="control" inputMode="decimal" value={hourlyRate} maxLength={7} onChange={(e) => { setHourlyRate(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }} placeholder="Venue rate" />
+          </div>
+          <div className="field p-0! flex-1 min-w-0">
+            <label className="lbl">Surface</label>
+            <input className="control" value={surfaceType} maxLength={50} onChange={(e) => { setSurfaceType(e.target.value); setStatus('idle'); }} placeholder="hard, wood…" />
+          </div>
         </div>
       </div>
       {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold">{photoErr}</div>}
@@ -134,6 +140,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
 
   const [newNumber, setNewNumber] = useState('');
   const [newSurface, setNewSurface] = useState('');
+  const [newRate, setNewRate] = useState('');
   const [newIndoor, setNewIndoor] = useState(false);
   const [addStatus, setAddStatus] = useState<'idle' | 'saving' | 'error'>('idle');
 
@@ -161,10 +168,11 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
     if (!newNumber.trim()) return;
     setAddStatus('saving');
     try {
-      const created = await createCourt(venueId, { courtNumber: newNumber.trim(), surfaceType: newSurface || undefined, indoor: newIndoor });
+      const created = await createCourt(venueId, { courtNumber: newNumber.trim(), surfaceType: newSurface || undefined, hourlyRate: newRate.trim() === '' ? undefined : Number(newRate), indoor: newIndoor });
       setCourts((c) => [...c, created]);
       setNewNumber('');
       setNewSurface('');
+      setNewRate('');
       setNewIndoor(false);
       setAddStatus('idle');
       reload();
@@ -186,9 +194,13 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
     <div className="space-y-4">
       <OwnerSection title="Add a court" icon="plus">
         <div className="flex gap-3 mb-3">
-          <div className="field p-0! w-24">
+          <div className="field p-0! w-20">
             <label className="lbl">Court #</label>
             <input className="control" value={newNumber} maxLength={10} onChange={(e) => setNewNumber(e.target.value)} placeholder="1" />
+          </div>
+          <div className="field p-0! w-28">
+            <label className="lbl">Rate (₱/hr)</label>
+            <input className="control" inputMode="decimal" value={newRate} maxLength={7} onChange={(e) => setNewRate(e.target.value.replace(/[^\d.]/g, ''))} placeholder="200" />
           </div>
           <div className="field p-0! flex-1">
             <label className="lbl">Surface</label>

@@ -23,7 +23,7 @@ function computeChecks(v: OwnerVenueDetail, extra: CompletenessCheck[]): Complet
     { label: 'Full description', done: has(v.description) },
     { label: 'Contact phone', done: has(v.phonePrimary) || has(v.phone) },
     { label: 'Contact email', done: has(v.email) },
-    { label: 'Website or booking link', done: has(v.website) || has(v.bookingUrl) },
+    { label: 'Website', done: has(v.website) },
     { label: 'Map pin set', done: has(v.lat) && has(v.lng) },
     { label: 'Pricing from', done: has(v.priceFrom) },
     { label: 'At least one amenity', done: anyAmenity },

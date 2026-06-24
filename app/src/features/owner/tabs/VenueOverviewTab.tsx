@@ -3,6 +3,7 @@ import { Icon } from '../../../shared/components/ui/Icon';
 import { Segmented } from '../../../shared/components/ui/Segmented';
 import { BarChart, Sparkline } from '../../../shared/components/ui/Chart';
 import { OwnerStat } from '../components/OwnerStat';
+import { BookingLinkShare } from '../components/BookingLinkShare';
 import { CompletenessMeter, type CompletenessCheck } from '../components/CompletenessMeter';
 import { bucketRevenue, upcomingPreview, pctChange, type RevenueBucket } from '../utils/ownerMetrics';
 import {
@@ -90,6 +91,16 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
 
   return (
     <div className="space-y-5">
+      {/* Booking link — first thing the owner sees, so they can share it instantly. */}
+      <section className="card p-4">
+        <div className="flex items-center justify-between mb-1">
+          <div className="hd-3">Booking link</div>
+          <button type="button" className="text-[13px] font-bold text-[var(--primary)]" onClick={() => onOpenTab('listing')}>Customize</button>
+        </div>
+        <div className="t-sm mb-3">Share this anywhere — players land on your venue and book a court.</div>
+        <BookingLinkShare venue={venue} withToast />
+      </section>
+
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-3">
         <OwnerStat label="Revenue this month" value={money(kpis?.revenue.month ?? 0)} icon="payments" tone="primary" />
@@ -142,23 +153,23 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
         </section>
       )}
 
-      {/* Drill-down into detailed analytics */}
+      {/* Drill-down into detailed analytics — each is its own card. */}
       {canAnalytics && (
         <div>
           <div className="t-eyebrow mb-2">Insights</div>
-          <div className="set-list">
+          <div className="space-y-3">
             {[
               { icon: 'calendar', label: 'Bookings & demand', sub: `${kpis?.bookings.week ?? 0} this week` },
               { icon: 'donut_large', label: 'Utilization & peak hours', sub: `${kpis?.occupancyPct.week ?? 0}% occupancy` },
               { icon: 'leaderboard', label: 'Courts & customers', sub: `${analytics?.byCourt.length ?? 0} courts earning` },
             ].map((d) => (
-              <button key={d.label} type="button" className="row" onClick={() => onOpenTab('insights')}>
-                <div className="ic bg-[var(--primary)]"><Icon name={d.icon} size={16} /></div>
-                <div className="body">
-                  <div className="name">{d.label}</div>
+              <button key={d.label} type="button" className="card p-4 w-full text-left flex items-center gap-3" onClick={() => onOpenTab('insights')}>
+                <div className="w-9 h-9 rounded-[10px] bg-[var(--primary)] text-white flex items-center justify-center shrink-0"><Icon name={d.icon} size={18} /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-[14px] text-[var(--ink)]">{d.label}</div>
                   <div className="t-sm">{d.sub}</div>
                 </div>
-                <Icon name="chevron" size={16} className="chev" />
+                <Icon name="chevron" size={16} className="text-[var(--muted)]" />
               </button>
             ))}
           </div>

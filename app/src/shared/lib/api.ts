@@ -132,6 +132,8 @@ interface RequestOptions {
   body?: unknown;
   /** Attach `Authorization: Bearer <accessToken>`. */
   auth?: boolean;
+  /** Abort the request when this signal fires (e.g. a superseded type-ahead lookup). */
+  signal?: AbortSignal;
   /** Internal: set once a request has already been retried after a token refresh. */
   _retried?: boolean;
 }
@@ -144,7 +146,7 @@ interface Envelope<T> {
 
 // Core fetch: returns the full response envelope (so list callers can read
 // `meta.cursor` for pagination). Throws ApiError on network failure or !ok.
-async function rawRequest<T>(path: string, { method = 'GET', body, auth = false, _retried = false }: RequestOptions = {}): Promise<Envelope<T>> {
+async function rawRequest<T>(path: string, { method = 'GET', body, auth = false, signal, _retried = false }: RequestOptions = {}): Promise<Envelope<T>> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth) {
@@ -158,8 +160,10 @@ async function rawRequest<T>(path: string, { method = 'GET', body, auth = false,
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
     });
   } catch {
+    if (signal?.aborted) throw new ApiError('Request aborted.', 'ABORTED', 0);
     throw new ApiError('Network error — could not reach the server.', 'NETWORK', 0);
   }
 
@@ -168,7 +172,7 @@ async function rawRequest<T>(path: string, { method = 'GET', body, auth = false,
   // keeps a session alive across reloads instead of dropping to logged-out.
   if (res.status === 401 && auth && !_retried) {
     const refreshed = await refreshSession();
-    if (refreshed) return rawRequest<T>(path, { method, body, auth, _retried: true });
+    if (refreshed) return rawRequest<T>(path, { method, body, auth, signal, _retried: true });
   }
 
   const json = (await res.json().catch(() => null)) as Envelope<T> | null;
@@ -379,6 +383,8 @@ const VENUES_PREFIX = '/api/v1/venues';
 export interface ApiVenue {
   id: string;
   slug: string;
+  /** Optional owner-chosen vanity slug for the booking link (…/venues/<bookingSlug>). */
+  bookingSlug?: string | null;
   displayName: string;
   area?: string | null;
   region?: string | null;
@@ -394,6 +400,10 @@ export interface ApiVenue {
   priceFrom?: number | null;
   priceFromLabel?: string | null;
   pricingCurrency?: string | null;
+  /** Booking policy: when true, bookings here need owner approval before payment. */
+  requireBookingApproval?: boolean | null;
+  /** Hours the player has to pay once the owner approves (request-to-book). */
+  bookingPayWindowHours?: number | null;
   googleRating?: number | null;
   googleReviewCount?: number | null;
   amenityChips?: string[] | null;
@@ -427,6 +437,9 @@ export interface ApiCourt {
   courtName?: string | null;
   surfaceType?: string | null;
   indoor?: boolean | null;
+  /** Per-court hourly rate (PHP). When set, it overrides the venue's flat
+   *  priceFrom for bookings on this court; null/undefined → use the venue rate. */
+  hourlyRate?: number | null;
   /** Per-court photo (servable URL from the media library). */
   mainImageUrl?: string | null;
 }
@@ -632,6 +645,8 @@ export interface OwnerHourEntry {
   isClosed: boolean;
   openTime?: string;
   closeTime?: string;
+  /** Per-time-block rate (PHP/hr); a day can have several blocks each priced. Blank → court/venue rate. */
+  price?: number | null;
 }
 
 export interface OwnerClosure {
@@ -695,9 +710,14 @@ export async function listOwnerVenues(ownerUserId: string): Promise<ApiVenue[]> 
   return page.items.filter((v) => String(v.ownerUserId ?? '') === String(ownerUserId));
 }
 
-/** The full editable venue document (more fields than the public detail). */
+/**
+ * The full editable venue document (more fields than the public detail).
+ * Sends auth: a freshly-created venue is `listingStatus:'pending'`, which the
+ * API only returns to its authenticated owner/admin (anyone else gets a 404),
+ * so the owner's token must ride along or they can't load their own new venue.
+ */
 export async function getOwnerVenue(idOrSlug: string): Promise<OwnerVenueDetail> {
-  return request<OwnerVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`);
+  return request<OwnerVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`, { auth: true });
 }
 
 /** Patch listing fields. `courtCount` is server-derived — never send it. */
@@ -705,9 +725,27 @@ export async function updateVenue(venueId: string, body: Record<string, unknown>
   return request<OwnerVenueDetail>(`${VENUES_PREFIX}/${venueId}`, { method: 'PATCH', body, auth: true });
 }
 
+export interface BookingSlugCheck {
+  /** empty = blank (falls back to the system slug); the others are self-explanatory. */
+  status: 'empty' | 'invalid' | 'taken' | 'available';
+  available: boolean;
+  /** Server-normalized form of the slug (what would actually be stored). */
+  normalized: string;
+}
+
+/** Live availability check for a custom booking slug (owner-gated) — for typing feedback. */
+export async function checkBookingSlug(venueId: string, slug: string): Promise<BookingSlugCheck> {
+  return request<BookingSlugCheck>(`${VENUES_PREFIX}/${venueId}/booking-slug-available?slug=${encodeURIComponent(slug)}`, { auth: true });
+}
+
 /** Create a new owner-owned venue (live immediately, state='claimed'). */
 export async function createVenue(body: Record<string, unknown>): Promise<OwnerVenueDetail> {
   return request<OwnerVenueDetail>(VENUES_PREFIX, { method: 'POST', body, auth: true });
+}
+
+/** Delete a venue the owner owns (it disappears from their console + all listings). */
+export async function deleteVenue(idOrSlug: string): Promise<{ id: string; deleted: boolean }> {
+  return request<{ id: string; deleted: boolean }>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`, { method: 'DELETE', auth: true });
 }
 
 /* --- Create-form helpers -------------------------------------------------- */
@@ -724,6 +762,58 @@ export async function geocodePlace(query: string, country?: string): Promise<Geo
   const q = query.trim();
   if (!q) return null;
   return request<GeocodeHit | null>(`/api/v1/geocode${toQuery({ q, country })}`);
+}
+
+/** One type-ahead address suggestion (coords + parsed address pieces). */
+export interface GeocodeSuggestion {
+  lat: number;
+  lng: number;
+  /** Full display name, e.g. "SM Mall of Asia, …, Pasay, Metro Manila". */
+  label: string;
+  city: string | null;
+  region: string | null;
+  /** Sub-city locality (suburb/neighbourhood). */
+  area: string | null;
+  /** Street line (house number + road), for "Address line 1". */
+  line1: string | null;
+  /** Postal code, for the "Postcode" field. */
+  postcode: string | null;
+}
+
+/**
+ * Type-ahead address suggestions for the owner console (API proxies OSM
+ * Nominatim, returning a ranked list). Pass an `AbortSignal` so a screen can
+ * cancel the in-flight lookup when the query changes.
+ */
+export async function suggestPlaces(
+  query: string,
+  opts: { country?: string; limit?: number; signal?: AbortSignal } = {},
+): Promise<GeocodeSuggestion[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const res = await request<GeocodeSuggestion[] | null>(
+    `/api/v1/geocode/suggest${toQuery({ q, country: opts.country, limit: opts.limit })}`,
+    { signal: opts.signal },
+  );
+  return res ?? [];
+}
+
+export interface ReverseGeocodeHit {
+  lat: number;
+  lng: number;
+  label: string;
+  /** Populated-place name (city/town/municipality), if Nominatim resolved one. */
+  city: string | null;
+  region: string | null;
+  /** Street line (house number + road), for "Address line 1". */
+  line1: string | null;
+  /** Postal code, for the "Postcode" field. */
+  postcode: string | null;
+}
+
+/** Reverse-geocode coordinates to a place + nearest city (API proxies OSM Nominatim). */
+export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeHit | null> {
+  return request<ReverseGeocodeHit | null>(`/api/v1/geocode/reverse${toQuery({ lat, lng })}`);
 }
 
 /* --- Courts --------------------------------------------------------------- */
@@ -851,6 +941,22 @@ export async function uploadAvatar(userId: string, file: File): Promise<string |
   return m?.url ?? null;
 }
 
+/**
+ * Upload an optional banner image for a tournament; returns its servable URL.
+ * Stored on the tournament via updateTournament({ bannerUrl }). Optional —
+ * tournaments without one fall back to the trophy placeholder in the UI.
+ */
+export async function uploadTournamentMedia(tournamentId: string, file: File): Promise<string | null> {
+  const m = await uploadMedia('tournament', tournamentId, file);
+  return m?.url ?? null;
+}
+
+/** Upload a photo/GIF to attach to a club feed post; returns its servable URL. */
+export async function uploadClubMedia(clubId: string, file: File): Promise<string | null> {
+  const m = await uploadMedia('club', clubId, file);
+  return m?.url ?? null;
+}
+
 /* ─── Games (open-play) ─────────────────────────────────────── */
 //
 // Player-created open-play games. Browse + detail are public (guests can
@@ -966,9 +1072,22 @@ export async function updateGame(id: string, body: Partial<CreateGamePayload>): 
   return request<ApiGame>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
 }
 
-/** Delete a game the current user created (host-only). */
-export async function deleteGame(id: string): Promise<void> {
-  await request<{ id: string; deleted: boolean }>(`${GAMES_PREFIX}/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+/**
+ * Delete a game the current user created (host-only). By default the linked court
+ * reservation is cancelled (the hour frees up). Pass `{ keepBooking: true }` to
+ * remove only the lobby and keep the court reserved — the reservation becomes a
+ * normal court booking and its `bookingId` comes back so the caller can route to
+ * the refund/cancel flow.
+ */
+export async function deleteGame(
+  id: string,
+  opts: { keepBooking?: boolean } = {},
+): Promise<{ id: string; deleted: boolean; bookingId: string | null }> {
+  const qs = opts.keepBooking ? '?keepBooking=true' : '';
+  return request<{ id: string; deleted: boolean; bookingId: string | null }>(
+    `${GAMES_PREFIX}/${encodeURIComponent(id)}${qs}`,
+    { method: 'DELETE', auth: true },
+  );
 }
 
 /** Join a game — server enforces capacity + one-per-player. */
@@ -1274,6 +1393,8 @@ export interface ApiClub {
   description: string | null;
   coverImageUrl: string | null;
   visibility: 'public' | 'private';
+  /** Max members (null = unlimited). */
+  joinLimit?: number | null;
   memberCount: number;
   postCount: number;
   host: ClubPerson | null;
@@ -1291,10 +1412,17 @@ export interface ApiClubMember {
   joinedAt?: string | null;
 }
 
+/** A photo/GIF attached to a club post (url is raw — wrap with apiImageUrl to render). */
+export interface ClubAttachment {
+  type: 'image' | 'gif';
+  url: string;
+}
+
 export interface ApiClubPost {
   id: string;
   author: ClubPerson | null;
   body: string | null;
+  attachments?: ClubAttachment[];
   reactionCount: number;
   replyCount: number;
   viewerReacted: boolean;
@@ -1302,10 +1430,20 @@ export interface ApiClubPost {
   createdAt?: string | null;
 }
 
-/** Clubs list — `mine` = clubs you're a member of; otherwise the public directory. */
-export async function listClubs(params: { mine?: boolean } = {}): Promise<ApiClub[]> {
-  const env = await rawRequest<ApiClub[]>(`${CLUBS_PREFIX}${toQuery({ ...params })}`, { auth: true });
-  return env.data ?? [];
+/** One page of clubs + the cursor for the next page (null = no more). */
+export interface ClubPage {
+  items: ApiClub[];
+  cursor: string | null;
+}
+
+/**
+ * Clubs list (cursor-paginated). `mine` = clubs you're a member of; otherwise
+ * the public directory. `search` filters server-side (so matches aren't limited
+ * to the first page); pass `cursor` for the next page.
+ */
+export async function listClubs(params: { mine?: boolean; search?: string; cursor?: string; pageSize?: number } = {}): Promise<ClubPage> {
+  const env = await rawRequest<ApiClub[]>(`${CLUBS_PREFIX}${toQuery({ pageSize: 20, ...params })}`, { auth: true });
+  return { items: env.data ?? [], cursor: env.meta?.cursor ?? null };
 }
 
 /** A single club (by slug or _id), with viewer membership flags. */
@@ -1317,11 +1455,27 @@ export interface CreateClubPayload {
   name: string;
   description?: string;
   visibility?: 'public' | 'private';
+  coverImageUrl?: string;
+  joinLimit?: number;
 }
 
 /** Create a club (you become the host + first member). */
 export async function createClub(body: CreateClubPayload): Promise<ApiClub> {
   return request<ApiClub>(CLUBS_PREFIX, { method: 'POST', body, auth: true });
+}
+
+export interface UpdateClubPayload {
+  name?: string;
+  description?: string;
+  visibility?: 'public' | 'private';
+  /** New cover URL, or '' to clear it (the server maps a falsy value to none). */
+  coverImageUrl?: string;
+  joinLimit?: number | null;
+}
+
+/** Edit a club (host-only; server enforces host-or-moderate). */
+export async function updateClub(id: string, body: UpdateClubPayload): Promise<ApiClub> {
+  return request<ApiClub>(`${CLUBS_PREFIX}/${id}`, { method: 'PATCH', body, auth: true });
 }
 
 /** Join a club → `{ status: 'member' | 'pending' }` (private clubs request approval). */
@@ -1351,9 +1505,22 @@ export async function listClubFeed(id: string): Promise<ApiClubPost[]> {
   return env.data ?? [];
 }
 
-/** Post to a club's feed. */
-export async function createClubPost(id: string, body: string): Promise<ApiClubPost> {
-  return request<ApiClubPost>(`${CLUBS_PREFIX}/${id}/posts`, { method: 'POST', body: { body }, auth: true });
+/**
+ * Post to a club's feed. Pass `parentPostId` to make it a comment/reply on a
+ * post, and `attachments` (uploaded via uploadClubMedia) for photos/GIFs. A post
+ * needs text OR at least one attachment.
+ */
+export async function createClubPost(id: string, body: string, parentPostId?: string, attachments?: ClubAttachment[]): Promise<ApiClubPost> {
+  const payload: Record<string, unknown> = { body };
+  if (parentPostId) payload.parentPostId = parentPostId;
+  if (attachments && attachments.length) payload.attachments = attachments;
+  return request<ApiClubPost>(`${CLUBS_PREFIX}/${id}/posts`, { method: 'POST', body: payload, auth: true });
+}
+
+/** Comments on a post (newest-first from the API), up to 50. */
+export async function listClubReplies(id: string, postId: string): Promise<ApiClubPost[]> {
+  const env = await rawRequest<ApiClubPost[]>(`${CLUBS_PREFIX}/${id}/posts/${postId}/replies${toQuery({ pageSize: 50 })}`, { auth: true });
+  return env.data ?? [];
 }
 
 /** Like / unlike a post. */
@@ -1362,6 +1529,47 @@ export async function reactClubPost(id: string, postId: string): Promise<unknown
 }
 export async function unreactClubPost(id: string, postId: string): Promise<unknown> {
   return request(`${CLUBS_PREFIX}/${id}/posts/${postId}/react`, { method: 'DELETE', auth: true });
+}
+
+/** Edit a post or comment (author-only; server enforces it). */
+export async function editClubPost(id: string, postId: string, body: string): Promise<ApiClubPost> {
+  return request<ApiClubPost>(`${CLUBS_PREFIX}/${id}/posts/${postId}`, { method: 'PATCH', body: { body }, auth: true });
+}
+
+/** Soft-delete a post or comment (author or host; server enforces it). */
+export async function deleteClubPost(id: string, postId: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`${CLUBS_PREFIX}/${id}/posts/${postId}`, { method: 'DELETE', auth: true });
+}
+
+/** Remove a member from a club (host-only; can't remove the host). */
+export async function removeClubMember(id: string, userId: string): Promise<{ removed: boolean }> {
+  return request<{ removed: boolean }>(`${CLUBS_PREFIX}/${id}/members/${userId}`, { method: 'DELETE', auth: true });
+}
+
+/** A pending join request on a private club (host-only view). */
+export interface ApiClubRequest {
+  id: string;
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  message: string | null;
+  createdAt?: string | null;
+}
+
+/** Pending join requests for a private club (host-only; server enforces it). */
+export async function listClubRequests(id: string): Promise<ApiClubRequest[]> {
+  const env = await rawRequest<ApiClubRequest[]>(`${CLUBS_PREFIX}/${id}/requests`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Approve a join request → creates the membership (host-only). */
+export async function approveClubRequest(id: string, reqId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`${CLUBS_PREFIX}/${id}/requests/${reqId}/approve`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Deny a join request (host-only). */
+export async function denyClubRequest(id: string, reqId: string): Promise<{ status: string }> {
+  return request<{ status: string }>(`${CLUBS_PREFIX}/${id}/requests/${reqId}/deny`, { method: 'POST', body: {}, auth: true });
 }
 
 /* ─── Bookings + checkout ───────────────────────────────────── */
@@ -1385,8 +1593,14 @@ export interface ApiBooking {
   endTime?: string | null;
   playerCount?: number | null;
   amount?: number | null;
-  status?: string | null;          // 'pending_approval' | 'confirmed' | 'paid' | 'cancelled'
+  // 'pending_approval' (awaiting owner) | 'awaiting_payment' (approved; pay by
+  // paymentDueAt) | 'confirmed' | 'paid' | 'cancelled'.
+  status?: string | null;
   paymentMethod?: string | null;
+  /** Deadline to pay once the owner approves a request-to-book (else it expires). */
+  paymentDueAt?: string | null;
+  /** Masked card captured at request time (so paying after approval is one tap). */
+  savedCard?: { brand?: string | null; last4?: string | null } | null;
   cancellationReason?: string | null;
   createdAt?: string | null;
   userName?: string | null;        // populated by the owner bookings endpoint only
@@ -1403,6 +1617,8 @@ export interface CreateBookingPayload {
   amount: number;
   paymentMethod?: string;
   notes?: string;
+  /** Masked card stored on an approval-required request, for pay-after-approval. */
+  card?: { brand?: string; last4?: string };
 }
 
 /** The current user's bookings, newest first (optionally filtered by status). */
@@ -1434,9 +1650,10 @@ export async function cancelBooking(id: string, cancellationReason?: string): Pr
 // actions; `getVenueAnalytics` returns aggregated business metrics for the
 // dashboard. All require auth + venue ownership (or admin).
 
-// Bookings arrive already paid + confirmed, so the owner only ever cancels
-// (or, for any legacy pending row, confirms). No 'paid' transition from the app.
-export type BookingStatus = 'confirmed' | 'cancelled';
+// Owner inbox transitions: approve a request-to-book ('awaiting_payment' — the
+// player then pays to confirm), cancel/decline ('cancelled'), or confirm a legacy
+// pending row directly. No 'paid' transition from the app.
+export type BookingStatus = 'confirmed' | 'cancelled' | 'awaiting_payment';
 
 /** All bookings for a venue the user owns (optionally filtered by status). */
 export async function getVenueBookings(venueId: string, status?: string): Promise<ApiBooking[]> {
@@ -1553,7 +1770,10 @@ const tBase = (idOrSlug: string) => `${TOURNAMENTS_PREFIX}/${encodeURIComponent(
 
 export type TournamentStatus =
   | 'draft' | 'pending_venue_approval' | 'approved' | 'registration_open'
-  | 'ongoing' | 'completed' | 'cancelled' | 'rejected';
+  | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+  // Legacy/seed statuses the API still treats as public: `open` = joinable,
+  // `closed` = registration ended.
+  | 'open' | 'closed';
 
 export interface ApiTournament {
   id: string;
@@ -1594,6 +1814,7 @@ export interface ApiTournament {
   venueName?: string;
   venueSlug?: string;
   registeredCount?: number;
+  registeredPlayers?: number;
   createdAt?: string;
 }
 
@@ -1636,6 +1857,69 @@ export async function cancelTournament(id: string): Promise<unknown> {
 /** Open registration on an approved tournament (approved → registration_open). */
 export async function openTournamentRegistration(id: string): Promise<unknown> {
   return request(`${tBase(id)}/open-registration`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/* ---- Player-facing tournament discovery + registration ----
+ * The public browse + join half (organizer endpoints above create/manage them).
+ * `GET /tournaments` is public; register/withdraw require `player.tournaments.join`.
+ */
+
+/** Publicly-visible tournaments for the player Tournament tab, soonest first. */
+export async function listPublicTournaments(params: { status?: TournamentStatus; venueId?: string } = {}): Promise<ApiTournament[]> {
+  const qs = new URLSearchParams({ pageSize: '100' });
+  if (params.status) qs.set('status', params.status);
+  if (params.venueId) qs.set('venueId', params.venueId);
+  const env = await rawRequest<Record<string, unknown>[]>(`${TOURNAMENTS_PREFIX}?${qs.toString()}`);
+  return (env.data ?? []).map(normalizeTournament).filter(Boolean) as ApiTournament[];
+}
+
+/** The player's own registration on a tournament (or null) — drives the Join button. */
+export async function getMyTournamentRegistration(id: string): Promise<{ id: string; status: string } | null> {
+  return request<{ id: string; status: string } | null>(`${tBase(id)}/my-registration`, { auth: true });
+}
+
+/** Every tournament the current user has registered for — one call, used by the
+ *  player Tournament tab to fill the "Joined" tab and exclude joined/own events
+ *  from "Open" (replaces probing my-registration tournament-by-tournament). */
+export async function listMyTournamentRegistrations(): Promise<{ tournamentId: string; status: string }[]> {
+  const env = await rawRequest<{ tournamentId: string; status: string }[]>(`${TOURNAMENTS_PREFIX}/registrations/mine`, { auth: true });
+  return (env.data ?? []) as { tournamentId: string; status: string }[];
+}
+
+/** Register the current player for a tournament (registration must be open). */
+export async function registerForTournament(id: string): Promise<{ id: string; status: string }> {
+  return request<{ id: string; status: string }>(`${tBase(id)}/register`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Withdraw the current player's registration. */
+export async function withdrawFromTournament(id: string): Promise<unknown> {
+  return request(`${tBase(id)}/withdraw`, { method: 'POST', body: {}, auth: true });
+}
+
+/* ---- Tournament participant group chat ---- */
+
+/** One message in a tournament's participant chat (organizer + registrants).
+ *  Mirrors ApiGameMessage — many senders, so it carries name/avatar. */
+export interface ApiTournamentMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatarUrl?: string | null;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+/** Load a tournament's roster chat (organizer + registrants only). Returns the
+ *  tournament's name (for the chat header) alongside the messages. */
+export async function listTournamentMessages(id: string): Promise<{ title: string | null; messages: ApiTournamentMessage[] }> {
+  const env = await rawRequest<{ title?: string | null; messages?: ApiTournamentMessage[] }>(`${tBase(id)}/messages`, { auth: true });
+  return { title: env.data?.title ?? null, messages: env.data?.messages ?? [] };
+}
+
+/** Post to a tournament's roster chat — realtime-fans-out to the other members. */
+export async function sendTournamentMessage(id: string, body: string): Promise<ApiTournamentMessage> {
+  return request<ApiTournamentMessage>(`${tBase(id)}/messages`, { method: 'POST', body: { body }, auth: true });
 }
 
 /* ---- Registrations (participants) ---- */
