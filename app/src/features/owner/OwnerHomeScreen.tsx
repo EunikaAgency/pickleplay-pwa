@@ -5,6 +5,7 @@ import { Toast } from '../../shared/components/ui/Toast';
 import { Sparkline } from '../../shared/components/ui/Chart';
 import { useOwnerDashboard, type OwnerBookingRow } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { useNotificationStore } from '../../shared/lib/notificationStore';
 import { firstNameOf, userHasPermission } from '../../shared/lib/permissions';
 import { updateBookingStatus } from '../../shared/lib/api';
 import { money, prettyDate, to12h } from '../bookings/bookingDisplay';
@@ -123,9 +124,10 @@ function VenueGlanceCard({ venue, glance, onOpen }: { venue: ApiVenue; glance: G
 // Owner's Home tab — the owner dashboard rendered in the player's v2.1 design.
 // Content/logic is unchanged; only the visual language (fonts/colors/spacing/
 // cards) was swapped to match the player home. Players/guests never see this
-// (HomeScreenSwitch branches on owner.access).
+// (App.tsx branches the Home tab on owner.access).
 export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   const user = useAuthStore((s) => s.user);
+  const unread = useNotificationStore((s) => s.unread);
   const firstName = firstNameOf(user);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
   const {
@@ -155,7 +157,11 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
           className="ohome-iconbtn"
         >
           <Bell />
-          {canBookings && pendingCount > 0 && <span className="ohome-notif-dot" aria-hidden="true" />}
+          {unread > 0 && (
+            <span className="v2c-notif-badge" aria-label={`${unread} unread notifications`}>
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
         </button>
       </div>
     </header>
@@ -176,7 +182,9 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
           )}
         </div>
         <button className="ohome-mascot" onClick={() => onNavigate('profile')} aria-label="Open profile">
-          {user ? getInitials(user.displayName) : '👋'}
+          {user?.avatarUrl
+            ? <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover rounded-full" />
+            : user ? getInitials(user.displayName) : '👋'}
         </button>
       </div>
     </section>
@@ -335,10 +343,10 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
           <section className="ohome-section">
             <div className="ohome-section-head">
               <h2>My venues</h2>
-              {venues.length > 4 && <button className="ohome-see-all" onClick={() => onNavigate('owner-venues')}>View all</button>}
+              {venues.length > 6 && <button className="ohome-see-all" onClick={() => onNavigate('owner-venues')}>View all</button>}
             </div>
-            <div>
-              {venues.slice(0, 4).map((v) => (
+            <div className="ohome-venue-grid">
+              {venues.slice(0, 6).map((v) => (
                 <VenueGlanceCard key={v.id || v.slug} venue={v} glance={glanceFor(v)} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
               ))}
             </div>

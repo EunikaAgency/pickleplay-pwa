@@ -5,7 +5,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import type { Navigate } from '../../shared/lib/navigation';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { listClubs, type ApiClub } from '../../shared/lib/api';
+import { listClubs, apiImageUrl, type ApiClub } from '../../shared/lib/api';
 
 interface ClubsScreenProps {
   onNavigate: Navigate;
@@ -23,9 +23,9 @@ function ClubRow({ club, onTap }: { club: ApiClub; onTap: () => void }) {
     <button className="club-card" onClick={onTap}>
       <div
         className="icon-circle blue overflow-hidden"
-        style={club.coverImageUrl ? { backgroundImage: `url(${club.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        style={club.coverImageUrl ? { backgroundImage: `url("${apiImageUrl(club.coverImageUrl)}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
-        {!club.coverImageUrl && <Icon name="groups" size={22} />}
+        {!club.coverImageUrl && <Icon name="paddle" size={22} />}
       </div>
       <div className="body">
         <div className="name">{club.name}</div>
@@ -50,8 +50,8 @@ export function ClubsScreen({ onNavigate }: ClubsScreenProps) {
   useEffect(() => {
     let alive = true;
     Promise.all([
-      isLoggedIn ? listClubs({ mine: true }).catch(() => [] as ApiClub[]) : Promise.resolve([] as ApiClub[]),
-      listClubs(),
+      isLoggedIn ? listClubs({ mine: true }).then((p) => p.items).catch(() => [] as ApiClub[]) : Promise.resolve([] as ApiClub[]),
+      listClubs().then((p) => p.items).catch(() => [] as ApiClub[]),
     ])
       .then(([myClubs, all]) => {
         if (!alive) return;

@@ -56,6 +56,14 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
   const [picked, setPicked] = useState<string | null>(null);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
 
+  // Structured address — now owner-editable (was read-only / staff-managed). The
+  // type-ahead pick fills these; the owner can also edit any field directly.
+  const [addressLine1, setAddressLine1] = useState(venue.addressLine1 || '');
+  const [addressLine2, setAddressLine2] = useState(venue.addressLine2 || '');
+  const [cityName, setCityName] = useState(venue.cityName || venue.city || '');
+  const [region, setRegion] = useState(venue.region || '');
+  const [postalCode, setPostalCode] = useState(venue.postalCode || '');
+
   const latNum = toNum(lat);
   const lngNum = toNum(lng);
   const hasPin = latNum != null && lngNum != null;
@@ -67,16 +75,39 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
     setStatus('idle');
   };
 
+  // Picking a suggestion drops the pin AND fills the structured address from the
+  // suggestion's parsed parts (so the owner rarely has to type the fields).
   const handleAddressSelect = (s: GeocodeSuggestion) => {
     setPin(s.lat, s.lng);
     setFlyTarget({ lat: s.lat, lng: s.lng });
     setPicked(s.label);
+    if (s.line1) setAddressLine1(s.line1);
+    if (s.city) setCityName(s.city);
+    if (s.region) setRegion(s.region);
+    if (s.postcode) setPostalCode(s.postcode);
   };
 
   const onSave = async () => {
     setStatus('saving');
     try {
-      await updateVenue(venueId, { lat: lat.trim(), lng: lng.trim() });
+      const fields = { addressLine1, addressLine2, cityName, region, postalCode };
+      // Only recompute the public one-line `fullAddress` when the owner actually
+      // has structured address parts — otherwise leave whatever's on file (don't
+      // wipe a venue that only ever had the free-text fullAddress).
+      const anyStructured = Object.values(fields).some((v) => v.trim() !== '');
+      const composed = [addressLine1, addressLine2, cityName, region, postalCode]
+        .map((s) => s.trim()).filter(Boolean).join(', ');
+      const body: Record<string, string> = {
+        lat: lat.trim(),
+        lng: lng.trim(),
+        addressLine1: addressLine1.trim(),
+        addressLine2: addressLine2.trim(),
+        cityName: cityName.trim(),
+        region: region.trim(),
+        postalCode: postalCode.trim(),
+      };
+      if (anyStructured) body.fullAddress = composed;
+      await updateVenue(venueId, body);
       setStatus('saved');
       reload();
       setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 2200);
@@ -87,7 +118,7 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
 
   return (
     <div className="space-y-4">
-      <OwnerSection title="Map pin" icon="location" description="Start typing your address for suggestions to drop the pin, or tap the map / drag the pin to fine-tune. Nothing saves until you tap “Save pin”.">
+      <OwnerSection title="Map pin" icon="location" description="Start typing your address for suggestions to drop the pin and fill the address below, or tap the map / drag the pin to fine-tune. Nothing saves until you tap “Save location”.">
         <div className="mb-3">
           <AddressAutocomplete
             value={query}
@@ -96,7 +127,7 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
             placeholder="Search an address or place"
           />
         </div>
-        {picked && <div className="mb-3 t-sm text-[var(--ink-2)]"><Icon name="check" size={13} className="text-[var(--primary)] inline" /> Pin moved to: {picked}. Drag to fine-tune, then “Save pin”.</div>}
+        {picked && <div className="mb-3 t-sm text-[var(--ink-2)]"><Icon name="check" size={13} className="text-[var(--primary)] inline" /> Pin moved to: {picked}. Drag to fine-tune, then “Save location”.</div>}
 
         <div className="h-[320px] overflow-hidden rounded-xl border-[0.5px] border-[var(--hairline)]">
           <MapContainer center={center} zoom={hasPin ? 16 : 11} className="w-full h-full" scrollWheelZoom>
@@ -123,17 +154,24 @@ export function LocationEditorTab({ venue, venueId, reload }: LocationEditorTabP
         </div>
       </OwnerSection>
 
-      <OwnerSection title="Address" icon="home" description="Shown on your public page.">
-        <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 text-[14px] text-[var(--ink)]">{venue.fullAddress || 'No address on file.'}</div>
-        <div className="mt-2 t-sm">Address text is managed by the PickleBallers team for now — contact support to change it. You can update the map pin above yourself.</div>
+      <OwnerSection title="Address" icon="home" description="Shown on your public page. Picking a suggestion above fills these in — edit anything that's off.">
+        <div className="space-y-3.5">
+          <FormField label="Address line 1" placeholder="Street & building no." maxLength={200} value={addressLine1} onChange={(e) => { setAddressLine1(e.target.value); setStatus('idle'); }} />
+          <FormField label="Address line 2" placeholder="Unit, floor, landmark (optional)" maxLength={200} value={addressLine2} onChange={(e) => { setAddressLine2(e.target.value); setStatus('idle'); }} />
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="City" placeholder="e.g. Makati" maxLength={100} value={cityName} onChange={(e) => { setCityName(e.target.value); setStatus('idle'); }} />
+            <FormField label="Postcode" placeholder="e.g. 1200" inputMode="numeric" maxLength={20} value={postalCode} onChange={(e) => { setPostalCode(e.target.value); setStatus('idle'); }} />
+          </div>
+          <FormField label="Province / region" placeholder="e.g. Metro Manila" maxLength={100} value={region} onChange={(e) => { setRegion(e.target.value); setStatus('idle'); }} />
+        </div>
       </OwnerSection>
 
-      {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold text-center">Couldn't save the pin. Try again.</div>}
+      {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold text-center">Couldn't save your location. Try again.</div>}
       <Button fullWidth onClick={onSave} disabled={status === 'saving'}>
-        {status === 'saving' ? 'Saving…' : status === 'saved' ? <><Icon name="check" size={18} /> Saved</> : 'Save pin'}
+        {status === 'saving' ? 'Saving…' : status === 'saved' ? <><Icon name="check" size={18} /> Saved</> : 'Save location'}
       </Button>
 
-      <Toast message="Map pin saved" show={status === 'saved'} />
+      <Toast message="Location saved" show={status === 'saved'} />
     </div>
   );
 }

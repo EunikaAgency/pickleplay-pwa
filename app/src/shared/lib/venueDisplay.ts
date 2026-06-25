@@ -2,9 +2,40 @@
 // but sparse (lat/lng, ratings, amenities are often null), so everything here
 // degrades gracefully — callers can render the result or hide the slot.
 
-import { apiImageUrl, type ApiVenue } from './api';
+import { apiImageUrl, type ApiVenue, type ApiCourt } from './api';
 
 const CURRENCY_SYMBOLS: Record<string, string> = { PHP: '₱', USD: '$', EUR: '€', GBP: '£' };
+
+/** The currency symbol for a venue's pricing currency ("₱", "$", …), or "". */
+export function currencySymbol(code?: string | null): string {
+  return CURRENCY_SYMBOLS[(code || '').toUpperCase()] ?? '';
+}
+
+/**
+ * Per-hour price for the detail screen: "₱500/hr", or a range "₱300–₱500/hr"
+ * when the venue's courts carry differing rates. A court's own `hourlyRate`
+ * overrides the venue's flat `priceFrom`; courts without one fall back to it.
+ * Null when there's no price at all.
+ */
+export function priceRangeLabel(
+  v: Pick<ApiVenue, 'priceFrom' | 'priceFromLabel' | 'pricingCurrency'>,
+  courts: Pick<ApiCourt, 'hourlyRate'>[] = [],
+): string | null {
+  const sym = currencySymbol(v.pricingCurrency);
+  const base = typeof v.priceFrom === 'number' ? v.priceFrom : null;
+  const rates = (courts.length
+    ? courts.map((c) => (typeof c.hourlyRate === 'number' && c.hourlyRate > 0 ? c.hourlyRate : base))
+    : [base]
+  ).filter((r): r is number => typeof r === 'number' && r > 0);
+  if (rates.length) {
+    const min = Math.min(...rates);
+    const max = Math.max(...rates);
+    return min === max ? `${sym}${min}/hr` : `${sym}${min}–${sym}${max}/hr`;
+  }
+  // No numeric rate — reuse a server label, ensuring it reads per-hour.
+  if (v.priceFromLabel) return /hr|hour/i.test(v.priceFromLabel) ? v.priceFromLabel : `${v.priceFromLabel}/hr`;
+  return null;
+}
 
 /**
  * The venue's display image as an absolute URL, or null. Prefers the

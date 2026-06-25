@@ -76,7 +76,7 @@ export function ParticipantRow({ reg, onManage }: ParticipantRowProps) {
             disabled={!!busy}
             onClick={() => run('attended', { attended: !reg.attended })}
             className={`flex-1 h-9 rounded-lg font-heading font-semibold text-[13px] flex items-center justify-center gap-1 disabled:opacity-50 ${
-              reg.attended ? 'bg-[var(--lime)] text-[var(--ink)]' : 'bg-[var(--surface-3)] text-[var(--ink)]'
+              reg.attended ? 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' : 'bg-[var(--surface-3)] text-[var(--ink)]'
             }`}
           >
             <Icon name="check" size={14} /> {reg.attended ? 'Checked in' : 'Check in'}
@@ -86,7 +86,7 @@ export function ParticipantRow({ reg, onManage }: ParticipantRowProps) {
             disabled={!!busy}
             onClick={() => run('paid', { paid: !reg.paid })}
             className={`flex-1 h-9 rounded-lg font-heading font-semibold text-[13px] disabled:opacity-50 ${
-              reg.paid ? 'bg-[var(--lime)] text-[var(--ink)]' : 'bg-[var(--coral)]/15 text-[var(--coral)]'
+              reg.paid ? 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' : 'bg-[var(--coral)]/15 text-[var(--coral)]'
             }`}
           >
             {reg.paid ? 'Paid' : 'Owes'}

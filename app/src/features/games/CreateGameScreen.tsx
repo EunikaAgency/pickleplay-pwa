@@ -738,7 +738,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
             const isMe = p.id === me?.id;
             return (
               <div key={p.id} className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3 flex items-center gap-3">
-                <Avatar name={p.displayName || 'Player'} size={40} variant={ROSTER_VARIANTS[i % ROSTER_VARIANTS.length]} />
+                <Avatar src={p.avatarUrl} name={p.displayName || 'Player'} size={40} variant={ROSTER_VARIANTS[i % ROSTER_VARIANTS.length]} />
                 <div className="flex-1 min-w-0">
                   <div className="font-heading font-semibold text-[14px] text-[var(--ink)] truncate">
                     {p.displayName || 'Player'}{isMe ? ' (you)' : ''}

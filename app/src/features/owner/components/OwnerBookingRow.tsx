@@ -83,7 +83,7 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
 
       {canManage && st !== 'cancelled' && (
         <div className="flex flex-wrap items-center gap-2 mt-3">
-          {st === 'pending_approval' && <ActionButton label="Confirm" tone="primary" busy={busy} onClick={() => act('confirmed')} />}
+          {st === 'pending_approval' && <ActionButton label="Approve" tone="primary" busy={busy} onClick={() => act('awaiting_payment')} />}
           <div className="flex-1" />
           <ActionButton label={st === 'pending_approval' ? 'Decline' : 'Cancel'} tone="ghost" busy={busy} onClick={() => act('cancelled')} />
         </div>

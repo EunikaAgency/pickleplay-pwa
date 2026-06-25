@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Chip } from '../../../shared/components/ui/Chip';
+import { Segmented } from '../../../shared/components/ui/Segmented';
 import { OwnerSection } from '../components/OwnerSection';
+import { WeeklyHoursEditor } from '../components/WeeklyHoursEditor';
 import {
   listCourts,
   createCourt,
@@ -19,25 +21,69 @@ interface CourtsEditorTabProps {
   reload: () => void;
 }
 
+// Compare two photo-gallery arrays for the dirty check.
+const sameUrls = (a: string[], b: string[]) => a.length === b.length && a.every((u, i) => u === b[i]);
+
+const MAX_GALLERY = 8;
+
+// Multi-sport: the sport a court is set up for. Unset on a court → Pickleball
+// (the product default), so the picker always shows a selection.
+const DEFAULT_SPORT = 'Pickleball';
+const SPORTS = [DEFAULT_SPORT, 'Tennis', 'Badminton', 'Padel', 'Basketball', 'Volleyball'];
+
 function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (c: OwnerCourt) => void; onDeleted: (id: string) => void }) {
   const id = entityId(court);
-  const [courtNumber, setCourtNumber] = useState(court.courtNumber || '');
+  // The court number is auto-assigned and never edited here — it's only the
+  // stable id bookings reference + the fallback label for an unnamed court.
+  const courtNumber = court.courtNumber || '';
+  const [courtName, setCourtName] = useState(court.courtName || '');
+  const [description, setDescription] = useState(court.description || '');
   const [surfaceType, setSurfaceType] = useState(court.surfaceType || '');
   const [hourlyRate, setHourlyRate] = useState(court.hourlyRate != null ? String(court.hourlyRate) : '');
   const [indoor, setIndoor] = useState(!!court.indoor);
   const [isActive, setIsActive] = useState(court.isActive !== false);
+  // Multi-sport + half-court config (see the "Court configuration" block below).
+  const [sport, setSport] = useState(court.sport || DEFAULT_SPORT);
+  const [isSplittable, setIsSplittable] = useState(!!court.isSplittable);
+  const [splitCount, setSplitCount] = useState(court.splitCount ?? 2);
+  // Per-court booking policy: approval override + a turnover gap between bookings.
+  const [approvalMode, setApprovalMode] = useState<'inherit' | 'auto' | 'manual'>(court.approvalMode ?? 'inherit');
+  const [turnoverMinutes, setTurnoverMinutes] = useState(court.turnoverMinutes ? String(court.turnoverMinutes) : '');
   const [mainImageUrl, setMainImageUrl] = useState(court.mainImageUrl || '');
+  const [gallery, setGallery] = useState<string[]>(court.galleryImageUrls ?? []);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [busy, setBusy] = useState(false);
   const [photoStatus, setPhotoStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [photoErr, setPhotoErr] = useState('');
+  const [galleryBusy, setGalleryBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  // Which tab of the expanded editor is showing. Defaults to the details form;
+  // the Hours tab mounts its editor lazily (see below).
+  const [tab, setTab] = useState<'info' | 'gallery' | 'hours'>('info');
+  // The gallery photo currently open in the full-screen preview (null = closed).
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const save = async () => {
     setStatus('saving');
     try {
       // Blank rate clears the override (null) → this court falls back to the venue rate.
-      const updated = await updateCourt(id, { courtNumber, surfaceType: surfaceType || undefined, hourlyRate: hourlyRate.trim() === '' ? null : Number(hourlyRate), indoor, isActive, mainImageUrl });
+      const updated = await updateCourt(id, {
+        courtName: courtName.trim(),
+        description: description.trim(),
+        surfaceType: surfaceType || undefined,
+        hourlyRate: hourlyRate.trim() === '' ? null : Number(hourlyRate),
+        indoor,
+        isActive,
+        sport,
+        isSplittable,
+        splitCount,
+        approvalMode,
+        turnoverMinutes: turnoverMinutes.trim() === '' ? 0 : Number(turnoverMinutes),
+        mainImageUrl,
+        galleryImageUrls: gallery,
+      });
       setStatus('saved');
       onSaved(updated);
       setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1800);
@@ -63,6 +109,29 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     }
   };
 
+  // Gallery photos beyond the cover — upload each picked file and append its URL.
+  const onPickGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).slice(0, MAX_GALLERY - gallery.length);
+    if (files.length === 0) return;
+    setGalleryBusy(true);
+    setPhotoErr('');
+    try {
+      for (const file of files) {
+        const media = await uploadCourtMedia(id, file);
+        const url = media?.url;
+        if (url) { setGallery((g) => (g.length < MAX_GALLERY ? [...g, url] : g)); setStatus('idle'); }
+      }
+    } catch (err) {
+      setPhotoStatus('error');
+      setPhotoErr(err instanceof ApiError && err.status === 413 ? 'That file is too large (max 10MB).' : 'Upload failed. Try again.');
+    } finally {
+      setGalleryBusy(false);
+      if (galleryRef.current) galleryRef.current.value = '';
+    }
+  };
+
+  const removeGalleryPhoto = (url: string) => { setGallery((g) => g.filter((u) => u !== url)); setStatus('idle'); };
+
   const remove = async () => {
     setBusy(true);
     try {
@@ -73,51 +142,259 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     }
   };
 
-  const dirty = courtNumber !== (court.courtNumber || '') || surfaceType !== (court.surfaceType || '') || hourlyRate !== (court.hourlyRate != null ? String(court.hourlyRate) : '') || indoor !== !!court.indoor || isActive !== (court.isActive !== false) || mainImageUrl !== (court.mainImageUrl || '');
+  const dirty =
+    courtName !== (court.courtName || '') ||
+    description !== (court.description || '') ||
+    surfaceType !== (court.surfaceType || '') ||
+    hourlyRate !== (court.hourlyRate != null ? String(court.hourlyRate) : '') ||
+    indoor !== !!court.indoor ||
+    isActive !== (court.isActive !== false) ||
+    sport !== (court.sport || DEFAULT_SPORT) ||
+    isSplittable !== !!court.isSplittable ||
+    splitCount !== (court.splitCount ?? 2) ||
+    approvalMode !== (court.approvalMode ?? 'inherit') ||
+    turnoverMinutes !== (court.turnoverMinutes ? String(court.turnoverMinutes) : '') ||
+    mainImageUrl !== (court.mainImageUrl || '') ||
+    !sameUrls(gallery, court.galleryImageUrls ?? []);
+
+  // Collapsed-row summary (what the owner sees before expanding). Sport shows
+  // only when it isn't the default, so single-sport venues stay uncluttered.
+  const summary = [sport && sport !== DEFAULT_SPORT ? sport : null, indoor ? 'Indoor' : null, surfaceType || null, hourlyRate.trim() ? `₱${hourlyRate}/hr` : null].filter(Boolean).join(' · ');
 
   return (
-    <div className="rounded-xl border-[0.5px] border-[var(--hairline)] p-3 space-y-3">
-      <div className="flex items-start gap-3">
-        <div className="field p-0! shrink-0">
-          <label className="lbl">Photo</label>
-          <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={photoStatus === 'uploading'}
-            aria-label={`Set photo for court ${courtNumber}`}
-            className="relative h-16 w-16 overflow-hidden rounded-xl bg-[var(--surface-2)] flex items-center justify-center text-[var(--muted)] disabled:opacity-60"
-          >
-            {mainImageUrl ? (
-              <img src={apiImageUrl(mainImageUrl)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            ) : (
-              <Icon name="camera" size={22} />
-            )}
-            {photoStatus === 'uploading' && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold">…</span>}
-          </button>
-          {mainImageUrl && photoStatus !== 'uploading' && (
-            <button type="button" onClick={() => { setMainImageUrl(''); setStatus('idle'); }} className="mt-1 t-sm text-[var(--muted)] hover:text-[var(--coral)] font-semibold">Remove</button>
+    <>
+    <div className="card">
+      {/* Header — always visible; tap to expand the editor (accordion). Uses the
+          shared .card style (visible border + shadow) so each court reads as a
+          clearly separate card, matching the "Add a court" card above. */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="w-full flex items-center gap-3 p-3 text-left"
+      >
+        <div className="h-11 w-11 rounded-[10px] overflow-hidden bg-[var(--surface-2)] shrink-0 flex items-center justify-center">
+          {mainImageUrl ? (
+            <img src={apiImageUrl(mainImageUrl)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          ) : (
+            <span className="font-heading font-bold text-[var(--primary)] text-[15px]">{courtNumber}</span>
           )}
         </div>
-        <div className="flex-1 flex gap-2 min-w-0">
-          <div className="field p-0! w-16">
-            <label className="lbl">Court #</label>
-            <input className="control" value={courtNumber} maxLength={10} onChange={(e) => { setCourtNumber(e.target.value); setStatus('idle'); }} />
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-[14px] text-[var(--ink)] truncate flex items-center gap-2">
+            {courtName || `Court ${courtNumber}`}
+            {!isActive && <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)] bg-[var(--surface-2)] rounded px-1.5 py-0.5">Hidden</span>}
           </div>
-          <div className="field p-0! w-24">
-            <label className="lbl">Rate (₱/hr)</label>
-            <input className="control" inputMode="decimal" value={hourlyRate} maxLength={7} onChange={(e) => { setHourlyRate(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }} placeholder="Venue rate" />
+          <div className="t-sm text-[var(--muted)] truncate">{summary || 'Tap to add photos, hours & details'}</div>
+        </div>
+        {dirty && <span className="w-2 h-2 rounded-full bg-[var(--coral)] shrink-0" title="Unsaved changes" />}
+        <Icon name="chevron" size={16} className={`text-[var(--muted)] shrink-0 ${expanded ? 'rotate-90 transition-transform' : 'transition-transform'}`} />
+      </button>
+
+      {expanded && (
+      <div className="px-3 pb-3 pt-3 space-y-3 border-t-[0.5px] border-[var(--hairline)]">
+      <Segmented
+        options={[
+          { value: 'info', label: 'Court Info' },
+          { value: 'gallery', label: 'Gallery' },
+          { value: 'hours', label: 'Hours' },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+
+      {/* ── Court Information ── thumbnail, name, rate, surface, description + flags */}
+      {tab === 'info' && (
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="field p-0! shrink-0">
+            <label className="lbl">Thumbnail</label>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} className="hidden" />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={photoStatus === 'uploading'}
+              aria-label={`Set thumbnail for court ${courtNumber}`}
+              className="relative h-28 w-28 overflow-hidden rounded-[8px] border border-[var(--muted)] bg-[var(--surface-2)] flex items-center justify-center text-[var(--muted)] disabled:opacity-60"
+            >
+              {mainImageUrl ? (
+                <img src={apiImageUrl(mainImageUrl)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              ) : (
+                <Icon name="camera" size={22} />
+              )}
+              {photoStatus === 'uploading' && <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-[10px] font-bold">…</span>}
+            </button>
+            {mainImageUrl && photoStatus !== 'uploading' && (
+              <button type="button" onClick={() => { setMainImageUrl(''); setStatus('idle'); }} className="mt-1 t-sm text-[var(--muted)] hover:text-[var(--coral)] font-semibold">Remove</button>
+            )}
           </div>
-          <div className="field p-0! flex-1 min-w-0">
-            <label className="lbl">Surface</label>
-            <input className="control" value={surfaceType} maxLength={50} onChange={(e) => { setSurfaceType(e.target.value); setStatus('idle'); }} placeholder="hard, wood…" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="field p-0!">
+              <label className="lbl">Name <span className="text-[var(--muted)] font-semibold">· Court {courtNumber}</span></label>
+              <input className="control" value={courtName} maxLength={120} onChange={(e) => { setCourtName(e.target.value); setStatus('idle'); }} placeholder={`Court ${courtNumber}`} />
+            </div>
+            <div className="flex gap-2">
+              <div className="field p-0! w-28">
+                <label className="lbl">Rate (₱/hr)</label>
+                <input className="control" inputMode="decimal" value={hourlyRate} maxLength={7} onChange={(e) => { setHourlyRate(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }} placeholder="Venue rate" />
+              </div>
+              <div className="field p-0! flex-1 min-w-0">
+                <label className="lbl">Surface</label>
+                <input className="control" value={surfaceType} maxLength={50} onChange={(e) => { setSurfaceType(e.target.value); setStatus('idle'); }} placeholder="hard, wood…" />
+              </div>
+            </div>
+          </div>
+        </div>
+        {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold">{photoErr}</div>}
+
+        <div className="field p-0!">
+          <label className="lbl">Description (optional)</label>
+          <textarea className="control min-h-[64px] py-2 leading-snug" value={description} maxLength={1000} rows={2} onChange={(e) => { setDescription(e.target.value); setStatus('idle'); }} placeholder="What makes this court worth booking — lighting, view, net quality…" />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip selected={indoor} onClick={() => { setIndoor((v) => !v); setStatus('idle'); }}>{indoor && <Icon name="check" size={12} />} Indoor</Chip>
+          <Chip selected={isActive} onClick={() => { setIsActive((v) => !v); setStatus('idle'); }}>{isActive && <Icon name="check" size={12} />} Active</Chip>
+        </div>
+
+        {/* ── Court configuration ── which sport this court is set up for (multi-sport
+            venues mix these), and whether it can be split into bookable half-courts. */}
+        <div className="space-y-3 border-t-[0.5px] border-[var(--hairline)] pt-3">
+          <div className="field p-0!">
+            <label className="lbl">Sport</label>
+            <div className="flex flex-wrap items-center gap-2">
+              {SPORTS.map((s) => (
+                <Chip key={s} selected={sport === s} onClick={() => { setSport(s); setStatus('idle'); }}>
+                  {sport === s && <Icon name="check" size={12} />} {s}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <div className="field p-0!">
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip selected={isSplittable} onClick={() => { setIsSplittable((v) => !v); setStatus('idle'); }}>
+                {isSplittable && <Icon name="check" size={12} />} Splittable into half-courts
+              </Chip>
+            </div>
+            {isSplittable && (
+              <div className="mt-2.5">
+                <label className="lbl">Number of units</label>
+                <Segmented
+                  options={[{ value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]}
+                  value={String(splitCount)}
+                  onChange={(v) => { setSplitCount(Number(v)); setStatus('idle'); }}
+                />
+              </div>
+            )}
+            <p className="t-sm text-[var(--muted)] mt-1">Let this court be booked as separate half-courts.</p>
+          </div>
+        </div>
+
+        {/* ── Booking policy ── per-court override of the venue's approval mode, plus
+            an optional turnover gap kept free between bookings on this court. */}
+        <div className="space-y-3 border-t-[0.5px] border-[var(--hairline)] pt-3">
+          <div className="field p-0!">
+            <label className="lbl">Booking approval</label>
+            <Segmented
+              options={[
+                { value: 'inherit', label: 'Venue default' },
+                { value: 'auto', label: 'Instant' },
+                { value: 'manual', label: 'Approve' },
+              ]}
+              value={approvalMode}
+              onChange={(v) => { setApprovalMode(v); setStatus('idle'); }}
+            />
+            <p className="t-sm text-[var(--muted)] mt-1">
+              {approvalMode === 'inherit'
+                ? 'Follows your venue’s booking policy.'
+                : approvalMode === 'auto'
+                ? 'Bookings on this court confirm instantly.'
+                : 'You approve each booking before the player pays.'}
+            </p>
+          </div>
+          <div className="field p-0! w-40">
+            <label className="lbl">Turnover gap (min)</label>
+            <input
+              className="control"
+              inputMode="numeric"
+              value={turnoverMinutes}
+              maxLength={3}
+              onChange={(e) => { setTurnoverMinutes(e.target.value.replace(/[^\d]/g, '')); setStatus('idle'); }}
+              placeholder="0"
+            />
+            <p className="t-sm text-[var(--muted)] mt-1">Free time kept after each booking before the next can start.</p>
           </div>
         </div>
       </div>
-      {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold">{photoErr}</div>}
-      <div className="flex flex-wrap items-center gap-2">
-        <Chip selected={indoor} onClick={() => { setIndoor((v) => !v); setStatus('idle'); }}>{indoor && <Icon name="check" size={12} />} Indoor</Chip>
-        <Chip selected={isActive} onClick={() => { setIsActive((v) => !v); setStatus('idle'); }}>{isActive && <Icon name="check" size={12} />} Active</Chip>
+      )}
+
+      {/* ── Gallery ── additional photos beyond the cover thumbnail. A square
+          grid; tap any photo to preview it full-screen, or ✕ to remove it. */}
+      {tab === 'gallery' && (
+      <div className="field p-0!">
+        <label className="lbl">Photos {gallery.length > 0 && <span className="text-[var(--muted)] font-semibold">· {gallery.length}/{MAX_GALLERY}</span>}</label>
+        <input ref={galleryRef} type="file" accept="image/*" multiple onChange={onPickGallery} className="hidden" />
+        {gallery.length === 0 ? (
+          // Empty state — one inviting drop-zone instead of a lone "+" square.
+          <button
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            disabled={galleryBusy}
+            aria-label={`Add photos to court ${courtNumber}`}
+            className="w-full rounded-xl border border-dashed border-[var(--field-border)] bg-[var(--surface-2)] py-8 flex flex-col items-center justify-center gap-2 text-[var(--muted)] disabled:opacity-60"
+          >
+            <Icon name="camera" size={26} />
+            <span className="t-sm font-semibold text-[var(--ink)]">{galleryBusy ? 'Uploading…' : 'Add photos'}</span>
+            <span className="text-[11px]">Show off this court — up to {MAX_GALLERY} photos</span>
+          </button>
+        ) : (
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            {gallery.map((url) => (
+              <div key={url} className="relative aspect-square">
+                {/* Tap the photo → full-screen preview. */}
+                <button
+                  type="button"
+                  onClick={() => setLightbox(apiImageUrl(url))}
+                  aria-label="Preview photo"
+                  className="block h-full w-full overflow-hidden rounded-xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface-2)]"
+                >
+                  <img src={apiImageUrl(url)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                </button>
+                {/* Remove — sits just outside the photo so it's never clipped. */}
+                <button
+                  type="button"
+                  onClick={() => removeGalleryPhoto(url)}
+                  aria-label="Remove photo"
+                  className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--ink)] text-white inline-flex items-center justify-center shadow-md ring-2 ring-[var(--surface)]"
+                >
+                  <Icon name="close" size={11} />
+                </button>
+              </div>
+            ))}
+            {gallery.length < MAX_GALLERY && (
+              <button
+                type="button"
+                onClick={() => galleryRef.current?.click()}
+                disabled={galleryBusy}
+                aria-label={`Add photos to court ${courtNumber}`}
+                className="aspect-square rounded-xl border border-dashed border-[var(--field-border)] bg-[var(--surface-2)] flex items-center justify-center text-[var(--muted)] disabled:opacity-60"
+              >
+                {galleryBusy ? <span className="text-[11px] font-bold">…</span> : <Icon name="plus" size={20} />}
+              </button>
+            )}
+          </div>
+        )}
+        {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold mt-2">{photoErr}</div>}
+      </div>
+      )}
+
+      {/* ── Operating Hours ── this court's own weekly hours (+ hours pricing).
+          Inherits the venue default until first saved. Lazy — the editor only
+          mounts (and fetches) when this tab is selected. */}
+      {tab === 'hours' && <WeeklyHoursEditor courtId={id} />}
+
+      {/* Card-level actions — always visible regardless of the active tab. */}
+      <div className="flex items-center gap-2 border-t-[0.5px] border-[var(--hairline)] pt-3">
         <div className="flex-1" />
         {dirty && (
           <button type="button" onClick={save} disabled={status === 'saving'} className="h-10 px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60">
@@ -129,7 +406,20 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
         </button>
       </div>
       {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold">Couldn't save. Try again.</div>}
+      </div>
+      )}
     </div>
+
+    {/* Full-screen photo preview — tap the backdrop or ✕ to close. */}
+    {lightbox && (
+      <div className="fixed inset-0 z-[70] bg-black/90 flex items-center justify-center p-4" role="dialog" aria-modal="true" onClick={() => setLightbox(null)}>
+        <button type="button" aria-label="Close preview" onClick={() => setLightbox(null)} className="absolute top-[calc(12px+env(safe-area-inset-top))] right-4 w-9 h-9 rounded-full bg-white/15 text-white flex items-center justify-center">
+          <Icon name="close" size={18} />
+        </button>
+        <img src={lightbox} alt="" className="max-w-full max-h-full object-contain rounded-lg" />
+      </div>
+    )}
+    </>
   );
 }
 
@@ -138,10 +428,13 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const [newNumber, setNewNumber] = useState('');
+  const [newName, setNewName] = useState('');
   const [newSurface, setNewSurface] = useState('');
   const [newRate, setNewRate] = useState('');
   const [newIndoor, setNewIndoor] = useState(false);
+  const [newSport, setNewSport] = useState(DEFAULT_SPORT);
+  const [newApprovalMode, setNewApprovalMode] = useState<'inherit' | 'auto' | 'manual'>('inherit');
+  const [newTurnover, setNewTurnover] = useState('');
   const [addStatus, setAddStatus] = useState<'idle' | 'saving' | 'error'>('idle');
 
   useEffect(() => {
@@ -164,16 +457,30 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
     };
   }, [venueId]);
 
+  // The court number is the stable id bookings reference + the fallback label,
+  // but it's fully auto — the owner never sees or types it. Always the next free
+  // number so sequential adds don't collide.
+  const nextNumber = Math.max(
+    courts.reduce((m, c) => {
+      const n = parseInt((c.courtNumber || '').replace(/\D/g, ''), 10);
+      return Number.isFinite(n) ? Math.max(m, n) : m;
+    }, 0),
+    courts.length,
+  ) + 1;
+
   const onAdd = async () => {
-    if (!newNumber.trim()) return;
+    if (addStatus === 'saving') return;
     setAddStatus('saving');
     try {
-      const created = await createCourt(venueId, { courtNumber: newNumber.trim(), surfaceType: newSurface || undefined, hourlyRate: newRate.trim() === '' ? undefined : Number(newRate), indoor: newIndoor });
+      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, hourlyRate: newRate.trim() === '' ? undefined : Number(newRate), indoor: newIndoor, sport: newSport, approvalMode: newApprovalMode, turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover) });
       setCourts((c) => [...c, created]);
-      setNewNumber('');
+      setNewName('');
       setNewSurface('');
       setNewRate('');
       setNewIndoor(false);
+      setNewSport(DEFAULT_SPORT);
+      setNewApprovalMode('inherit');
+      setNewTurnover('');
       setAddStatus('idle');
       reload();
     } catch {
@@ -192,12 +499,12 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
 
   return (
     <div className="space-y-4">
-      <OwnerSection title="Add a court" icon="plus">
+      <OwnerSection title="Add a court" icon="plus" description={`Name it — it'll be "Court ${nextNumber}" until you do. The court number is assigned automatically. Add photos & a description after it's created.`}>
+        <div className="field p-0! mb-3">
+          <label className="lbl">Name (optional)</label>
+          <input className="control" value={newName} maxLength={120} onChange={(e) => setNewName(e.target.value)} placeholder={`e.g. Center Court (or leave blank for "Court ${nextNumber}")`} />
+        </div>
         <div className="flex gap-3 mb-3">
-          <div className="field p-0! w-20">
-            <label className="lbl">Court #</label>
-            <input className="control" value={newNumber} maxLength={10} onChange={(e) => setNewNumber(e.target.value)} placeholder="1" />
-          </div>
           <div className="field p-0! w-28">
             <label className="lbl">Rate (₱/hr)</label>
             <input className="control" inputMode="decimal" value={newRate} maxLength={7} onChange={(e) => setNewRate(e.target.value.replace(/[^\d.]/g, ''))} placeholder="200" />
@@ -207,23 +514,78 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
             <input className="control" value={newSurface} maxLength={50} onChange={(e) => setNewSurface(e.target.value)} placeholder="hard, wood…" />
           </div>
         </div>
+        <div className="field p-0! mb-3">
+          <label className="lbl">Sport</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {SPORTS.map((s) => (
+              <Chip key={s} selected={newSport === s} onClick={() => setNewSport(s)}>
+                {newSport === s && <Icon name="check" size={12} />} {s}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        {/* Per-court booking policy: override the venue's approval mode + optional
+            turnover gap — settable at creation so owners don't have to create then
+            re-open each court to configure it. */}
+        <div className="space-y-3 border-t-[0.5px] border-[var(--hairline)] pt-3 mb-3">
+          <div className="field p-0!">
+            <label className="lbl">Booking approval</label>
+            <Segmented
+              options={[
+                { value: 'inherit', label: 'Venue default' },
+                { value: 'auto', label: 'Instant' },
+                { value: 'manual', label: 'Approve' },
+              ]}
+              value={newApprovalMode}
+              onChange={setNewApprovalMode}
+            />
+            <p className="t-sm text-[var(--muted)] mt-1">
+              {newApprovalMode === 'inherit'
+                ? 'Follows your venue’s booking policy.'
+                : newApprovalMode === 'auto'
+                ? 'Bookings on this court confirm instantly.'
+                : 'You approve each booking before the player pays.'}
+            </p>
+          </div>
+          <div className="field p-0! w-40">
+            <label className="lbl">Turnover gap (min)</label>
+            <input
+              className="control"
+              inputMode="numeric"
+              value={newTurnover}
+              maxLength={3}
+              onChange={(e) => setNewTurnover(e.target.value.replace(/[^\d]/g, ''))}
+              placeholder="0"
+            />
+            <p className="t-sm text-[var(--muted)] mt-1">Free time kept after each booking before the next can start.</p>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <Chip selected={newIndoor} onClick={() => setNewIndoor((v) => !v)}>{newIndoor && <Icon name="check" size={12} />} Indoor</Chip>
           <div className="flex-1" />
-          <button type="button" onClick={onAdd} disabled={!newNumber.trim() || addStatus === 'saving'} className="h-12 px-5 rounded-2xl bg-[var(--primary)] text-white font-heading font-semibold text-[15px] disabled:opacity-60">
+          <button type="button" onClick={onAdd} disabled={addStatus === 'saving'} className="h-12 px-5 rounded-2xl bg-[var(--primary)] text-white font-heading font-semibold text-[15px] disabled:opacity-60">
             {addStatus === 'saving' ? 'Adding…' : 'Add court'}
           </button>
         </div>
         {addStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold mt-2">Couldn't add. Try again.</div>}
       </OwnerSection>
 
-      <OwnerSection title="Courts" icon="paddle" description={loading ? 'Loading…' : `${courts.length} court${courts.length === 1 ? '' : 's'}`}>
+      {/* Courts — a plain label, with each court as its own standalone accordion
+          card (no longer nested inside one big "Courts" section card). */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-2.5 px-1">
+          <span className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
+            <Icon name="paddle" size={16} />
+          </span>
+          <div className="hd-3">Courts</div>
+          <span className="t-sm text-[var(--muted)] ml-auto">{loading ? 'Loading…' : `${courts.length} court${courts.length === 1 ? '' : 's'}`}</span>
+        </div>
         {error ? (
-          <div className="t-sm text-[var(--coral)]">Couldn't load courts.</div>
+          <div className="card p-4 t-sm text-[var(--coral)]">Couldn't load courts.</div>
         ) : loading ? (
-          <div className="t-sm">Loading courts…</div>
+          <div className="card p-4 t-sm">Loading courts…</div>
         ) : courts.length === 0 ? (
-          <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm">No courts yet. Add your first court above so players know your capacity.</div>
+          <div className="card p-4 t-sm">No courts yet. Add your first court above so players know your capacity.</div>
         ) : (
           <div className="space-y-3">
             {courts.map((c) => (
@@ -231,7 +593,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
             ))}
           </div>
         )}
-      </OwnerSection>
+      </div>
     </div>
   );
 }

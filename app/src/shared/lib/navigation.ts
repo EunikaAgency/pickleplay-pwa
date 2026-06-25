@@ -8,11 +8,17 @@ export type Screen =
   // to create-game on completion.
   | { id: 'nearby'; params?: { intent?: 'lobby' } }
   | { id: 'games' }
+  | { id: 'tournaments' }
+  | { id: 'tournament'; params: { id: string } }
+  | { id: 'tournament-chat'; params: { id: string; name?: string } }
   | { id: 'clubs' }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
   | { id: 'court-details'; params: { id: string; intent?: 'lobby' } }
   | { id: 'club-details'; params: { id: string; invited?: boolean } }
+  | { id: 'club-post'; params: { id: string; postId: string } }
+  | { id: 'club-post-edit'; params: { id: string; postId: string } }
+  | { id: 'club-chat'; params: { id: string; name?: string } }
   // `bookingId` = host a lobby on an already-booked court (skips the inline
   // book+pay step); the create form locks venue/date/time to that reservation.
   | { id: 'create-game'; params?: { bookingId?: string } }
@@ -20,8 +26,12 @@ export type Screen =
   | { id: 'my-games' }
   | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number; intent?: 'lobby' } }
   | { id: 'my-bookings' }
+  // Refund / cancel a single court booking (e.g. after a host deletes a lobby but
+  // keeps the court reserved).
+  | { id: 'booking-refund'; params: { bookingId: string } }
   | { id: 'payment-history' }
   | { id: 'create-club' }
+  | { id: 'edit-club'; params: { id: string } }
   | { id: 'edit-profile' }
   | { id: 'settings' }
   | { id: 'search' }
@@ -33,6 +43,7 @@ export type Screen =
   | { id: 'owner-venues' }
   | { id: 'owner-venue'; params: { id: string; tab?: string } }
   | { id: 'owner-new-venue' }
+  | { id: 'claim-venue' }
   | { id: 'owner-bookings'; params: { status?: string } }
   | { id: 'owner-insights' }
   | { id: 'owner-notifications' }
@@ -49,7 +60,7 @@ export type Screen =
 
 export type ScreenId = Screen['id'];
 
-export const tabScreens = ['home', 'nearby', 'games', 'clubs', 'profile'] as const;
+export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'profile'] as const;
 export type TabId = (typeof tabScreens)[number];
 
 /**
@@ -74,18 +85,26 @@ export function pathFromScreen(screen: Screen): string {
     case 'onboarding': return '/onboarding';
     case 'nearby': return `/nearby${q({ intent: screen.params?.intent })}`;
     case 'games': return '/games';
+    case 'tournaments': return '/tournaments';
+    case 'tournament': return `/tournaments/${screen.params.id}`;
+    case 'tournament-chat': return `/tournaments/${screen.params.id}/chat${q({ name: screen.params.name })}`;
     case 'clubs': return '/clubs';
     case 'profile': return '/profile';
     case 'game-details': return `/games/${screen.params.id}`;
     case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent })}`;
     case 'club-details': return `/clubs/${screen.params.id}${q({ invited: screen.params.invited })}`;
+    case 'club-post': return `/clubs/${screen.params.id}/posts/${screen.params.postId}`;
+    case 'club-post-edit': return `/clubs/${screen.params.id}/posts/${screen.params.postId}/edit`;
+    case 'club-chat': return `/clubs/${screen.params.id}/chat${q({ name: screen.params.name })}`;
     case 'create-game': return `/games/create${q({ bookingId: screen.params?.bookingId })}`;
     case 'edit-game': return `/games/${screen.params.id}/edit`;
     case 'my-games': return '/my-games';
     case 'book-court': return `/book${q({ venueId: screen.params.venueId, date: screen.params.date, time: screen.params.time, hours: screen.params.hours, intent: screen.params.intent })}`;
     case 'my-bookings': return '/my-bookings';
+    case 'booking-refund': return `/bookings/${screen.params.bookingId}/refund`;
     case 'payment-history': return '/payments';
     case 'create-club': return '/clubs/create';
+    case 'edit-club': return `/clubs/${screen.params.id}/edit`;
     case 'edit-profile': return '/profile/edit';
     case 'settings': return '/settings';
     case 'search': return '/search';
@@ -97,6 +116,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'owner-venues': return '/owner/venues';
     case 'owner-venue': return `/owner/venues/${screen.params.id}${q({ tab: screen.params.tab })}`;
     case 'owner-new-venue': return '/owner/venues/new';
+    case 'claim-venue': return '/owner/venues/claim';
     case 'owner-bookings': return `/owner/bookings${q({ status: screen.params?.status })}`;
     case 'owner-insights': return '/owner/insights';
     case 'owner-notifications': return '/owner/notifications';
@@ -124,7 +144,7 @@ export function pathFromScreen(screen: Screen): string {
 export function screenFromLocation(pathname: string, search = ''): Screen {
   const sp = new URLSearchParams(search);
   const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
-  const [a, b, c, d] = segs;
+  const [a, b, c, d, e] = segs;
   const opt = (v: string | null) => (v == null || v === '' ? undefined : v);
   const lobby = sp.get('intent') === 'lobby' ? ('lobby' as const) : undefined;
   if (!a) return { id: 'home' };
@@ -146,15 +166,26 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (c === 'chat') return { id: 'game-chat', params: { id: b, name: opt(sp.get('name')) } };
       if (c === 'invite') return { id: 'invite-players', params: { id: b } };
       return { id: 'game-details', params: { id: b } };
+    case 'tournaments':
+      if (c === 'chat') return { id: 'tournament-chat', params: { id: b, name: opt(sp.get('name')) } };
+      if (b) return { id: 'tournament', params: { id: b } };
+      return { id: 'tournaments' };
     case 'clubs':
       if (!b) return { id: 'clubs' };
       if (b === 'create') return { id: 'create-club' };
+      if (c === 'edit') return { id: 'edit-club', params: { id: b } };
+      if (c === 'chat') return { id: 'club-chat', params: { id: b, name: opt(sp.get('name')) } };
+      if (c === 'posts' && d && e === 'edit') return { id: 'club-post-edit', params: { id: b, postId: d } };
+      if (c === 'posts' && d) return { id: 'club-post', params: { id: b, postId: d } };
       // A bare `/clubs/<slug>` cold-load is treated as an invite arrival (see
       // App.tsx) so the "you're invited" prompt still greets share-link visitors.
       return { id: 'club-details', params: { id: b, invited: sp.get('invited') === '1' || undefined } };
     case 'my-games': return { id: 'my-games' };
     case 'book': return { id: 'book-court', params: { venueId: opt(sp.get('venueId')), date: opt(sp.get('date')), time: opt(sp.get('time')), hours: opt(sp.get('hours')) ? Number(sp.get('hours')) : undefined, intent: lobby } };
     case 'my-bookings': return { id: 'my-bookings' };
+    case 'bookings':
+      if (b && c === 'refund') return { id: 'booking-refund', params: { bookingId: b } };
+      return { id: 'my-bookings' };
     case 'payments': return { id: 'payment-history' };
     case 'profile': return b === 'edit' ? { id: 'edit-profile' } : { id: 'profile' };
     case 'settings': return { id: 'settings' };
@@ -165,9 +196,10 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'venues') {
         if (!c) return { id: 'owner-venues' };
         if (c === 'new') return { id: 'owner-new-venue' };
+        if (c === 'claim') return { id: 'claim-venue' };
         return { id: 'owner-venue', params: { id: c, tab: opt(sp.get('tab')) } };
       }
-      if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : undefined };
+      if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : {} };
       if (b === 'insights') return { id: 'owner-insights' };
       if (b === 'notifications') return { id: 'owner-notifications' };
       return { id: 'home' };
@@ -182,7 +214,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'open-play') return { id: 'organizer-open-play' };
       if (b === 'sessions' && c) return { id: 'organizer-session', params: { id: c } };
       if (b === 'rosters') return c ? { id: 'organizer-roster', params: { id: c } } : { id: 'organizer-rosters' };
-      if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : undefined };
+      if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : {} };
       return { id: 'organizer-hub' };
     default: return { id: 'home' };
   }
@@ -190,8 +222,11 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
 
 /** A sensible Back target to seed history with when a deep link lands on a detail screen. */
 export function deepLinkParent(id: ScreenId): Screen {
-  if (id === 'club-details') return { id: 'clubs' };
+  if (id === 'club-details' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return { id: 'clubs' };
+  if (id === 'tournament' || id === 'tournament-chat') return { id: 'tournaments' };
   if (id === 'court-details') return { id: 'nearby' };
+  if (id === 'booking-refund') return { id: 'my-bookings' };
+  if (id === 'claim-venue') return { id: 'owner-venues' };
   if (id === 'chat') return { id: 'messages' };
   if (id === 'game-chat') return { id: 'games' };
   if (id === 'organizer-tournament' || id === 'organizer-tournament-new') return { id: 'organizer-tournaments' };

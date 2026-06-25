@@ -8,7 +8,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import { useOwnerDashboard, venueKey, type Glance } from './hooks/useOwnerDashboard';
-import { venueCoords, locationLine } from '../../shared/lib/venueDisplay';
+import { venueCoords, locationLine, venueImage } from '../../shared/lib/venueDisplay';
 import { money } from '../bookings/bookingDisplay';
 import type { LatLng } from '../../shared/lib/geo';
 import type { ApiVenue } from '../../shared/lib/api';
@@ -85,6 +85,8 @@ function byAttention(a: VenueRow, b: VenueRow): number {
 export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
   const user = useAuthStore((s) => s.user);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
+  const canCreate = userHasPermission(user, 'owner.venues.create');
+  const canClaim = userHasPermission(user, 'owner.venues.claim');
   const { venues, status, retry, glanceFor, analyticsByVenue, canAnalytics } = useOwnerDashboard({
     withBookings: canBookings,
   });
@@ -118,13 +120,26 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
           {pendingTotal > 0 ? `${pendingTotal} booking${pendingTotal === 1 ? '' : 's'} awaiting approval` : 'Your courts at a glance'}
         </div>
       </div>
-      <button
-        onClick={() => onNavigate('owner-venues')}
-        aria-label="My venues"
-        className="w-10 h-10 rounded-full bg-[var(--surface)] text-[var(--ink-2)] flex items-center justify-center border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
-      >
-        <Icon name="storefront" size={18} />
-      </button>
+      <div className="flex items-center gap-2">
+        {canClaim && (
+          <button
+            onClick={() => onNavigate('claim-venue')}
+            aria-label="Claim an existing venue"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-[var(--field-border)] bg-[var(--surface)] text-[var(--ink)] font-bold text-[13px] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
+          >
+            <Icon name="verified" size={15} /> Claim
+          </button>
+        )}
+        {canCreate && (
+          <button
+            onClick={() => onNavigate('owner-new-venue')}
+            aria-label="Create a venue"
+            className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-bold text-[13px] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
+          >
+            <Icon name="plus" size={16} /> Create venue
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -132,7 +147,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
     return (
       <div className="scroll safe-top safe-bottom home-refined">
         {header}
-        <div className="px-5 lg:px-0 mt-4 space-y-3">
+        <div className="px-5 mt-4 space-y-3">
           <LoadingSkeleton variant="block" count={1} />
           <LoadingSkeleton variant="card" count={3} />
         </div>
@@ -143,7 +158,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
     return (
       <div className="scroll safe-top safe-bottom home-refined">
         {header}
-        <div className="px-5 lg:px-0 mt-4">
+        <div className="px-5 mt-4">
           <ErrorState title="Couldn't load your venues" message="We couldn't reach your venues. Tap to retry." onRetry={retry} />
         </div>
       </div>
@@ -154,7 +169,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
     return (
       <div className="scroll safe-top safe-bottom home-refined">
         {header}
-        <div className="px-5 lg:px-0 mt-6">
+        <div className="px-5 mt-6">
           <EmptyState
             icon="storefront"
             title="No venues yet"
@@ -170,7 +185,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
     <div className="scroll safe-top safe-bottom home-refined">
       {header}
 
-      <div className="px-5 lg:px-0 mt-4 space-y-5">
+      <div className="px-5 mt-4 space-y-5">
         {/* Map of your venues — status pins, today's count inside each */}
         {mappable.length > 0 ? (
           <div className="rounded-[22px] overflow-hidden h-[42vh] min-h-[260px] shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)]">
@@ -263,35 +278,46 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
             </div>
           )}
 
-          <div className="space-y-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {rows.map((r) => {
               const g = r.glance;
+              const img = venueImage(r.venue);
               return (
                 <button
                   key={r.venue.id}
                   onClick={() => openVenue(r)}
-                  className="w-full text-left bg-[var(--surface)] rounded-[18px] p-3.5 shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)] active:scale-[0.99] transition-transform"
+                  className="flex flex-col text-left bg-[var(--surface)] rounded-[18px] overflow-hidden border border-[var(--field-border)] active:scale-[0.99] transition-transform"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex items-start gap-2.5">
-                      <span className="w-2.5 h-2.5 rounded-full mt-1.5 shrink-0" style={{ background: STATUS_META[r.status].color }} />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-[14px] text-[var(--ink)] truncate">{r.venue.displayName}</div>
-                        <div className="t-sm truncate">{locationLine(r.venue) || '—'}</div>
-                        {r.coords == null && (
-                          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--coral-soft)] text-[var(--coral)]">
-                            <Icon name="location" size={11} /> Not on map · add location
-                          </span>
-                        )}
-                      </div>
+                  {/* Banner image — media-derived photo with a gradient + icon fallback (matches the home venue cards) */}
+                  <div className="relative h-[92px]" style={{ background: 'linear-gradient(135deg,#0040e0,#6c83ff)' }}>
+                    <span className="absolute inset-0 flex items-center justify-center text-white/40"><Icon name="storefront" size={32} /></span>
+                    {img && <img src={img} alt="" className="absolute inset-0 w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
+                    <span className="absolute right-2 top-2 rounded-full bg-white/92 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide" style={{ color: STATUS_META[r.status].color }}>{STATUS_META[r.status].label}</span>
+                  </div>
+                  <div className="flex flex-col flex-1 p-3">
+                    <div className="font-heading font-bold text-[15px] leading-tight text-[var(--ink)] truncate" style={{ fontFamily: "'Grandstander', cursive" }}>{r.venue.displayName}</div>
+                    <div className="mt-0.5 flex items-center gap-1 t-sm min-w-0">
+                      <Icon name="location" size={12} /> <span className="truncate">{locationLine(r.venue) || '—'}</span>
+                    </div>
+                    {r.coords == null && (
+                      <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--coral-soft)] text-[var(--coral)] self-start">
+                        <Icon name="location" size={11} /> Add location
+                      </span>
+                    )}
+                    <div className="mt-2 flex items-center justify-between gap-1 text-[12px]">
+                      <span className="flex items-center gap-1 text-[var(--muted)] min-w-0 truncate">
+                        <Icon name="storefront" size={13} /> {r.venue.courtCount ?? 0} court{r.venue.courtCount === 1 ? '' : 's'}
+                      </span>
+                      <span className="inline-flex items-center gap-0.5 font-extrabold text-[var(--primary)] flex-shrink-0">
+                        Manage <Icon name="chevron" size={13} />
+                      </span>
                     </div>
                     {g && (
-                      <div className="text-right shrink-0">
-                        <div className="font-semibold text-[14px] text-[var(--ink)] tabular-nums">{money(g.todayRevenue)}</div>
-                        <div className="t-sm">
-                          {g.todayCount} today{g.pendingCount > 0 ? ` · ${g.pendingCount} pending` : ''}
-                          {r.occupancyPct != null ? ` · ${Math.round(r.occupancyPct)}%` : ''}
-                        </div>
+                      <div className="mt-2 pt-2 border-t-[0.5px] border-[var(--hairline)] flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
+                        <span className="text-[var(--muted)]"><span className="font-bold text-[var(--ink)] tabular-nums">{g.todayCount}</span> today</span>
+                        {g.pendingCount > 0 && <span className="font-bold text-[var(--coral)] tabular-nums">{g.pendingCount} pending</span>}
+                        {r.occupancyPct != null && <span className="text-[var(--muted)] tabular-nums">{Math.round(r.occupancyPct)}% full</span>}
+                        <span className="w-full text-[var(--muted)]"><span className="font-bold text-[var(--ink)] tabular-nums">{money(g.todayRevenue)}</span> today</span>
                       </div>
                     )}
                   </div>

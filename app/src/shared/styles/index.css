@@ -22,6 +22,11 @@
   --coral:          #cf3000;
   --coral-soft:     #ffdad2;
 
+  /* Rating gold — filled review/rating stars */
+  --star:           #f5a524;
+  --star-soft:      #fff2d6;
+  --star-ink:       #7a4e00;
+
   --bg:             #f6f7fb;
   --surface:        #ffffff;
   --surface-2:      #f1f2f6;
@@ -62,6 +67,9 @@
   --hairline:  rgba(255,255,255,0.08);
   --field-border: rgba(255,255,255,0.16);
   --primary-tint: rgba(184, 195, 255, 0.14);
+  --star:      #fbbf24;
+  --star-soft: rgba(245, 165, 36, 0.16);
+  --star-ink:  #fcd34d;
   --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px -8px rgba(0,0,0,0.5);
   --shadow-pop:  0 8px 30px -6px rgba(0,0,0,0.55);
 }
@@ -77,6 +85,9 @@
     --muted:     #9ca3af;
     --hairline:  rgba(255,255,255,0.08);
     --primary-tint: rgba(184, 195, 255, 0.14);
+    --star:      #fbbf24;
+    --star-soft: rgba(245, 165, 36, 0.16);
+    --star-ink:  #fcd34d;
     --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px -8px rgba(0,0,0,0.5);
     --shadow-pop:  0 8px 30px -6px rgba(0,0,0,0.55);
   }
@@ -158,12 +169,20 @@
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
+    /* Mobile-app feel: never show the browser's viewport scrollbar. The app
+       scrolls inside its own containers (`.scroll`, `.pb-v2`), which hide their
+       bars too — this just guards the window itself on every page. */
+    scrollbar-width: none;
   }
+  html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
   button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; padding: 0; }
   img { display: block; max-width: 100%; }
   /* font-size must be >= 16px or iOS Safari auto-zooms the page on focus. */
   input, textarea, select { font: inherit; font-size: 16px; }
-  #root { display: flex; flex-direction: column; }
+  /* Black fills the gutters around the centred phone-frame on wide screens
+     (see `.app` max-width / --frame-max). On phones the frame fills #root, so
+     none of this black shows. */
+  #root { display: flex; flex-direction: column; background: #000; }
 }
 
 /* ─── Typography helpers ─── */
@@ -184,16 +203,46 @@
 :root {
   --app-w: 100vw;
   --app-pad: 16px;
+  /* Phone-frame cap. The PWA is mobile-only, so on phones it renders as a
+     centred phone-width column (this max). On tablets the cap widens (see the
+     `@media` below) so the app fills the screen instead of sitting in big black
+     gutters. The tablet/desktop blocks far below are `@container app (...)`
+     queries keyed off the FRAME width (not the viewport); they stay dormant
+     while the frame is ≤ their breakpoints — raise the cap past 1024px to bring
+     the desktop sidebar layout back. */
+  --frame-max: 576px;
+}
+
+/* Tablet & up: rather than frame the mobile app inside big black gutters, let
+   the phone frame grow to fill the viewport — capped at 1000px, just under the
+   1024px desktop breakpoint, so the legacy sidebar layout (the `@container app`
+   blocks far below + the v2 tab-bar hide in v2.css) never re-activates. The app
+   keeps its mobile single-column layout, only wider. This is a viewport `@media`
+   (not a `@container`) on purpose: the frame's own width depends on
+   `--frame-max`, so the cap must key off the device, not the frame itself. */
+@media (min-width: 577px) {
+  :root { --frame-max: 1000px; }
 }
 
 .app {
   width: 100%;
+  max-width: var(--frame-max);
+  margin-inline: auto;
   height: 100dvh;
   min-height: 100dvh;
   background: var(--bg);
   color: var(--ink);
   position: relative;
   overflow: hidden;
+  /* Make the frame a query container, so the responsive blocks below measure THIS
+     (capping the app at phone width on every viewport) instead of the viewport. */
+  container: app / inline-size;
+  /* …and the containing block for our `position: fixed` chrome (tab bars, FAB,
+     sticky CTAs, sheets, the offline banner), so they pin to the 576px frame
+     rather than spanning the viewport into the black gutters. A transform is the
+     cross-engine-reliable trigger for this (container-type alone isn't, in some
+     engines); the app never scrolls itself, so fixed children stay pinned. */
+  transform: translate(0);
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.45;
@@ -263,7 +312,9 @@
   padding: 0 14px;
   color: var(--muted);
   box-shadow: var(--shadow-card);
-  border: 0.5px solid var(--hairline);
+  /* Clearly-visible outline (was a near-invisible 0.5px hairline) — matches the
+     card + tab-pill borders. */
+  border: 1px solid var(--field-border);
 }
 .searchbar input {
   flex: 1;
@@ -288,7 +339,9 @@
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-card);
   overflow: hidden;
-  border: 0.5px solid var(--hairline);
+  /* A clearly-visible outline (vs the old 0.5px hairline, which melted into the
+     light app background) so cards actually read as cards. */
+  border: 1px solid var(--field-border);
 }
 
 /* Right-now (big) card */
@@ -495,11 +548,21 @@
   color: var(--lime-ink);
   border-color: transparent;
 }
+/* Tab-strip pills (e.g. the owner venue tabs): a clearly-visible outline when
+   inactive so each pill reads as a distinct button; the filled .active state
+   (ink bg) is unchanged. Declared after .chip so it wins the equal-specificity
+   tie for border width/colour, while .chip.active still overrides the colour. */
+.chip-tab {
+  border: 1.5px solid var(--field-border);
+}
 
 /* ─── Segmented control ─── */
 .seg {
   display: flex;
   background: var(--surface-2);
+  /* A defined edge so the whole control reads as a tappable segmented tab strip,
+     not just a stray pill floating on the page background. */
+  border: 0.5px solid var(--hairline);
   border-radius: 12px;
   padding: 3px;
   position: relative;
@@ -511,14 +574,26 @@
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 13px;
-  color: var(--muted);
+  /* Inactive segments use --ink-2 (not --muted): legible enough to read as a
+     selectable tab rather than disabled/placeholder text. */
+  color: var(--ink-2);
+  /* `position` makes z-index actually apply (static elements ignore it), so the
+     button hit-area/text sits above the absolutely-positioned indicator. */
+  position: relative;
   z-index: 1;
+  cursor: pointer;
   transition: color .2s;
 }
-.seg button.active { color: var(--ink); }
+.seg button:hover { color: var(--ink); }
+/* Selected tab = brand blue + heavier weight, so the active segment clearly
+   reads as "on" against the inactive --ink-2 labels. */
+.seg button.active { color: var(--primary); font-weight: 700; }
 .seg .indicator {
   position: absolute;
   top: 3px; left: 3px;
+  /* Never intercept taps — otherwise the sliding pill swallows clicks on the
+     active segment, making the control feel unresponsive. */
+  pointer-events: none;
   height: calc(100% - 6px);
   background: var(--surface);
   border-radius: 9px;
@@ -551,6 +626,7 @@
 
 .tabbar .tab {
   flex: 1;
+  min-width: 0;
   height: 56px;
   display: flex;
   flex-direction: column;
@@ -563,7 +639,7 @@
 }
 .tabbar .tab:active { transform: scale(0.94); }
 .tabbar .tab.active { color: var(--primary); }
-.tabbar .tab .label { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+.tabbar .tab .label { max-width: 100%; overflow: hidden; white-space: nowrap; font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em; }
 
 /* Owner variant — the v2.1 player tab-bar look (flat, full-width, lime active
    dot). Owners use this skin so their bar matches the redesigned owner screens.
@@ -683,7 +759,9 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   display: flex; align-items: center; justify-content: center;
-  color: var(--ink);
+  /* The button is always near-white over the dark hero, so the icon must stay
+     dark in both themes — var(--ink) flips light in dark mode and disappears. */
+  color: #0e1116;
   transition: transform .15s;
 }
 .detail-hero .icon-btn:active { transform: scale(0.92); }
@@ -1138,7 +1216,6 @@
   background: var(--bg);
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
-  box-shadow: 0 -8px 40px rgba(0,0,0,0.25);
   z-index: 1501;
   transform: translateY(100%);
   transition: transform .3s cubic-bezier(0.4, 0.0, 0.2, 1);
@@ -1147,7 +1224,10 @@
   max-width: 480px;
   margin: 0 auto;
 }
-.sheet.open { transform: translateY(0); }
+/* Shadow only when open. A closed sheet is parked just below the viewport
+   (translateY(100%)); its upward shadow would otherwise bleed up into the page
+   on screens with no bottom bar to cover it (e.g. the club detail). */
+.sheet.open { transform: translateY(0); box-shadow: 0 -8px 40px rgba(0,0,0,0.25); }
 /* Opt-in: animate height changes too, matching the map-sheet's easing/duration
    (the slide transform is preserved). Used by the Nearby filter sheet. */
 .sheet.sheet-anim-height {
@@ -1340,12 +1420,19 @@
 
 /* ============================================================
    Responsive — tablet & desktop redesign (sidebar + main)
-   Mobile-first: <1024px keeps the existing mobile layout
-   (floating tabbar at bottom). At ≥1024px the app becomes a
-   real desktop application: left sidebar replaces the tabbar,
-   the main column caps at ~1100px with desktop gutters, and
-   each screen lays its sections in multi-column grids instead
-   of stretching the mobile stack edge-to-edge.
+
+   NOTE: these blocks are `@container app (...)` queries, measuring the `.app`
+   frame — which is capped at `--frame-max` (576px on phones, 1000px on tablets;
+   see the `@media` up top). So the frame stays under the 1024px desktop
+   breakpoint on every device and the app always renders its mobile layout
+   (floating tabbar, single-column stack) — the 640/768px blocks just enlarge a
+   few elements once the tablet frame is wide enough. Raising the cap past 1024px
+   re-activates the desktop design described next, automatically.
+
+   When active (frame ≥1024px): the app becomes a real desktop application —
+   a left sidebar replaces the tabbar, the main column caps at ~1100px with
+   desktop gutters, and each screen lays its sections in multi-column grids
+   instead of stretching the mobile stack edge-to-edge.
 
    Layout primitives:
      .app          - flex container (column on mobile, row on desktop)
@@ -1371,7 +1458,7 @@
 .app { display: flex; flex-direction: column; }
 
 /* ─── Tablet content polish (no layout change yet) ─── */
-@media (min-width: 640px) {
+@container app (min-width: 640px) {
   .greet-name   { font-size: 24px; }
   .hd-display   { font-size: 34px; }
   .hd-1         { font-size: 28px; }
@@ -1383,8 +1470,9 @@
 }
 
 /* ─── Desktop (≥1024) — full sidebar redesign ─── */
-@media (min-width: 1024px) {
-  /* App switches to sidebar + main flex row. */
+@container app (min-width: 1024px) {
+  /* App switches to sidebar + main flex row. (The `.app` container can't query
+     itself, so this particular rule no-ops; the rest target descendants.) */
   .app { flex-direction: row; align-items: stretch; }
 
   /* Sidebar replaces the floating tabbar. */
@@ -1445,15 +1533,6 @@
     grid-template-columns: 1fr 1fr;
     gap: 12px !important;
   }
-  .home-bottom-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-    margin-top: 28px;
-  }
-  .home-bottom-grid > .section { margin-top: 0; }
-
   /* Multi-column utility grids — screens opt in to these. */
   .col-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .col-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -1670,7 +1749,7 @@
 .sidebar .sidebar-foot .meta .sub { font-size: 11px; color: var(--muted); }
 
 /* ─── Marketing screens (Landing) get 2-col / 3-col on tablet+ ─── */
-@media (min-width: 768px) {
+@container app (min-width: 768px) {
   .marketing-hero {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1690,7 +1769,7 @@
   .marketing-cta-card { padding: 36px 32px !important; }
   .marketing-header   { padding: calc(20px + env(safe-area-inset-top)) 32px 16px !important; }
 }
-@media (min-width: 1024px) {
+@container app (min-width: 1024px) {
   .marketing-hero    { gap: 56px; padding: 48px 64px 24px !important; max-width: 1100px; margin: 0 auto; }
   .marketing-section { padding: 56px 64px 0 !important; max-width: 1100px; margin: 0 auto; }
   .marketing-cta     { padding: 72px 64px 56px !important; max-width: 1100px; margin: 0 auto; }
@@ -1701,42 +1780,6 @@
 .scroll img,
 .scroll video,
 .scroll svg { max-width: 100%; }
-
-/* ============================================================
-   Refined Home layout (HomeScreenRefined) — the "new homepage".
-   It is built from Tailwind utilities + CSS variables inline in the
-   component. To match the supplied design system (Pickleball Social) we
-   re-point those variables — font + palette — ONLY inside `.home-refined`,
-   so the classic HomeScreen and the rest of the app keep the PickleBallers
-   brand tokens. The switch pill and app chrome live outside `.home-refined`
-   and are unaffected.
-   ============================================================ */
-.home-refined {
-  /* Plus Jakarta Sans for both heading and body (the design uses one family,
-     varying weight). Cascades into `.hd-2`/`.hd-3`/`font-heading` because they
-     resolve `var(--font-heading)` from this inherited scope. */
-  --font-heading: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
-  font-family: var(--font-body);
-
-  /* Exact design palette (overrides the brand tokens within this screen). */
-  --primary: #003cce;       /* primary — text, links, blue Join */
-  --primary-deep: #0036bb;  /* on-primary-fixed-variant — badge text */
-  --primary-soft: #dde1ff;  /* primary-fixed — skill badge bg */
-  --lime: #baf603;          /* secondary-fixed — pickle green */
-  --lime-ink: #151f00;      /* on-secondary-fixed */
-  --lime-soft: #e9ff8a;     /* soft green surface */
-  --coral: #ff5b4a;         /* urgency */
-  --ink: #191b24;           /* on-surface — text */
-  --ink-2: #434656;         /* on-surface-variant */
-  --muted: #737b8c;         /* muted-gray — metadata */
-  --hairline: #e8ebf2;      /* light-gray — borders/dividers */
-  --surface: #ffffff;       /* card-white */
-  --surface-3: #e8ebf2;     /* light chip bg */
-}
-/* The design uses heavier heading weights than Fredoka's 600. */
-.home-refined .hd-2 { font-weight: 800; }
-.home-refined .hd-3 { font-weight: 700; }
 
 /* ============================================================================
    .obook — v2.1 skin for the owner Booking-details sheet content

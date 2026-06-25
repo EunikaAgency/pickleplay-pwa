@@ -6,7 +6,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { Segmented } from '../../shared/components/ui/Segmented';
 import { GameFilterSheet } from './GameFilterSheet';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
-import { listGames, listBookings, cancelBooking, type ApiGame, type ApiGamePerson, type ApiBooking } from '../../shared/lib/api';
+import { apiImageUrl, listGames, listBookings, cancelBooking, type ApiGame, type ApiGamePerson, type ApiBooking } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { takePendingGamesTab } from '../../shared/lib/navIntent';
 import { getInitials } from '../../shared/lib/initials';
@@ -69,7 +69,7 @@ function AvatarStack({ people, total, size = 28 }: { people: ApiGamePerson[]; to
           className={`rounded-full ring-2 ring-[var(--surface)] flex items-center justify-center text-[10px] font-bold overflow-hidden ${AVATAR_TONES[i % AVATAR_TONES.length]}`}
           style={{ ...dim, marginLeft: i === 0 ? 0 : -8 }}
         >
-          {p.avatarUrl ? <img src={p.avatarUrl} alt="" className="w-full h-full object-cover" /> : getInitials(p.displayName)}
+          {apiImageUrl(p.avatarUrl) ? <img src={apiImageUrl(p.avatarUrl)} alt="" className="w-full h-full object-cover" /> : getInitials(p.displayName)}
         </div>
       ))}
       {more > 0 && (

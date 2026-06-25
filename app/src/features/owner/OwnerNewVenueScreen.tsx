@@ -8,6 +8,8 @@ import { OwnerSection } from './components/OwnerSection';
 import { MapPinPicker } from './components/MapPinPicker';
 import { AddressAutocomplete } from './components/AddressAutocomplete';
 import { createVenue, fetchCities, reverseGeocode, ApiError, type ApiCity, type GeocodeSuggestion } from '../../shared/lib/api';
+import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface OwnerNewVenueScreenProps {
@@ -16,6 +18,8 @@ interface OwnerNewVenueScreenProps {
 }
 
 export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenProps) {
+  const currentUser = useAuthStore((s) => s.user);
+  const canClaim = userHasPermission(currentUser, 'owner.venues.claim');
   const [cities, setCities] = useState<ApiCity[]>([]);
   const [errMsg, setErrMsg] = useState('');
   // The place we auto-detected from the dropped pin / address (shown as
@@ -163,10 +167,16 @@ export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenP
     <div className="scroll safe-top safe-bottom px-5">
       <ScreenHeader onBack={onBack} backIcon="close" eyebrow="Owner console" title="Create a new venue" subtitle="Only the name is required — fill in the rest on the editor after." className="sticky top-0 z-20 -mx-5 px-5 bg-[var(--bg)] border-b-[0.5px] border-[var(--hairline)]" />
 
-      <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-[var(--primary-tint)] px-4 py-3">
-        <Icon name="help" size={18} className="shrink-0 text-[var(--primary)] mt-0.5" />
-        <p className="text-[13px] text-[var(--ink-2)]">Already in our directory? Find and claim it from the Courts tab instead, to avoid a duplicate listing.</p>
-      </div>
+      {canClaim && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-[var(--primary-tint)] px-4 py-3">
+          <Icon name="help" size={18} className="shrink-0 text-[var(--primary)] mt-0.5" />
+          <p className="text-[13px] text-[var(--ink-2)]">
+            Already in our directory?{' '}
+            <button type="button" onClick={() => onNavigate('claim-venue')} className="font-bold text-[var(--primary)] underline underline-offset-2">Claim it instead</button>{' '}
+            to avoid a duplicate listing.
+          </p>
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {

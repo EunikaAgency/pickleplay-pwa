@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Button } from '../../../shared/components/ui/Button';
 import { ScreenHeader } from '../../../shared/components/ui/ScreenHeader';
@@ -6,7 +6,7 @@ import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../../shared/components/ui/ErrorState';
 import {
   getTournament, getTournamentRegistrations, manageTournamentRegistration,
-  openTournamentRegistration, cancelTournament,
+  openTournamentRegistration, cancelTournament, updateTournament, uploadTournamentMedia, apiImageUrl,
   type ApiTournament, type ApiTournamentRegistration, type ManageRegistrationBody,
 } from '../../../shared/lib/api';
 import type { Navigate } from '../../../shared/lib/navigation';
@@ -33,6 +33,9 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack }: Tou
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [acting, setActing] = useState(false);
+  const bannerRef = useRef<HTMLInputElement>(null);
+  const [bannerBusy, setBannerBusy] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -68,6 +71,26 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack }: Tou
     try { await cancelTournament(tournamentId); } finally { setActing(false); setReloadKey((k) => k + 1); }
   };
 
+  // Optional banner — add or swap it any time. Upload creates the media record,
+  // then we persist its URL on the tournament and refresh.
+  const onPickBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    setBannerBusy(true);
+    setBannerError(null);
+    try {
+      const url = await uploadTournamentMedia(tournamentId, f);
+      if (!url) throw new Error('Upload failed');
+      const updated = await updateTournament(tournamentId, { bannerUrl: url });
+      setT(updated);
+    } catch (err) {
+      setBannerError(err instanceof Error ? err.message : 'Could not update the image.');
+    } finally {
+      setBannerBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="scroll safe-top safe-bottom">
@@ -95,6 +118,27 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack }: Tou
       <ScreenHeader onBack={onBack} title={t.name} eyebrow="Tournament" />
 
       <div className="px-5 flex flex-col gap-4">
+        {/* Banner — optional; trophy placeholder when unset */}
+        <div>
+          <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={onPickBanner} />
+          <div
+            className="relative overflow-hidden rounded-[16px] aspect-[16/9] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center"
+            style={apiImageUrl(t.bannerUrl) ? { backgroundImage: `url(${apiImageUrl(t.bannerUrl)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+          >
+            {!apiImageUrl(t.bannerUrl) && <Icon name="trophy" size={48} />}
+            <button
+              type="button"
+              onClick={() => bannerRef.current?.click()}
+              disabled={bannerBusy}
+              className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[12px] font-bold text-[var(--ink)] shadow-sm disabled:opacity-60"
+            >
+              <Icon name={bannerBusy ? 'progress_activity' : 'photo_camera'} size={15} className={bannerBusy ? 'animate-spin' : undefined} />
+              {bannerBusy ? 'Uploading…' : apiImageUrl(t.bannerUrl) ? 'Change' : 'Add image'}
+            </button>
+          </div>
+          {bannerError && <div className="mt-1.5 text-[12px] font-semibold text-[var(--coral)]">{bannerError}</div>}
+        </div>
+
         {/* Overview */}
         <div className="card p-4">
           <div className="flex items-start justify-between gap-3">
@@ -122,8 +166,13 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack }: Tou
             <Button fullWidth onClick={handleOpenRegistration} disabled={acting}>{acting ? 'Opening…' : 'Open registration'}</Button>
           )}
           {canBracket && (
-            <Button fullWidth variant="outline" onClick={() => onNavigate('organizer-bracket', { tournamentId: t.id })}>
+            <Button fullWidth variant="brand" onClick={() => onNavigate('organizer-bracket', { tournamentId: t.id })}>
               <Icon name="layers" size={16} /> Manage bracket
+            </Button>
+          )}
+          {showParticipants && (
+            <Button fullWidth variant="outline" onClick={() => onNavigate('tournament-chat', { id: t.id, name: t.name })}>
+              <Icon name="chat" size={16} /> Chat with participants
             </Button>
           )}
         </div>

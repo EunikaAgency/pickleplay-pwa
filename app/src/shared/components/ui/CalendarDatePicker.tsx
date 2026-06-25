@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 
 interface CalendarDatePickerProps {
@@ -9,6 +9,10 @@ interface CalendarDatePickerProps {
   min?: string;
   /** Latest selectable date (YYYY-MM-DD); later days render disabled. */
   max?: string;
+  /** YYYY-MM-DD dates that are fully booked — marked with a dot + muted text. */
+  fullDays?: Set<string>;
+  /** Fires (incl. on mount) with the visible month so the caller can prefetch its availability. */
+  onMonthChange?: (year: number, month: number) => void;
 }
 
 const ymd = (year: number, month: number, day: number) =>
@@ -27,9 +31,13 @@ function monthOf(value: string): { year: number; month: number } {
  * more tappable than a native `<input type="date">`. Highlights today and the
  * selected day; days outside [min, max] render disabled.
  */
-export function CalendarDatePicker({ value, onChange, min, max }: CalendarDatePickerProps) {
+export function CalendarDatePicker({ value, onChange, min, max, fullDays, onMonthChange }: CalendarDatePickerProps) {
   const [view, setView] = useState(() => monthOf(value));
   const { year, month } = view;
+
+  // Tell the caller which month is in view (mount + every navigation) so it can
+  // prefetch that month's availability for the fully-booked markers.
+  useEffect(() => { onMonthChange?.(year, month); }, [year, month, onMonthChange]);
 
   const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -72,22 +80,28 @@ export function CalendarDatePicker({ value, onChange, min, max }: CalendarDatePi
           const isSel = key === value;
           const isToday = key === today;
           const disabled = (min != null && key < min) || (max != null && key > max);
+          // A fully-booked day (not past/selected) is muted with a dot below it,
+          // so players can spot dead days before tapping in. Still tappable — they
+          // can open it to see the "No times available" detail.
+          const isFull = !disabled && !isSel && !!fullDays?.has(key);
           return (
             <div key={i} className="flex items-center justify-center py-0.5">
               <button
                 type="button"
                 disabled={disabled}
                 onClick={() => onChange(key)}
-                aria-label={key}
+                aria-label={isFull ? `${key} — fully booked` : key}
                 aria-pressed={isSel}
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors ${
+                className={`relative w-10 h-10 rounded-full flex items-center justify-center text-[15px] font-bold transition-colors ${
                   disabled ? 'text-[var(--muted)] opacity-35 cursor-not-allowed'
                   : isSel ? 'bg-[var(--lime)] text-[var(--lime-ink)]'
+                  : isFull ? 'text-[var(--muted)]'
                   : isToday ? 'text-[var(--ink)] ring-1 ring-[var(--surface-3)]'
                   : 'text-[var(--ink)] active:scale-95'
                 }`}
               >
                 {day}
+                {isFull && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-[var(--coral)]" />}
               </button>
             </div>
           );

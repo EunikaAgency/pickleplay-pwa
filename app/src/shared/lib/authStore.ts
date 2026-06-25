@@ -11,6 +11,7 @@ import {
   login as apiLogin,
   register as apiRegister,
   logout as apiLogout,
+  onSessionExpired,
   updateMe,
   type ProfileUpdate,
   type RegisterPayload,
@@ -128,3 +129,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: null, isLoggedIn: false });
   },
 }));
+
+// If a mid-session token refresh fails for good (refresh token expired/revoked),
+// api.ts has already cleared the tokens and fires this — drop to guest so the
+// badge poll + realtime stream stop and the UI reflects the logged-out state,
+// instead of looping on 401s against a dead session. (Cold-start expiry is
+// already handled by `restore()`.) Tokens are gone by now, so we skip the push
+// unbind (it would just 401) and only sync the store.
+onSessionExpired(() => {
+  if (useAuthStore.getState().isLoggedIn) {
+    useAuthStore.setState({ user: null, isLoggedIn: false });
+  }
+});

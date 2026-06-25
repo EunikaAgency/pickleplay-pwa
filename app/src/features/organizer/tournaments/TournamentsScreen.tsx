@@ -4,7 +4,7 @@ import { ScreenHeader } from '../../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
-import { listMyTournaments, type ApiTournament } from '../../../shared/lib/api';
+import { listMyTournaments, apiImageUrl, type ApiTournament } from '../../../shared/lib/api';
 import type { Navigate } from '../../../shared/lib/navigation';
 import { StatusChip } from '../components/StatusChip';
 import { prettyDate, tournamentStatusChip } from '../organizerDisplay';
@@ -59,14 +59,25 @@ export function TournamentsScreen({ onNavigate, onBack }: TournamentsScreenProps
         ) : (
           tournaments.map((t) => {
             const when = [prettyDate(t.startDate), t.endDate && t.endDate !== t.startDate ? prettyDate(t.endDate) : null].filter(Boolean).join(' – ');
+            const banner = apiImageUrl(t.bannerUrl);
             return (
-              <button key={t.id} type="button" onClick={() => onNavigate('organizer-tournament', { id: t.id })} className="card p-4 w-full text-left">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-heading font-semibold text-[16px] text-[var(--ink)] truncate">{t.name}</div>
-                    <div className="t-sm mt-0.5">{when || 'Dates TBD'}{t.venueName ? ` · ${t.venueName}` : ''}</div>
+              <button key={t.id} type="button" onClick={() => onNavigate('organizer-tournament', { id: t.id })} className="card p-3 w-full text-left">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-[12px] flex items-center justify-center text-white/60"
+                    style={banner
+                      ? { backgroundImage: `url(${banner})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      : { background: 'linear-gradient(135deg, #3355FF, #2E5BFF)' }}
+                  >
+                    {!banner && <Icon name="trophy" size={26} />}
                   </div>
-                  <StatusChip chip={tournamentStatusChip(t.status)} />
+                  <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
+                    <div className="min-w-0">
+                      <div className="font-heading font-semibold text-[16px] text-[var(--ink)] truncate">{t.name}</div>
+                      <div className="t-sm mt-0.5">{when || 'Dates TBD'}{t.venueName ? ` · ${t.venueName}` : ''}</div>
+                    </div>
+                    <StatusChip chip={tournamentStatusChip(t.status)} />
+                  </div>
                 </div>
               </button>
             );

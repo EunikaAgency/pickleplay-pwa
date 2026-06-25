@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
+import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { listAllVenues, type ApiVenue } from '../../../shared/lib/api';
 import { venueImage, priceLabel, locationLine, indoorLabel, venueCoords } from '../../../shared/lib/venueDisplay';
 import { haversineKm, formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
@@ -460,7 +461,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             )}
 
             {loading ? (
-              <p className="feat-meta">Loading courts…</p>
+              <V2Skeleton variant="court-list" count={5} />
             ) : visible.length === 0 ? (
               <p className="feat-meta">No courts found{query ? ` for “${query}”` : ''}.</p>
             ) : (

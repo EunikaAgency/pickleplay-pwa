@@ -47,14 +47,15 @@ src/
   features/<slice>/    # vertical slices; each owns its screens + slice-only UI (filter sheets)
     auth/              # LandingScreen, LoginScreen, OnboardingScreen, SplashScreen (+splash.css —
                        #   animated launch intro, once-per-session overlay from App.tsx)
-    home/              # HomeScreenSwitch (picks ↓; App.tsx routes owners to owner/OwnerHomeScreen
-                       #   instead), HomeScreenRefined (default "New"), HomeScreen (Classic),
-                       #   DesignSwitch (floating New·Classic·v2.1 toggle), v2/HomeScreenV2
+    home/              # v2/HomeScreenV2 — the only player home (App.tsx routes owners to
+                       #   owner/OwnerHomeScreen instead). The legacy New/Classic home variants
+                       #   + the floating design toggle were removed; v2.1 is the sole player design.
     # NOTE: each player slice has a v2/ folder with its "Pickleballers Mockup v2.1"
     #   redesign screen (venues/v2, games/v2 incl. CreateGameV2 + CreateChoiceSheet
-    #   "Game On" join-vs-host chooser, clubs/v2 incl. CreateClubV2, profile/v2 incl.
-    #   SettingsScreenV2). Active when the design switch = v2.1. See the
-    #   "Design switch" note below + shared/components/layout/V2Chrome + shared/styles/v2.css.
+    #   "Game On" join-vs-host chooser, tournaments/v2 browse+detail tab, clubs/v2
+    #   incl. CreateClubV2, profile/v2 incl.
+    #   SettingsScreenV2) — these are what every player/guest sees. See the
+    #   "Design" note below + shared/components/layout/V2Chrome + shared/styles/v2.css.
     games/             # Games (player browse/join — owners get owner/OwnerGames instead via App.tsx),
                        #   GameDetails, CreateGame (venue-first: pick a priced court → date +
                        #   start/end time → details → PAY to book the court → game posts; with a
@@ -66,13 +67,40 @@ src/
                        #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
                        #   list/detail/join/kick/group-chat; invite-send still demo)
     bookings/          # BookCourt (pick venue→court (CourtPicker)→whole-hour start/end via HourSelect,
-                       #   taken hours greyed out from that court's live availability→pay test-checkout),
-                       #   MyBookings (list+cancel), bookingDisplay
+                       #   taken hours greyed out from that court's live availability→pay test-checkout;
+                       #   at a venue with requireBookingApproval it becomes "Request booking" — saves
+                       #   the card, no charge, lands "awaiting approval"), MyBookings (list+cancel; an
+                       #   approved booking shows "Pay {amount} by <deadline>" → checkout → confirmed),
+                       #   BookingRefund (refund/cancel a single court booking — reached after a host
+                       #   deletes a lobby but keeps the court; loads getBooking → cancelBooking),
+                       #   bookingDisplay (status chips incl. awaiting_payment "Pay to confirm")
     venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
-    clubs/             # Clubs (live: my/discover lists), ClubDetails (live: detail +
-                       #   members + Facebook-style feed with post/like, join/leave,
-                       #   ⋯ menu: invite/share link + host delete), CreateClub (live:
-                       #   POST /clubs). All via the clubs client in api.ts.
+    tournaments/       # Player Tournament tab (live): v2/TournamentsScreenV2 (role-aware tabs —
+                       #   Open · Managing(organizer)/Joined(player) · Results), v2/TournamentDetailScreen
+                       #   (overview + register/withdraw + announcements + Chat),
+                       #   v2/TournamentChatScreen (participant group chat — roster of
+                       #   organizer + registrants; realtime via realtimeBus 'tournament.message';
+                       #   gated by player.tournaments.chat — mirrors GameChat), tournamentDisplay
+                       #   (status/format/date/money formatters). Reuses the /tournaments API
+                       #   (listPublicTournaments/register/withdraw/my-registration/messages).
+    clubs/             # Clubs (live: my/discover lists — cursor-paginated + server
+                       #   search), ClubDetails (live: detail + members +
+                       #   Facebook-style feed with post/like + photo/GIF
+                       #   attachments, realtime via the club SSE stream, join/leave,
+                       #   ⋯ menu: invite/share link + host edit/delete + host
+                       #   moderation — approve/deny private-club join requests
+                       #   (sheet), remove members, author/host delete of any post;
+                       #   ⋯→Edit post opens ClubPostEdit), ClubPost (single-post
+                       #   permalink — tap a feed post → post + all comments +
+                       #   composer; owns commenting + comment inline edit/delete;
+                       #   ⋯→Edit post opens ClubPostEdit), ClubPostEdit (Facebook-
+                       #   style dedicated "Edit post" page — author-only, edits the
+                       #   body via PATCH /posts/:id), ClubChat (live member group
+                       #   chat — separate from the feed; shared ChatThread UI,
+                       #   realtime via club.message on the per-user SSE stream),
+                       #   CreateClub + EditClub (live: POST/PATCH
+                       #   /clubs — name/description/visibility + cover-photo upload
+                       #   + member limit). All via the clubs client in api.ts.
     profile/           # Profile, EditProfile, Settings, Notifications, PaymentHistory
                        #   (player spend report: KPIs + 6-month BarChart + receipts,
                        #    from listPayments; gated by player.payments.view)
@@ -102,14 +130,34 @@ src/
                        # OwnerNearby (the Nearby tab for owners — a "your venues" operations
                        # map: your venues as live-status pins (today's bookings / pending /
                        # occupancy), tap → glance → console; attention-sorted venue list below);
-                       # OwnerVenues (list w/ per-card glance), OwnerVenue (tabbed host),
-                       # OwnerNewVenue (create).
+                       # OwnerVenues (list w/ per-card glance + "Claim" entry), OwnerVenue
+                       # (tabbed host), OwnerNewVenue (create), ClaimVenue (search the
+                       # directory for an unclaimed listing → submit an ownership claim
+                       # with proof; gated by owner.venues.claim).
       tabs/            # the OwnerVenue panels: Overview (business dashboard: revenue/bookings/
                        # occupancy KPIs + revenue trend chart), Insights (per-venue segmented
-                       # analytics), Bookings (per-venue inbox), Listing/Location/Hours/Courts/
-                       # Faqs/Reviews/Photos editors
+                       # analytics), Bookings (per-venue inbox — Approve a request-to-book →
+                       # awaiting_payment, or Decline/Cancel), Listing (identity/contact/pricing/
+                       # amenities + a "Booking policy" section: require-approval toggle +
+                       # pay-window)/Location/Courts/Closures/Faqs/Reviews/Photos editors.
+                       # Courts owns per-court details (name auto-numbered, surface,
+                       # thumbnail+photo gallery, description), a per-court booking
+                       # policy (approvalMode override of the venue's approval +
+                       # turnoverMinutes buffer between bookings) AND each court's own
+                       # operating hours (+ hours pricing, via WeeklyHoursEditor);
+                       # Closures = venue-wide holiday dates only (operating hours
+                       # moved per-court).
       components/      # reusable blocks: OwnerSection/OwnerStat/VenueCard/OwnerBookingRow/
-                       # OwnerGameCard/CompletenessMeter
+                       # OwnerGameCard/CompletenessMeter/MapPinPicker (tap-to-drop-pin Leaflet
+                       # map; new-venue form reverse-geocodes the pin to auto-fill the city)/
+                       # AddressAutocomplete (true type-ahead address field — debounced
+                       # /geocode/suggest list; pick → drop pin + auto-fill city (free-text
+                       # field, silently links a seeded cityId on match) / address line1 /
+                       # postcode; used by new-venue form + LocationEditor pin search)/
+                       # BookingLinkShare (the auto-generated …/venues/<slug> booking link +
+                       # Copy/Share — on the venue Overview card AND the Listing editor)/
+                       # WeeklyHoursEditor (per-court weekly open/close + hours-pricing grid;
+                       # loads/saves one court's hours, inherits the venue default until set)
       hooks/           # useOwnerDashboard.ts (shared venues+analytics+bookings+games hook; opts
                        # withBookings/withGames/withAnalytics; exposes analyticsByVenue, bookings, games)
       utils/           # ownerMetrics.ts (revenue bucketing + cross-venue merge helpers)
@@ -135,14 +183,21 @@ src/
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
                         # AvatarCropper (circular photo crop via croppie; used by EditProfile),
-                        # EmptyState/ErrorState/LoadingSkeleton, DemoBranch, Toast,
+                        # ChatThread (shared Messenger-style group-chat thread — used by
+                        #   GameChatScreen + tournaments/v2/TournamentChatScreen),
+                        # EmptyState/ErrorState/LoadingSkeleton (v1) +
+                        #   V2Skeleton (v2.1 player-screen skeletons, card-shaped),
+                        #   DemoBranch, Toast,
                         # NotificationBadge (live unread-count bubble — reads notificationStore),
+                        # Dropdown (the one on-brand select/sort menu — field + pill
+                        #   variants, portalled so cards' overflow never clips it),
                         # HourSelect, CourtPicker (pick which court to book/host),
                         # CalendarDatePicker (month-grid date picker),
                         # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap), … (see folder)
     components/layout/  # TabBar (mobile), Sidebar (desktop)
-    components/forms/   # FormField, FormSelect, FormTierPicker
-    hooks/              # useForm, useTheme, usePrefersReducedMotion, useVenueAvailability
+    components/forms/   # FormField, FormSelect (renders Dropdown), FormTierPicker
+    hooks/              # useForm, useTheme, usePrefersReducedMotion, useDragScroll
+                        #   (drag/wheel-pan a .scroll-x carousel on desktop), useVenueAvailability
                         #   (per-hour availability → greys out taken hours; pass a courtId to
                         #    scope it to that court, else the whole-venue pool),
                         #   useNotificationPolling (keeps the unread badge live: polls +
@@ -151,6 +206,7 @@ src/
                         #    fans new notifications + incoming messages onto the realtime bus)
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
                         # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts,
+                        # roleDisplay.ts (ROLE_META label+colour + primaryRole — shared profile role badges),
                         # notificationStore.ts (Zustand: live unread count + refresh, for the badge),
                         # realtimeBus.ts (tiny in-app pub/sub; useRealtimeStream publishes, screens subscribe)
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
@@ -171,7 +227,7 @@ src/
   `VITE_API_BASE_URL` in prod). `shared/lib/venueDisplay.ts` holds the venue formatters
   (price/location/tags/amenities/`mapsUrl`). Also carries the **owner** endpoints
   (`listOwnerVenues`/`getOwnerVenue`/`updateVenue`/`createVenue`, courts/hours/closures/faqs/
-  reviews CRUD, `uploadVenueMedia`, `fetchCities`/`geocodePlace`, plus the owner bookings inbox
+  reviews CRUD, `uploadVenueMedia`, `submitVenueClaim` (claim an unclaimed listing), `fetchCities`/`geocodePlace`/`suggestPlaces` (type-ahead address list), plus the owner bookings inbox
   `getVenueBookings`/`updateBookingStatus` and `getVenueAnalytics`→`OwnerAnalytics`) + their
   `Owner*` types, **and
   the games endpoints** (`listGames`/`getGame`/`createGame`/`joinGame`/`leaveGame` → `ApiGame`);
@@ -250,12 +306,20 @@ src/
   Discover directory (`listClubs()`, your clubs filtered out), with client-side search.
   `ClubDetailsScreen` (mounted with `clubId`) loads the club, members, and a
   **Facebook-style feed** — members post (`createClubPost`) and like (`react/unreactClubPost`),
-  and anyone can join/leave (`joinClub`/`leaveClub`); the host can't leave but can **delete**
-  the club (`deleteClub`) from the ⋯ menu, which also carries an **invite/share** link
+  tapping a post opens the single-post permalink (`ClubPostScreen`), and a post's author edits it
+  on a **dedicated page** (`ClubPostEditScreen` → `editClubPost`, opened from the ⋯ menu in both the
+  feed and the permalink — comments still edit inline);
+  members also get a **live member group chat** separate from the feed (`ClubChatScreen` →
+  `listClubMessages`/`sendClubMessage`, realtime via the `club.message` SSE event; a "Club chat" entry
+  on the detail, gated by `player.clubs.chat`);
+  and anyone can join/leave (`joinClub`/`leaveClub`); the host can't leave but can **edit**
+  (`EditClubScreen` → `updateClub`) or **delete** the club (`deleteClub`) from the ⋯ menu,
+  which also carries an **invite/share** link
   (`/clubs/<slug>`, native share or clipboard). Arriving via that link shows a welcome modal
   (`invited` prop). Feed/members refetch on tab switch. `CreateClubScreen`
-  posts to `createClub` then opens the new club (`replace` so Back skips the wizard). Gated by
-  the `player.clubs.*` permissions (create/join/post/react). Clubs client lives in `shared/lib/api.ts`. (No club-events surface —
+  posts to `createClub` then opens the new club (`replace` so Back skips the wizard); `EditClubScreen`
+  prefills + `PATCH`es, then Back remounts the detail with fresh data. Gated by
+  the `player.clubs.*` permissions (create/join/post/react/chat; edit reuses `player.clubs.create` + host-ownership). Clubs client lives in `shared/lib/api.ts`. (No club-events surface —
   the old Events tab was dropped; nested post replies aren't shown in the app yet.)
 - **Notifications are live** (Profile → bell): `NotificationsScreen` reads the user's real inbox
   (`listNotifications`/`markNotificationRead`/`markAllNotificationsRead` → `/api/v1/notifications`,
@@ -272,8 +336,12 @@ src/
 - **Owner console:** users with `owner.access` see a **"My venues"** row in the Profile
   ("You") tab → `owner-venues`. `OwnerVenuesScreen` lists their venues (live, via
   `listOwnerVenues`); `OwnerVenueScreen` is a single screen with an in-screen tab strip
-  (Overview/Listing/Location/Hours/Courts/FAQs/Reviews/Photos) editing live API data;
-  `OwnerNewVenueScreen` creates one. All gated by `SCREEN_PERMISSIONS` in `App.tsx`.
+  (Overview/Listing/Location/Courts/Closures/FAQs/Reviews/Photos) editing live API data
+  (operating hours are per-court, inside the Courts tab; Closures = venue-wide dates);
+  `OwnerNewVenueScreen` creates one; `ClaimVenueScreen` (`claim-venue`, gated by
+  `owner.venues.claim`) searches the directory for an **unclaimed** listing and submits an
+  ownership claim with proof (admin reviews → on approve the venue becomes `claimed` +
+  links to the owner). All gated by `SCREEN_PERMISSIONS` in `App.tsx`.
   Same API the web `/owner/` console uses; no API changes. (Known gaps mirror web: photos
   are upload-only, address text/city are staff-managed, no token refresh on 401.)
 - **Organizer console (Phase 3):** users with `organizer.access` see an **"Organize"** row
@@ -285,13 +353,11 @@ src/
   (no API/route/permission changes). The bracket is mobile-adapted (round-by-round cards +
   a score BottomSheet, not the web's pan/zoom canvas). Out of scope: co-host assignment
   (net-new, needs API), leagues/seasons, and v2.1-redesigned variants of these screens.
-- **Design switch (New · Classic · v2.1):** a floating reviewer toggle —
-  `features/home/DesignSwitch.tsx`, mounted app-wide from `App.tsx` for non-owner
-  browse screens — picks the player design and persists it in `localStorage`
-  (`pb-home-design`) via `shared/lib/playerDesign.ts` (`usePlayerDesign`, value
-  `new|classic|v2`). **New/Classic** keep today's UI (`HomeScreenSwitch` picks
-  `HomeScreenRefined` vs `HomeScreen` for Home only). **v2.1** swaps the whole
-  player side to the "Pickleballers Mockup v2.1" redesign: `features/*/v2/*Screen V2`
+- **Player design — "Pickleballers Mockup v2.1":** v2.1 is the **only** player
+  design. The legacy New/Classic variants, their floating toggle
+  (`DesignSwitch`/`HomeScreenSwitch`), and the `playerDesign` store (`pb-home-design`)
+  were removed — every player/guest now sees the "Pickleballers Mockup v2.1"
+  redesign: `features/*/v2/*ScreenV2`
   (Home/Nearby/Games/Clubs/Profile/Settings + `CreateGameV2`/`CreateClubV2`, all wired to the
   same live API + formatters as the v1 screens). In v2.1 the **"Game On"** create
   action opens `games/v2/CreateChoiceSheet` (an app-level BottomSheet, `App.tsx`):
@@ -301,15 +367,18 @@ src/
   hand-off via `court-details`/`book-court`). `CreateGameV2` then hosts a lobby on
   that **existing booking** — it loads the reservation (`getBooking`), locks
   venue/date/time, and only `createGame({ bookingId })` (no inline book/pay; that
-  happened up-front in the Book flow). New/Classic keep the v1 book→pay→create
-  `CreateGameScreen`. The v2 screens share chrome from
+  happened up-front in the Book flow). The v2 screens share chrome from
   `shared/components/layout/V2Chrome.tsx` (`V2Shell`/`V2TopNav`/`V2TabBar`/`V2Fab`)
   and styling from `shared/styles/v2.css` — every rule scoped under `.pb-v2.v2-<screen>`
-  (auto-ported from the mockup) so v2 fonts/tokens never leak into New/Classic. While
-  v2 is active `App.tsx` suppresses the app's own mobile TabBar; the desktop Sidebar
-  stays. Owners never see v2 (gated by `!owner.access`).
-- **Home A/B (v1):** `HomeScreenSwitch` renders New vs Classic Home. "New" = `HomeScreenRefined`. The
-  refined home's **hero is live**: your next commitment is the **soonest of your
+  (auto-ported from the mockup). For players `App.tsx` suppresses the app's own
+  mobile TabBar (v2 supplies its own); the desktop Sidebar stays.
+  **Owners** never see v2 (gated by `!owner.access`; `App.tsx` keys this off
+  `playerV2 = !isOwner`): they keep their owner dashboards on Home/Nearby/Games and
+  fall through to the **retained v1 player screens** for Clubs/Profile/Settings/Create-club.
+  `CreateGameScreen` (v1) is also retained for the `edit-game` route — `CreateGameV2`
+  only creates, it has no edit mode.
+- **Player home (`v2/HomeScreenV2`):** the home **hero is live**: your next
+  commitment is the **soonest of your
   games (`listGames({ mine: true })`) and court bookings (`listBookings()`)** —
   a court booking renders the same hero (party size instead of a roster, opens
   My bookings); else it features the best open game (`listGames({ status:
@@ -325,9 +394,10 @@ src/
   pure details + "Games here"; the `player.venues.checkin` perm/API still exist.)
   Only the streak card stays demo (no player-stats backend).
 - **Chrome:** TabBar (mobile) + Sidebar (desktop) render via `App.tsx`; hidden on
-  `landing`/`login`/`onboarding`. The mobile TabBar's five tabs are **Today · Games ·
-  Clubs · Nearby · You** (the old center **+** create-FAB was removed in favour of a Clubs
-  tab; create a game from the home "Create match" quick-action). The desktop Sidebar still
+  `landing`/`login`/`onboarding`. The mobile v2 TabBar's tabs are **Home · Map ·
+  Games · Tournament · Clubs · Profile**; the legacy/owner chrome also includes
+  a Tournament tab. The old center **+** create-FAB was removed in favour of a Clubs
+  tab; create a game from the home "Create match" quick-action. The desktop Sidebar still
   carries the create FAB (`onCreate`/`canCreate` props remain for it).
 
 ## Conventions (brief — full rules in CLAUDE.md / AGENTS.md)
@@ -344,10 +414,11 @@ src/
 | Task | Open first |
 |---|---|
 | Navigation / new screen / auth-or-guest flow | `App.tsx`, `shared/lib/navigation.ts` |
-| Player design toggle / "Pickleballers Mockup v2.1" redesign | `features/home/DesignSwitch.tsx`, `shared/lib/playerDesign.ts`, `shared/components/layout/V2Chrome.tsx`, `shared/styles/v2.css`, `features/*/v2/*` (v2 branches wired in `App.tsx`) |
+| Player UI ("Pickleballers Mockup v2.1" — the only player design) | `features/*/v2/*` (the v2 player screens), `shared/components/layout/V2Chrome.tsx`, `shared/styles/v2.css` (wired in `App.tsx` via `playerV2 = !isOwner`) |
 | Login / current user / session | `shared/lib/authStore.ts`, `shared/lib/api.ts`, `LoginScreen.tsx` |
 | Nearby tab / courts (list + detail, distance sort, filters) | `features/venues/NearbyScreen.tsx`, `CourtDetailsScreen.tsx`, `NearbyFilterSheet.tsx`, `venueFilters.ts`, `shared/lib/venueDisplay.ts`, `shared/lib/geo.ts` (owners get `features/owner/OwnerNearbyScreen.tsx` — a "your venues" ops map) |
 | Games tab (browse/mine, create, detail, join) | `features/games/{GamesScreen,GameDetailsScreen,CreateGameScreen}.tsx`, `gameDisplay.ts`; games endpoints in `shared/lib/api.ts` |
+| Player Tournament tab (browse + register) | `features/tournaments/v2/TournamentsScreenV2.tsx` (browse — **role-aware tabs**: Open · Managing/Joined · Results, see below), `v2/TournamentDetailScreen.tsx` (detail + register/withdraw + Chat entry), `v2/TournamentChatScreen.tsx` (participant group chat), `tournamentDisplay.ts`; tournament client (`listPublicTournaments`/`register`/`withdraw`/`getMyTournamentRegistration`/`listMyTournamentRegistrations`/`listTournamentMessages`/`sendTournamentMessage`) in `shared/lib/api.ts`; mounted as the `tournaments` tab + `tournament` detail + `tournament-chat` in `App.tsx` / `shared/lib/navigation.ts`. **Role-gated** by `canSeeTournaments = !isOwner && !isAdmin` in `App.tsx` — players/coaches/organizers see the tab (join/leave only); owners/admins don't (dropped from `V2TabBar`/`TabBar`/`Sidebar`). Organizer tournament CRUD stays in `features/organizer/tournaments/`. |
 | Create a game (venue-first + pay) | `features/games/CreateGameScreen.tsx` — `CreateGameWizard`: court → date/start-end → details → `createBooking`+`checkout`+`createGame`; gated by `player.games.create` (+ `player.bookings.create`) |
 | Manage games you created (edit details, kick, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows (`GameManageActions.tsx`); editing reuses `CreateGameScreen` with a `gameId` prop (the `ManageGameScreen` form: edit details + remove players via `kickPlayer`); `updateGame`/`deleteGame`/`kickPlayer` in `shared/lib/api.ts`; gated by `player.games.manage` |
 | Payment history / spend report (player) | `features/profile/PaymentHistoryScreen.tsx` (entry rows in `ProfileScreen.tsx` + `v2/ProfileScreenV2.tsx`); `listPayments` in `shared/lib/api.ts` → `GET /api/v1/payments` (self-scoped); `shared/components/ui/Chart.tsx` `BarChart`; gated by `player.payments.view` (`SCREEN_PERMISSIONS` in `App.tsx`) |
@@ -361,6 +432,6 @@ src/
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |
-| Empty/loading/error states | `DemoBranch` + `EmptyState`/`ErrorState`/`LoadingSkeleton` |
+| Empty/loading/error states | `DemoBranch` + `EmptyState`/`ErrorState`/`LoadingSkeleton` (v1/owner) or `V2Skeleton` (v2.1 player screens) |
 
 > Keep this file current when structure or core flow changes — it's only useful if it's true.

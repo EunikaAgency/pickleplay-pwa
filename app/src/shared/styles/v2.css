@@ -42,11 +42,29 @@
   inset: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Hide the scrollbar so v2 screens read like a native app (mirrors v1 `.scroll`). */
+  scrollbar-width: none;
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
+.pb-v2::-webkit-scrollbar { display: none; }
 .pb-v2 * { box-sizing: border-box; }
 .pb-v2 h1, .pb-v2 h2, .pb-v2 h3, .pb-v2 h4, .pb-v2 .brand { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
 .pb-v2 p { margin: 0; }
+
+/* ── Skeleton placeholders (loading states) ──────────────────────────────────
+   A neutral shimmer block reused by the per-screen skeletons in
+   `shared/components/ui/V2Skeleton`. Those compose `.v2sk` blocks inside each
+   surface's real card wrapper class, so the placeholder matches the real card's
+   size/radius/shadow exactly. `--skel` is the fill; it flips for dark mode in
+   the dark blocks far below. Pulses opacity and honours reduced-motion. */
+.pb-v2 { --skel: #E6EAF3; }
+.pb-v2 .v2sk {
+  background: var(--skel);
+  border-radius: 8px;
+  animation: v2sk-pulse 1.5s ease-in-out infinite;
+}
+@keyframes v2sk-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) { .pb-v2 .v2sk { animation: none; } }
 .pb-v2 a { text-decoration: none; color: inherit; }
 .pb-v2 button { font-family: inherit; cursor: pointer; border: none; }
 
@@ -59,15 +77,26 @@
   box-shadow: var(--shadow-sm);
   padding-top: env(safe-area-inset-top);
 }
-.pb-v2 .v2c-inner {
-  /* Full-bleed so the back arrow sits hard-left and the bell hard-right, rather
-     than indented by a 480px centred column on wider frames. */
+/* Scoped under `.v2c-topnav` (specificity 0,3,0) so the 16px side padding holds on
+   every tab. Some per-screen scopes declare a universal reset
+   `.pb-v2.v2-<screen> * { padding: 0 }` (0,2,0, e.g. nearby/tournaments) that would
+   otherwise zero this padding — making the back arrow/bell sit flush to the frame
+   edge on those tabs while the others kept their 16px inset. */
+.pb-v2 .v2c-topnav .v2c-inner {
+  /* Full-bleed (within the 16px gutter) so the back arrow sits left and the bell
+     right, rather than indented by a 480px centred column on wider frames. */
   width: 100%; padding: 0 16px;
   display: flex; align-items: center; justify-content: space-between;
   height: 60px; gap: 12px;
 }
-.pb-v2 .v2c-brand { font-family: 'Grandstander', cursive; font-weight: 800; font-size: 22px; letter-spacing: 0.3px; color: var(--blue); background: none; }
-.pb-v2 .v2c-brand span { color: var(--lime-active); }
+/* Scoped under `.v2c-topnav` so this beats the per-screen `.pb-v2.v2-<screen>
+   button { font-family: inherit }` resets (specificity 0,2,1). Without the extra
+   class the brand button inherited each screen's body font ('Lexend') on screens
+   that re-declare the button reset (home/games/clubs/profile/…) while staying
+   'Grandstander' on the few that don't (nearby/tournaments) — so the wordmark
+   rendered in two different fonts across tabs. */
+.pb-v2 .v2c-topnav .v2c-brand { font-family: 'Grandstander', cursive; font-weight: 800; font-size: 22px; letter-spacing: 0.3px; color: var(--blue); background: none; }
+.pb-v2 .v2c-topnav .v2c-brand span { color: var(--lime-active); }
 .pb-v2 .v2c-actions { display: flex; align-items: center; gap: 4px; }
 .pb-v2 .v2c-iconbtn {
   display: inline-flex; align-items: center; justify-content: center;
@@ -75,6 +104,25 @@
   color: var(--ink); position: relative; transition: background 150ms var(--ease-out);
 }
 .pb-v2 .v2c-iconbtn:hover { background: var(--bg-app); }
+/* Back button: a soft tinted chip (blue chevron + shadow) so it reads clearly as
+   "go back". The chevron nudges left on hover/press to reinforce the direction.
+   Scoped under `.v2c-topnav` (specificity 0,3,0) so it renders IDENTICALLY on every
+   tab: the per-screen `.pb-v2.v2-<screen> button { border:none }` resets (0,2,1)
+   would otherwise strip the border only on the screens that declare them
+   (home/games/clubs/profile) while nearby/tournaments kept it — and per-screen
+   `--shadow-sm` redefinitions varied the shadow. Borderless + a fixed shadow (not
+   the per-screen token) keeps the chip consistent across the whole tab bar. */
+.pb-v2 .v2c-topnav .v2c-back {
+  background: var(--bg-app);
+  color: var(--blue);
+  box-shadow: 0 3px 12px rgba(26, 33, 56, 0.12);
+  border: none;
+}
+.pb-v2 .v2c-topnav .v2c-back:hover { background: var(--bg-alt); }
+.pb-v2 .v2c-topnav .v2c-back:active { transform: scale(0.92); }
+.pb-v2 .v2c-back svg { transition: transform 150ms var(--ease-out); }
+.pb-v2 .v2c-back:hover svg,
+.pb-v2 .v2c-back:active svg { transform: translateX(-2px); }
 .pb-v2 .v2c-notif-dot { position: absolute; top: 7px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: var(--warning); border: 2px solid var(--surface); }
 .pb-v2 .v2c-notif-badge { position: absolute; top: 2px; right: 2px; width: 17px; height: 17px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--warning); color: #fff; font-family: 'Grandstander', cursive; font-weight: 700; font-size: 9px; line-height: 1; border: 2px solid var(--surface); }
 .pb-v2 .v2c-join { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 700; font-size: 13px; padding: 8px 16px; border-radius: var(--radius-pill); white-space: nowrap; transition: background 150ms var(--ease-out), transform 150ms var(--ease-spring); }
@@ -88,12 +136,13 @@
 }
 .pb-v2 .v2c-tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; font-size: 10px; font-weight: 500; color: var(--text-muted);
+  gap: 3px; min-width: 0; font-size: 9.5px; line-height: 1.1; font-weight: 500; color: var(--text-muted);
   transition: color 150ms; position: relative; background: none;
 }
 .pb-v2 .v2c-tab.active { color: var(--blue); }
 .pb-v2 .v2c-tab.active::after { content: ''; position: absolute; bottom: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--lime-active); }
-.pb-v2 .v2c-tab svg { width: 22px; height: 22px; }
+.pb-v2 .v2c-tab svg { width: 21px; height: 21px; flex-shrink: 0; }
+.pb-v2 .v2c-tab-label { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; }
 
 .pb-v2 .v2c-fab {
   position: fixed; right: 20px; bottom: calc(84px + env(safe-area-inset-bottom));
@@ -105,12 +154,174 @@
 .pb-v2 .v2c-fab:hover { background: var(--lime-hover); transform: scale(1.08); }
 .pb-v2 .v2c-fab:active { transform: scale(0.95); }
 
-/* On desktop the app keeps its own sidebar for navigation, so the v2 bottom tab
-   bar is redundant — hide it there (the sticky top nav + sidebar cover nav). */
-@media (min-width: 1024px) {
+/* When the app expands to a desktop frame it keeps its own sidebar for
+   navigation, making the v2 bottom tab bar redundant — hide it there. Keyed off
+   the `.app` frame width via @container (see index.css `--frame-max`): while the
+   app is capped at a phone width this never fires, so the tab bar stays. */
+@container app (min-width: 1024px) {
   .pb-v2 .v2c-tabbar { display: none; }
   .pb-v2 { padding-bottom: 24px; }
 }
+
+/* ===================== .pb-v2.v2-tournaments ===================== */
+.pb-v2.v2-tournaments {
+  min-height: 100%;
+  background:
+    linear-gradient(180deg, rgba(204,255,51,0.18), rgba(51,85,255,0.07) 42%, transparent 72%),
+    var(--bg-page);
+}
+/* ---- Player Tournament tab (browse) ---- */
+.pb-v2.v2-tournaments .tt-page { padding: 16px 16px 0; }
+.pb-v2.v2-tournaments .tt-intro { margin-bottom: 14px; }
+.pb-v2.v2-tournaments .tt-heading {
+  font-family: var(--font-display); font-weight: 800; font-size: 26px;
+  color: var(--text-primary); line-height: 1.1;
+}
+.pb-v2.v2-tournaments .tt-subheading {
+  font-size: 13px; color: var(--text-secondary); margin-top: 4px;
+}
+.pb-v2.v2-tournaments .tt-loading { padding: 20px 4px; font-size: 13px; color: var(--text-secondary); }
+
+/* Organizer-only shortcut to create/manage a tournament from the browse tab. */
+.pb-v2.v2-tournaments .tt-organize-row { margin-bottom: 16px; }
+.pb-v2.v2-tournaments .tt-organize {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 13px 14px; border-radius: var(--radius-card); border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--blue), #2E5BFF); color: #fff; box-shadow: var(--shadow-md);
+  transition: transform 150ms var(--ease-out), box-shadow 150ms;
+}
+.pb-v2.v2-tournaments .tt-organize:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg, 0 14px 32px rgba(26,33,56,0.20)); }
+.pb-v2.v2-tournaments .tt-organize-ic {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.18);
+}
+.pb-v2.v2-tournaments .tt-organize-tx { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.pb-v2.v2-tournaments .tt-organize-tx strong { font-family: 'Grandstander', cursive; font-size: 14px; font-weight: 800; }
+.pb-v2.v2-tournaments .tt-organize-tx small { font-size: 11.5px; opacity: 0.85; margin-top: 1px; }
+.pb-v2.v2-tournaments .tt-organize-go { flex-shrink: 0; opacity: 0.9; }
+.pb-v2.v2-tournaments .tt-organize-manage {
+  display: flex; align-items: center; gap: 9px; width: 100%; margin-top: 8px;
+  padding: 11px 14px; border-radius: var(--radius-card);
+  background: var(--surface); border: 1.5px solid var(--blue); cursor: pointer;
+  color: var(--blue); font-family: 'Grandstander', cursive; font-size: 13px; font-weight: 800;
+  transition: transform 150ms var(--ease-out), box-shadow 150ms, background 150ms, color 150ms;
+}
+.pb-v2.v2-tournaments .tt-organize-manage:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); background: var(--blue); color: #fff; }
+.pb-v2.v2-tournaments .tt-organize-manage-ic { display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pb-v2.v2-tournaments .tt-organize-manage-tx { flex: 1; text-align: left; }
+.pb-v2.v2-tournaments .tt-organize-manage-go { flex-shrink: 0; opacity: 0.85; }
+
+/* Reuse the games-tab segmented control styling (the tab-group/seg-btn markup is
+   identical), scoped here so it themes under the tournaments screen too. */
+.pb-v2.v2-tournaments .tab-group-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.pb-v2.v2-tournaments .tab-group {
+  display: flex; background: var(--surface); border-radius: var(--radius-pill);
+  padding: 4px; gap: 2px; flex: 1; box-shadow: var(--shadow-sm);
+}
+.pb-v2.v2-tournaments .seg-btn {
+  flex: 1; padding: 8px 6px; border-radius: var(--radius-pill);
+  background: transparent; color: var(--text-secondary);
+  font-family: 'Lexend', sans-serif; font-size: 12px; font-weight: 600;
+  border: none; transition: all 200ms var(--ease-out); white-space: nowrap; cursor: pointer;
+}
+.pb-v2.v2-tournaments .seg-btn.active { background: var(--lime); color: var(--ink); box-shadow: var(--shadow-sm); }
+
+/* Tournament card — a banner thumb + body, like the games card. */
+.pb-v2.v2-tournaments .tt-card {
+  background: var(--surface); border-radius: var(--radius-card); overflow: hidden;
+  margin-bottom: 12px; box-shadow: var(--shadow-md); display: flex; min-height: 120px;
+  transition: transform 150ms var(--ease-out), box-shadow 150ms; cursor: pointer;
+  text-decoration: none; color: inherit;
+}
+.pb-v2.v2-tournaments .tt-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg, 0 14px 32px rgba(26,33,56,0.20)); }
+.pb-v2.v2-tournaments .tt-card.is-past { background: #F8F9FD; }
+.pb-v2.v2-tournaments .tt-thumb {
+  width: 116px; flex-shrink: 0; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--blue), #2E5BFF); color: rgba(255,255,255,0.6);
+}
+.pb-v2.v2-tournaments .tt-thumb-mark { width: 38px; height: 38px; }
+.pb-v2.v2-tournaments .tt-chip {
+  position: absolute; bottom: 9px; left: 50%; transform: translateX(-50%); z-index: 2; padding: 4px 8px;
+  width: max-content; max-width: calc(100% - 18px);
+  border-radius: 9px; font-family: 'Grandstander', cursive;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase;
+  color: #fff; white-space: normal; line-height: 1.18; text-align: center;
+}
+/* "Managing" badge — top-left of the thumb (clear of the bottom-center status
+   chip), marking a tournament the signed-in organizer runs. */
+.pb-v2.v2-tournaments .tt-mine {
+  position: absolute; top: 8px; left: 8px; z-index: 3;
+  display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px;
+  border-radius: 8px; background: rgba(255,255,255,0.96); color: var(--blue);
+  font-family: 'Grandstander', cursive; font-size: 9px; font-weight: 800;
+  letter-spacing: 0.3px; text-transform: uppercase; line-height: 1;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.20);
+}
+.pb-v2.v2-tournaments .tt-mine svg { width: 11px; height: 11px; flex-shrink: 0; }
+.pb-v2.v2-tournaments .tt-chip--open { background: #5C9E00; }
+.pb-v2.v2-tournaments .tt-chip--soon { background: var(--blue); }
+.pb-v2.v2-tournaments .tt-chip--live { background: var(--warning); }
+.pb-v2.v2-tournaments .tt-chip--done { background: var(--text-muted); }
+.pb-v2.v2-tournaments .tt-chip--muted { background: var(--text-muted); }
+.pb-v2.v2-tournaments .tt-body {
+  flex: 1; padding: 12px 14px; display: flex; flex-direction: column; gap: 7px; min-width: 0;
+}
+.pb-v2.v2-tournaments .tt-title {
+  font-family: 'Grandstander', cursive; font-size: 14px; font-weight: 800; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;
+}
+.pb-v2.v2-tournaments .tt-meta { display: flex; flex-direction: column; gap: 4px; }
+.pb-v2.v2-tournaments .tt-meta-row {
+  display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary);
+}
+.pb-v2.v2-tournaments .tt-meta-row svg { flex-shrink: 0; color: var(--text-muted); }
+.pb-v2.v2-tournaments .tt-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 1px; }
+.pb-v2.v2-tournaments .tt-tag {
+  padding: 3px 8px; border-radius: var(--radius-pill); font-size: 10.5px; font-weight: 700;
+  background: var(--bg-alt); color: var(--text-secondary); white-space: nowrap;
+}
+.pb-v2.v2-tournaments .tt-tag--type { background: rgba(0,64,224,0.10); color: var(--blue); }
+.pb-v2.v2-tournaments .tt-tag--fee { background: rgba(92,158,0,0.14); color: #43760A; }
+.pb-v2.v2-tournaments .tt-tag--spots { background: var(--surface); border: 1px solid var(--border-subtle); }
+
+/* Empty / error state (mirrors the games empty-state). */
+.pb-v2.v2-tournaments .tt-empty {
+  display: flex; flex-direction: column; align-items: center; padding: 44px 24px 36px;
+  background: var(--surface); border-radius: var(--radius-card); text-align: center; box-shadow: var(--shadow-sm);
+}
+.pb-v2.v2-tournaments .tt-empty-ring {
+  width: 64px; height: 64px; border-radius: 50%; background: var(--bg-alt);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 26px;
+}
+.pb-v2.v2-tournaments .tt-empty h3 { font-size: 16px; font-weight: 800; color: var(--ink); margin-bottom: 8px; }
+.pb-v2.v2-tournaments .tt-empty p { font-size: 13px; color: var(--text-secondary); line-height: 1.55; max-width: 240px; margin-bottom: 18px; }
+.pb-v2.v2-tournaments .tt-empty-cta {
+  display: inline-flex; align-items: center; gap: 6px; padding: 11px 22px; background: var(--blue);
+  color: #fff; border-radius: var(--radius-pill); font-family: 'Grandstander', cursive;
+  font-size: 13px; font-weight: 700; border: none; cursor: pointer;
+}
+
+/* Detail-screen badges/banners render in the standard `pb` frame (outside the
+   .pb-v2 scope), so use bare classes + literal colors (v2 tokens aren't in scope). */
+.tt-badge {
+  display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px;
+  color: #fff; white-space: nowrap;
+}
+.tt-badge--open { background: #5C9E00; }
+.tt-badge--soon { background: var(--primary, #0040E0); }
+.tt-badge--live { background: #F59E0B; }
+.tt-badge--done { background: #8A93A6; }
+.tt-badge--muted { background: #8A93A6; }
+
+.tt-reg-banner {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px; border-radius: 16px; font-weight: 700; font-size: 14px;
+}
+.tt-reg-banner--ok { background: rgba(92,158,0,0.14); color: #3C6608; }
+.tt-reg-banner--warn { background: rgba(245,158,11,0.16); color: #92500A; }
+.tt-reg-banner--muted { background: var(--hairline, #EEF0F4); color: var(--muted, #66708A); }
 
 
 /* ===================== index.html → .pb-v2.v2-home ===================== */
@@ -713,8 +924,8 @@
   --bg-wash:    #F3F5FA;
   --success:    #22C55E;
   --warning:    #F97316;
-  --shadow-sm:  0 2px 8px rgba(0,0,0,0.08);
-  --shadow-md:  0 4px 16px rgba(0,0,0,0.10);
+  /* No --shadow-sm/--shadow-md override here: inherit the shared .pb-v2
+     navy-tinted shadows so the top nav (and cards) match every other screen. */
   --r-pill:     9999px;
   --r-card:     16px;
   --r-sm:       8px;
@@ -730,88 +941,9 @@
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
-.pb-v2.v2-nearby .shell {
-  max-width: 390px;
-  margin: 0 auto;
-  background: var(--bg-app);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-}
-.pb-v2.v2-nearby .status-bar {
-  background: var(--bg-white);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--navy);
-  border-bottom: 1px solid var(--border-sub);
-}
-.pb-v2.v2-nearby .status-right { display: flex; gap: 6px; align-items: center; }
-.pb-v2.v2-nearby .signal-bar {
-  display: inline-flex; gap: 2px; align-items: flex-end; height: 12px;
-}
-.pb-v2.v2-nearby .signal-bar span {
-  width: 3px; background: var(--navy); border-radius: 1px;
-  display: inline-block;
-}
-.pb-v2.v2-nearby .signal-bar span:nth-child(1) {height:4px}
-.pb-v2.v2-nearby .signal-bar span:nth-child(2) {height:6px}
-.pb-v2.v2-nearby .signal-bar span:nth-child(3) {height:9px}
-.pb-v2.v2-nearby .signal-bar span:nth-child(4) {height:12px}
-.pb-v2.v2-nearby .battery {
-  width:22px; height:11px; border:1.5px solid var(--navy); border-radius:2px;
-  position:relative; display:inline-block;
-}
-.pb-v2.v2-nearby .battery::after {
-  content:''; position:absolute; right:-5px; top:2.5px;
-  width:3px; height:5px; background:var(--navy); border-radius:0 1px 1px 0;
-}
-.pb-v2.v2-nearby .battery-fill {
-  position:absolute; left:1px; top:1px; bottom:1px;
-  width:80%; background:var(--navy); border-radius:1px;
-}
-.pb-v2.v2-nearby .top-nav {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  position:sticky;
-  top:0;
-  z-index:50;
-  background:var(--bg-white);
-  padding:0;
-}
-.pb-v2.v2-nearby .topnav-inner {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  height:60px;
-  padding:0 16px;
-  position:relative;
-}
-.pb-v2.v2-nearby .icon-btn {
-  width:40px;height:40px;border:none;background:transparent;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:50%;cursor:pointer;color:#1A2138;position:relative;
-}
-.pb-v2.v2-nearby .nav-wordmark {
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  font-family:var(--font-display);
-  font-weight:800;
-  font-size:22px;
-  color:#3355FF;
-}
-.pb-v2.v2-nearby .nav-wordmark span {color:#A3CC00;}
-.pb-v2.v2-nearby .notif-dot {
-  position:absolute;top:7px;right:8px;width:9px;height:9px;
-  border-radius:50%;background:#F97316;border:2px solid #fff;
-}
+/* (Removed dead mockup chrome — the standalone Nearby prototype's fake iOS
+   status bar + its own top-nav/wordmark. The shared V2Chrome `v2c-*` top nav
+   renders the real header now, so none of these classes exist in the JSX.) */
 .pb-v2.v2-nearby .search-section {
   padding:10px 16px 12px;
   background:#FFFFFF;
@@ -986,13 +1118,27 @@
 .pb-v2.v2-nearby .thumb-placeholder svg { width: 36px; height: 36px; color: var(--blue); opacity: .5; }
 .pb-v2.v2-nearby .thumb-badge {
   position: absolute; top: 8px; left: 8px;
+  /* Cap to the thumbnail width (minus an 8px margin on the right) so a long
+     label wraps inside the photo instead of running off it. */
+  max-width: calc(100% - 16px);
   font-family: var(--font-body);
   font-size: 10px;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: var(--r-pill);
+  line-height: 1.3;
+  padding: 3px 7px;
+  /* A rounded rect, not a full pill: a 9999px radius only reads as a "pill" on a
+     single line — once a verbose price label (e.g. "PER COURT / HOUR") wraps, the
+     stadium ends squeeze the text into a cramped centre band. */
+  border-radius: var(--r-sm);
   text-transform: uppercase;
-  letter-spacing: .04em;
+  letter-spacing: .03em;
+  /* Keep verbose labels (e.g. "VARIES (RESORT STAY / COURT RENTAL)") to two tidy
+     lines with an ellipsis rather than a tall blob over the photo. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
 }
 .pb-v2.v2-nearby .thumb-badge.public { background: #DCFCE7; color: #166534; }
 .pb-v2.v2-nearby .thumb-badge.fee { background: #FEF9C3; color: #854D0E; }
@@ -1141,43 +1287,8 @@
   color: var(--slate);
 }
 .pb-v2.v2-nearby .empty-state p { font-size: 14px; line-height: 1.5; }
-.pb-v2.v2-nearby .tabbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 64px;
-    background: white;
-    border-top: 1px solid var(--border-subtle);
-    display: flex;
-    z-index: 45;
-  }
-.pb-v2.v2-nearby .tab-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 500;
-    color: #94a3b8;
-    transition: color 150ms;
-    position: relative;
-    cursor: pointer;
-    text-decoration: none;
-  }
-.pb-v2.v2-nearby .tab-item.active { color: var(--blue); }
-.pb-v2.v2-nearby .tab-item.active::after {
-    content: '';
-    position: absolute;
-    bottom: 8px;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: #a3cc00;
-  }
-.pb-v2.v2-nearby .tab-item svg { width: 22px; height: 22px; }
+/* (Removed dead mockup tab bar — the standalone prototype's own `.tabbar`/
+   `.tab-item`. The shared V2Chrome `v2c-tabbar` is the real bottom nav.) */
 .pb-v2.v2-nearby .annotation {
   position: absolute;
   right: -2px;
@@ -1246,7 +1357,7 @@
   box-shadow: var(--shadow-md);
 }
 .pb-v2.v2-nearby .nearby-search-float .map-btn { box-shadow: var(--shadow-md); }
-.pb-v2.v2-nearby .map-btn.active { background: var(--lime); color: var(--navy); }
+.pb-v2.v2-nearby .map-btn.active { background: var(--lime); color: var(--on-accent); }
 .pb-v2.v2-nearby .map-btn.active:hover { background: var(--lime-press); }
 .pb-v2.v2-nearby .map-btn:disabled { opacity: 0.7; cursor: default; }
 .pb-v2.v2-nearby .map-btn .spin { animation: v2spin 0.9s linear infinite; }
@@ -1309,11 +1420,16 @@
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Hide the desktop gutter scrollbar (mobile uses overlay bars anyway) while
+     keeping the list scrollable — same pattern as the games date-strip. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 4px 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
+.pb-v2.v2-nearby .sheet-list::-webkit-scrollbar { display: none; }
 /* Keep the cards at their natural height — in a scrolling flex column, flex
    items otherwise shrink to thin strips (the "empty rows" bug). */
 .pb-v2.v2-nearby .sheet-list > * { flex-shrink: 0; }
@@ -1517,7 +1633,8 @@
 
 /* ---- Sort/locate row (under the date strip) ---- */
 .pb-v2.v2-games .games-sort-row {
-  display: flex; align-items: center; margin: 2px 0 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap; margin: 2px 0 12px;
 }
 /* Sort control — a custom dropdown (not a native <select>, whose popup escaped
    the device-preview frame). Mirrors the v2-nearby sort dropdown. */
@@ -1769,11 +1886,46 @@
   font-weight: 400;
 }
 .pb-v2.v2-games .game-meta-row svg { flex-shrink: 0; color: var(--text-muted); }
+/* Venue area/city under the venue name (aligned past the pin icon). */
+.pb-v2.v2-games .game-meta-loc {
+  padding-left: 18px;
+  margin-top: -1px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
 .pb-v2.v2-games .players-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+
+/* Host delete / member leave action on My Games + Joined cards. */
+.pb-v2.v2-games .game-actions {
+  margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+.pb-v2.v2-games .game-action-btn {
+  background: none; border: none; cursor: pointer; padding: 2px 0;
+  font-family: var(--font-body); font-size: 12px; font-weight: 700;
+  color: var(--text-secondary);
+}
+.pb-v2.v2-games .game-action-btn.danger { color: #DC2626; }
+.pb-v2.v2-games .game-action-locked { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.pb-v2.v2-games .game-confirm {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.pb-v2.v2-games .game-confirm-text { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.pb-v2.v2-games .game-confirm-btns { display: flex; gap: 6px; }
+.pb-v2.v2-games .gc-keep, .pb-v2.v2-games .gc-go {
+  border: none; cursor: pointer; border-radius: var(--radius-pill);
+  font-size: 12px; font-weight: 700; padding: 6px 14px;
+}
+.pb-v2.v2-games .gc-keep { background: var(--bg-app); color: var(--text-secondary); }
+.pb-v2.v2-games .gc-go { background: #DC2626; color: #fff; }
+.pb-v2.v2-games .gc-go.leave { background: var(--blue); }
+.pb-v2.v2-games .gc-keep:disabled, .pb-v2.v2-games .gc-go:disabled { opacity: 0.6; cursor: default; }
+.pb-v2.v2-games .game-action-error { margin-top: 6px; font-size: 11.5px; color: #DC2626; }
 .pb-v2.v2-games .fill-track {
   flex: 1;
   height: 5px;
@@ -2771,6 +2923,16 @@
     color: var(--ink);
     margin-bottom: 4px;
     margin-top: 24px;
+  }
+.pb-v2.v2-profile .profile-role-pill {
+    width: fit-content;
+    margin: 0 auto 14px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    font-family: 'Grandstander', cursive;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.2px;
   }
 .pb-v2.v2-profile .profile-tagline {
     font-size: 13px;
@@ -4323,6 +4485,7 @@
   --bg-alt: #2C313B;
   --bg-feature: #1C2230;
   --surface: #1A1D24;
+  --skel: #2C313B;
   --border: rgba(255,255,255,0.16);
   --border-subtle: rgba(255,255,255,0.09);
   --ink: #F3F5F9;
@@ -4350,6 +4513,7 @@
     --bg-alt: #2C313B;
     --bg-feature: #1C2230;
     --surface: #1A1D24;
+    --skel: #2C313B;
     --border: rgba(255,255,255,0.16);
     --border-subtle: rgba(255,255,255,0.09);
     --ink: #F3F5F9;
@@ -4552,6 +4716,14 @@
 .pb-v2.v2-owner-home .ohome-venue-glance b { font-weight: 800; color: var(--ink); }
 .pb-v2.v2-owner-home .ohome-venue-glance .ohome-muted { color: var(--text-secondary); }
 .pb-v2.v2-owner-home .ohome-venue-glance .ohome-pending { color: var(--coral); font-weight: 800; }
+/* My-venues list: 2 columns on phones, 3 once the frame is tablet-wide. Keys off
+   the frame (@container app), like the rest of the frame-capped responsive. The
+   grid gap replaces the stacked cards' margin-top. */
+.pb-v2.v2-owner-home .ohome-venue-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.pb-v2.v2-owner-home .ohome-venue-grid .ohome-venue + .ohome-venue { margin-top: 0; }
+@container app (min-width: 640px) {
+  .pb-v2.v2-owner-home .ohome-venue-grid { grid-template-columns: repeat(3, 1fr); }
+}
 
 /* empty state */
 .pb-v2.v2-owner-home .ohome-empty { background: var(--surface); border-radius: var(--radius-lg); padding: 28px 22px; text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle); margin-top: 20px; }

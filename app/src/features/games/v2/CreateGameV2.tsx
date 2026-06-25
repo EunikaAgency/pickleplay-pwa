@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { CompletionScreen } from '../../../shared/components/ui/CompletionScreen';
+import { Dropdown } from '../../../shared/components/ui/Dropdown';
 import { getBooking, createGame, type ApiBooking } from '../../../shared/lib/api';
 import { hoursBetween, prettyDate, timeRange, to12h } from '../../bookings/bookingDisplay';
 
@@ -175,16 +176,20 @@ export function CreateGameV2(props: Props) {
             <div className="stepper-wrap">
               <button className="stepper-btn" onClick={() => setSpots((s) => Math.max(2, s - 1))} disabled={fixedSpots != null} aria-label="Decrease players">−</button>
               <input className="stepper-value" type="number" value={spots} readOnly aria-label="Number of players" />
-              <button className="stepper-btn" onClick={() => setSpots((s) => Math.min(32, s + 1))} disabled={fixedSpots != null} aria-label="Increase players">+</button>
+              <button className="stepper-btn" onClick={() => setSpots((s) => Math.min(16, s + 1))} disabled={fixedSpots != null} aria-label="Increase players">+</button>
             </div>
           </div>
 
           <div className="field-group">
             <div className="field-label"><span className="field-label-text">Skill Level</span></div>
             <div className="input-wrap">
-              <select className="field-input" value={skill} onChange={(e) => setSkill(e.target.value)} aria-label="Skill level">
-                {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+              <Dropdown
+                triggerClassName="field-input"
+                value={skill}
+                onChange={setSkill}
+                options={SKILLS.map((s) => ({ value: s, label: s }))}
+                aria-label="Skill level"
+              />
             </div>
           </div>
 

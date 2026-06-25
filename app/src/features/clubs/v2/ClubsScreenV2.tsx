@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
+import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { listClubs, joinClub, type ApiClub } from '../../../shared/lib/api';
 import { getInitials } from '../../../shared/lib/initials';
 
@@ -9,40 +10,70 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
   const { onNavigate, requireAuth, isLoggedIn } = chrome;
   const [all, setAll] = useState<ApiClub[]>([]);
   const [mine, setMine] = useState<ApiClub[]>([]);
+  const [allCursor, setAllCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [joined, setJoined] = useState<Set<string>>(new Set());
 
+  // Debounce the search box so each keystroke doesn't fire a request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Fetch the directory + my clubs, searched server-side (so matches aren't
+  // capped to the first page). Re-runs when auth state or the query changes.
   useEffect(() => {
     let alive = true;
-    // loading starts true; re-runs only if the auth state flips.
+    // `loading` stays true only for the first paint (skeleton); on a search
+    // re-run we update results in place rather than flashing the skeleton.
+    const search = debouncedQuery || undefined;
     Promise.all([
-      listClubs().catch(() => []),
-      isLoggedIn ? listClubs({ mine: true }).catch(() => []) : Promise.resolve([]),
+      listClubs({ search }).catch(() => ({ items: [], cursor: null })),
+      isLoggedIn ? listClubs({ mine: true, search }).catch(() => ({ items: [], cursor: null })) : Promise.resolve({ items: [], cursor: null }),
     ])
-      .then(([a, m]) => { if (alive) { setAll(a); setMine(m); } })
+      .then(([a, m]) => {
+        if (!alive) return;
+        setAll(a.items);
+        setAllCursor(a.cursor);
+        setMine(m.items);
+      })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, debouncedQuery]);
 
-  const match = (c: ApiClub) => {
-    const q = query.trim().toLowerCase();
-    return !q || c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q);
+  const loadMore = () => {
+    if (!allCursor || loadingMore) return;
+    setLoadingMore(true);
+    listClubs({ search: debouncedQuery || undefined, cursor: allCursor })
+      .then((page) => { setAll((prev) => [...prev, ...page.items]); setAllCursor(page.cursor); })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
   };
-  const myClubs = useMemo(() => mine.filter(match), [mine, query]); // eslint-disable-line react-hooks/exhaustive-deps
-  const discover = useMemo(
-    () => all.filter((c) => !c.isMember && match(c)),
-    [all, query], // eslint-disable-line react-hooks/exhaustive-deps
-  );
+
+  const myClubs = mine;
+  const discover = all.filter((c) => !c.isMember);
   const featured = discover[0] ?? null;
-  const nearby = discover.slice(1, 7);
+  const nearby = discover.slice(1);
 
   const open = (c: ApiClub) => onNavigate('club-details', { id: c.slug || c.id });
   const doJoin = (c: ApiClub) => {
     if (!requireAuth('join this club')) return;
     setJoined((prev) => new Set(prev).add(c.id));
-    joinClub(c.id).catch(() => setJoined((prev) => { const n = new Set(prev); n.delete(c.id); return n; }));
+    joinClub(c.id)
+      .then((res) => {
+        // Public clubs join immediately → move the club into My Clubs and out of
+        // Discover (which filters on isMember). Private clubs stay "Requested".
+        if (res.status === 'member') {
+          const joinedClub = { ...c, isMember: true, memberCount: c.memberCount + 1 };
+          setAll((prev) => prev.map((x) => (x.id === c.id ? joinedClub : x)));
+          setMine((prev) => (prev.some((x) => x.id === c.id) ? prev : [joinedClub, ...prev]));
+        }
+      })
+      .catch(() => setJoined((prev) => { const n = new Set(prev); n.delete(c.id); return n; }));
   };
   const joinLabel = (c: ApiClub) => (joined.has(c.id) ? (c.visibility === 'private' ? 'Requested' : 'Joined') : 'Join');
 
@@ -84,7 +115,7 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
         </div>
 
         {loading ? (
-          <p className="club-members" style={{ padding: '20px 4px' }}>Loading clubs…</p>
+          <V2Skeleton variant="club-list" count={5} />
         ) : (
           <>
             {/* MY CLUBS */}
@@ -158,6 +189,15 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
                   ))}
                 </div>
               </>
+            )}
+
+            {/* Reach clubs beyond the first page (search is server-side, so it spans all pages). */}
+            {filter === 'all' && allCursor && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0' }}>
+                <button className="filter-chip" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              </div>
             )}
 
             {filter === 'all' && !featured && myClubs.length === 0 && (

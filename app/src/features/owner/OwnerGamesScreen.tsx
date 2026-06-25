@@ -98,14 +98,14 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
         <Segmented
           value={mode}
           onChange={setMode}
-          options={[{ value: 'schedule', label: 'Schedule' }, { value: 'games', label: 'Games' }]}
+          options={[{ value: 'schedule', label: 'Bookings' }, { value: 'games', label: 'Lobbies' }]}
         />
 
         {venues.length > 1 && (
           <div className="scroll-x flex gap-2">
-            <Chip selected={venueFilter === 'all'} onClick={() => setVenueFilter('all')}>All venues</Chip>
+            <Chip className="chip-tab" selected={venueFilter === 'all'} onClick={() => setVenueFilter('all')}>All venues</Chip>
             {venues.map((v) => (
-              <Chip key={v.id} selected={venueFilter === v.id} onClick={() => setVenueFilter(v.id)}>{v.displayName}</Chip>
+              <Chip key={v.id} className="chip-tab" selected={venueFilter === v.id} onClick={() => setVenueFilter(v.id)}>{v.displayName}</Chip>
             ))}
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
@@ -10,7 +10,7 @@ import { CourtPicker } from '../../shared/components/ui/CourtPicker';
 import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicker';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings, listCourts,
+  listAllVenues, createBooking, checkout, getSettings, listCourts, getVenueAvailabilityRange,
   type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard,
 } from '../../shared/lib/api';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
@@ -35,6 +35,22 @@ const TITLE_BY_STEP = ['Court & time', 'Summary', 'Checkout'];
 /** A venue is bookable only if it has a rate (decision: require a price). */
 function isBookable(v: ApiVenue): boolean {
   return v.priceFrom != null;
+}
+
+/** Brand from a card number's IIN prefix (best-effort, for the saved-card label). */
+function cardBrand(num: string): string {
+  if (/^4/.test(num)) return 'Visa';
+  if (/^5[1-5]/.test(num)) return 'Mastercard';
+  if (/^3[47]/.test(num)) return 'Amex';
+  if (/^6/.test(num)) return 'Discover';
+  return 'Card';
+}
+
+/** Mask a card down to what we store on a request-to-book (brand + last4 only). */
+function maskCard(card: CheckoutCard): { brand: string; last4: string } | undefined {
+  const n = (card.number || '').replace(/\D/g, '');
+  if (!n) return undefined;
+  return { brand: cardBrand(n), last4: n.slice(-4) };
 }
 
 export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, intent, onNavigate, onBack }: BookCourtScreenProps) {
@@ -119,16 +135,58 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
 
   const selected = useMemo(() => venues.find((v) => v.id === selectedId) ?? null, [venues, selectedId]);
   const currency = selected?.pricingCurrency ?? 'PHP';
-  const rate = selected?.priceFrom ?? 0;
+  // Price is tied to the chosen court when it has its own rate; otherwise the
+  // venue's flat priceFrom applies (and when there are no courts at all).
+  const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
+  const rate = selectedCourt?.hourlyRate != null ? selectedCourt.hourlyRate : (selected?.priceFrom ?? 0);
   const hours = hoursBetween(startTime, endTime);
   const total = Math.round(rate * hours * 100) / 100;
   const isTest = settings?.paymentTestMode ?? false;
+  // Approval venues use request-to-book: capture the card now, pay after the
+  // owner approves (the last step "requests" instead of charging). A chosen court
+  // can override the venue policy — 'manual' always requests, 'auto' always instant;
+  // 'inherit' (or no court picked) falls back to the venue's setting.
+  const requiresApproval = selectedCourt?.approvalMode === 'manual' ? true
+    : selectedCourt?.approvalMode === 'auto' ? false
+    : !!selected?.requireBookingApproval;
 
   // Live availability for the chosen court (or the venue pool when none) on this
   // date → greys out hours that court is already taken.
-  const { availability, minBookableHour, startDisabled, endDisabledFor, rangeBlocked, firstFreeHour } = useVenueAvailability(selected?.id, date, courtId || undefined);
+  const { availability, minBookableHour, endDisabledFor, rangeBlocked, firstFreeHour, isPast, isFull } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
   const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
+
+  // Per-hour classification for the Start picker: hide past hours, but keep booked
+  // ones visible-and-greyed with a "Booked" tag so it's clear *why* they're gone.
+  const startHourInfo = (h: number): { hide?: boolean; disabled?: boolean; note?: string } => {
+    if (isPast(h)) return { hide: true };
+    if (isFull(h)) return { disabled: true, note: 'Booked' };
+    return {};
+  };
+
+  // Fully-booked day markers for the calendar — fetched per visible month (and
+  // re-fetched when the court changes, since "full" is court-scoped when one's
+  // chosen). Keyed by venue+court+month so stale months don't bleed in.
+  const [calMonth, setCalMonth] = useState<{ y: number; m: number } | null>(null);
+  const [fullDays, setFullDays] = useState<Set<string>>(new Set());
+  // Stable handler so the calendar's month effect doesn't re-fire each render;
+  // only updates when the visible month actually changes (keeps `calMonth`
+  // identity stable, so the fetch effect below doesn't loop).
+  const handleMonthChange = useCallback((y: number, m: number) => {
+    setCalMonth((prev) => (prev && prev.y === y && prev.m === m ? prev : { y, m }));
+  }, []);
+  useEffect(() => {
+    if (!selected?.id || !calMonth) { setFullDays(new Set()); return; }
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const last = new Date(calMonth.y, calMonth.m + 1, 0).getDate();
+    const from = `${calMonth.y}-${pad(calMonth.m + 1)}-01`;
+    const to = `${calMonth.y}-${pad(calMonth.m + 1)}-${pad(last)}`;
+    let alive = true;
+    getVenueAvailabilityRange(selected.id, from, to, courtId || undefined)
+      .then((r) => { if (alive) setFullDays(new Set(r.days.filter((d) => d.full).map((d) => d.date))); })
+      .catch(() => { if (alive) setFullDays(new Set()); });
+    return () => { alive = false; };
+  }, [selected?.id, courtId, calMonth]);
 
   // If the chosen court leaves the current start hour booked (e.g. the default
   // 6 PM on a court that's taken until 9), jump the start to the first free hour
@@ -158,6 +216,12 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
+    // Approval venues need a card on file (charged after approval); enforce it
+    // up front in live mode (test mode pre-fills the demo card).
+    if (requiresApproval && !isTest && !card.number) {
+      setError('Add your card — the venue charges it after they approve your request.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -168,7 +232,15 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
         startTime,
         endTime,
         amount: total,
+        // Save the card on the request so paying after approval is one tap.
+        card: requiresApproval ? maskCard(card) : undefined,
       });
+      // Request-to-book: no payment now — the owner approves, then the player
+      // pays within the venue's window. Land on the "requested" confirmation.
+      if (requiresApproval) {
+        setDone({ confirmed: false, bookingId: booking.id });
+        return;
+      }
       const result = await checkout({
         bookingId: booking.id,
         amount: total,
@@ -336,13 +408,30 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
                 <span className="font-heading font-bold text-[18px]">{prettyDate(date)}</span>
               </div>
             </div>
-            <CalendarDatePicker value={date} min={todayYMD()} onChange={setDate} />
+            <CalendarDatePicker
+              value={date}
+              min={todayYMD()}
+              onChange={setDate}
+              fullDays={fullDays}
+              onMonthChange={handleMonthChange}
+            />
+            {fullDays.size > 0 && (
+              <div className="mt-2 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--muted)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--coral)] inline-block" />
+                {courtId ? 'This court is fully booked on dotted days' : 'All courts booked on dotted days'}
+              </div>
+            )}
           </div>
 
           {courts.length > 0 && (
             <div className="field">
               <div className="lbl">Court</div>
-              <CourtPicker courts={courts} value={courtId} onChange={setCourtId} />
+              <CourtPicker
+                courts={courts}
+                value={courtId}
+                onChange={setCourtId}
+                priceFor={(c) => money(c.hourlyRate != null ? c.hourlyRate : (selected?.priceFrom ?? 0), currency) + '/hr'}
+              />
             </div>
           )}
 
@@ -350,7 +439,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="lbl">Start time</div>
-                <HourSelect aria-label="Start time" value={startTime} onChange={onStartChange} disabled={startDisabled} />
+                <HourSelect aria-label="Start time" value={startTime} onChange={onStartChange} hourInfo={startHourInfo} />
               </div>
               <div>
                 <div className="lbl">End time</div>
@@ -406,6 +495,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       {/* ─── Step 2: checkout ─────────────────────────────────── */}
       {step === 2 && selected && (
         <>
+          {requiresApproval && (
+            <div className="field">
+              <div className="rounded-2xl bg-[var(--primary-tint)] border-[0.5px] border-[var(--primary)] px-4 py-3 flex items-start gap-3">
+                <Icon name="clock" size={20} className="mt-0.5 shrink-0 text-[var(--primary)]" />
+                <div>
+                  <div className="text-[14px] font-bold text-[var(--ink)]">This venue reviews bookings</div>
+                  <div className="text-[12px] font-semibold text-[var(--ink-2)]">
+                    You won't be charged now. We'll save your card and notify you to pay once the venue approves your request.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {isTest && (
             <div className="field">
               <div className="rounded-2xl bg-[var(--lime)]/20 border-[0.5px] border-[var(--lime)] px-4 py-3 flex items-start gap-3">
@@ -466,7 +568,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
         <Button fullWidth onClick={next} disabled={submitting || venuesLoading || venues.length === 0}>
           {step === totalSteps - 1 ? (
             submitting ? (
-              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Processing…</>
+              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {requiresApproval ? 'Sending…' : 'Processing…'}</>
+            ) : requiresApproval ? (
+              <><Icon name="calendar" size={16} /> Request booking</>
             ) : (
               <><Icon name="lock" size={16} /> Pay {money(total, currency)}</>
             )

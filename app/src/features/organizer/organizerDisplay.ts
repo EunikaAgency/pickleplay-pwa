@@ -93,11 +93,14 @@ export function regStatusChip(status: string | undefined): Chip {
     case 'registered':
     case 'approved':
     case 'confirmed':
-      return { label: status === 'approved' ? 'Approved' : 'Registered', className: 'bg-[var(--lime)] text-[var(--ink)]' };
+      // Blue (info) — keeps each roster row to a single meaningful green (the
+      // Paid pill) so the list doesn't read as all-green.
+      return { label: status === 'approved' ? 'Approved' : 'Registered', className: 'bg-[var(--primary-soft)] text-[var(--primary-deep)]' };
     case 'pending':
       return { label: 'Pending', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
     case 'waitlisted':
-      return { label: 'Waitlisted', className: 'bg-[var(--primary-soft)] text-[var(--primary-deep)]' };
+      // Moved off blue (now used by Registered) to a soft "tentatively in" green.
+      return { label: 'Waitlisted', className: 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' };
     case 'declined':
     case 'rejected':
       return { label: status === 'declined' ? 'Declined' : 'Rejected', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };

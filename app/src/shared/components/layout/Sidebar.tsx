@@ -15,6 +15,8 @@ interface SidebarProps {
   canGoBack: boolean;
   /** Open the direct-messages screen (shown only when signed in). */
   onOpenMessages?: () => void;
+  /** The Tournament tab is a player surface — owners/admins don't get it. */
+  showTournaments?: boolean;
 }
 
 interface SideTab {
@@ -27,13 +29,15 @@ interface SideTab {
 const tabs: SideTab[] = [
   { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
   { id: 'games',   label: 'Games',  icon: 'calendar', iconFill: 'calendar_fill' },
+  { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'clubs',   label: 'Clubs',  icon: 'groups' },
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, showTournaments = true }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
+  const visibleTabs = tabs.filter((t) => t.id !== 'tournaments' || showTournaments);
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
     ? currentUser.skillLevel != null
@@ -62,7 +66,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
       </button>
 
       <nav className="flex flex-col gap-1">
-        {tabs.map((t) => {
+        {visibleTabs.map((t) => {
           const isActive = activeTab === t.id;
           // Guests see the "You" tab as "Login" — tapping it sends them to sign in.
           const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;

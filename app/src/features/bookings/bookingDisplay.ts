@@ -106,6 +106,7 @@ export function bookingDuration(b: Pick<ApiBooking, 'startTime' | 'endTime'>): s
 export function bookingStatusChip(b: ApiBooking, now: number = Date.now()): StatusChip {
   if (b.status === 'cancelled') return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
   if (b.status === 'pending_approval') return { label: 'Pending', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
+  if (b.status === 'awaiting_payment') return { label: 'Pay to confirm', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
   const start = b.date ? new Date(`${b.date}T${b.startTime || '00:00'}:00`).getTime() : NaN;
   const upcoming = Number.isNaN(start) || start >= now;
   return upcoming
@@ -119,6 +120,33 @@ export interface StatusChip {
   className: string;
 }
 
+/** A booking's lifecycle phase by clock time (cancelled/completed are "done").
+ *  Drives the My-bookings filter (Upcoming / Ongoing / Completed). */
+export type BookingPhase = 'upcoming' | 'ongoing' | 'completed';
+export function bookingPhase(b: ApiBooking, now: number = Date.now()): BookingPhase {
+  const s = (b.status || '').toLowerCase();
+  if (s === 'cancelled' || s === 'completed') return 'completed';
+  const start = b.date ? new Date(`${b.date}T${b.startTime || '00:00'}:00`).getTime() : NaN;
+  const end = b.date && b.endTime ? new Date(`${b.date}T${b.endTime}:00`).getTime() : NaN;
+  if (!Number.isNaN(start) && now < start) return 'upcoming';
+  if (!Number.isNaN(end) && now >= end) return 'completed';
+  if (!Number.isNaN(start) && now >= start) return 'ongoing'; // started, not yet ended
+  return 'upcoming'; // no usable date → treat as upcoming
+}
+
+/** Status chip that distinguishes Ongoing (in-progress) from Upcoming/Completed,
+ *  and still surfaces Cancelled/Pending. Used on the My-bookings cards. */
+export function bookingPhaseChip(b: ApiBooking, now: number = Date.now()): StatusChip {
+  const s = (b.status || '').toLowerCase();
+  if (s === 'cancelled') return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
+  if (s === 'pending_approval') return { label: 'Pending', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
+  if (s === 'awaiting_payment') return { label: 'Pay to confirm', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
+  const phase = bookingPhase(b, now);
+  if (phase === 'upcoming') return { label: 'Upcoming', className: 'bg-[var(--primary-soft)] text-[var(--primary-deep)]' };
+  if (phase === 'ongoing') return { label: 'Ongoing', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
+  return { label: 'Completed', className: 'bg-[var(--lime)] text-[var(--ink)]' };
+}
+
 /** Map a booking status to a human label + tone for a status chip. */
 export function statusChip(status: string | null | undefined): StatusChip {
   switch (status) {
@@ -129,6 +157,9 @@ export function statusChip(status: string | null | undefined): StatusChip {
       return { label: 'Complete', className: 'bg-[var(--lime)] text-[var(--ink)]' };
     case 'cancelled':
       return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
+    // Owner approved a request-to-book; the player still needs to pay to confirm.
+    case 'awaiting_payment':
+      return { label: 'Awaiting payment', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
     case 'pending_approval':
     default:
       return { label: 'Pending approval', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };

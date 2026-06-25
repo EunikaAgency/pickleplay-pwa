@@ -27,8 +27,8 @@ export function V2TopNav({ onNavigate, isLoggedIn, onBack, title }: TopNavProps)
     <header className="v2c-topnav">
       <div className="v2c-inner">
         {onBack ? (
-          <button className="v2c-iconbtn" aria-label="Go back" onClick={onBack}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <button className="v2c-iconbtn v2c-back" aria-label="Go back" onClick={onBack}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
@@ -62,35 +62,35 @@ const TAB_ICONS: Record<TabId, ReactNode> = {
   home: (<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>),
   nearby: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>),
   games: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>),
+  tournaments: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" /><path d="M5 5H3v2a4 4 0 0 0 4 4" /><path d="M19 5h2v2a4 4 0 0 1-4 4" /></svg>),
   clubs: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>),
   profile: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
 };
-const TAB_LABELS: Record<TabId, string> = { home: 'Home', nearby: 'Nearby', games: 'Games', clubs: 'Clubs', profile: 'Profile' };
+const TAB_LABELS: Record<TabId, string> = { home: 'Home', nearby: 'Map', games: 'Games', tournaments: 'Tournament', clubs: 'Clubs', profile: 'Profile' };
 
-// The v2.1 tab bar renders the five player tabs — Home · Nearby · Games · Clubs ·
+// The full tab order. `tabIds` (from App, role-derived) may drop some — e.g.
+// owners/admins don't get the player Tournament tab.
+const DEFAULT_TAB_ORDER: TabId[] = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'profile'];
+
+// The v2.1 tab bar renders the player tabs — Home · Nearby · Games · Tournament · Clubs ·
 // Profile. Creating a game lives on the floating green FAB instead (see V2Fab).
-export function V2TabBar({ activeTab, onTabPress }: { activeTab: TabId; onTabPress: (tab: TabId) => void }) {
-  const tab = (id: TabId) => {
-    const isActive = id === activeTab;
-    return (
-      <button
-        key={id}
-        className={`v2c-tab${isActive ? ' active' : ''}`}
-        aria-current={isActive ? 'page' : undefined}
-        onClick={() => onTabPress(id)}
-      >
-        {TAB_ICONS[id]}
-        {TAB_LABELS[id]}
-      </button>
-    );
-  };
+export function V2TabBar({ activeTab, onTabPress, tabIds = DEFAULT_TAB_ORDER }: { activeTab: TabId; onTabPress: (tab: TabId) => void; tabIds?: TabId[] }) {
   return (
     <nav className="v2c-tabbar" aria-label="Primary navigation">
-      {tab('home')}
-      {tab('nearby')}
-      {tab('games')}
-      {tab('clubs')}
-      {tab('profile')}
+      {tabIds.map((id) => {
+        const isActive = id === activeTab;
+        return (
+          <button
+            key={id}
+            className={`v2c-tab${isActive ? ' active' : ''}`}
+            aria-current={isActive ? 'page' : undefined}
+            onClick={() => onTabPress(id)}
+          >
+            {TAB_ICONS[id]}
+            <span className="v2c-tab-label">{TAB_LABELS[id]}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }
@@ -112,6 +112,9 @@ export interface V2ScreenChrome {
   onNavigate: Navigate;
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
+  /** Opens the create flow straight at "host a lobby", skipping the join-vs-host
+   *  chooser — for explicit "Create a game" CTAs where hosting is the intent. */
+  onHost: () => void;
   isLoggedIn: boolean;
   /** Soft auth gate for inline commit actions (join game/club); returns true if allowed. */
   requireAuth: (intent: string) => boolean;
@@ -119,6 +122,9 @@ export interface V2ScreenChrome {
   onBack: () => void;
   /** True when there's a recorded previous screen — drives the header back arrow's visibility. */
   canGoBack: boolean;
+  /** Which bottom-nav tabs to show (role-derived in App — e.g. owners/admins
+   *  don't get the player Tournament tab). Defaults to all when omitted. */
+  tabIds?: TabId[];
 }
 
 export interface V2ShellProps {
@@ -131,6 +137,8 @@ export interface V2ShellProps {
   title?: string;
   hideTabBar?: boolean;
   hideFab?: boolean;
+  /** Suppress the header back arrow even when there's history (e.g. the Home root). */
+  hideBack?: boolean;
   children: ReactNode;
 }
 
@@ -139,17 +147,18 @@ export interface V2ShellProps {
  * top nav / FAB / tab bar. Tab screens get the FAB + tab bar; create/detail
  * flows pass `hideTabBar`/`hideFab` and an `onBack`.
  */
-export function V2Shell({ screen, chrome, onBack, title, hideTabBar, hideFab, children }: V2ShellProps) {
+export function V2Shell({ screen, chrome, onBack, title, hideTabBar, hideFab, hideBack, children }: V2ShellProps) {
   // An explicit `onBack` (create/detail flows, e.g. the wizard's step-aware Prev)
   // wins; otherwise fall back to the app's absolute history back, shown only when
-  // there's somewhere to go back to (hidden on a fresh cold-start tab).
-  const back = onBack ?? (chrome.canGoBack ? chrome.onBack : undefined);
+  // there's somewhere to go back to (hidden on a fresh cold-start tab). `hideBack`
+  // forces it off — used by root tab screens (e.g. Home) where a back arrow is odd.
+  const back = hideBack ? undefined : (onBack ?? (chrome.canGoBack ? chrome.onBack : undefined));
   return (
     <div className={`pb-v2 ${screen}`}>
       <V2TopNav onNavigate={chrome.onNavigate} isLoggedIn={chrome.isLoggedIn} onBack={back} title={title} />
       <main>{children}</main>
       {!hideFab && <V2Fab onClick={chrome.onCreate} />}
-      {!hideTabBar && <V2TabBar activeTab={chrome.activeTab} onTabPress={chrome.onTabPress} />}
+      {!hideTabBar && <V2TabBar activeTab={chrome.activeTab} onTabPress={chrome.onTabPress} tabIds={chrome.tabIds} />}
     </div>
   );
 }

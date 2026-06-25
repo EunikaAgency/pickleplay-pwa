@@ -6,13 +6,16 @@ import type { Navigate } from '../../../shared/lib/navigation';
 import { listBookings, listGames, type ApiBooking } from '../../../shared/lib/api';
 import { prettyDate, timeRange, todayYMD } from '../../bookings/bookingDisplay';
 
+type Step = 'choice' | 'host';
+
 interface CreateChoiceSheetProps {
   open: boolean;
   onClose: () => void;
   onNavigate: Navigate;
+  /** Step to land on when the sheet opens. The FAB uses 'choice' (join vs host);
+   *  explicit "Create a game" CTAs pass 'host' to skip straight to hosting. */
+  initialStep?: Step;
 }
-
-type Step = 'choice' | 'host';
 
 /**
  * The "Game On" chooser. Tapping the create action no longer drops the user
@@ -23,24 +26,33 @@ type Step = 'choice' | 'host';
  * form locked to that reservation. Only mounted for the v2.1 player design.
  */
 
-// A booking can host a lobby if it's a real, upcoming reservation the user hasn't
-// already opened a lobby on (one booking → one lobby).
+// A booking can host a lobby only once it's a real, confirmed, upcoming
+// reservation the user hasn't already opened a lobby on (one booking → one
+// lobby). Pending/awaiting-payment requests can't host until they're paid.
 function isHostable(b: ApiBooking, usedBookingIds: Set<string>, today: string): boolean {
   const status = (b.status || '').toLowerCase();
-  if (status === 'cancelled' || status === 'canceled') return false;
+  if (status !== 'confirmed' && status !== 'paid') return false;
   if (b.date && b.date < today) return false; // already in the past
   return !usedBookingIds.has(b.id);
 }
 
-export function CreateChoiceSheet({ open, onClose, onNavigate }: CreateChoiceSheetProps) {
-  const [step, setStep] = useState<Step>('choice');
+export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'choice' }: CreateChoiceSheetProps) {
+  const [step, setStep] = useState<Step>(initialStep);
   const [loading, setLoading] = useState(false);
   // null = not loaded yet (distinguishes "loading" from "loaded, empty").
   const [bookings, setBookings] = useState<ApiBooking[] | null>(null);
 
-  // Close + reset to the first step, so the next open always starts at the choice
-  // (state changes here are in an event handler, not an effect, by design).
-  const close = () => { setStep('choice'); setBookings(null); setLoading(false); onClose(); };
+  // Land on the requested step each time the sheet opens. The component stays
+  // mounted (only `open` toggles), so a prop alone can't drive the step — sync it
+  // here. Opening at 'host' lets the booking-load effect below kick in right away.
+  useEffect(() => {
+    if (open) setStep(initialStep);
+  }, [open, initialStep]);
+
+  // Close + reset, so the next open re-fetches bookings (state changes here are in
+  // an event handler, not an effect, by design). The open effect above restores
+  // the right starting step.
+  const close = () => { setBookings(null); setLoading(false); onClose(); };
 
   // "Host": switch to the picker and kick off the booking fetch (the fetch itself
   // runs in the effect below; loading is flipped here so the effect body stays

@@ -28,8 +28,8 @@ interface Counts {
 
 const EDITOR_ACTIONS = [
   { tab: 'listing', icon: 'storefront', label: 'Edit listing details' },
-  { tab: 'hours', icon: 'clock', label: 'Set hours & closures' },
-  { tab: 'courts', icon: 'paddle', label: 'Manage courts' },
+  { tab: 'courts', icon: 'paddle', label: 'Manage courts & hours' },
+  { tab: 'closures', icon: 'calendar', label: 'Set holiday closures' },
   { tab: 'faqs', icon: 'help', label: 'Edit FAQs' },
   { tab: 'photos', icon: 'camera', label: 'Manage photos' },
 ];
@@ -84,9 +84,9 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
 
   const kpis = analytics?.kpis;
   const extra: CompletenessCheck[] = [
-    { label: 'At least one court', done: (counts.courts ?? 0) > 0 },
-    { label: 'Operating hours set', done: (counts.hoursDays ?? 0) > 0 },
-    { label: 'At least one FAQ', done: (counts.faqs ?? 0) > 0 },
+    { label: 'At least one court', done: (counts.courts ?? 0) > 0, tab: 'courts' },
+    { label: 'Operating hours set', done: (counts.hoursDays ?? 0) > 0, tab: 'courts' },
+    { label: 'At least one FAQ', done: (counts.faqs ?? 0) > 0, tab: 'faqs' },
   ];
 
   return (
@@ -234,7 +234,7 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
       <div>
         <div className="t-eyebrow mb-2">Setup</div>
         <div className="space-y-3">
-          <CompletenessMeter venue={venue} extra={extra} />
+          <CompletenessMeter venue={venue} extra={extra} onJump={onOpenTab} />
           <div className="set-list">
             {EDITOR_ACTIONS.map((a) => (
               <button key={a.tab} type="button" className="row" onClick={() => onOpenTab(a.tab)}>

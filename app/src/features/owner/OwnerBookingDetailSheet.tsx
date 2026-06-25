@@ -95,8 +95,8 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
       footer={b && canManage && st !== 'cancelled' ? (
         <div className="obook-actions">
           {st === 'pending_approval' && (
-            <button type="button" disabled={busy} onClick={() => act('confirmed')} className="obook-btn obook-btn-confirm">
-              Confirm
+            <button type="button" disabled={busy} onClick={() => act('awaiting_payment')} className="obook-btn obook-btn-confirm">
+              Approve
             </button>
           )}
           <button type="button" disabled={busy} onClick={() => act('cancelled')}

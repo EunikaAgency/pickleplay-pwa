@@ -3,7 +3,6 @@ import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
 import { SplashScreen } from './features/auth/SplashScreen';
-import { HomeScreenSwitch } from './features/home/HomeScreenSwitch';
 import { NearbyScreen } from './features/venues/NearbyScreen';
 import { GamesScreen } from './features/games/GamesScreen';
 import { ClubsScreen } from './features/clubs/ClubsScreen';
@@ -14,8 +13,13 @@ import { CreateGameScreen } from './features/games/CreateGameScreen';
 import { MyGamesScreen } from './features/games/MyGamesScreen';
 import { BookCourtScreen } from './features/bookings/BookCourtScreen';
 import { MyBookingsScreen } from './features/bookings/MyBookingsScreen';
+import { BookingRefundScreen } from './features/bookings/BookingRefundScreen';
 import { PaymentHistoryScreen } from './features/profile/PaymentHistoryScreen';
 import { CreateClubScreen } from './features/clubs/CreateClubScreen';
+import { EditClubScreen } from './features/clubs/EditClubScreen';
+import { ClubPostScreen } from './features/clubs/ClubPostScreen';
+import { ClubPostEditScreen } from './features/clubs/ClubPostEditScreen';
+import { ClubChatScreen } from './features/clubs/ClubChatScreen';
 import { ProfileScreen } from './features/profile/ProfileScreen';
 import { EditProfileScreen } from './features/profile/EditProfileScreen';
 import { SettingsScreen } from './features/profile/SettingsScreen';
@@ -27,6 +31,7 @@ import { ChatScreen } from './features/messages/ChatScreen';
 import { GameChatScreen } from './features/games/GameChatScreen';
 import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
 import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
+import { OwnerProfileScreen } from './features/owner/OwnerProfileScreen';
 import { OwnerNotificationsScreen } from './features/owner/OwnerNotificationsScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
 import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
@@ -34,6 +39,7 @@ import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
 import { OwnerNearbyScreen } from './features/owner/OwnerNearbyScreen';
 import { OwnerVenueScreen } from './features/owner/OwnerVenueScreen';
 import { OwnerNewVenueScreen } from './features/owner/OwnerNewVenueScreen';
+import { ClaimVenueScreen } from './features/owner/ClaimVenueScreen';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
 import { TournamentsScreen } from './features/organizer/tournaments/TournamentsScreen';
 import { CreateTournamentScreen } from './features/organizer/tournaments/CreateTournamentScreen';
@@ -55,15 +61,17 @@ import { userHasPermission, type Permission } from './shared/lib/permissions';
 import { useAuthStore } from './shared/lib/authStore';
 import { useNotificationPolling } from './shared/hooks/useNotificationPolling';
 import { useRealtimeStream } from './shared/hooks/useRealtimeStream';
-import { usePlayerDesign } from './shared/lib/playerDesign';
 import { useTheme } from './shared/hooks/useTheme';
 import { tabScreens, pathFromScreen, screenFromLocation, deepLinkParent, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
-// v2.1 redesign ("Pickleballers Mockup v2.1") — player-side screens + the design toggle.
-import { DesignSwitch } from './features/home/DesignSwitch';
+// v2.1 redesign ("Pickleballers Mockup v2.1") — the player-side screens (now the
+// only player design; the legacy New/Classic variants + their toggle were removed).
 import { HomeScreenV2 } from './features/home/v2/HomeScreenV2';
 import { NearbyScreenV2 } from './features/venues/v2/NearbyScreenV2';
 import { GamesScreenV2 } from './features/games/v2/GamesScreenV2';
 import { ClubsScreenV2 } from './features/clubs/v2/ClubsScreenV2';
+import { TournamentsScreenV2 } from './features/tournaments/v2/TournamentsScreenV2';
+import { TournamentDetailScreen as PlayerTournamentDetailScreen } from './features/tournaments/v2/TournamentDetailScreen';
+import { TournamentChatScreen } from './features/tournaments/v2/TournamentChatScreen';
 import { ProfileScreenV2 } from './features/profile/v2/ProfileScreenV2';
 import { SettingsScreenV2 } from './features/profile/v2/SettingsScreenV2';
 import { CreateGameV2 } from './features/games/v2/CreateGameV2';
@@ -76,18 +84,24 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'edit-game': 'player.games.manage',
   'my-games': 'player.games.manage',
   'book-court': 'player.bookings.create',
+  'booking-refund': 'player.bookings.create',
   'payment-history': 'player.payments.view',
   'create-club': 'player.clubs.create',
+  'edit-club': 'player.clubs.create',
+  'club-post-edit': 'player.clubs.post',
+  'club-chat': 'player.clubs.chat',
   'edit-profile': 'player.profile.manage',
   settings: 'player.profile.manage',
   notifications: 'user.notifications.manage',
   messages: 'user.messages.send',
   chat: 'user.messages.send',
   'game-chat': 'player.games.chat',
+  'tournament-chat': 'player.tournaments.chat',
   'invite-players': 'player.games.create',
   'owner-venues': 'owner.access',
   'owner-venue': 'owner.venues.manage',
   'owner-new-venue': 'owner.venues.create',
+  'claim-venue': 'owner.venues.claim',
   'owner-bookings': 'owner.bookings.manage',
   'owner-insights': 'owner.analytics.view',
   'owner-notifications': 'owner.notifications.view',
@@ -111,8 +125,12 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'my-games': 'see your games',
   'book-court': 'book a court',
   'my-bookings': 'see your bookings',
+  'booking-refund': 'manage your booking',
   'payment-history': 'see your payment history',
   'create-club': 'start a club',
+  'edit-club': 'edit your club',
+  'club-post-edit': 'edit your post',
+  'club-chat': 'chat with the club',
   'invite-players': 'invite players',
   'edit-profile': 'manage your profile',
   settings: 'manage your settings',
@@ -120,9 +138,11 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   messages: 'see your messages',
   chat: 'send a message',
   'game-chat': 'open the game chat',
+  'tournament-chat': 'open the tournament chat',
   'owner-venues': 'manage your venues',
   'owner-venue': 'manage your venue',
   'owner-new-venue': 'add a venue',
+  'claim-venue': 'claim a venue',
   'owner-bookings': 'see your bookings',
   'owner-insights': 'see your insights',
 };
@@ -184,7 +204,12 @@ function routerNavigate(to: string, opts?: { replace?: boolean }) {
 // Subscribe to the URL and resolve it to the active Screen.
 function useCurrentScreen(): Screen {
   const key = useSyncExternalStore(subscribeLocation, locationKey, locationKey);
-  return useMemo(() => screenFromLocation(window.location.pathname, window.location.search), [key]);
+  return useMemo(() => {
+    const q = key.indexOf('?');
+    const pathname = q === -1 ? key : key.slice(0, q);
+    const search = q === -1 ? '' : key.slice(q);
+    return screenFromLocation(pathname, search);
+  }, [key]);
 }
 
 // Which tab to highlight for a given screen — tab screens map to themselves;
@@ -192,8 +217,12 @@ function useCurrentScreen(): Screen {
 function tabForScreen(id: ScreenId): TabId {
   if (isTabScreen(id)) return id;
   if (id === 'court-details' || id === 'book-court') return 'nearby';
-  if (id === 'club-details' || id === 'create-club') return 'clubs';
+  // Owner venue screens live under the "Venues" tab (which itself opens
+  // /owner/venues), so keep it highlighted while managing/claiming a venue.
+  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue') return 'nearby';
+  if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
   if (id === 'game-details' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
+  if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
   return 'profile';
 }
 
@@ -219,13 +248,19 @@ function AppInner() {
   // state — the browser owns history now.
   const screen = useCurrentScreen();
   const activeTab = tabForScreen(screen.id);
-  const canGoBack = !isTabScreen(screen.id) || historyIndex() > 0;
+  // `owner-venues` is the owner "Venues" tab destination (a tab root), so it
+  // behaves like a tab screen for chrome (bottom nav shown, no forced back).
+  const isTabRoot = isTabScreen(screen.id) || screen.id === 'owner-venues';
+  const canGoBack = !isTabRoot || historyIndex() > 0;
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
   // The v2.1 "Game On" chooser (join a game vs host a lobby) — an app-level sheet
   // so every create entry point (FAB, home quick action, empty states) opens it.
   const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
+  // Which step the create sheet opens on: the FAB opens the join-vs-host choice;
+  // explicit "Create a game" CTAs jump straight to host-a-lobby (see handleHost).
+  const [createChoiceStep, setCreateChoiceStep] = useState<'choice' | 'host'>('choice');
 
   // Animated launch splash — shown once per browser session on cold start, then
   // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
@@ -279,6 +314,12 @@ function AppInner() {
       goToLogin();
       return;
     }
+    // Owners' "Venues" tab lives under the owner console (/owner/venues) — the
+    // same venues screen, but a clearer URL than the player-facing /nearby slug.
+    if (isOwner && tab === 'nearby') {
+      routerNavigate(pathFromScreen({ id: 'owner-venues' }));
+      return;
+    }
     routerNavigate(pathFromScreen({ id: tab } as Screen));
   };
 
@@ -305,14 +346,14 @@ function AppInner() {
 
   // Route guard for direct URL loads / browser-back into a gated screen: the
   // per-tap gate in `navigate` can't catch a hard navigation straight to a
-  // permissioned path, so once restore settles, redirect home (and prompt guests
-  // to sign in) when the current screen needs a permission the user lacks.
+  // permissioned path, so once restore settles, bounce a user who lacks the
+  // required permission — guests to the login screen (so they can sign in),
+  // signed-in-but-unauthorized users back to home.
   useEffect(() => {
     if (!restored) return;
     const perm = SCREEN_PERMISSIONS[screen.id];
     if (perm && !userHasPermission(currentUser, perm)) {
-      if (!isLoggedIn) setAuthIntent(SCREEN_AUTH_INTENT[screen.id] ?? 'do that');
-      routerNavigate('/', { replace: true });
+      routerNavigate(isLoggedIn ? '/' : pathFromScreen({ id: 'login' }), { replace: true });
     }
   }, [restored, screen.id, currentUser, isLoggedIn]);
 
@@ -335,9 +376,9 @@ function AppInner() {
   const handleLogout = () => {
     // Store clears the user + tokens (best-effort server logout).
     logout();
-    // Return to guest browsing on the home tab (not the landing page). Any stale
-    // signed-in URL still in history is caught by the route guard above on back.
-    routerNavigate('/', { replace: true });
+    // Send the user to the login screen (not home/guest browsing). Replace so the
+    // back arrow doesn't return to the now-stale signed-in screen.
+    routerNavigate(pathFromScreen({ id: 'login' }), { replace: true });
   };
 
   // Enter the sign-in / sign-up flow from a guest screen. Pushed (not replaced)
@@ -347,19 +388,32 @@ function AppInner() {
     routerNavigate(pathFromScreen({ id: 'login' }));
   };
 
-  // Player-side design selector. v2.1 is only offered to players/guests (owners
-  // keep their dedicated dashboards), so it's gated by !owner.access.
-  const design = usePlayerDesign((s) => s.design);
+  // v2.1 is the only player design, but it's player-side only: owners keep their
+  // dedicated dashboards (Home/Nearby/Games) and the legacy v1 player screens for
+  // Clubs/Profile/Settings/Create, so `playerV2` is simply "any non-owner".
   const isOwner = userHasPermission(currentUser, 'owner.access');
-  const playerV2 = design === 'v2' && !isOwner;
+  const playerV2 = !isOwner;
+  // Tournaments are a player surface (browse + join/leave) — also for coaches and
+  // organizers, who are players too. Owners and admins don't get the player
+  // Tournament tab (organizers still manage tournaments from the organizer hub).
+  const isAdmin = userHasPermission(currentUser, 'admin.access');
+  const canSeeTournaments = !isOwner && !isAdmin;
 
   const canCreateGame = userHasPermission(currentUser, 'player.games.create');
   const handleCreate = () => {
     if (!requireAuth('create a game')) return;
     if (!canCreateGame) return;
     // v2.1: ask "join a game or host a lobby?" first. Hosting requires a booked
-    // court (see CreateChoiceSheet). Classic/New designs keep the direct form.
-    if (playerV2) { setCreateChoiceOpen(true); return; }
+    // court (see CreateChoiceSheet). Owners keep the direct create-game form.
+    if (playerV2) { setCreateChoiceStep('choice'); setCreateChoiceOpen(true); return; }
+    navigate('create-game');
+  };
+  // "Create a game" CTAs (e.g. the My Games empty state) mean "host my own" — so
+  // they skip the join/host chooser and open the sheet straight at host-a-lobby.
+  const handleHost = () => {
+    if (!requireAuth('create a game')) return;
+    if (!canCreateGame) return;
+    if (playerV2) { setCreateChoiceStep('host'); setCreateChoiceOpen(true); return; }
     navigate('create-game');
   };
   // Guests see an enabled create button (it opens the auth prompt); logged-in
@@ -371,7 +425,7 @@ function AppInner() {
   // Guests get the full chrome while browsing — that's how they roam the app.
   // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
   // app's mobile TabBar (and the install prompt riding above it) are suppressed.
-  const showTabBar = !hideChrome && isTabScreen(screen.id) && !playerV2;
+  const showTabBar = !hideChrome && isTabRoot && !playerV2;
   const showSidebar = !hideChrome;
   const frame = screen.id === 'landing' ? 'wide' : 'standard';
 
@@ -379,8 +433,9 @@ function AppInner() {
   // and the universal header back button — bound to the app's absolute history).
   const v2Chrome: V2ScreenChrome = {
     activeTab, onNavigate: navigate, onTabPress: handleTabPress,
-    onCreate: handleCreate, isLoggedIn, requireAuth,
+    onCreate: handleCreate, onHost: handleHost, isLoggedIn, requireAuth,
     onBack: goBack, canGoBack,
+    tabIds: canSeeTournaments ? [...tabScreens] : tabScreens.filter((t) => t !== 'tournaments'),
   };
 
   const renderScreen = () => {
@@ -399,10 +454,10 @@ function AppInner() {
     // screen call back through `navigate`/`requireAuth` to trigger the gate.
     switch (screen.id) {
       case 'home':
-        // Owners get their dashboard on the Home tab (in the homepage design);
-        // players/guests get the player home (v2.1 redesign when toggled on).
-        if (userHasPermission(currentUser, 'owner.access')) return <OwnerHomeScreen onNavigate={navigate} />;
-        return playerV2 ? <HomeScreenV2 {...v2Chrome} /> : <HomeScreenSwitch onNavigate={navigate} />;
+        // Owners get their dashboard on the Home tab; players/guests get the
+        // v2.1 player home (the only player design now).
+        if (isOwner) return <OwnerHomeScreen onNavigate={navigate} />;
+        return <HomeScreenV2 {...v2Chrome} />;
       case 'nearby':
         // Owners get a local market map (their venues vs nearby competitors);
         // players/guests get the normal discover-courts-near-me view.
@@ -413,9 +468,21 @@ function AppInner() {
         // get the normal browse/join games view.
         if (userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
         return playerV2 ? <GamesScreenV2 {...v2Chrome} /> : <GamesScreen onNavigate={navigate} />;
+      case 'tournaments':
+        // Player-only surface; owners/admins don't get it (deep-link safety —
+        // the tab is already hidden from their nav).
+        if (!canSeeTournaments) return isOwner ? <OwnerHomeScreen onNavigate={navigate} /> : <HomeScreenV2 {...v2Chrome} />;
+        return <TournamentsScreenV2 {...v2Chrome} />;
+      case 'tournament':
+        if (!canSeeTournaments) return isOwner ? <OwnerHomeScreen onNavigate={navigate} /> : <HomeScreenV2 {...v2Chrome} />;
+        return <PlayerTournamentDetailScreen key={screen.params.id} tournamentId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
+      case 'tournament-chat':
+        return <TournamentChatScreen key={screen.params.id} tournamentId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'clubs':
         return playerV2 ? <ClubsScreenV2 {...v2Chrome} /> : <ClubsScreen onNavigate={navigate} onBack={goBack} />;
       case 'profile':
+        // Owners get the player v2.1 profile design with owner content.
+        if (isOwner) return <OwnerProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
         return playerV2 ? <ProfileScreenV2 {...v2Chrome} onLogout={handleLogout} /> : <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
@@ -423,6 +490,14 @@ function AppInner() {
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} intent={screen.params.intent} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
         return <ClubDetailsScreen key={screen.params.id} clubId={screen.params.id} invited={screen.params.invited} onNavigate={navigate} onBack={goBack} />;
+      case 'edit-club':
+        return <EditClubScreen key={screen.params.id} clubId={screen.params.id} onBack={goBack} />;
+      case 'club-post':
+        return <ClubPostScreen key={`${screen.params.id}:${screen.params.postId}`} clubId={screen.params.id} postId={screen.params.postId} onNavigate={navigate} onBack={goBack} />;
+      case 'club-post-edit':
+        return <ClubPostEditScreen key={`${screen.params.id}:${screen.params.postId}:edit`} clubId={screen.params.id} postId={screen.params.postId} onBack={goBack} />;
+      case 'club-chat':
+        return <ClubChatScreen key={screen.params.id} clubId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'create-game':
         return playerV2 ? <CreateGameV2 {...v2Chrome} bookingId={screen.params?.bookingId} onBack={goBack} /> : <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-game':
@@ -443,6 +518,8 @@ function AppInner() {
         );
       case 'my-bookings':
         return <MyBookingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'booking-refund':
+        return <BookingRefundScreen bookingId={screen.params.bookingId} onNavigate={navigate} onBack={goBack} />;
       case 'payment-history':
         return <PaymentHistoryScreen onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
@@ -466,11 +543,17 @@ function AppInner() {
       case 'game-chat':
         return <GameChatScreen key={screen.params.id} gameId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'owner-venues':
+        // The owner "Venues" tab (and Profile → "My venues"). Owners with
+        // market-map access get the venues ops map + list (the screen the Nearby
+        // slot used to render at /nearby); others get the plain venues list.
+        if (userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
         return <OwnerVenuesScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-venue':
         return <OwnerVenueScreen key={screen.params.id} venueId={screen.params.id} initialTab={screen.params.tab} onNavigate={navigate} onBack={goBack} />;
       case 'owner-new-venue':
         return <OwnerNewVenueScreen onNavigate={navigate} onBack={goBack} />;
+      case 'claim-venue':
+        return <ClaimVenueScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-bookings':
         return <OwnerBookingsScreen initialStatus={screen.params?.status as 'all' | 'pending_approval' | 'confirmed' | 'cancelled' | undefined} onNavigate={navigate} onBack={goBack} />;
       case 'owner-insights':
@@ -498,7 +581,9 @@ function AppInner() {
       case 'organizer-venue-requests':
         return <VenueRequestsScreen tournamentId={screen.params?.tournamentId} onNavigate={navigate} onBack={goBack} />;
       default:
-        return <HomeScreenSwitch onNavigate={navigate} />;
+        // Unknown screen id — fall back to the home tab (owner dashboard or
+        // the v2.1 player home).
+        return playerV2 ? <HomeScreenV2 {...v2Chrome} /> : <OwnerHomeScreen onNavigate={navigate} />;
     }
   };
 
@@ -510,13 +595,13 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} showTournaments={canSeeTournaments} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} showTournaments={canSeeTournaments} />
       )}
 
       {/* Tab screens only: detail/wizard screens carry a sticky bottom CTA the
@@ -534,14 +619,11 @@ function AppInner() {
       {playerV2 && (
         <CreateChoiceSheet
           open={createChoiceOpen}
+          initialStep={createChoiceStep}
           onClose={() => setCreateChoiceOpen(false)}
           onNavigate={navigate}
         />
       )}
-
-      {/* Floating player-design toggle (New · Classic · v2.1). Owners keep their
-          dashboards, so it's hidden for them and on the auth/onboarding surfaces. */}
-      {!hideChrome && !isOwner && <DesignSwitch />}
 
       <DemoStateControl />
 

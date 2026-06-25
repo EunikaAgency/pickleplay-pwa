@@ -32,6 +32,10 @@ export interface VenueAvailabilityState {
   minBookableHour: number;
   /** True for a start hour with no free court, or one that's already in the past today. */
   startDisabled: (hour: number) => boolean;
+  /** True for a start hour that's already begun today (the reason it's unpickable). */
+  isPast: (hour: number) => boolean;
+  /** True for a start hour with no free court (booked out) — distinct from `isPast`. */
+  isFull: (hour: number) => boolean;
   /** Given a chosen start, returns a predicate that's true for an end hour whose window hits a full (or past) hour. */
   endDisabledFor: (start: string) => (endHour: number) => boolean;
   /** Whether the chosen [start,end) window overlaps any full hour. */
@@ -100,6 +104,9 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
   return {
     availability,
     minBookableHour,
+    isPast: isPastHour,
+    // Only meaningful once availability has loaded; before that, nothing is "full".
+    isFull: (h) => availability != null && isFull(h),
     startDisabled: (h) => isPastHour(h) || (availability != null && isFull(h)),
     endDisabledFor: (start) => (endHour) =>
       (isToday && endHour <= minBookableHour) ||

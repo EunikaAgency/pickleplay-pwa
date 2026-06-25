@@ -82,6 +82,16 @@ export function clearTokens() {
   }
 }
 
+// When a mid-session token refresh fails for good (the refresh token is gone or
+// expired/revoked), we clear the tokens and fire this so the auth store can drop
+// to guest — otherwise authed pollers (the notification badge) keep firing 401s
+// on a loop against a dead session. Set by authStore on init (one-directional:
+// authStore → api, so there's no circular import).
+let sessionExpiredHandler: (() => void) | null = null;
+export function onSessionExpired(handler: () => void): void {
+  sessionExpiredHandler = handler;
+}
+
 /** Whether a stored access token exists — used to attempt session restore. */
 export function hasStoredSession(): boolean {
   return getAccessToken() !== null;
@@ -297,9 +307,22 @@ export async function register(payload: RegisterPayload): Promise<AppUser> {
  * tokens in place so a later retry can still succeed. Declared as a hoisted
  * function so `rawRequest` can call it for its 401-retry.
  */
-export async function refreshSession(): Promise<boolean> {
+// Coalesce concurrent refreshes: when several authed requests 401 on the same
+// tick (e.g. the badge poll + a club feed load), they must share ONE refresh —
+// otherwise the first rotates the refresh token and the rest 401 on the now-stale
+// one and spuriously tear down a session that was actually just renewed.
+let refreshInFlight: Promise<boolean> | null = null;
+
+export function refreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = doRefreshSession().finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
+async function doRefreshSession(): Promise<boolean> {
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (!refreshToken) { sessionExpiredHandler?.(); return false; }
   try {
     const data = await request<AuthTokens>(`${AUTH_PREFIX}/refresh`, {
       method: 'POST',
@@ -309,9 +332,17 @@ export async function refreshSession(): Promise<boolean> {
       setTokens(data.accessToken, data.refreshToken);
       return true;
     }
+    // Malformed/empty refresh response — treat the session as over.
+    clearTokens();
+    sessionExpiredHandler?.();
     return false;
   } catch (err) {
-    if (err instanceof ApiError && err.status === 401) clearTokens();
+    // Only a 401 means the refresh token itself is dead — clear + notify. Other
+    // errors (network/server hiccup) are transient: keep the session, retry later.
+    if (err instanceof ApiError && err.status === 401) {
+      clearTokens();
+      sessionExpiredHandler?.();
+    }
     return false;
   }
 }
@@ -429,19 +460,45 @@ export interface ApiVenue {
   /** Claim lifecycle: 'claimed' | 'unclaimed'. */
   state?: string | null;
   isVerified?: boolean | null;
+  /** Only present when fetched via listManagedVenues / owner detail — the
+   *  viewer's role for this venue ('owner' > 'manager' > 'front_desk'). */
+  viewerStaffRole?: VenueViewerRole | null;
 }
+
+/** A non-owner staff role on a venue. */
+export type VenueStaffRole = 'manager' | 'front_desk';
+/** The viewer's effective management role (owner outranks any staff role). */
+export type VenueViewerRole = 'owner' | VenueStaffRole;
 
 export interface ApiCourt {
   id: string;
   courtNumber: string;
   courtName?: string | null;
+  /** Short owner-written blurb for this specific court. */
+  description?: string | null;
   surfaceType?: string | null;
   indoor?: boolean | null;
+  /** Sport played on this court (multi-sport venues mix these). Empty → pickleball. */
+  sport?: string | null;
+  /** Half-court / split-court: this court can be divided into `splitCount` sub-units. */
+  isSplittable?: boolean | null;
+  /** How many independently-playable units the court splits into (2–4). */
+  splitCount?: number | null;
   /** Per-court hourly rate (PHP). When set, it overrides the venue's flat
    *  priceFrom for bookings on this court; null/undefined → use the venue rate. */
   hourlyRate?: number | null;
-  /** Per-court photo (servable URL from the media library). */
+  /** Per-court cover thumbnail (servable URL from the media library). */
   mainImageUrl?: string | null;
+  /** The rest of the court's photo gallery (servable URLs). */
+  galleryImageUrls?: string[] | null;
+  /** Per-court override of the venue's booking-approval policy. 'inherit' (default)
+   *  follows the venue; 'manual' forces request-to-book; 'auto' forces instant-book. */
+  approvalMode?: 'inherit' | 'auto' | 'manual' | null;
+  /** Optional turnover/buffer in minutes the court needs between bookings (0 = back-to-back). */
+  turnoverMinutes?: number | null;
+  /** This court's effective weekly hours (its own, or the inherited venue default),
+   *  as a day→"06:00 - 22:00"/"Closed" dict. Present on the venue-detail projection. */
+  hours?: Record<string, string> | null;
 }
 
 /** A single venue with the extra detail the get-by-id endpoint adds. */
@@ -452,6 +509,12 @@ export interface ApiVenueDetail extends ApiVenue {
   gallery?: string[];
   image?: string;
   courts?: ApiCourt[];
+  /**
+   * Platform-curated highlight badges, computed server-side from the venue's real
+   * data + editorial (amenities, ratings, booking activity) — NOT owner-typed
+   * claims. `bestFor` = use-case; `whatPlayersLike` = amenities/quality.
+   */
+  curatedHighlights?: { bestFor: string[]; whatPlayersLike: string[] } | null;
 }
 
 export interface ListVenuesParams {
@@ -467,6 +530,13 @@ export interface ListVenuesParams {
   cursor?: string;
   /** Server-side filter to a single owner's venues (used by the owner console). */
   ownerUserId?: string;
+  /** Venues the current user manages — owned OR staffed. Self-only; each item
+   *  comes back annotated with `viewerStaffRole`. Used by the owner/staff console. */
+  managedByUserId?: string;
+  /** Claim-lifecycle filter — 'unclaimed' drives the owner "claim a venue" search. */
+  state?: 'claimed' | 'unclaimed';
+  /** Also exclude venues that already have a pending ownership claim (claim search). */
+  excludePendingClaims?: boolean;
 }
 
 /** One page of venues plus the cursor for the next page (null when exhausted). */
@@ -528,6 +598,33 @@ export interface VenueAvailability {
  */
 export async function getVenueAvailability(idOrSlug: string, date: string, courtId?: string): Promise<VenueAvailability> {
   return request<VenueAvailability>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}/availability${toQuery({ date, courtId })}`);
+}
+
+export interface VenueDayAvailability {
+  date: string;                 // YYYY-MM-DD
+  openHours: number;            // bookable start-hours the venue is open that day
+  freeHours: number;            // of those, how many still have a free court
+  full: boolean;                // open that day but every open hour is taken
+  closed: boolean;              // venue not open that day
+}
+export interface VenueAvailabilityRange {
+  from: string;
+  to: string;
+  capacity: number;
+  courtId?: string;
+  days: VenueDayAvailability[];
+}
+
+/**
+ * Per-DAY availability across a date range — powers the booking calendar's
+ * fully-booked day markers (public). Pass `courtId` to scope "full" to one court.
+ */
+export async function getVenueAvailabilityRange(
+  idOrSlug: string, from: string, to: string, courtId?: string,
+): Promise<VenueAvailabilityRange> {
+  return request<VenueAvailabilityRange>(
+    `${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}/availability/range${toQuery({ from, to, courtId })}`,
+  );
 }
 
 /* ─── Check-ins (live presence) ─────────────────────────────── */
@@ -592,6 +689,7 @@ export async function checkOutOfVenue(idOrSlug?: string): Promise<{ checkedIn: b
 // real served paths are /api/v1/venues/courts/:id and /api/v1/venues/faqs/:id.
 const COURTS_PREFIX = '/api/v1/venues/courts';
 const FAQS_PREFIX = '/api/v1/venues/faqs';
+const STAFF_PREFIX = '/api/v1/venues/staff';
 const CLOSURES_PREFIX = '/api/v1/holiday-closures';
 const REVIEWS_PREFIX = '/api/v1/reviews';
 
@@ -609,6 +707,12 @@ export function entityId(doc: { id?: string | null; _id?: string | null }): stri
 export interface OwnerVenueDetail extends ApiVenueDetail {
   _id?: string;
   ownerUserId?: string | null;
+  // structured address (owner-editable in LocationEditorTab; area/region/fullAddress
+  // come from ApiVenue). `cityName` is the free-text city the venue stores.
+  cityName?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  postalCode?: string | null;
   // contact + socials
   phonePrimary?: string | null;
   phoneSecondary?: string | null;
@@ -711,6 +815,17 @@ export async function listOwnerVenues(ownerUserId: string): Promise<ApiVenue[]> 
 }
 
 /**
+ * The venues the current user can manage — ones they OWN plus ones they're
+ * active STAFF on. Each item carries `viewerStaffRole` ('owner'/'manager'/
+ * 'front_desk') so the console can tailor what a staffer sees. Self-only on the
+ * server, so pass the signed-in user's id.
+ */
+export async function listManagedVenues(userId: string): Promise<ApiVenue[]> {
+  const page = await listVenues({ managedByUserId: userId, pageSize: 100 });
+  return page.items;
+}
+
+/**
  * The full editable venue document (more fields than the public detail).
  * Sends auth: a freshly-created venue is `listingStatus:'pending'`, which the
  * API only returns to its authenticated owner/admin (anyone else gets a 404),
@@ -746,6 +861,65 @@ export async function createVenue(body: Record<string, unknown>): Promise<OwnerV
 /** Delete a venue the owner owns (it disappears from their console + all listings). */
 export async function deleteVenue(idOrSlug: string): Promise<{ id: string; deleted: boolean }> {
   return request<{ id: string; deleted: boolean }>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Venue staff ─────────────────────────────────────────────── */
+
+export interface VenueStaffMember {
+  id: string;
+  userId: string;
+  staffRole: 'manager' | 'front_desk';
+  status: string;
+  createdAt: string;
+  displayName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+}
+
+/** List the active staff team for a venue you own (or are staff on). */
+export async function listVenueStaff(venueId: string): Promise<VenueStaffMember[]> {
+  const res = await request<VenueStaffMember[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/staff`, { auth: true });
+  return res ?? [];
+}
+
+/** Add someone to the venue staff (owner-only, needs owner.staff.manage). */
+export async function addVenueStaff(venueId: string, userId: string, staffRole: string): Promise<VenueStaffMember> {
+  return request<VenueStaffMember>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/staff`, { method: 'POST', body: { userId, staffRole }, auth: true });
+}
+
+/** Remove a staff member (owner-only, needs owner.staff.manage). */
+export async function removeVenueStaff(staffId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${VENUES_PREFIX}/staff/${encodeURIComponent(staffId)}`, { method: 'DELETE', auth: true });
+}
+
+/** A submitted venue-ownership claim (status starts 'pending' → admin reviews). */
+export interface VenueClaim {
+  id?: string;
+  _id?: string;
+  venueId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  proofDescription: string;
+  proofDocumentUrls?: string[];
+  createdAt?: string;
+}
+
+/**
+ * Submit an ownership claim for an existing (unclaimed) directory venue. The
+ * claim lands 'pending' for admin review; on approval the API sets the venue's
+ * state to 'claimed' and links it to this owner. Gated by `owner.venues.claim`.
+ * Throws ApiError CONFLICT if the venue is already claimed or the owner already
+ * has a pending claim for it.
+ */
+export async function submitVenueClaim(body: {
+  venueId: string;
+  proofDescription: string;
+  proofDocumentUrls?: string[];
+  // Owner identity verification (anti-fraud) — who is making the claim.
+  claimantLegalName?: string;
+  claimantRole?: string;
+  claimantContact?: string;
+}): Promise<VenueClaim> {
+  return request<VenueClaim>('/api/v1/claims', { method: 'POST', body, auth: true });
 }
 
 /* --- Create-form helpers -------------------------------------------------- */
@@ -838,6 +1012,15 @@ export async function getHours(venueId: string): Promise<OwnerHourEntry[]> {
 }
 export async function putHours(venueId: string, entries: OwnerHourEntry[]): Promise<OwnerHourEntry[]> {
   return (await request<OwnerHourEntry[]>(`${VENUES_PREFIX}/${venueId}/hours`, { method: 'PUT', body: entries, auth: true })) ?? [];
+}
+// Per-court operating hours. A court with no rows of its own returns the inherited
+// venue default (so the editor opens on sensible times); saving makes them the
+// court's own. Same `OwnerHourEntry[]` shape as the venue-wide hours.
+export async function getCourtHours(courtId: string): Promise<OwnerHourEntry[]> {
+  return (await request<OwnerHourEntry[]>(`${COURTS_PREFIX}/${courtId}/hours`)) ?? [];
+}
+export async function putCourtHours(courtId: string, entries: OwnerHourEntry[]): Promise<OwnerHourEntry[]> {
+  return (await request<OwnerHourEntry[]>(`${COURTS_PREFIX}/${courtId}/hours`, { method: 'PUT', body: entries, auth: true })) ?? [];
 }
 
 /* --- Holiday closures ----------------------------------------------------- */
@@ -1505,6 +1688,13 @@ export async function listClubFeed(id: string): Promise<ApiClubPost[]> {
   return env.data ?? [];
 }
 
+/** A single post (for the permalink/single-post view) — `GET /:id/posts/:postId`
+ *  returns `{ post, replies }`; we return just the post (replies via listClubReplies). */
+export async function getClubPost(id: string, postId: string): Promise<ApiClubPost> {
+  const env = await rawRequest<{ post: ApiClubPost; replies?: ApiClubPost[] }>(`${CLUBS_PREFIX}/${id}/posts/${postId}`, { auth: true });
+  return (env.data?.post ?? null) as ApiClubPost;
+}
+
 /**
  * Post to a club's feed. Pass `parentPostId` to make it a comment/reply on a
  * post, and `attachments` (uploaded via uploadClubMedia) for photos/GIFs. A post
@@ -1539,6 +1729,33 @@ export async function editClubPost(id: string, postId: string, body: string): Pr
 /** Soft-delete a post or comment (author or host; server enforces it). */
 export async function deleteClubPost(id: string, postId: string): Promise<{ deleted: boolean }> {
   return request<{ deleted: boolean }>(`${CLUBS_PREFIX}/${id}/posts/${postId}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Club member group chat ─────────────────────────────────────── */
+
+/** One message in a club's member chat (host + members), separate from the feed.
+ *  Mirrors ApiGameMessage / ApiTournamentMessage — many senders, so it carries
+ *  the sender's name/avatar. */
+export interface ApiClubMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderAvatarUrl?: string | null;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+/** Load a club's member chat (members only). Returns the club name (for the chat
+ *  header) alongside the messages. */
+export async function listClubMessages(id: string): Promise<{ title: string | null; messages: ApiClubMessage[] }> {
+  const env = await rawRequest<{ title?: string | null; messages?: ApiClubMessage[] }>(`${CLUBS_PREFIX}/${id}/messages`, { auth: true });
+  return { title: env.data?.title ?? null, messages: env.data?.messages ?? [] };
+}
+
+/** Post to a club's member chat — realtime-fans-out to the other members. */
+export async function sendClubMessage(id: string, body: string): Promise<ApiClubMessage> {
+  return request<ApiClubMessage>(`${CLUBS_PREFIX}/${id}/messages`, { method: 'POST', body: { body }, auth: true });
 }
 
 /** Remove a member from a club (host-only; can't remove the host). */

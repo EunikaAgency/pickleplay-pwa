@@ -125,11 +125,13 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
     Object.fromEntries(AMENITIES.map((a) => [a.key as string, Boolean(venue[a.key])] as [string, boolean])),
   );
   const [chips, setChips] = useState({
-    bestFor: venue.bestFor ?? [],
-    whatPlayersLike: venue.whatPlayersLike ?? [],
     amenityChips: venue.amenityChips ?? [],
     thingsToKnow: venue.thingsToKnow ?? [],
   });
+  // "Best for" / "What players like" are platform-curated from real venue data +
+  // editorial (not owner-typed claims) — shown read-only here. See the API's
+  // computeVenueHighlights; the owner shapes them by keeping amenities/details accurate.
+  const curated = venue.curatedHighlights ?? { bestFor: [], whatPlayersLike: [] };
   // Booking policy: require-approval (request-to-book) + the per-venue pay-window.
   const [requireApproval, setRequireApproval] = useState<boolean>(Boolean(venue.requireBookingApproval));
   const [payWindow, setPayWindow] = useState<string>(str(venue.bookingPayWindowHours || 24));
@@ -377,10 +379,36 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         </div>
       </OwnerSection>
 
-      <OwnerSection title="Highlights" icon="star" description="Curated chips shown on your listing.">
+      <OwnerSection title="Highlights" icon="star" description="Curated by PickleBallers from real activity and your venue details — not editable here.">
         <div className="space-y-3.5">
-          <TagField label="Best for" value={chips.bestFor} onChange={(v) => { setChips((c) => ({ ...c, bestFor: v })); setStatus('idle'); }} />
-          <TagField label="What players like" value={chips.whatPlayersLike} onChange={(v) => { setChips((c) => ({ ...c, whatPlayersLike: v })); setStatus('idle'); }} />
+          <div className="rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3.5">
+            <div className="text-[12px] text-[var(--ink-2)] leading-snug">
+              “Best for” and “What players like” are generated from your amenities, ratings and booking activity — so players see verified strengths, not marketing claims. Keep your amenities and details accurate to shape them.
+            </div>
+            {curated.bestFor.length > 0 && (
+              <div className="mt-3">
+                <div className="t-eyebrow mb-1.5">Best for</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {curated.bestFor.map((h) => (
+                    <span key={h} className="inline-flex items-center rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] px-2.5 py-1 text-[12px] font-semibold">{h}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {curated.whatPlayersLike.length > 0 && (
+              <div className="mt-3">
+                <div className="t-eyebrow mb-1.5">What players like</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {curated.whatPlayersLike.map((h) => (
+                    <span key={h} className="inline-flex items-center rounded-full bg-[var(--bg)] border-[0.5px] border-[var(--hairline)] text-[var(--ink-2)] px-2.5 py-1 text-[12px] font-semibold">{h}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {curated.bestFor.length === 0 && curated.whatPlayersLike.length === 0 && (
+              <div className="mt-2.5 text-[12px] text-[var(--muted)]">No highlights yet — add amenities and details above and they’ll appear as your venue fills out.</div>
+            )}
+          </div>
           <TagField label="Amenity chips" value={chips.amenityChips} onChange={(v) => { setChips((c) => ({ ...c, amenityChips: v })); setStatus('idle'); }} />
           <TagField label="Things to know" value={chips.thingsToKnow} onChange={(v) => { setChips((c) => ({ ...c, thingsToKnow: v })); setStatus('idle'); }} />
         </div>

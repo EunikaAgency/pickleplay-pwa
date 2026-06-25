@@ -1,11 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { CompletionScreen } from '../../../shared/components/ui/CompletionScreen';
-import { createClub } from '../../../shared/lib/api';
+import { createClub, updateClub, uploadClubMedia } from '../../../shared/lib/api';
 
 interface Props extends V2ScreenChrome { onBack: () => void; }
-
-const SKILLS = ['All Levels', 'Beginner', 'Intermediate', 'Advanced'];
 
 export function CreateClubV2(props: Props) {
   const { onNavigate, onBack } = props;
@@ -13,16 +11,19 @@ export function CreateClubV2(props: Props) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
-  const [skills, setSkills] = useState<Set<string>>(new Set(['All Levels']));
+  const [memberLimit, setMemberLimit] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdRef, setCreatedRef] = useState<string | null>(null);
 
-  const toggleSkill = (s: string) => setSkills((prev) => {
-    const n = new Set(prev);
-    if (n.has(s)) n.delete(s); else n.add(s);
-    return n;
-  });
+  const pickCover = (file: File | null | undefined) => {
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+  };
 
   const next = () => {
     if (step === 1 && !name.trim()) { setError('Please name your club.'); return; }
@@ -35,7 +36,20 @@ export function CreateClubV2(props: Props) {
     setSubmitting(true);
     setError(null);
     try {
-      const club = await createClub({ name: name.trim(), description: description.trim() || undefined, visibility });
+      const limit = parseInt(memberLimit, 10);
+      const club = await createClub({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        visibility,
+        joinLimit: Number.isFinite(limit) && limit > 0 ? limit : undefined,
+      });
+      // A cover image needs the new club's id, so upload + attach after create (non-fatal).
+      if (coverFile) {
+        try {
+          const url = await uploadClubMedia(club.id, coverFile);
+          if (url) await updateClub(club.id, { coverImageUrl: url });
+        } catch { /* club is still created, just without a cover */ }
+      }
       setCreatedRef(club.slug || club.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create your club. Please try again.');
@@ -73,7 +87,7 @@ export function CreateClubV2(props: Props) {
               <h1 className="step-heading">{step === 1 ? 'Name Your Club' : step === 2 ? 'Club Details' : 'Review & Create'}</h1>
               <p className="step-hint">
                 {step === 1 ? 'Give your club a name your players will recognize.'
-                  : step === 2 ? 'Who can join and what skill levels are welcome?'
+                  : step === 2 ? 'Set who can join, an optional cover photo, and a member limit.'
                     : 'Double-check everything before you create.'}
               </p>
             </div>
@@ -108,12 +122,21 @@ export function CreateClubV2(props: Props) {
                     <p className="vis-hint">{visibility === 'public' ? 'Anyone can find and join this club.' : 'Only people you approve can join.'}</p>
                   </div>
                   <div className="section-card">
-                    <p className="section-card-title">Skill Level — select all that apply</p>
-                    <div className="skill-grid">
-                      {SKILLS.map((s) => (
-                        <button key={s} className={`skill-pill${skills.has(s) ? ' active' : ''}`} onClick={() => toggleSkill(s)}>{s}</button>
-                      ))}
-                    </div>
+                    <p className="section-card-title">Cover photo — optional</p>
+                    <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={(e) => { pickCover(e.target.files?.[0]); e.target.value = ''; }} />
+                    {coverPreview ? (
+                      <div className="relative">
+                        <img src={coverPreview} alt="" className="w-full h-32 object-cover rounded-xl" />
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-2 right-2 px-3 py-1.5 rounded-lg bg-black/55 text-white text-[12px] font-bold">Change</button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full h-24 rounded-xl border border-dashed border-[var(--field-border)] text-[var(--muted)] text-[13px] font-semibold">+ Add a cover photo</button>
+                    )}
+                  </div>
+                  <div className="section-card">
+                    <p className="section-card-title">Member limit — optional</p>
+                    <input className="field-input" type="number" inputMode="numeric" min={1} placeholder="No limit" value={memberLimit} onChange={(e) => setMemberLimit(e.target.value)} />
+                    <p className="vis-hint">Leave blank for unlimited members.</p>
                   </div>
                 </>
               )}
@@ -123,7 +146,8 @@ export function CreateClubV2(props: Props) {
                   <p className="section-card-title">Review</p>
                   <div className="perm-row"><div className="perm-label">Name</div><div className="perm-sub">{name || '—'}</div></div>
                   <div className="perm-row"><div className="perm-label">Visibility</div><div className="perm-sub">{visibility === 'public' ? 'Public' : 'Private'}</div></div>
-                  <div className="perm-row"><div className="perm-label">Skill levels</div><div className="perm-sub">{[...skills].join(', ') || 'Any'}</div></div>
+                  <div className="perm-row"><div className="perm-label">Member limit</div><div className="perm-sub">{memberLimit.trim() ? memberLimit.trim() : 'Unlimited'}</div></div>
+                  <div className="perm-row"><div className="perm-label">Cover photo</div><div className="perm-sub">{coverFile ? 'Added' : 'None'}</div></div>
                   {description && <div className="perm-row"><div className="perm-label">Description</div><div className="perm-sub">{description}</div></div>}
                 </div>
               )}

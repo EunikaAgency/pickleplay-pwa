@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
+import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { firstNameOf } from '../../../shared/lib/permissions';
 import { apiImageUrl, listGames, listBookings, type ApiGame, type ApiBooking } from '../../../shared/lib/api';
@@ -10,8 +11,8 @@ function gameImage(g: ApiGame): string {
   return apiImageUrl(g.courtImage) || apiImageUrl(g.venue?.image) || '';
 }
 
-// ── "Next commitment" helpers (mirror HomeScreenRefined; home must not import
-//    the games slice's formatters, so they're inlined here). ──
+// ── "Next commitment" helpers (home must not import the games slice's
+//    formatters, so they're inlined here). ──
 interface NextCommitment {
   kind: 'game' | 'booking';
   id: string;
@@ -155,7 +156,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
   const greeting = firstName ? `Ready to play, ${firstName}?` : 'Ready to play?';
 
   return (
-    <V2Shell screen="v2-home" chrome={chrome}>
+    <V2Shell screen="v2-home" chrome={chrome} hideBack>
       {/* HERO */}
       <section className="hero">
         <div className="container">
@@ -200,8 +201,15 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
           </button>
         </section>
 
-        {/* FEATURED */}
-        {featured && (
+        {/* FEATURED — while loading, show the heading + a hero skeleton so the
+            card reserves its space instead of popping in (and shoving Discover
+            down) once games arrive. */}
+        {loading ? (
+          <section className="section" aria-label="Featured game">
+            <div className="section-head"><h2>Featured Today</h2></div>
+            <V2Skeleton variant="home-featured" />
+          </section>
+        ) : featured ? (
           <section className="section" aria-label="Featured game">
             <div className="section-head"><h2>Featured Today</h2></div>
             <div className="featured">
@@ -227,7 +235,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
               </div>
             </div>
           </section>
-        )}
+        ) : null}
 
         {/* DISCOVER */}
         <section className="section" aria-label="Discover games">
@@ -236,7 +244,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
             <button className="see-all" onClick={() => onNavigate('games')}>See All</button>
           </div>
           {loading ? (
-            <p className="meta-row">Loading games…</p>
+            <V2Skeleton variant="home-discover" />
           ) : discover.length === 0 ? (
             <p className="meta-row">No open games right now — be the first to create one.</p>
           ) : (

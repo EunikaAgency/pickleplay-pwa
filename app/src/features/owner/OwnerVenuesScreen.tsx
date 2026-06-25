@@ -8,6 +8,8 @@ import { OwnerStat } from './components/OwnerStat';
 import { VenueCard } from './components/VenueCard';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import { money } from '../bookings/bookingDisplay';
+import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface OwnerVenuesScreenProps {
@@ -17,6 +19,8 @@ interface OwnerVenuesScreenProps {
 
 export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps) {
   const { canAnalytics, venues, status, retry, combined, statsReady, structural, glanceFor } = useOwnerDashboard();
+  const currentUser = useAuthStore((s) => s.user);
+  const canClaim = userHasPermission(currentUser, 'owner.venues.claim');
 
   const header = (
     <ScreenHeader
@@ -25,14 +29,26 @@ export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps
       title="Your venues"
       subtitle="Manage your listings, hours, courts and reviews."
       action={
-        <button
-          type="button"
-          onClick={() => onNavigate('owner-new-venue')}
-          aria-label="Create a new venue"
-          className="w-9 h-9 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] flex items-center justify-center"
-        >
-          <Icon name="plus" size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          {canClaim && (
+            <button
+              type="button"
+              onClick={() => onNavigate('claim-venue')}
+              aria-label="Claim an existing venue"
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-[var(--field-border)] text-[var(--ink)] font-bold text-[13px] active:scale-95 transition-transform"
+            >
+              <Icon name="verified" size={15} /> Claim
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onNavigate('owner-new-venue')}
+            aria-label="Create a new venue"
+            className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-bold text-[13px] active:scale-95 transition-transform"
+          >
+            <Icon name="plus" size={16} /> Create venue
+          </button>
+        </div>
       }
     />
   );

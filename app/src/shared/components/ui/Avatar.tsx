@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { getInitials } from '../../lib/initials';
+import { apiImageUrl } from '../../lib/api';
 
 type AvatarVariant = 'blue' | 'lime' | 'coral';
 
@@ -13,6 +14,17 @@ interface AvatarProps {
 }
 
 export function Avatar({ src, name, size = 40, variant = 'blue', className = '', style }: AvatarProps) {
+  // Seed data carries avatar URLs that 404 / fail to load; without this the
+  // browser paints its broken-image icon. On error we fall back to the initials.
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [src]);
+
+  // Other users' avatars arrive as raw API values — often a relative
+  // '/uploads/<file>' path that would 404 against the PWA's own origin. Resolve
+  // them to the API host (apiImageUrl passes absolute URLs like randomuser.me
+  // through unchanged, so it's a no-op for the already-resolved current user).
+  const resolved = apiImageUrl(src);
+
   const merged: CSSProperties = {
     width: size,
     height: size,
@@ -22,7 +34,7 @@ export function Avatar({ src, name, size = 40, variant = 'blue', className = '',
 
   return (
     <span className={`avatar ${variant} ${className}`} style={merged}>
-      {src ? <img src={src} alt="" /> : getInitials(name)}
+      {resolved && !failed ? <img src={resolved} alt="" onError={() => setFailed(true)} /> : getInitials(name)}
     </span>
   );
 }

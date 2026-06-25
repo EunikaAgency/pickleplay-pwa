@@ -19,6 +19,13 @@ interface HourSelectProps {
   after?: string;
   /** Optional: return true for an hour (0–23) that can't be picked — it's hidden from the list (booked / past). */
   disabled?: (hour: number) => boolean;
+  /**
+   * Richer per-hour classification (takes precedence over `disabled`): `hide`
+   * drops the hour entirely; `disabled` shows it greyed and unpickable; `note`
+   * is a small tag rendered on a disabled row (e.g. "Booked"). Lets the picker
+   * show *why* a slot is gone instead of silently omitting it.
+   */
+  hourInfo?: (hour: number) => { hide?: boolean; disabled?: boolean; note?: string };
   /** Shown when `value` is empty, so the field can start unset (e.g. an end time awaiting a start). */
   placeholder?: string;
   /** Accessible name for the field. */
@@ -35,19 +42,28 @@ function hourLabel(h: number): string {
   return `${h12}:00 ${ampm}`;
 }
 
-export function HourSelect({ value, onChange, after, disabled, placeholder = 'Select', 'aria-label': label = 'Select time' }: HourSelectProps) {
+export function HourSelect({ value, onChange, after, disabled, hourInfo, placeholder = 'Select', 'aria-label': label = 'Select time' }: HourSelectProps) {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<'down' | 'up'>('down');
   const [maxH, setMaxH] = useState(DESIRED_MAX);
   const wrapRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
-  // Only offer hours that are actually selectable: after the start (for an end
-  // time) and not disabled (booked or already past). Unavailable hours are hidden
-  // entirely rather than greyed out.
+  // The rows to render. With `hourInfo` an hour can be hidden, shown greyed +
+  // unpickable (with a note like "Booked"), or selectable — so unavailability is
+  // explicit. Without it, fall back to the legacy behavior: hide disabled hours.
   const minHour = after ? Number(after.split(':')[0]) : -1;
-  const hours: number[] = [];
-  for (let h = 0; h < 24; h++) if (h > minHour && !(disabled?.(h) ?? false)) hours.push(h);
+  const rows: { hour: number; disabled: boolean; note?: string }[] = [];
+  for (let h = 0; h < 24; h++) {
+    if (h <= minHour) continue;
+    if (hourInfo) {
+      const info = hourInfo(h);
+      if (info.hide) continue;
+      rows.push({ hour: h, disabled: !!info.disabled, note: info.note });
+    } else if (!(disabled?.(h) ?? false)) {
+      rows.push({ hour: h, disabled: false });
+    }
+  }
 
   // An empty value leaves the field unset — it renders the placeholder, not 12:00 AM.
   const hasValue = Boolean(value);
@@ -111,11 +127,31 @@ export function HourSelect({ value, onChange, after, disabled, placeholder = 'Se
           style={{ maxHeight: maxH }}
           className={`absolute z-50 left-0 right-0 overflow-y-auto rounded-2xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] shadow-lg p-1.5 ${placement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'}`}
         >
-          {hours.length === 0 ? (
+          {rows.length === 0 ? (
             <div className="px-3 py-3 text-center text-[14px] font-semibold text-[var(--muted)]">No times available</div>
           ) : (
-            hours.map((h) => {
+            rows.map(({ hour: h, disabled: rowDisabled, note }) => {
               const selected = h === selectedHour;
+              // A booked/unavailable row is shown greyed + a note, but not pickable —
+              // so the player sees *why* the slot is gone instead of it just missing.
+              if (rowDisabled) {
+                return (
+                  <div
+                    key={h}
+                    role="option"
+                    aria-selected={false}
+                    aria-disabled
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[15px] font-semibold text-[var(--muted)] opacity-60 cursor-not-allowed"
+                  >
+                    <span className="line-through">{hourLabel(h)}</span>
+                    {note && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--coral-soft)] text-[var(--coral)]">
+                        {note}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <button
                   key={h}

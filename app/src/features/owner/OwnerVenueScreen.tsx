@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
+import { useDragScroll } from '../../shared/hooks/useDragScroll';
 import { Chip } from '../../shared/components/ui/Chip';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
@@ -14,11 +15,12 @@ import { InsightsTab } from './tabs/InsightsTab';
 import { BookingsInboxTab } from './tabs/BookingsInboxTab';
 import { ListingEditorTab } from './tabs/ListingEditorTab';
 import { LocationEditorTab } from './tabs/LocationEditorTab';
-import { HoursEditorTab } from './tabs/HoursEditorTab';
+import { ClosuresEditorTab } from './tabs/ClosuresEditorTab';
 import { CourtsEditorTab } from './tabs/CourtsEditorTab';
 import { FaqsEditorTab } from './tabs/FaqsEditorTab';
 import { ReviewsInboxTab } from './tabs/ReviewsInboxTab';
 import { PhotosTab } from './tabs/PhotosTab';
+import { StaffEditorTab } from './tabs/StaffEditorTab';
 
 interface OwnerVenueScreenProps {
   venueId: string; // the slug (or _id) passed via navigation params
@@ -27,7 +29,7 @@ interface OwnerVenueScreenProps {
   onBack: () => void;
 }
 
-type TabId = 'overview' | 'insights' | 'bookings' | 'listing' | 'location' | 'hours' | 'courts' | 'faqs' | 'reviews' | 'photos';
+type TabId = 'overview' | 'insights' | 'bookings' | 'listing' | 'location' | 'courts' | 'closures' | 'faqs' | 'reviews' | 'photos' | 'staff';
 
 // `perm` gates a tab behind a permission; tabs without one are always shown.
 const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
@@ -36,11 +38,12 @@ const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
   { id: 'bookings', label: 'Bookings', icon: 'calendar', perm: 'owner.bookings.manage' },
   { id: 'listing', label: 'Listing', icon: 'storefront' },
   { id: 'location', label: 'Location', icon: 'location' },
-  { id: 'hours', label: 'Hours', icon: 'clock' },
   { id: 'courts', label: 'Courts', icon: 'paddle' },
+  { id: 'closures', label: 'Closures', icon: 'calendar' },
   { id: 'faqs', label: 'FAQs', icon: 'help' },
   { id: 'reviews', label: 'Reviews', icon: 'star' },
   { id: 'photos', label: 'Photos', icon: 'camera' },
+  { id: 'staff', label: 'Staff', icon: 'group', perm: 'owner.staff.manage' },
 ];
 
 const TAB_TITLE: Record<TabId, string> = {
@@ -49,19 +52,30 @@ const TAB_TITLE: Record<TabId, string> = {
   bookings: 'Bookings',
   listing: 'Listing',
   location: 'Location',
-  hours: 'Hours',
   courts: 'Courts',
+  closures: 'Closures',
   faqs: 'FAQs',
   reviews: 'Reviews',
   photos: 'Photos',
+  staff: 'Staff',
 };
 
 export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack }: OwnerVenueScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [venue, setVenue] = useState<OwnerVenueDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
-  const startTab = TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : 'overview';
-  const [tab, setTab] = useState<TabId>(startTab);
+  // The active tab is derived from the URL (`?tab=`), not local state, so a page
+  // reload (or a shared link) lands on the same tab instead of snapping back to
+  // Overview. Switching tabs `replace`s the URL (no history spam / back-button
+  // trap) — the screen is keyed by venue id, so this re-renders without remounting.
+  const tab: TabId = TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : 'overview';
+  const goTab = useCallback(
+    (next: TabId) => onNavigate('owner-venue', { id: slug, tab: next === 'overview' ? undefined : next }, { replace: true }),
+    [onNavigate, slug],
+  );
+  // The tab strip overflows on narrow widths — make it drag/wheel-scrollable.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  useDragScroll(tabsRef);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +107,10 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
     getOwnerVenue(slug).then(setVenue).catch(() => {});
   }, [slug]);
 
-  const back = () => (tab === 'overview' ? onBack() : setTab('overview'));
+  // Back always leaves the venue screen (returns to wherever the owner came
+  // from). Tabs are switched by tapping the pills, so back must NOT detour
+  // through Overview first — that forced an annoying "double back" to exit.
+  const back = () => onBack();
 
   if (status === 'loading') {
     return (
@@ -146,25 +163,26 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
         }
       />
 
-      <div className="scroll-x flex gap-2 px-5 pb-2">
+      <div ref={tabsRef} className="scroll-x flex gap-2 px-5 pb-2 cursor-grab active:cursor-grabbing select-none">
         {TABS.filter((t) => !t.perm || userHasPermission(currentUser, t.perm)).map((t) => (
-          <Chip key={t.id} selected={tab === t.id} onClick={() => setTab(t.id)}>
+          <Chip key={t.id} className="chip-tab" selected={tab === t.id} onClick={() => goTab(t.id)}>
             <Icon name={t.icon} size={13} /> {t.label}
           </Chip>
         ))}
       </div>
 
       <div className="px-5 pt-4">
-        {tab === 'overview' && <VenueOverviewTab venue={venue} venueId={vid} onOpenTab={(t) => setTab(t as TabId)} />}
+        {tab === 'overview' && <VenueOverviewTab venue={venue} venueId={vid} onOpenTab={(t) => goTab(t as TabId)} />}
         {tab === 'insights' && <InsightsTab venueId={vid} />}
         {tab === 'bookings' && <BookingsInboxTab venueId={vid} />}
-        {tab === 'listing' && <ListingEditorTab venue={venue} venueId={vid} reload={reload} />}
+        {tab === 'listing' && <ListingEditorTab venue={venue} venueId={vid} reload={reload} onDeleted={() => onNavigate('owner-venues', undefined, { replace: true })} />}
         {tab === 'location' && <LocationEditorTab venue={venue} venueId={vid} reload={reload} />}
-        {tab === 'hours' && <HoursEditorTab venueId={vid} />}
         {tab === 'courts' && <CourtsEditorTab venueId={vid} reload={reload} />}
+        {tab === 'closures' && <ClosuresEditorTab venueId={vid} />}
         {tab === 'faqs' && <FaqsEditorTab venueId={vid} />}
         {tab === 'reviews' && <ReviewsInboxTab venueId={vid} />}
         {tab === 'photos' && <PhotosTab venue={venue} venueId={vid} reload={reload} />}
+        {tab === 'staff' && <StaffEditorTab venueId={vid} />}
       </div>
     </div>
   );

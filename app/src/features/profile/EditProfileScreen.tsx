@@ -9,6 +9,7 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { getInitials } from '../../shared/lib/initials';
 import { ApiError, uploadAvatar } from '../../shared/lib/api';
+import { userHasPermission } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
 
 interface EditProfileScreenProps {
@@ -57,6 +58,13 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const nameParts = (currentUser?.displayName ?? '').trim().split(/\s+/).filter(Boolean);
   const initialTier = currentUser?.skillLevel != null ? tierForDupr(currentUser.skillLevel).id : 'solid';
 
+  // Skill level (DUPR) is a player/coach attribute — owners, organizers, and
+  // admins don't play, so the picker is hidden for them (and never saved).
+  const showSkillLevel =
+    !userHasPermission(currentUser, 'owner.access') &&
+    !userHasPermission(currentUser, 'organizer.access') &&
+    !userHasPermission(currentUser, 'admin.access');
+
   const form = useForm({
     initial: {
       firstName: currentUser?.firstName?.trim() || nameParts[0] || '',
@@ -86,8 +94,10 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         // Keep the visible name in sync with the edited first/last name.
         displayName: `${firstName} ${lastName}`.trim(),
         bio: form.values.bio.trim(),
-        skillLevel: String(duprForTier(form.values.tier)),
-        skillLevelLabel: tierName,
+        // Only players/coaches carry a skill level — don't write one for others.
+        ...(showSkillLevel
+          ? { skillLevel: String(duprForTier(form.values.tier)), skillLevelLabel: tierName }
+          : {}),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -183,13 +193,15 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
           />
         </div>
 
-        <div className="field">
-          <FormTierPicker
-            label="Skill level"
-            value={form.values.tier}
-            onChange={(tier) => form.setField('tier', tier)}
-          />
-        </div>
+        {showSkillLevel && (
+          <div className="field">
+            <FormTierPicker
+              label="Skill level"
+              value={form.values.tier}
+              onChange={(tier) => form.setField('tier', tier)}
+            />
+          </div>
+        )}
 
         {error && (
           <div

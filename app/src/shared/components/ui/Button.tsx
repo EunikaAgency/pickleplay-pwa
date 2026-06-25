@@ -1,6 +1,6 @@
 import { type ButtonHTMLAttributes } from 'react';
 
-type ButtonVariant = 'primary' | 'dark' | 'outline' | 'ghost' | 'destructive';
+type ButtonVariant = 'primary' | 'brand' | 'dark' | 'outline' | 'ghost' | 'destructive';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -13,6 +13,8 @@ const baseClass =
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
     'h-[52px] px-5 text-base bg-[var(--lime)] text-[var(--lime-ink)] shadow-[0_8px_22px_-6px_rgba(193,241,0,0.5)]',
+  brand:
+    'h-[52px] px-5 text-base bg-[var(--primary)] text-white shadow-[0_8px_22px_-6px_rgba(0,64,224,0.5)]',
   dark:
     'h-[52px] px-5 text-base bg-[var(--ink)] text-white shadow-[0_8px_22px_-6px_rgba(0,0,0,0.35)]',
   outline:

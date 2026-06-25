@@ -5,6 +5,9 @@ interface CourtPickerProps {
   /** Selected court id, or '' for none. */
   value: string;
   onChange: (courtId: string) => void;
+  /** Optional per-court price label (e.g. "₱250/hr"). The owning screen formats
+   *  it so this shared control stays free of currency/feature logic. */
+  priceFor?: (court: ApiCourt) => string | undefined;
 }
 
 /** Human label for a court: its name, else "Court <number>". */
@@ -24,12 +27,13 @@ function courtMeta(court: ApiCourt): string {
  * court drives both the time picker's availability and the booking it creates.
  * Presentational: the screen owns fetching the venue's courts and the selection.
  */
-export function CourtPicker({ courts, value, onChange }: CourtPickerProps) {
+export function CourtPicker({ courts, value, onChange, priceFor }: CourtPickerProps) {
   return (
     <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Choose a court">
       {courts.map((court) => {
         const sel = court.id === value;
         const meta = courtMeta(court);
+        const price = priceFor?.(court);
         const img = apiImageUrl(court.mainImageUrl);
         return (
           <button
@@ -51,6 +55,9 @@ export function CourtPicker({ courts, value, onChange }: CourtPickerProps) {
             <span className="truncate max-w-full">{courtLabel(court)}</span>
             {meta && (
               <span className={`text-[11px] font-semibold ${sel ? 'text-white/70' : 'text-[var(--muted)]'}`}>{meta}</span>
+            )}
+            {price && (
+              <span className={`text-[11px] font-bold ${sel ? 'text-white' : 'text-[var(--ink)]'}`}>{price}</span>
             )}
           </button>
         );

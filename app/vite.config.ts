@@ -1,10 +1,52 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Dev-only: neutralise any service worker left behind by a previous production
+// (`vite preview`) build. The PWA SW precaches a hashed app shell; after a
+// rebuild the bundle it points at is deleted, so on reload the SW serves an
+// index.html referencing a script that no longer exists and the app fails to
+// mount — the "routing disappeared" symptom. We now serve from the Vite dev
+// server (no SW of its own), and answer the old SW's update check at /sw.js
+// with a self-destroying worker that clears caches, unregisters, and reloads
+// each open tab onto the live (SW-free) dev server. Once it has run, browsers
+// hold no SW and load straight from the dev server.
+function killStaleServiceWorker(): Plugin {
+  const selfDestroyingSW = `
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    } catch (e) {}
+    await self.registration.unregister();
+    const clients = await self.clients.matchAll({ type: 'window' });
+    clients.forEach((c) => c.navigate(c.url));
+  })());
+});
+`
+  return {
+    name: 'kill-stale-service-worker',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] === '/sw.js') {
+          res.setHeader('Content-Type', 'text/javascript')
+          res.setHeader('Cache-Control', 'no-store')
+          res.end(selfDestroyingSW)
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
+    killStaleServiceWorker(),
     react(),
     tailwindcss(),
     VitePWA({
