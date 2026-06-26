@@ -224,6 +224,15 @@
   :root { --frame-max: 1000px; }
 }
 
+/* Admin & owner: lift the phone-frame cap so the app can grow to desktop
+   widths.  Once the frame passes 1024 px the existing @container queries
+   swap the bottom tab bars for the sidebar — giving these roles a dashboard
+   layout on large screens (players/guests keep the mobile-only frame). */
+.app[data-role="admin"],
+.app[data-role="owner"] {
+  max-width: none;
+}
+
 .app {
   width: 100%;
   max-width: var(--frame-max);
@@ -1275,6 +1284,13 @@
 }
 .field .control:focus { border-color: var(--primary); }
 .field textarea.control { min-height: 100px; resize: vertical; }
+/* The court editor has a long list of fields (rate/surface/profile/space/turnover),
+   so its inputs use a more compact height than the default .control — vertical
+   padding trimmed (font stays 16px to keep iOS from auto-zooming on focus). */
+.courts-editor .field .control { padding: 9px 13px; border-radius: 11px; }
+/* Match the chips (sport / court type / profile / approval) to the trimmed inputs
+   so the whole editor reads at one compact scale. */
+.courts-editor .chip { padding: 6px 11px; font-size: 11.5px; }
 
 /* Time picker chips */
 .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 20px; }
@@ -1471,8 +1487,10 @@
 
 /* ─── Desktop (≥1024) — full sidebar redesign ─── */
 @container app (min-width: 1024px) {
-  /* App switches to sidebar + main flex row. (The `.app` container can't query
-     itself, so this particular rule no-ops; the rest target descendants.) */
+  /* The .app container can't query itself reliably across engines, so the
+     flex-direction switch to sidebar + main row is handled by the @media
+     block immediately below (gated on [data-role] — only admin/owner get
+     the desktop layout).  The rest here targets descendants. */
   .app { flex-direction: row; align-items: stretch; }
 
   /* Sidebar replaces the floating tabbar. */
@@ -1652,6 +1670,18 @@
     margin: 0 auto;
     border-radius: 26px 26px 0 0;
     padding-bottom: 24px;
+  }
+}
+
+/* Admin & owner on desktop (viewport ≥1024 px): switch .app from a centred
+   phone-column to a sidebar + main row.  This is a viewport @media because
+   the element establishing the container can't reliably query itself across
+   engines (unlike the descendant rules in the @container block above). */
+@media (min-width: 1024px) {
+  .app[data-role="admin"],
+  .app[data-role="owner"] {
+    flex-direction: row;
+    align-items: stretch;
   }
 }
 

@@ -398,6 +398,10 @@ function AppInner() {
   // Tournament tab (organizers still manage tournaments from the organizer hub).
   const isAdmin = userHasPermission(currentUser, 'admin.access');
   const canSeeTournaments = !isOwner && !isAdmin;
+  // Desktop sidebar layout for admin/owner: the frame cap is lifted so the
+  // app can grow past 1024 px, activating the existing @container queries
+  // that swap the bottom tab bars for a fixed sidebar.
+  const roleAttr = isAdmin ? 'admin' : isOwner ? 'owner' : undefined;
 
   const canCreateGame = userHasPermission(currentUser, 'player.games.create');
   const handleCreate = () => {
@@ -588,7 +592,7 @@ function AppInner() {
   };
 
   return (
-    <div className="app" data-frame={frame}>
+    <div className="app" data-frame={frame} data-role={roleAttr}>
       {/* Offline banner */}
       <div className="fixed left-0 right-0 top-0 z-[9999] pt-[env(safe-area-inset-top)]">
         <OfflineBanner forceShow={demoState === 'offline'} />

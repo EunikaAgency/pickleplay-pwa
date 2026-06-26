@@ -31,6 +31,19 @@ const MAX_GALLERY = 8;
 const DEFAULT_SPORT = 'Pickleball';
 const SPORTS = [DEFAULT_SPORT, 'Tennis', 'Badminton', 'Padel', 'Basketball', 'Volleyball'];
 
+// Court-profile pickers — single-choice chips (tap again to clear), stored as
+// the chosen string so the value still reads well on the public court page.
+const FLOOR_TYPES = ['Wood', 'Professional'];
+const BALL_TYPES = ['Indoor', 'Outdoor'];
+
+// Per-court booking-approval choices, rendered as a single-select chip group
+// (matching the Court type / Ball type pickers) instead of a segmented control.
+const APPROVAL_MODES: { value: 'inherit' | 'auto' | 'manual'; label: string }[] = [
+  { value: 'inherit', label: 'Venue default' },
+  { value: 'auto', label: 'Instant' },
+  { value: 'manual', label: 'Approve' },
+];
+
 function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (c: OwnerCourt) => void; onDeleted: (id: string) => void }) {
   const id = entityId(court);
   // The court number is auto-assigned and never edited here — it's only the
@@ -46,9 +59,19 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const [sport, setSport] = useState(court.sport || DEFAULT_SPORT);
   const [isSplittable, setIsSplittable] = useState(!!court.isSplittable);
   const [splitCount, setSplitCount] = useState(court.splitCount ?? 2);
+  const [subUnitRates, setSubUnitRates] = useState<Array<{ index: number; hourlyRate: string }>>(
+    (court.subUnitRates ?? []).map((r) => ({ index: r.index, hourlyRate: r.hourlyRate != null ? String(r.hourlyRate) : '' })),
+  );
   // Per-court booking policy: approval override + a turnover gap between bookings.
   const [approvalMode, setApprovalMode] = useState<'inherit' | 'auto' | 'manual'>(court.approvalMode ?? 'inherit');
   const [turnoverMinutes, setTurnoverMinutes] = useState(court.turnoverMinutes ? String(court.turnoverMinutes) : '');
+  // ── Court features ── owner-described physical attributes shown on the court page.
+  const [hasAircon, setHasAircon] = useState(!!court.hasAircon);
+  const [highCeiling, setHighCeiling] = useState(!!court.highCeiling);
+  const [hasRefreshmentStand, setHasRefreshmentStand] = useState(!!court.hasRefreshmentStand);
+  const [spaceAroundCourt, setSpaceAroundCourt] = useState(court.spaceAroundCourt || '');
+  const [floorType, setFloorType] = useState(court.floorType || '');
+  const [ballType, setBallType] = useState(court.ballType || '');
   const [mainImageUrl, setMainImageUrl] = useState(court.mainImageUrl || '');
   const [gallery, setGallery] = useState<string[]>(court.galleryImageUrls ?? []);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -79,8 +102,17 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
         sport,
         isSplittable,
         splitCount,
+        subUnitRates: isSplittable
+          ? subUnitRates.filter((r) => r.hourlyRate.trim() !== '').map((r) => ({ index: r.index, hourlyRate: Number(r.hourlyRate) }))
+          : [],
         approvalMode,
         turnoverMinutes: turnoverMinutes.trim() === '' ? 0 : Number(turnoverMinutes),
+        hasAircon,
+        highCeiling,
+        hasRefreshmentStand,
+        spaceAroundCourt: spaceAroundCourt.trim(),
+        floorType,
+        ballType,
         mainImageUrl,
         galleryImageUrls: gallery,
       });
@@ -152,8 +184,16 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     sport !== (court.sport || DEFAULT_SPORT) ||
     isSplittable !== !!court.isSplittable ||
     splitCount !== (court.splitCount ?? 2) ||
+    // Compare sub-unit rates: sort keys so order doesn't matter.
+    (() => { const o = (court.subUnitRates ?? []).map((r: any) => `${r.index}:${r.hourlyRate ?? ''}`).sort().join(','); const n = subUnitRates.filter((r) => r.hourlyRate.trim() !== '').map((r) => `${r.index}:${r.hourlyRate}`).sort().join(','); return o !== n; })() ||
     approvalMode !== (court.approvalMode ?? 'inherit') ||
     turnoverMinutes !== (court.turnoverMinutes ? String(court.turnoverMinutes) : '') ||
+    hasAircon !== !!court.hasAircon ||
+    highCeiling !== !!court.highCeiling ||
+    hasRefreshmentStand !== !!court.hasRefreshmentStand ||
+    spaceAroundCourt !== (court.spaceAroundCourt || '') ||
+    floorType !== (court.floorType || '') ||
+    ballType !== (court.ballType || '') ||
     mainImageUrl !== (court.mainImageUrl || '') ||
     !sameUrls(gallery, court.galleryImageUrls ?? []);
 
@@ -167,29 +207,44 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
       {/* Header — always visible; tap to expand the editor (accordion). Uses the
           shared .card style (visible border + shadow) so each court reads as a
           clearly separate card, matching the "Add a court" card above. */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="w-full flex items-center gap-3 p-3 text-left"
-      >
-        <div className="h-11 w-11 rounded-[10px] overflow-hidden bg-[var(--surface-2)] shrink-0 flex items-center justify-center">
-          {mainImageUrl ? (
-            <img src={apiImageUrl(mainImageUrl)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-          ) : (
-            <span className="font-heading font-bold text-[var(--primary)] text-[15px]">{courtNumber}</span>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-bold text-[14px] text-[var(--ink)] truncate flex items-center gap-2">
-            {courtName || `Court ${courtNumber}`}
-            {!isActive && <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)] bg-[var(--surface-2)] rounded px-1.5 py-0.5">Hidden</span>}
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="flex-1 min-w-0 flex items-center gap-3 p-3 text-left"
+        >
+          <div className="h-11 w-11 rounded-[10px] overflow-hidden bg-[var(--surface-2)] shrink-0 flex items-center justify-center">
+            {mainImageUrl ? (
+              <img src={apiImageUrl(mainImageUrl)} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            ) : (
+              <span className="font-heading font-bold text-[var(--primary)] text-[15px]">{courtNumber}</span>
+            )}
           </div>
-          <div className="t-sm text-[var(--muted)] truncate">{summary || 'Tap to add photos, hours & details'}</div>
-        </div>
-        {dirty && <span className="w-2 h-2 rounded-full bg-[var(--coral)] shrink-0" title="Unsaved changes" />}
-        <Icon name="chevron" size={16} className={`text-[var(--muted)] shrink-0 ${expanded ? 'rotate-90 transition-transform' : 'transition-transform'}`} />
-      </button>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-[14px] text-[var(--ink)] truncate flex items-center gap-2">
+              {courtName || `Court ${courtNumber}`}
+              {!isActive && <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)] bg-[var(--surface-2)] rounded px-1.5 py-0.5">Hidden</span>}
+            </div>
+            <div className="t-sm text-[var(--muted)] truncate">{summary || 'Tap to add photos, hours & details'}</div>
+          </div>
+          {dirty && <span className="w-2 h-2 rounded-full bg-[var(--coral)] shrink-0" title="Unsaved changes" />}
+          <Icon name="chevron" size={16} className={`text-[var(--muted)] shrink-0 ${expanded ? 'rotate-90 transition-transform' : 'transition-transform'}`} />
+        </button>
+        {/* Delete lives in the header (a clear, labeled action) only while the card
+            is open — so the collapsed list stays a clean, scannable set of rows. */}
+        {expanded && (
+          <button
+            type="button"
+            onClick={remove}
+            disabled={busy}
+            aria-label={`Delete court ${courtNumber}`}
+            className="shrink-0 mr-3 inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-[13px] font-bold text-[var(--coral)] border-[0.5px] border-[var(--hairline)] hover:border-[var(--coral)] disabled:opacity-50"
+          >
+            <Icon name="trash" size={15} /> {busy ? 'Deleting…' : 'Delete'}
+          </button>
+        )}
+      </div>
 
       {expanded && (
       <div className="px-3 pb-3 pt-3 space-y-3 border-t-[0.5px] border-[var(--hairline)]">
@@ -252,9 +307,50 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
           <textarea className="control min-h-[64px] py-2 leading-snug" value={description} maxLength={1000} rows={2} onChange={(e) => { setDescription(e.target.value); setStatus('idle'); }} placeholder="What makes this court worth booking — lighting, view, net quality…" />
         </div>
 
+        <div className="field p-0!">
+          <label className="lbl">Court type</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip selected={indoor} onClick={() => { setIndoor(true); setStatus('idle'); }}>{indoor && <Icon name="check" size={12} />} Indoor</Chip>
+            <Chip selected={!indoor} onClick={() => { setIndoor(false); setStatus('idle'); }}>{!indoor && <Icon name="check" size={12} />} Outdoor</Chip>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Chip selected={indoor} onClick={() => { setIndoor((v) => !v); setStatus('idle'); }}>{indoor && <Icon name="check" size={12} />} Indoor</Chip>
           <Chip selected={isActive} onClick={() => { setIsActive((v) => !v); setStatus('idle'); }}>{isActive && <Icon name="check" size={12} />} Active</Chip>
+        </div>
+
+        {/* ── Court features ── owner-described physical attributes shown on the public
+            court page. The thumbnail + gallery above are the "Picture" part of it. */}
+        <div className="space-y-3 border-t-[0.5px] border-[var(--hairline)] pt-3">
+          <label className="lbl">Features</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip selected={hasAircon} onClick={() => { setHasAircon((v) => !v); setStatus('idle'); }}>{hasAircon && <Icon name="check" size={12} />} Aircon</Chip>
+            <Chip selected={highCeiling} onClick={() => { setHighCeiling((v) => !v); setStatus('idle'); }}>{highCeiling && <Icon name="check" size={12} />} High ceiling</Chip>
+            <Chip selected={hasRefreshmentStand} onClick={() => { setHasRefreshmentStand((v) => !v); setStatus('idle'); }}>{hasRefreshmentStand && <Icon name="check" size={12} />} Refreshment stand</Chip>
+          </div>
+          <div className="field p-0!">
+            <label className="lbl">Court floor</label>
+            <div className="flex flex-wrap items-center gap-2">
+              {FLOOR_TYPES.map((f) => (
+                <Chip key={f} selected={floorType === f} onClick={() => { setFloorType((v) => (v === f ? '' : f)); setStatus('idle'); }}>
+                  {floorType === f && <Icon name="check" size={12} />} {f}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <div className="field p-0!">
+            <label className="lbl">Ball type</label>
+            <div className="flex flex-wrap items-center gap-2">
+              {BALL_TYPES.map((b) => (
+                <Chip key={b} selected={ballType === b} onClick={() => { setBallType((v) => (v === b ? '' : b)); setStatus('idle'); }}>
+                  {ballType === b && <Icon name="check" size={12} />} {b}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <div className="field p-0! w-40">
+            <label className="lbl">Space around court</label>
+            <input className="control" value={spaceAroundCourt} maxLength={30} onChange={(e) => { setSpaceAroundCourt(e.target.value); setStatus('idle'); }} placeholder="e.g. 3m" />
+          </div>
         </div>
 
         {/* ── Court configuration ── which sport this court is set up for (multi-sport
@@ -286,24 +382,53 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
                 />
               </div>
             )}
+            {isSplittable && (
+              <div className="mt-2.5 space-y-2">
+                <label className="lbl font-semibold">Per-unit hourly rates (optional)</label>
+                {Array.from({ length: splitCount }, (_, i) => {
+                  const rate = subUnitRates.find((r) => r.index === i);
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-[13px] font-semibold text-[var(--muted)] w-16">Half {i + 1}</span>
+                      <div className="flex-1 relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-[var(--muted)]">₱</span>
+                        <input
+                          type="number"
+                          className="input pl-8"
+                          placeholder={String(court.hourlyRate ?? '')}
+                          value={rate?.hourlyRate ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setSubUnitRates((prev) => {
+                              const rest = prev.filter((r) => r.index !== i);
+                              return v.trim() === '' ? rest : [...rest, { index: i, hourlyRate: v }];
+                            });
+                            setStatus('idle');
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[var(--muted)]">/hr</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <p className="t-sm text-[var(--muted)] mt-1">Let this court be booked as separate half-courts.</p>
           </div>
         </div>
 
         {/* ── Booking policy ── per-court override of the venue's approval mode, plus
             an optional turnover gap kept free between bookings on this court. */}
-        <div className="space-y-3 border-t-[0.5px] border-[var(--hairline)] pt-3">
+        <div className="space-y-3 bg-[var(--surface-2)] rounded-xl p-3">
           <div className="field p-0!">
             <label className="lbl">Booking approval</label>
-            <Segmented
-              options={[
-                { value: 'inherit', label: 'Venue default' },
-                { value: 'auto', label: 'Instant' },
-                { value: 'manual', label: 'Approve' },
-              ]}
-              value={approvalMode}
-              onChange={(v) => { setApprovalMode(v); setStatus('idle'); }}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {APPROVAL_MODES.map((m) => (
+                <Chip key={m.value} selected={approvalMode === m.value} onClick={() => { setApprovalMode(m.value); setStatus('idle'); }}>
+                  {approvalMode === m.value && <Icon name="check" size={12} />} {m.label}
+                </Chip>
+              ))}
+            </div>
             <p className="t-sm text-[var(--muted)] mt-1">
               {approvalMode === 'inherit'
                 ? 'Follows your venue’s booking policy.'
@@ -393,18 +518,16 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
           mounts (and fetches) when this tab is selected. */}
       {tab === 'hours' && <WeeklyHoursEditor courtId={id} />}
 
-      {/* Card-level actions — always visible regardless of the active tab. */}
-      <div className="flex items-center gap-2 border-t-[0.5px] border-[var(--hairline)] pt-3">
-        <div className="flex-1" />
-        {dirty && (
+      {/* Card-level Save — shown on any tab whenever there are unsaved changes.
+          (Delete moved to the card header above.) */}
+      {dirty && (
+        <div className="flex items-center gap-2 border-t-[0.5px] border-[var(--hairline)] pt-3">
+          <div className="flex-1" />
           <button type="button" onClick={save} disabled={status === 'saving'} className="h-10 px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60">
             {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save'}
           </button>
-        )}
-        <button type="button" onClick={remove} disabled={busy} aria-label={`Delete court ${courtNumber}`} className="w-10 h-10 rounded-2xl flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] disabled:opacity-50">
-          <Icon name="close" size={18} />
-        </button>
-      </div>
+        </div>
+      )}
       {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold">Couldn't save. Try again.</div>}
       </div>
       )}
@@ -435,6 +558,13 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
   const [newSport, setNewSport] = useState(DEFAULT_SPORT);
   const [newApprovalMode, setNewApprovalMode] = useState<'inherit' | 'auto' | 'manual'>('inherit');
   const [newTurnover, setNewTurnover] = useState('');
+  // Court-profile attributes, settable at creation (mirrors the per-court editor).
+  const [newHasAircon, setNewHasAircon] = useState(false);
+  const [newHighCeiling, setNewHighCeiling] = useState(false);
+  const [newHasRefreshmentStand, setNewHasRefreshmentStand] = useState(false);
+  const [newSpaceAroundCourt, setNewSpaceAroundCourt] = useState('');
+  const [newFloorType, setNewFloorType] = useState('');
+  const [newBallType, setNewBallType] = useState('');
   const [addStatus, setAddStatus] = useState<'idle' | 'saving' | 'error'>('idle');
 
   useEffect(() => {
@@ -472,7 +602,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
     if (addStatus === 'saving') return;
     setAddStatus('saving');
     try {
-      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, hourlyRate: newRate.trim() === '' ? undefined : Number(newRate), indoor: newIndoor, sport: newSport, approvalMode: newApprovalMode, turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover) });
+      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, hourlyRate: newRate.trim() === '' ? undefined : Number(newRate), indoor: newIndoor, sport: newSport, approvalMode: newApprovalMode, turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover), hasAircon: newHasAircon, highCeiling: newHighCeiling, hasRefreshmentStand: newHasRefreshmentStand, spaceAroundCourt: newSpaceAroundCourt.trim() || undefined, floorType: newFloorType || undefined, ballType: newBallType || undefined });
       setCourts((c) => [...c, created]);
       setNewName('');
       setNewSurface('');
@@ -481,6 +611,12 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
       setNewSport(DEFAULT_SPORT);
       setNewApprovalMode('inherit');
       setNewTurnover('');
+      setNewHasAircon(false);
+      setNewHighCeiling(false);
+      setNewHasRefreshmentStand(false);
+      setNewSpaceAroundCourt('');
+      setNewFloorType('');
+      setNewBallType('');
       setAddStatus('idle');
       reload();
     } catch {
@@ -498,7 +634,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="courts-editor space-y-4">
       <OwnerSection title="Add a court" icon="plus" description={`Name it — it'll be "Court ${nextNumber}" until you do. The court number is assigned automatically. Add photos & a description after it's created.`}>
         <div className="field p-0! mb-3">
           <label className="lbl">Name (optional)</label>
@@ -524,21 +660,60 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
             ))}
           </div>
         </div>
+        <div className="field p-0! mb-3">
+          <label className="lbl">Court type</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip selected={newIndoor} onClick={() => setNewIndoor(true)}>{newIndoor && <Icon name="check" size={12} />} Indoor</Chip>
+            <Chip selected={!newIndoor} onClick={() => setNewIndoor(false)}>{!newIndoor && <Icon name="check" size={12} />} Outdoor</Chip>
+          </div>
+        </div>
+        {/* ── Court features ── the same physical attributes the per-court editor
+            exposes, so they can be set at creation instead of re-opening the court. */}
+        <div className="field p-0! mb-3">
+          <label className="lbl">Features</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip selected={newHasAircon} onClick={() => setNewHasAircon((v) => !v)}>{newHasAircon && <Icon name="check" size={12} />} Aircon</Chip>
+            <Chip selected={newHighCeiling} onClick={() => setNewHighCeiling((v) => !v)}>{newHighCeiling && <Icon name="check" size={12} />} High ceiling</Chip>
+            <Chip selected={newHasRefreshmentStand} onClick={() => setNewHasRefreshmentStand((v) => !v)}>{newHasRefreshmentStand && <Icon name="check" size={12} />} Refreshment stand</Chip>
+          </div>
+        </div>
+        <div className="field p-0! mb-3">
+          <label className="lbl">Court floor</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {FLOOR_TYPES.map((f) => (
+              <Chip key={f} selected={newFloorType === f} onClick={() => setNewFloorType((v) => (v === f ? '' : f))}>
+                {newFloorType === f && <Icon name="check" size={12} />} {f}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div className="field p-0! mb-3">
+          <label className="lbl">Ball type</label>
+          <div className="flex flex-wrap items-center gap-2">
+            {BALL_TYPES.map((b) => (
+              <Chip key={b} selected={newBallType === b} onClick={() => setNewBallType((v) => (v === b ? '' : b))}>
+                {newBallType === b && <Icon name="check" size={12} />} {b}
+              </Chip>
+            ))}
+          </div>
+        </div>
+        <div className="field p-0! w-40 mb-3">
+          <label className="lbl">Space around court</label>
+          <input className="control" value={newSpaceAroundCourt} maxLength={30} onChange={(e) => setNewSpaceAroundCourt(e.target.value)} placeholder="e.g. 3m" />
+        </div>
         {/* Per-court booking policy: override the venue's approval mode + optional
             turnover gap — settable at creation so owners don't have to create then
             re-open each court to configure it. */}
-        <div className="space-y-3 border-t-[0.5px] border-[var(--hairline)] pt-3 mb-3">
+        <div className="space-y-3 bg-[var(--surface-2)] rounded-xl p-3 mb-3">
           <div className="field p-0!">
             <label className="lbl">Booking approval</label>
-            <Segmented
-              options={[
-                { value: 'inherit', label: 'Venue default' },
-                { value: 'auto', label: 'Instant' },
-                { value: 'manual', label: 'Approve' },
-              ]}
-              value={newApprovalMode}
-              onChange={setNewApprovalMode}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {APPROVAL_MODES.map((m) => (
+                <Chip key={m.value} selected={newApprovalMode === m.value} onClick={() => setNewApprovalMode(m.value)}>
+                  {newApprovalMode === m.value && <Icon name="check" size={12} />} {m.label}
+                </Chip>
+              ))}
+            </div>
             <p className="t-sm text-[var(--muted)] mt-1">
               {newApprovalMode === 'inherit'
                 ? 'Follows your venue’s booking policy.'
@@ -560,9 +735,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
             <p className="t-sm text-[var(--muted)] mt-1">Free time kept after each booking before the next can start.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Chip selected={newIndoor} onClick={() => setNewIndoor((v) => !v)}>{newIndoor && <Icon name="check" size={12} />} Indoor</Chip>
-          <div className="flex-1" />
+        <div className="flex justify-end">
           <button type="button" onClick={onAdd} disabled={addStatus === 'saving'} className="h-12 px-5 rounded-2xl bg-[var(--primary)] text-white font-heading font-semibold text-[15px] disabled:opacity-60">
             {addStatus === 'saving' ? 'Adding…' : 'Add court'}
           </button>

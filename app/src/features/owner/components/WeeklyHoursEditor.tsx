@@ -99,11 +99,11 @@ function pricingIssue(row: Row, i: number): { message: string | null; openBad: b
 }
 
 const timeInputClass =
-  'h-11 rounded-xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-3 text-[16px] text-[var(--ink)] focus:border-[var(--primary)] outline-none';
+  'h-9 rounded-lg border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-2.5 text-[15px] text-[var(--ink)] focus:border-[var(--primary)] outline-none';
 
 // Same time input, but a red border when its value is out of the allowed range.
 const tInput = (bad: boolean) =>
-  `h-11 rounded-xl border-[0.5px] ${bad ? 'border-[var(--coral)]' : 'border-[var(--hairline)]'} bg-[var(--surface)] px-3 text-[16px] text-[var(--ink)] focus:border-[var(--primary)] outline-none`;
+  `h-9 rounded-lg border-[0.5px] ${bad ? 'border-[var(--coral)]' : 'border-[var(--hairline)]'} bg-[var(--surface)] px-2.5 text-[15px] text-[var(--ink)] focus:border-[var(--primary)] outline-none`;
 
 export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
   const [rows, setRows] = useState<Record<number, Row>>({});
@@ -219,9 +219,9 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
         {DAYS.map(({ dow, label }) => {
           const row = get(dow);
           return (
-            <div key={dow} className="py-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="w-24 font-bold text-[14px] text-[var(--ink)]">{label}</span>
+            <div key={dow} className="py-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="w-24 font-bold text-[13px] text-[var(--ink)]">{label}</span>
                 <label className="flex items-center gap-2 text-[13px] text-[var(--muted)]">
                   <input type="checkbox" checked={row.isClosed} onChange={(e) => update(dow, { isClosed: e.target.checked })} className="w-4 h-4 accent-[var(--primary)]" />
                   Closed
@@ -235,9 +235,9 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
                 )}
               </div>
               {!row.isClosed && (
-                <div className="card p-3 mt-2.5">
-                  <div className="t-eyebrow mb-2">Hours pricing</div>
-                  <div className="space-y-2">
+                <div className="card p-2 mt-1.5">
+                  <div className="t-eyebrow mb-1.5">Hours pricing</div>
+                  <div className="space-y-1.5">
                     {row.pricing.map((p, i) => {
                       // Open can't start before the operating open (first row) or
                       // before the previous window ends + 1 min; close can't pass the
@@ -254,27 +254,27 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
                             <input type="time" aria-label={`${label} pricing ${i + 1} open time`} value={p.openTime} min={openMin || undefined} max={row.closeTime || undefined} onChange={(e) => updatePricing(dow, i, { openTime: clampTime(e.target.value, openMin, row.closeTime) })} className={`${tInput(issue.openBad)} flex-1 min-w-0`} />
                             <span className="text-[var(--muted)] shrink-0">to</span>
                             <input type="time" aria-label={`${label} pricing ${i + 1} close time`} value={p.closeTime} min={closeMin || undefined} max={row.closeTime || undefined} onChange={(e) => updatePricing(dow, i, { closeTime: clampTime(e.target.value, closeMin, row.closeTime) })} className={`${tInput(issue.closeBad)} flex-1 min-w-0`} />
-                            <div className="flex items-center gap-1 h-11 rounded-xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-2.5 focus-within:border-[var(--primary)] shrink-0">
-                              <span className="text-[var(--muted)] text-[15px]">₱</span>
-                              <input inputMode="decimal" aria-label={`${label} pricing ${i + 1} rate`} value={p.price} maxLength={7} onChange={(e) => updatePricing(dow, i, { price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Rate" className="w-12 bg-transparent text-[16px] text-[var(--ink)] outline-none" />
+                            <div className="flex items-center gap-1 h-9 rounded-lg border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-2 focus-within:border-[var(--primary)] shrink-0">
+                              <span className="text-[var(--muted)] text-[14px]">₱</span>
+                              <input inputMode="decimal" aria-label={`${label} pricing ${i + 1} rate`} value={p.price} maxLength={7} onChange={(e) => updatePricing(dow, i, { price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Rate" className="w-12 bg-transparent text-[15px] text-[var(--ink)] outline-none" />
                             </div>
                             {/* Row 0 is the base window (mirrors the day's hours) — not
                                 removable; a spacer keeps its columns aligned with the rest. */}
                             {i === 0 ? (
-                              <span className="w-8 shrink-0" aria-hidden="true" />
+                              <span className="w-7 shrink-0" aria-hidden="true" />
                             ) : (
-                              <button type="button" onClick={() => removePricing(dow, i)} aria-label={`Remove ${label} pricing ${i + 1}`} className="w-8 h-11 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] shrink-0">
+                              <button type="button" onClick={() => removePricing(dow, i)} aria-label={`Remove ${label} pricing ${i + 1}`} className="w-7 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] shrink-0">
                                 <Icon name="close" size={16} />
                               </button>
                             )}
                           </div>
-                          {issue.message && <div className="t-sm text-[var(--coral)] font-bold mt-1">{issue.message}</div>}
+                          {issue.message && <div className="t-xs text-[var(--coral)] font-bold mt-1">{issue.message}</div>}
                         </div>
                       );
                     })}
                   </div>
                   {/* Add a new priced window — anchored at the bottom of the card. */}
-                  <button type="button" onClick={() => addPricing(dow)} className="mt-2.5 w-full h-11 rounded-xl bg-[var(--surface-2)] text-[var(--primary)] font-bold text-[13px] inline-flex items-center justify-center gap-1">
+                  <button type="button" onClick={() => addPricing(dow)} className="mt-1.5 w-full h-9 rounded-lg bg-[var(--surface-2)] text-[var(--primary)] font-bold text-[13px] inline-flex items-center justify-center gap-1">
                     <Icon name="plus" size={14} /> Add hour pricing
                   </button>
                 </div>
@@ -283,9 +283,9 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
           );
         })}
       </div>
-      {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold mt-3">Couldn't save hours. Try again.</div>}
-      {hasInvalidPricing && <div className="t-sm text-[var(--coral)] font-bold mt-3">Fix the highlighted hour-pricing times before saving.</div>}
-      <Button fullWidth className="mt-4" onClick={onSave} disabled={status === 'saving' || hasInvalidPricing}>
+      {status === 'error' && <div className="t-xs text-[var(--coral)] font-bold mt-2">Couldn't save hours. Try again.</div>}
+      {hasInvalidPricing && <div className="t-xs text-[var(--coral)] font-bold mt-2">Fix the highlighted hour-pricing times before saving.</div>}
+      <Button fullWidth className="mt-3" onClick={onSave} disabled={status === 'saving' || hasInvalidPricing}>
         {status === 'saving' ? 'Saving…' : status === 'saved' ? <><Icon name="check" size={18} /> Saved</> : 'Save hours'}
       </Button>
       <Toast message="Hours saved" show={status === 'saved'} />

@@ -448,6 +448,10 @@ export interface ApiVenue {
   hasPaddleRental?: boolean | null;
   hasProShop?: boolean | null;
   hasOpenPlay?: boolean | null;
+  /** Per-player price for open-play sessions at this venue (V3). */
+  openPlayPrice?: number | string | null;
+  /** Equipment/paddle rental add-on price (V2). */
+  equipmentRentalPrice?: number | string | null;
   isBeginnerFriendly?: boolean | null;
   googleMapsUrl?: string | null;
   bookingUrl?: string | null;
@@ -484,6 +488,8 @@ export interface ApiCourt {
   isSplittable?: boolean | null;
   /** How many independently-playable units the court splits into (2–4). */
   splitCount?: number | null;
+  /** Per-sub-unit hourly rates (PHP). Each sub-unit can override the court's base rate. */
+  subUnitRates?: Array<{ index: number; hourlyRate: number }> | null;
   /** Per-court hourly rate (PHP). When set, it overrides the venue's flat
    *  priceFrom for bookings on this court; null/undefined → use the venue rate. */
   hourlyRate?: number | null;
@@ -496,6 +502,16 @@ export interface ApiCourt {
   approvalMode?: 'inherit' | 'auto' | 'manual' | null;
   /** Optional turnover/buffer in minutes the court needs between bookings (0 = back-to-back). */
   turnoverMinutes?: number | null;
+  /** ── Court profile ── owner-described physical attributes shown on the court page. */
+  hasAircon?: boolean | null;
+  highCeiling?: boolean | null;
+  /** Run-off / clearance around the court, e.g. "3m". */
+  spaceAroundCourt?: string | null;
+  hasRefreshmentStand?: boolean | null;
+  /** Floor finish, e.g. "Wood" / "Professional". */
+  floorType?: string | null;
+  /** Ball used on this court, e.g. "Indoor" / "Outdoor". */
+  ballType?: string | null;
   /** This court's effective weekly hours (its own, or the inherited venue default),
    *  as a day→"06:00 - 22:00"/"Closed" dict. Present on the venue-detail projection. */
   hours?: Record<string, string> | null;
@@ -583,10 +599,13 @@ export async function getVenue(idOrSlug: string): Promise<ApiVenueDetail> {
 
 export interface VenueAvailability {
   date: string;
-  /** Number of courts the availability covers — the venue pool, or 1 when scoped to a court. */
+  /** Number of sub-units the availability covers — splitCount for splittable courts,
+   *  or the venue pool when unscoped, or 1 for a non-splittable court. */
   capacity: number;
   /** Echoed back when the request was scoped to a single court. */
   courtId?: string;
+  /** Whether the scoped court is splittable (sub-unit slots rather than one). */
+  isSplittable?: boolean;
   /** Free-court count per clock-hour 0–23; a booking can start at `hour` when `free > 0`. */
   hours: { hour: number; free: number }[];
 }
@@ -726,6 +745,12 @@ export interface OwnerVenueDetail extends ApiVenueDetail {
   openPlayPrice?: number | string | null;
   equipmentRentalPrice?: number | string | null;
   priceNotes?: string | null;
+  // Pricing display convention — "VAT inclusive" / "VAT exclusive" / custom.
+  pricingTaxLabel?: string | null;
+  // Cancellation & refund policy — owner-configurable per venue.
+  cancellationWindowHours?: number | null;
+  refundPercent?: number | null;
+  noShowFee?: number | null;
   // curated chip arrays
   bestFor?: string[] | null;
   whatPlayersLike?: string[] | null;
@@ -897,9 +922,16 @@ export interface VenueClaim {
   id?: string;
   _id?: string;
   venueId: string;
-  status: 'pending' | 'approved' | 'rejected';
+  /** Populated by getMyClaims / getClaim (not on submit response). */
+  venueName?: string;
+  venueSlug?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'needs_info';
   proofDescription: string;
   proofDocumentUrls?: string[];
+  claimantLegalName?: string;
+  claimantRole?: string;
+  claimantContact?: string;
+  reviewNotes?: string | null;
   createdAt?: string;
 }
 
@@ -920,6 +952,22 @@ export async function submitVenueClaim(body: {
   claimantContact?: string;
 }): Promise<VenueClaim> {
   return request<VenueClaim>('/api/v1/claims', { method: 'POST', body, auth: true });
+}
+
+/** List the current user's own claims (V6). */
+export async function getMyClaims(): Promise<VenueClaim[]> {
+  const env = await rawRequest<VenueClaim[]>('/api/v1/claims/mine', { auth: true });
+  return env.data ?? [];
+}
+
+/** Get a single claim by id — claimant or admin (V6). */
+export async function getClaim(id: string): Promise<VenueClaim> {
+  return request<VenueClaim>(`/api/v1/claims/${encodeURIComponent(id)}`, { auth: true });
+}
+
+/** Resubmit a claim that is in 'needs_info' state (V6). */
+export async function resubmitClaim(id: string, body: { proofDescription?: string; proofDocumentUrls?: string[] }): Promise<VenueClaim> {
+  return request<VenueClaim>(`/api/v1/claims/${encodeURIComponent(id)}/resubmit`, { method: 'PATCH', body, auth: true });
 }
 
 /* --- Create-form helpers -------------------------------------------------- */
@@ -1116,6 +1164,11 @@ export function uploadVenueMedia(venueId: string, file: File): Promise<UploadedM
  */
 export function uploadCourtMedia(courtId: string, file: File): Promise<UploadedMedia | null> {
   return uploadMedia('court', courtId, file);
+}
+
+/** Upload a proof document for a venue claim (V5). Tagged `ownerType: 'claim'`. */
+export function uploadClaimMedia(file: File): Promise<UploadedMedia | null> {
+  return uploadMedia('claim', '', file);
 }
 
 /** Upload a (cropped) avatar image for the current user; returns its URL. */
@@ -1803,6 +1856,8 @@ export interface ApiBooking {
   venueName?: string | null;
   venueSlug?: string | null;
   courtId?: string | null;
+  /** Half-court sub-unit index (0-based) when this booking occupies a split-court sub-unit. */
+  subUnitIndex?: number | null;
   courtNumber?: string | null;     // populated by the owner bookings endpoint
   courtName?: string | null;       // populated by the owner bookings endpoint
   date?: string | null;            // YYYY-MM-DD
@@ -1819,6 +1874,9 @@ export interface ApiBooking {
   /** Masked card captured at request time (so paying after approval is one tap). */
   savedCard?: { brand?: string | null; last4?: string | null } | null;
   cancellationReason?: string | null;
+  /** Equipment rental add-on (V2). */
+  hasEquipmentRental?: boolean | null;
+  equipmentRentalAmount?: number | null;
   createdAt?: string | null;
   userName?: string | null;        // populated by the owner bookings endpoint only
   userAvatarUrl?: string | null;   // populated by the owner bookings endpoint only
@@ -1827,6 +1885,8 @@ export interface ApiBooking {
 export interface CreateBookingPayload {
   venueId: string;
   courtId?: string;
+  /** Half-court sub-unit index (0-based) when booking a split-court sub-unit. */
+  subUnitIndex?: number;
   date: string;                    // YYYY-MM-DD
   startTime?: string;              // "18:30"
   endTime?: string;
@@ -1836,6 +1896,9 @@ export interface CreateBookingPayload {
   notes?: string;
   /** Masked card stored on an approval-required request, for pay-after-approval. */
   card?: { brand?: string; last4?: string };
+  /** Equipment rental add-on (V2). */
+  hasEquipmentRental?: boolean;
+  equipmentRentalAmount?: number;
 }
 
 /** The current user's bookings, newest first (optionally filtered by status). */

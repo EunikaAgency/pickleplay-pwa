@@ -352,6 +352,9 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
             {bookingDuration(detail) && <DetailRow label="Duration" value={bookingDuration(detail)} />}
             {detail.playerCount ? <DetailRow label="Players" value={`${detail.playerCount}`} /> : null}
             <DetailRow label="Amount" value={money(detail.amount)} />
+            {detail.hasEquipmentRental && (
+              <DetailRow label="Incl. equipment" value={money(detail.equipmentRentalAmount)} />
+            )}
             <DetailRow label="Status" value={bookingPhaseChip(detail).label} />
             {detail.status === 'awaiting_payment' && payByLabel(detail.paymentDueAt) && (
               <DetailRow label="Pay by" value={payByLabel(detail.paymentDueAt)} />

@@ -383,6 +383,10 @@ function CourtDetail({
           <div className="kv">
             <div className="eyebrow">Price</div>
             <div className="val">{price || '—'}</div>
+            {(venue as any).pricingTaxLabel && <div className="t-sm mt-0.5 text-[var(--muted)]">{(venue as any).pricingTaxLabel}</div>}
+            {venue.openPlayPrice != null && Number(venue.openPlayPrice) > 0 && (
+              <div className="t-sm mt-1 font-semibold text-[var(--lime-ink,var(--muted))]">Open play: {sym}{Number(venue.openPlayPrice)}/session</div>
+            )}
           </div>
           <div className="kv">
             <div className="eyebrow">Surface</div>
@@ -637,6 +641,15 @@ function CourtDetail({
                 const courtTodayLabel = courtToday
                   ? (/closed/i.test(courtToday) ? 'Closed today' : `Open today · ${courtToday.replace(' - ', '–')}`)
                   : null;
+                // Owner-set "Court profile" attributes — only the ones that carry a value.
+                const profile = [
+                  c.floorType ? `${c.floorType} floor` : null,
+                  c.ballType ? `${c.ballType} ball` : null,
+                  c.spaceAroundCourt ? `${c.spaceAroundCourt} clearance` : null,
+                  c.hasAircon ? 'Air-conditioned' : null,
+                  c.highCeiling ? 'High ceiling' : null,
+                  c.hasRefreshmentStand ? 'Refreshment stand' : null,
+                ].filter(Boolean) as string[];
                 return (
                   <div
                     key={c.id}
@@ -667,6 +680,29 @@ function CourtDetail({
                     </div>
                     {c.description && (
                       <p className="text-[12.5px] text-[var(--muted)] leading-snug">{c.description}</p>
+                    )}
+                    {profile.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {profile.map((p) => (
+                          <span
+                            key={p}
+                            className="inline-flex items-center gap-1 rounded-full border-[0.5px] border-[var(--hairline)] text-[var(--ink-2)] px-2.5 py-1 text-[11.5px] font-semibold"
+                          >
+                            <Icon name="check" size={11} className="text-[var(--lime-ink)]" />
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {c.isSplittable && (
+                      <div className="text-[12px] font-semibold text-[var(--blue)]">
+                        Splittable into {c.splitCount ?? 2} half-courts
+                        {c.subUnitRates?.length ? (
+                          <span className="text-[var(--muted)]">
+                            {' · '}{c.subUnitRates.map((r) => `Half ${r.index + 1}: ${sym}${r.hourlyRate}/hr`).join(' · ')}
+                          </span>
+                        ) : null}
+                      </div>
                     )}
                     {photos.length > 0 && (
                       <div className="scroll-x flex gap-2 -mx-1 px-1">
@@ -787,6 +823,12 @@ function CourtDetail({
               <div className="flex items-start gap-2 mb-2 text-[12px] font-semibold text-[var(--ink-2)]">
                 <Icon name="shield" size={14} className="mt-0.5 shrink-0 text-[var(--primary)]" />
                 <span>The owner approves first — once approved, pay within {payWindowLabel(venue.bookingPayWindowHours)} to confirm.</span>
+              </div>
+            )}
+            {((venue as any).cancellationWindowHours != null || (venue as any).refundPercent != null) && (
+              <div className="flex items-start gap-2 mb-2 text-[12px] text-[var(--ink-2)]">
+                <Icon name="info" size={14} className="mt-0.5 shrink-0 text-[var(--muted)]" />
+                <span>Free cancellation up to <strong>{(venue as any).cancellationWindowHours ?? 24}h</strong> before — <strong>{(venue as any).refundPercent ?? 100}%</strong> refund.{((venue as any).noShowFee || 0) > 0 ? ` ₱${(venue as any).noShowFee} no-show fee.` : ''}</span>
               </div>
             )}
             <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}>

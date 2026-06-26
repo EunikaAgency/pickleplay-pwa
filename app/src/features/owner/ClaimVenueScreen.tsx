@@ -5,7 +5,7 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { OwnerSection } from './components/OwnerSection';
-import { listVenues, submitVenueClaim, apiImageUrl, entityId, ApiError, type ApiVenue } from '../../shared/lib/api';
+import { listVenues, submitVenueClaim, uploadClaimMedia, getMyClaims, resubmitClaim, apiImageUrl, entityId, ApiError, type ApiVenue, type VenueClaim } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface ClaimVenueScreenProps {
@@ -28,7 +28,7 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
   const [selected, setSelected] = useState<ApiVenue | null>(null);
   const [proof, setProof] = useState('');
   const [links, setLinks] = useState('');
-  // Identity verification fields — collected upfront so the admin review has
+  // Identity verification fields  --  collected upfront so the admin review has
   // everything they need to confirm the person behind the claim.
   const [legalName, setLegalName] = useState('');
   const [claimantRole, setClaimantRole] = useState('');
@@ -36,6 +36,15 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
   const [errMsg, setErrMsg] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  // V5: File upload for proof documents.
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; url: string }>>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // V6: Claim status tracking  --  fetched on mount to show in-progress claims.
+  const [myClaims, setMyClaims] = useState<VenueClaim[]>([]);
+  const [resubmitting, setResubmitting] = useState(false);
 
   // Debounced directory search, scoped to unclaimed listings. All state updates
   // run inside the timer/promise (never synchronously in the effect body), and a
@@ -73,7 +82,8 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
 
   const submit = async () => {
     if (!selected || !proofOk) return;
-    const proofDocumentUrls = links.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 5);
+    const linksFromText = links.split('\n').map((s) => s.trim()).filter(Boolean);
+    const proofDocumentUrls = [...linksFromText, ...uploadedFiles.map((f) => f.url)].slice(0, 5);
     setSubmitStatus('submitting');
     setErrMsg('');
     try {
@@ -92,9 +102,9 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
         err instanceof ApiError && err.status === 409
           ? (err.message || 'This venue already has a pending or approved claim.')
           : err instanceof ApiError && err.status === 403
-            ? 'You don’t have permission to claim venues.'
+            ? 'You don\'t have permission to claim venues.'
             : err instanceof ApiError && err.status === 401
-              ? 'Your session expired — sign in again.'
+              ? 'Your session expired -- sign in again.'
               : 'Could not submit your claim. Try again in a moment.',
       );
     }
@@ -116,6 +126,19 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
   );
 
   if (submitted) {
+    // V6: Refresh claims on mount so the claimant sees their latest status.
+    useEffect(() => {
+      getMyClaims().then((c) => setMyClaims(c)).catch(() => {});
+    }, []);
+    const resubmit = async (claimId: string) => {
+      setResubmitting(true);
+      try {
+        await resubmitClaim(claimId, { proofDescription: proof.trim() || undefined, proofDocumentUrls: uploadedFiles.map((f) => f.url).length ? uploadedFiles.map((f) => f.url) : undefined });
+        const updated = await getMyClaims();
+        setMyClaims(updated);
+      } catch { /* ignore */ }
+      finally { setResubmitting(false); }
+    };
     return (
       <div className="scroll safe-top safe-bottom px-5">
         {header}
@@ -125,9 +148,40 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
           </div>
           <div className="hd-2 mb-1.5">Claim submitted</div>
           <p className="t-sm max-w-[320px] mx-auto mb-6">
-            Thanks! Our team will review your claim for <strong className="text-[var(--ink)]">{selected?.displayName}</strong>.
-            You’ll be notified once it’s approved, and the venue will appear in your console.
+            Thanks! Our team will review your claim for <strong className="text-[var(--ink)]">{selected?.displayName}</strong>. You'll be notified once it's approved.
           </p>
+          {myClaims.length > 0 && (
+            <div className="mb-6 space-y-3 text-left">
+              {myClaims.map((c) => (
+                <div key={c.id} className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[14px] font-bold text-[var(--ink)]">{c.venueName || 'Unknown venue'}</div>
+                      <div className={`text-[12px] font-semibold mt-0.5 ${
+                        c.status === 'approved' ? 'text-[var(--lime-ink)]' :
+                        c.status === 'rejected' ? 'text-[var(--coral)]' :
+                        c.status === 'needs_info' ? 'text-[var(--blue)]' :
+                        'text-[var(--amber)]'}`}>
+                        {c.status === 'pending' ? 'Pending review' :
+                         c.status === 'approved' ? 'Approved' :
+                         c.status === 'rejected' ? 'Rejected' :
+                         'More info needed'}
+                      </div>
+                    </div>
+                  </div>
+                  {c.status === 'needs_info' && c.reviewNotes && (
+                    <div className="mt-2 text-[12px] font-semibold text-[var(--muted)]">Reviewer: {c.reviewNotes}</div>
+                  )}
+                  {c.status === 'needs_info' && (
+                    <button type="button" className="chip mt-2 text-[13px] font-semibold" disabled={resubmitting}
+                      onClick={() => resubmit(c.id!)}>
+                      {resubmitting ? 'Resubmitting...' : 'Resubmit with more info'}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <Button fullWidth onClick={onBack}>Back to your venues</Button>
         </div>
       </div>
@@ -140,7 +194,7 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
       <div className="scroll safe-top safe-bottom px-5">
         {header}
         <div className="space-y-4">
-          <OwnerSection title="You’re claiming" icon="storefront">
+          <OwnerSection title="You're claiming" icon="storefront">
             <div className="flex items-center gap-3">
               <div className="h-14 w-14 rounded-lg bg-[var(--surface-2)] overflow-hidden shrink-0 flex items-center justify-center text-[var(--muted)]">
                 {img ? <img src={img} alt="" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} /> : <Icon name="storefront" size={22} />}
@@ -153,7 +207,7 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
             <button type="button" onClick={() => setSelected(null)} className="mt-3 t-sm font-semibold text-[var(--primary)]">Choose a different venue</button>
           </OwnerSection>
 
-          <OwnerSection title="Proof of ownership" icon="verified" description="Tell us who you are and how you’re connected to this venue so our team can verify your claim.">
+          <OwnerSection title="Proof of ownership" icon="verified" description="Tell us who you are and how you're connected to this venue so our team can verify your claim.">
             <div className="field p-0! mb-3">
               <label className="lbl">Your legal name</label>
               <input
@@ -193,7 +247,7 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
                 value={proof}
                 maxLength={2000}
                 onChange={(e) => { setProof(e.target.value); if (submitStatus === 'error') setSubmitStatus('idle'); }}
-                placeholder="e.g. I’m the owner/manager. Our official Facebook page, business permit, or a staff email can confirm it."
+                placeholder="e.g. I'm the owner/manager. Our official Facebook page, business permit, or a staff email can confirm it."
               />
               <div className="t-sm mt-1">{proofOk ? `${proof.trim().length} characters` : 'At least 10 characters.'}</div>
             </div>
@@ -206,13 +260,41 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
                 onChange={(e) => setLinks(e.target.value)}
                 placeholder={'One link per line (max 5)\nhttps://facebook.com/your-venue\nhttps://your-site.com'}
               />
-              <div className="t-sm mt-1">Official page, website, or a document link — anything that confirms ownership.</div>
+              <div className="t-sm mt-1">Official page, website, or a document link  --  anything that confirms ownership.</div>
+            </div>
+            {/* V5: File upload  --  scanned IDs, business permits, etc. */}
+            <div className="field p-0!">
+              <label className="lbl">Upload documents</label>
+              <input type="file" ref={fileRef} accept="image/*" capture="environment"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploading(true);
+                  try {
+                    const result = await uploadClaimMedia(file);
+                    if (result?.url) setUploadedFiles((prev) => [...prev, { name: file.name, url: result.url! }]);
+                  } catch { /* silently ignore */ }
+                  finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+                }}
+                style={{ display: 'none' }} />
+              <button type="button" className="chip w-fit mt-1" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <Icon name="add_a_photo" size={16} /> {uploading ? 'Uploading...' : 'Add photo'}
+              </button>
+              {uploadedFiles.map((f, i) => (
+                <div key={i} className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-[var(--ink)]">
+                  <Icon name="check_circle" size={14} className="text-[var(--lime-ink)] shrink-0" />
+                  <span className="truncate">{f.name}</span>
+                  <button type="button" className="text-[var(--coral)] ml-auto shrink-0" onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))}>
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+              ))}
             </div>
           </OwnerSection>
 
           {errMsg && <div className="t-sm text-[var(--coral)] font-bold text-center">{errMsg}</div>}
           <Button type="button" fullWidth onClick={submit} disabled={!proofOk || submitStatus === 'submitting'}>
-            {submitStatus === 'submitting' ? 'Submitting…' : 'Submit claim'}
+            {submitStatus === 'submitting' ? 'Submitting...' : 'Submit claim'}
           </Button>
         </div>
       </div>
@@ -226,7 +308,7 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
 
       <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-[var(--primary-tint)] px-4 py-3">
         <Icon name="help" size={18} className="shrink-0 text-[var(--primary)] mt-0.5" />
-        <p className="text-[13px] text-[var(--ink-2)]">Claiming links an existing directory listing to your account. Our team reviews each claim before it’s approved — no duplicate listing needed.</p>
+        <p className="text-[13px] text-[var(--ink-2)]">Claiming links an existing directory listing to your account. Our team reviews each claim before it's approved  --  no duplicate listing needed.</p>
       </div>
 
       <div className="field p-0! mb-4">
@@ -246,13 +328,13 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
       {searchStatus === 'loading' ? (
         <LoadingSkeleton variant="card" count={4} />
       ) : searchStatus === 'error' ? (
-        <EmptyState icon="error" title="Couldn’t load venues" description="We couldn’t reach the directory. Check your connection and try again." />
+        <EmptyState icon="error" title="Couldn't load venues" description="We couldn't reach the directory. Check your connection and try again." />
       ) : results.length === 0 ? (
         <EmptyState
           icon="search"
           title={query.trim() ? 'No match found' : 'No claimable venues'}
           description={query.trim()
-            ? 'No unclaimed listing matches that. Try another name or area — or create it instead.'
+            ? 'No unclaimed listing matches that. Try another name or area  --  or create it instead.'
             : 'There are no unclaimed directory listings to claim right now. If yours isn’t here, create it instead.'}
         />
       ) : (

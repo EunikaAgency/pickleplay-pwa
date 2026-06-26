@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
+import { Chip } from '../../shared/components/ui/Chip';
 import { ProgressBar } from '../../shared/components/ui/ProgressBar';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
@@ -10,8 +11,8 @@ import { CourtPicker } from '../../shared/components/ui/CourtPicker';
 import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicker';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings, listCourts, getVenueAvailabilityRange,
-  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard,
+  listAllVenues, createBooking, checkout, getSettings, listCourts, getVenueAvailabilityRange, getHours,
+  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type OwnerHourEntry,
 } from '../../shared/lib/api';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
@@ -78,6 +79,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   // with no defined courts fall back to a venue-level booking (no picker).
   const [courts, setCourts] = useState<ApiCourt[]>([]);
   const [courtId, setCourtId] = useState('');
+  // Half-court / split-court sub-unit: undefined = whole court, 0..N-1 = sub-unit.
+  const [subUnitIndex, setSubUnitIndex] = useState<number | undefined>(undefined);
+  // Equipment rental add-on (V2).
+  const [includeEquipment, setIncludeEquipment] = useState(false);
+
+  // VenueHour pricing blocks — fetched when the venue is picked, so the rate shown
+  // to the booker reflects the actual time-block price (not just the flat venue rate).
+  const [venueHours, setVenueHours] = useState<OwnerHourEntry[]>([]);
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -120,6 +129,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
     return () => { alive = false; };
   }, [selectedId]);
 
+  // Reset sub-unit pick when changing courts (default to whole-court).
+  useEffect(() => { setSubUnitIndex(undefined); }, [courtId]);
+
+  // Load the venue's hourly pricing blocks so the rate reflects time-based pricing.
+  useEffect(() => {
+    if (!selectedId) { setVenueHours([]); return; }
+    let alive = true;
+    getHours(selectedId)
+      .then((rows) => { if (alive) setVenueHours(rows); })
+      .catch(() => { if (alive) setVenueHours([]); });
+    return () => { alive = false; };
+  }, [selectedId]);
+
   // Load the payment mode once, before checkout, so we can pre-fill the demo card.
   useEffect(() => {
     let alive = true;
@@ -138,9 +160,34 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   // Price is tied to the chosen court when it has its own rate; otherwise the
   // venue's flat priceFrom applies (and when there are no courts at all).
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
-  const rate = selectedCourt?.hourlyRate != null ? selectedCourt.hourlyRate : (selected?.priceFrom ?? 0);
+  // Time-based pricing: look up the VenueHour block that covers the chosen start
+  // time on this day of week; if it has a `price`, use that instead of the flat
+  // court/venue rate. Falls back to the court rate, then the venue rate, then 0.
+  const blockRate = useMemo(() => {
+    if (!date || !startTime) return null;
+    const dow = new Date(date + 'T00:00:00').getDay(); // 0=Sun
+    const startMin = parseInt(startTime.split(':')[0] || '0', 10) * 60 + parseInt(startTime.split(':')[1] || '0', 10);
+    const matching = venueHours.find((h) => {
+      if (h.dayOfWeek !== dow || h.isClosed || h.price == null) return false;
+      const openMin = h.openTime ? parseInt(h.openTime.split(':')[0] || '0', 10) * 60 + parseInt(h.openTime.split(':')[1] || '0', 10) : 0;
+      const closeMin = h.closeTime ? parseInt(h.closeTime.split(':')[0] || '0', 10) * 60 + parseInt(h.closeTime.split(':')[1] || '0', 10) : 1440;
+      return startMin >= openMin && startMin < closeMin;
+    });
+    return matching?.price ?? null;
+  }, [date, startTime, venueHours]);
+  // Sub-unit rate: when a sub-unit is selected on a splittable court, look up
+  // that sub-unit's specific rate; fall through to court rate → venue rate → 0.
+  const subUnitRate = useMemo(() => {
+    if (subUnitIndex == null || !selectedCourt?.subUnitRates?.length) return null;
+    const found = selectedCourt.subUnitRates.find((r) => r.index === subUnitIndex);
+    return found?.hourlyRate ?? null;
+  }, [subUnitIndex, selectedCourt]);
+  const baseRate = subUnitRate ?? (selectedCourt?.hourlyRate != null ? selectedCourt.hourlyRate : (selected?.priceFrom ?? 0));
+  const rate = blockRate ?? baseRate;
   const hours = hoursBetween(startTime, endTime);
-  const total = Math.round(rate * hours * 100) / 100;
+  const equipAmount = includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0;
+  const courtTotal = Math.round(rate * hours * 100) / 100;
+  const total = Math.round((courtTotal + equipAmount) * 100) / 100;
   const isTest = settings?.paymentTestMode ?? false;
   // Approval venues use request-to-book: capture the card now, pay after the
   // owner approves (the last step "requests" instead of charging). A chosen court
@@ -228,12 +275,16 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       const booking = await createBooking({
         venueId: selected.id,
         courtId: courtId || undefined,
+        subUnitIndex,
         date,
         startTime,
         endTime,
         amount: total,
         // Save the card on the request so paying after approval is one tap.
         card: requiresApproval ? maskCard(card) : undefined,
+        // Equipment rental add-on (V2).
+        hasEquipmentRental: includeEquipment,
+        equipmentRentalAmount: includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0,
       });
       // Request-to-book: no payment now — the owner approves, then the player
       // pays within the venue's window. Land on the "requested" confirmation.
@@ -435,6 +486,23 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
             </div>
           )}
 
+          {/* Split-court sub-unit picker — shown when the chosen court can be divided into half-courts. */}
+          {selectedCourt?.isSplittable && (
+            <div className="field">
+              <div className="lbl">Court unit</div>
+              <div className="flex gap-1.5 flex-wrap">
+                <Chip selected={subUnitIndex == null} onClick={() => setSubUnitIndex(undefined)}>
+                  {subUnitIndex == null && <Icon name="check" size={12} />} Full court
+                </Chip>
+                {Array.from({ length: selectedCourt.splitCount ?? 2 }, (_, i) => (
+                  <Chip key={i} selected={subUnitIndex === i} onClick={() => setSubUnitIndex(i)}>
+                    {subUnitIndex === i && <Icon name="check" size={12} />} Half {i + 1}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="field">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -448,6 +516,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
             </div>
             {slotUnavailable && (
               <div className="mt-2 t-sm text-[var(--coral)] font-bold">That time is fully booked — pick a free slot.</div>
+            )}
+            {/* V3: open-play passive note. */}
+            {selected?.openPlayPrice != null && Number(selected.openPlayPrice) > 0 && (
+              <div className="mt-3 px-3 py-2 rounded-xl bg-[var(--surface-2)] text-[12px] font-semibold text-[var(--muted)]">
+                <Icon name="groups" size={14} className="inline mr-1 align-text-bottom" />
+                Open play available: {money(Number(selected.openPlayPrice), currency)}/player/session. Check the Open Play tab for scheduled sessions.
+              </div>
             )}
           </div>
 
@@ -478,18 +553,48 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
 
       {/* ─── Step 1: review ───────────────────────────────────── */}
       {step === 1 && selected && (
+        <>
+        {/* Equipment rental add-on toggle (V2). */}
+        {((selected as any)?.equipmentRentalPrice > 0) && (
+          <div className="field">
+            <label className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] cursor-pointer">
+              <input type="checkbox" checked={includeEquipment} onChange={(e) => setIncludeEquipment(e.target.checked)} className="w-4 h-4 accent-[var(--primary)]" />
+              <div className="flex-1">
+                <div className="text-[14px] font-semibold text-[var(--ink)]">Add equipment rental</div>
+                <div className="text-[12px] font-semibold text-[var(--muted)]">Paddles &amp; balls — +{money(Number((selected as any).equipmentRentalPrice), currency)}</div>
+              </div>
+            </label>
+          </div>
+        )}
         <div className="field">
           <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
             <ReviewRow label="Court" value={selected.displayName} sub={locationLine(selected) || undefined} />
+            {subUnitIndex != null && <ReviewRow label="Unit" value={`Half ${subUnitIndex + 1}`} />}
             <ReviewRow label="Date" value={prettyDate(date)} />
             <ReviewRow label="Time" value={`${to12h(startTime)} – ${to12h(endTime)}`} sub={`${hours} hr`} />
-            <ReviewRow label="Rate" value={`${money(rate, currency)}/hr`} />
+            <ReviewRow label="Rate" value={`${money(rate, currency)}/hr`} sub={blockRate ? 'Time-block rate' : subUnitIndex != null ? 'Sub-unit rate' : undefined} />
+            {(selected as any)?.pricingTaxLabel && <div className="px-4 py-2 t-sm text-[var(--muted)] border-t-[0.5px] border-[var(--hairline)]">{(selected as any).pricingTaxLabel}</div>}
+            {((selected as any)?.cancellationWindowHours != null || (selected as any)?.refundPercent != null) && (
+              <div className="px-4 py-2.5 t-sm border-t-[0.5px] border-[var(--hairline)] flex items-start gap-2">
+                <Icon name="info" size={14} className="text-[var(--muted)] mt-0.5 shrink-0" />
+                <span>Free cancellation up to <strong>{(selected as any).cancellationWindowHours ?? 24}h</strong> before — <strong>{(selected as any).refundPercent ?? 100}%</strong> refund.</span>
+              </div>
+            )}
+            {equipAmount > 0 && (
+              <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--muted)]">
+                  <Icon name="sports_tennis" size={14} /> Equipment rental
+                </div>
+                <div className="font-heading font-semibold text-[15px]">{money(equipAmount, currency)}</div>
+              </div>
+            )}
             <div className="flex items-center justify-between px-4 py-4 bg-[var(--ink)] text-white">
               <div className="font-heading font-semibold text-[15px]">Total</div>
               <div className="font-heading font-bold text-[22px]">{money(total, currency)}</div>
             </div>
           </div>
         </div>
+        </>
       )}
 
       {/* ─── Step 2: checkout ─────────────────────────────────── */}

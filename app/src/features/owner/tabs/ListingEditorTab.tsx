@@ -120,7 +120,12 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
     openPlayPrice: str(venue.openPlayPrice),
     equipmentRentalPrice: str(venue.equipmentRentalPrice),
     priceNotes: str(venue.priceNotes),
+    pricingTaxLabel: str(venue.pricingTaxLabel ?? 'VAT inclusive'),
   });
+  // Cancellation & refund policy — owner-configurable per venue.
+  const [cancelWindow, setCancelWindow] = useState(str(venue.cancellationWindowHours ?? 24));
+  const [refundPct, setRefundPct] = useState(str(venue.refundPercent ?? 100));
+  const [noShowFee, setNoShowFee] = useState(str(venue.noShowFee ?? 0));
   const [amenities, setAmenities] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(AMENITIES.map((a) => [a.key as string, Boolean(venue[a.key])] as [string, boolean])),
   );
@@ -215,6 +220,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         bookingSlug: customSlug.trim(),
         requireBookingApproval: requireApproval,
         bookingPayWindowHours: Number(payWindow) || 24,
+        cancellationWindowHours: Number(cancelWindow) || 24,
+        refundPercent: Number(refundPct) ?? 100,
+        noShowFee: Number(noShowFee) || 0,
       });
       setStatus('saved');
       reload();
@@ -355,6 +363,47 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         <div className="field p-0! mt-3.5">
           <label className="lbl">Pricing notes</label>
           <textarea className="control" rows={2} value={form.priceNotes} onChange={(e) => set('priceNotes')(e.target.value)} />
+        </div>
+        <div className="field p-0! mt-3.5">
+          <FormField
+            label="Tax label"
+            hint='Shown next to prices: e.g. "VAT inclusive", "VAT exclusive", or "Tax included".'
+            value={form.pricingTaxLabel}
+            maxLength={40}
+            onChange={(e) => set('pricingTaxLabel')(e.target.value)}
+          />
+        </div>
+      </OwnerSection>
+
+      <OwnerSection title="Cancellation & refund policy" icon="close" description="Set the rules players see before booking. The platform enforces these automatically.">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField
+            label="Cancel window (hrs)"
+            hint="Hours before booking start where free cancellation is allowed."
+            value={cancelWindow}
+            inputMode="numeric"
+            onChange={(e) => { setCancelWindow(e.target.value.replace(/[^\d]/g, '')); setStatus('idle'); }}
+          />
+          <FormField
+            label="Refund %"
+            hint="Percent refunded if cancelled within the window."
+            value={refundPct}
+            inputMode="numeric"
+            onChange={(e) => { setRefundPct(e.target.value.replace(/[^\d]/g, '')); setStatus('idle'); }}
+          />
+        </div>
+        <div className="field p-0! mt-3">
+          <FormField
+            label="No-show fee (₱)"
+            hint="Extra charge on top of lost payment when a player doesn't show. 0 = no extra fee."
+            value={noShowFee}
+            inputMode="decimal"
+            onChange={(e) => { setNoShowFee(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }}
+          />
+          <p className="t-sm text-[var(--muted)] mt-2">
+            Current policy: players who cancel <strong className="text-[var(--ink)]">{cancelWindow || '24'} hours</strong> ahead get <strong className="text-[var(--ink)]">{refundPct || '100'}%</strong> back.
+            {(Number(noShowFee) || 0) > 0 ? <> No-shows are charged an extra <strong className="text-[var(--ink)]">₱{Number(noShowFee).toLocaleString()}</strong>.</> : ' No-shows forfeit their payment.'}
+          </p>
         </div>
       </OwnerSection>
 
