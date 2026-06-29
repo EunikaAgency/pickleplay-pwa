@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 import {
-  listOwnerVenues, getVenueAnalytics, getVenueBookings, listGames, getReviews, entityId,
+  listManagedVenues, getVenueAnalytics, getVenueBookings, listGames, getReviews, entityId,
   type ApiVenue, type ApiBooking, type ApiGame, type OwnerAnalytics, type OwnerReview,
 } from '../../../shared/lib/api';
 import { todayYMD } from '../../bookings/bookingDisplay';
@@ -38,6 +38,10 @@ const byDateTime = (a: ApiBooking, b: ApiBooking) => {
 export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: boolean; withReviews?: boolean; withAnalytics?: boolean } = {}) {
   const { withBookings = false, withGames = false, withReviews = false, withAnalytics = true } = opts;
   const currentUser = useAuthStore((s) => s.user);
+  // The signed-in user's id. We fetch the venues they MANAGE (owned, or — for a
+  // staff sub-account — every venue their creating owner owns; the server
+  // resolves this via effectiveOwnerId from managedByUserId), not just ones they
+  // personally own, so staff see their owner's venues here.
   const ownerId = currentUser?.id ?? '';
   const canAnalytics = withAnalytics && userHasPermission(currentUser, 'owner.analytics.view');
 
@@ -51,7 +55,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
   useEffect(() => {
     if (!ownerId) return;
     let cancelled = false;
-    listOwnerVenues(ownerId)
+    listManagedVenues(ownerId)
       .then((v) => { if (!cancelled) { setVenues(v); setStatus('ready'); } })
       .catch(() => { if (!cancelled) setStatus('error'); });
     return () => { cancelled = true; };
@@ -59,7 +63,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
 
   const retry = useCallback(() => {
     setStatus('loading');
-    listOwnerVenues(ownerId)
+    listManagedVenues(ownerId)
       .then((v) => { setVenues(v); setStatus('ready'); })
       .catch(() => setStatus('error'));
   }, [ownerId]);

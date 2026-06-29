@@ -216,7 +216,14 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className={`t-sm truncate ${c.unread > 0 ? 'font-bold text-[var(--ink)]' : ''}`}>
-                        {c.lastBody || 'No messages yet'}
+                        {c.contextType === 'venue' ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Icon name="tennis" size={12} />
+                            {c.lastBody || 'Venue inquiry'}
+                          </span>
+                        ) : (
+                          c.lastBody || 'No messages yet'
+                        )}
                       </div>
                       {c.unread > 0 && (
                         <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--coral)] text-white text-[11px] font-extrabold leading-5 text-center">

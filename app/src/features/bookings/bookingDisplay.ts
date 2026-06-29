@@ -166,6 +166,28 @@ export function statusChip(status: string | null | undefined): StatusChip {
   }
 }
 
+/** Human label for a payment option ('deposit' → "Deposit", …). */
+export function paymentOptionLabel(opt?: string | null): string {
+  switch (opt) {
+    case 'deposit': return 'Deposit';
+    case 'pay_at_venue': return 'Pay at venue';
+    case 'full': return 'Paid in full';
+    default: return '';
+  }
+}
+
+/** Human label for an owner-entered booking's source channel. */
+export function bookingSourceLabel(src?: string | null): string {
+  switch (src) {
+    case 'walk_in': return 'Walk-in';
+    case 'phone': return 'Phone';
+    case 'messenger': return 'Messenger';
+    case 'instagram': return 'Instagram';
+    case 'other': return 'Other';
+    default: return '';
+  }
+}
+
 /** Whether a booking can still be cancelled: not already cancelled, and not in
  *  the past. A completed booking (confirmed/paid with a start time that has
  *  passed) can't be cancelled — mirrors the Upcoming-vs-Completed split in

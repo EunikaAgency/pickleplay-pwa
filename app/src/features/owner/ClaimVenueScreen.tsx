@@ -67,6 +67,14 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
     return () => clearTimeout(t);
   }, [query]);
 
+  // V6: Once the claim is submitted, refresh the claimant's claims so the
+  // success screen shows their latest status. Hoisted to the top level (gated on
+  // `submitted`) so the hook order stays stable across the search/success steps.
+  useEffect(() => {
+    if (!submitted) return;
+    getMyClaims().then((c) => setMyClaims(c)).catch(() => {});
+  }, [submitted]);
+
   const pick = (v: ApiVenue) => {
     setSelected(v);
     setProof('');
@@ -126,10 +134,6 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
   );
 
   if (submitted) {
-    // V6: Refresh claims on mount so the claimant sees their latest status.
-    useEffect(() => {
-      getMyClaims().then((c) => setMyClaims(c)).catch(() => {});
-    }, []);
     const resubmit = async (claimId: string) => {
       setResubmitting(true);
       try {

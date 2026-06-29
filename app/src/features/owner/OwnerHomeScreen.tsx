@@ -40,6 +40,9 @@ const CalendarIco = ({ size = 24 }: IcoProps) => (
 const Plus = ({ size = 24 }: IcoProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
 );
+const FrontDeskIco = ({ size = 24 }: IcoProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2h8" /><rect x="9" y="2" width="6" height="4" rx="1" /><rect x="4" y="6" width="16" height="16" rx="2" /><path d="M8 11h8M8 15h6" /></svg>
+);
 const CardIco = ({ size = 18 }: IcoProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
 );
@@ -50,8 +53,8 @@ const CourtIco = ({ size = 14 }: IcoProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /></svg>
 );
 
-const QA_ICONS: Record<string, ReactNode> = { storefront: <Storefront />, calendar: <CalendarIco />, plus: <Plus /> };
-const QA_TONES = ['ohome-qa-lime', 'ohome-qa-blue', 'ohome-qa-neutral'];
+const QA_ICONS: Record<string, ReactNode> = { storefront: <Storefront />, calendar: <CalendarIco />, plus: <Plus />, frontdesk: <FrontDeskIco /> };
+const QA_TONES = ['ohome-qa-lime', 'ohome-qa-blue', 'ohome-qa-neutral', 'ohome-qa-neutral'];
 
 // Inline pending-booking row with Confirm / Decline (owner home only).
 function PendingRow({ row, onDone, notify }: { row: OwnerBookingRow; onDone: (id: string) => void; notify: () => void }) {
@@ -142,6 +145,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
 
   const quick: { icon: string; label: string; onPress: () => void }[] = [
     { icon: 'storefront', label: 'My venues', onPress: () => onNavigate('owner-venues') },
+    ...(canBookings ? [{ icon: 'frontdesk', label: 'Front desk', onPress: () => onNavigate('owner-front-desk', {}) }] : []),
     ...(canBookings ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
     ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
-import { ROLE_META } from '../../shared/lib/roleDisplay';
+import { ROLE_META, primaryRole } from '../../shared/lib/roleDisplay';
 import { getInitials } from '../../shared/lib/initials';
 import { money } from '../bookings/bookingDisplay';
 import { useTheme, type ThemePreference } from '../../shared/hooks/useTheme';
@@ -30,9 +30,11 @@ const CalendarIco = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill=
 const TrendUp = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>);
 const Plus = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>);
 const UserIco = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>);
+const UsersIco = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>);
 const SettingsIco = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>);
 const LogOut = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>);
 const Trophy = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>);
+const Shield = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>);
 
 type Row = { key: string; icon: ReactNode; label: string; sub: string; onClick: () => void; badge?: number; danger?: boolean };
 
@@ -63,22 +65,30 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   const unread = useNotificationStore((s) => s.unread);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
   const canCreate = userHasPermission(user, 'owner.venues.create');
+  const canStaff = userHasPermission(user, 'owner.staff.manage');
   const canNotifs = userHasPermission(user, 'owner.notifications.view');
   const isOrganizer = userHasPermission(user, 'organizer.access');
+  const canModerate = userHasPermission(user, 'admin.moderation.manage');
   const {
     canAnalytics, venues, combined, structural, statsReady, monthBookings, pending,
   } = useOwnerDashboard({ withBookings: canBookings });
 
   const name = user?.displayName ?? 'Owner';
+  // Staff land on this same console (they hold owner.access) — show their real
+  // role on the badge, and label them "Venue staff" rather than "Venue owner".
+  const role = user ? primaryRole(user) : 'owner';
+  const roleMeta = ROLE_META[role] ?? ROLE_META.owner;
+  const roleNoun = role === 'staff' ? 'Venue staff' : 'Venue owner';
   const pendingCount = canBookings ? pending.length : combined.pending;
   const venueLine = venues.length > 0
-    ? `Venue owner · ${venues.length} venue${venues.length === 1 ? '' : 's'}`
-    : 'Venue owner';
+    ? `${roleNoun} · ${venues.length} venue${venues.length === 1 ? '' : 's'}`
+    : roleNoun;
 
   const manageRows: Row[] = [
     { key: 'venues', icon: <Storefront />, label: 'My venues', sub: `${venues.length} listed · ${structural.courts} courts`, onClick: () => onNavigate('owner-venues') },
     ...(canBookings ? [{ key: 'bookings', icon: <CalendarIco />, label: 'Bookings', sub: 'Confirm, decline & review', onClick: () => onNavigate('owner-bookings', {}), badge: pendingCount } as Row] : []),
     ...(canAnalytics ? [{ key: 'insights', icon: <TrendUp />, label: 'Insights', sub: 'Revenue & occupancy trends', onClick: () => onNavigate('owner-insights') } as Row] : []),
+    ...(canStaff ? [{ key: 'staff', icon: <UsersIco />, label: 'Staff', sub: 'Accounts that manage your venues, bookings & clubs', onClick: () => onNavigate('owner-staff') } as Row] : []),
     ...(canCreate ? [{ key: 'new-venue', icon: <Plus />, label: 'New venue', sub: 'List another court', onClick: () => onNavigate('owner-new-venue') } as Row] : []),
   ];
 
@@ -86,6 +96,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     { key: 'edit', icon: <UserIco />, label: 'Edit Profile', sub: 'Name, photo & bio', onClick: () => onNavigate('edit-profile') },
     ...(canNotifs ? [{ key: 'notifs', icon: <Bell size={18} />, label: 'Notifications', sub: 'Booking & venue alerts', onClick: () => onNavigate('owner-notifications'), badge: unread } as Row] : []),
     ...(isOrganizer ? [{ key: 'organize', icon: <Trophy />, label: 'Organizer console', sub: 'Tournaments & open play', onClick: () => onNavigate('organizer-hub') } as Row] : []),
+    ...(canModerate ? [{ key: 'claims', icon: <Shield />, label: 'Venue claims', sub: 'Review ownership claims', onClick: () => onNavigate('admin-claims') } as Row] : []),
     { key: 'settings', icon: <SettingsIco />, label: 'Settings', sub: 'Privacy & preferences', onClick: () => onNavigate('settings') },
   ];
 
@@ -125,8 +136,8 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
             </div>
           </div>
           <h1 className="profile-name">{name}</h1>
-          <div className="profile-role-pill" style={{ color: ROLE_META.owner.color, background: `${ROLE_META.owner.color}1A` }}>
-            {ROLE_META.owner.label}
+          <div className="profile-role-pill" style={{ color: roleMeta.color, background: `${roleMeta.color}1A` }}>
+            {roleMeta.label}
           </div>
           <p className="profile-tagline" style={{ fontStyle: 'normal' }}>{user?.bio || venueLine}</p>
           <div className="stats-row">

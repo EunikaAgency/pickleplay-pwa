@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
-import { Chip } from '../../../shared/components/ui/Chip';
 import { FormSelect } from '../../../shared/components/forms/FormSelect';
 import { OwnerSection } from '../components/OwnerSection';
 import { Avatar } from '../../../shared/components/ui/Avatar';

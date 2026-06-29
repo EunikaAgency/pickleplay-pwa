@@ -36,6 +36,7 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [contextType, setContextType] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const refreshBadge = useNotificationStore((s) => s.refresh);
@@ -49,6 +50,7 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
         if (!alive) return;
         setOther(conv.otherParticipant);
         setMessages(conv.messages);
+        if (conv.contextType) setContextType(conv.contextType);
         // Opening the thread marked it read server-side; refresh the bell badge.
         void refreshBadge();
       })
@@ -123,7 +125,7 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
       <ScreenHeader
         onBack={onBack}
         title={displayName}
-        eyebrow="Message"
+        eyebrow={contextType === 'venue' ? `Re: ${displayName}` : 'Message'}
         className="border-b border-[rgba(0,0,0,0.12)] bg-[var(--bg)] shadow-[0_4px_14px_rgba(0,0,0,0.12)] z-10"
       />
 

@@ -21,6 +21,8 @@ export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps
   const { canAnalytics, venues, status, retry, combined, statsReady, structural, glanceFor } = useOwnerDashboard();
   const currentUser = useAuthStore((s) => s.user);
   const canClaim = userHasPermission(currentUser, 'owner.venues.claim');
+  // Staff manage the owner's venues but can't list new ones — hide create/claim.
+  const canCreate = userHasPermission(currentUser, 'owner.venues.create');
 
   const header = (
     <ScreenHeader
@@ -40,14 +42,16 @@ export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps
               <Icon name="verified" size={15} /> Claim
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => onNavigate('owner-new-venue')}
-            aria-label="Create a new venue"
-            className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-bold text-[13px] active:scale-95 transition-transform"
-          >
-            <Icon name="plus" size={16} /> Create venue
-          </button>
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => onNavigate('owner-new-venue')}
+              aria-label="Create a new venue"
+              className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-bold text-[13px] active:scale-95 transition-transform"
+            >
+              <Icon name="plus" size={16} /> Create venue
+            </button>
+          )}
         </div>
       }
     />
@@ -71,8 +75,10 @@ export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps
       <EmptyState
         icon="paddle"
         title="No venues yet"
-        description="You don't own any venues on PickleBallers yet. Create one to start managing your listing, hours, courts and reviews."
-        action={{ label: 'Create a new venue', onPress: () => onNavigate('owner-new-venue') }}
+        description={canCreate
+          ? "You don't own any venues on PickleBallers yet. Create one to start managing your listing, hours, courts and reviews."
+          : "There are no venues to manage yet. Once the owner lists a venue, it'll show up here."}
+        action={canCreate ? { label: 'Create a new venue', onPress: () => onNavigate('owner-new-venue') } : undefined}
       />
     </div>
   );

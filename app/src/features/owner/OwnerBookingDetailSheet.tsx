@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { updateBookingStatus, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
-import { money, prettyDate, to12h, hoursBetween, bookingDuration, statusChip } from '../bookings/bookingDisplay';
+import { money, prettyDate, to12h, hoursBetween, bookingDuration, statusChip, paymentOptionLabel, bookingSourceLabel } from '../bookings/bookingDisplay';
 
 // Read-friendly label for a payment method code ("gcash" → "GCash", etc.).
 function paymentLabel(method?: string | null): string {
   if (!method) return '';
-  const map: Record<string, string> = { card: 'Card', gcash: 'GCash', cash: 'Cash', paymaya: 'Maya', maya: 'Maya' };
+  const map: Record<string, string> = { card: 'Card', gcash: 'GCash', cash: 'Cash', paymaya: 'Maya', maya: 'Maya', pay_at_venue: 'Pay at venue', test_card: 'Test card', transfer: 'Bank transfer' };
   return map[method.toLowerCase()] ?? method.charAt(0).toUpperCase() + method.slice(1);
 }
 
@@ -70,6 +70,11 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
 
   const b = booking;
   const chip = b ? statusChip(b.status) : null;
+  // Owner-entered bookings: a 'manual' off-platform reservation carries an
+  // off-platform customer (not a platform user); a 'blocked' slot has no customer.
+  const isManual = b?.bookingType === 'manual';
+  const isBlocked = b?.bookingType === 'blocked';
+  const personName = isBlocked ? 'Blocked slot' : (isManual ? (b?.customerName || 'Walk-in') : (b?.userName || 'Player'));
   const courtLabel = b ? (b.courtName || (b.courtNumber ? `Court ${b.courtNumber}` : null)) : null;
   const hours = b ? hoursBetween(b.startTime || '', b.endTime || '') : 0;
   const rate = b && hours > 0 && typeof b.amount === 'number' ? Math.round(b.amount / hours) : null;
@@ -108,18 +113,21 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
     >
       {b && (
         <div className="obook">
-          {/* Player */}
+          {/* Player / customer / block */}
           <div className="obook-card obook-player">
-            <Avatar src={b.userAvatarUrl} name={b.userName || 'Player'} size={48} className="shrink-0" />
+            <Avatar src={isManual || isBlocked ? undefined : b.userAvatarUrl} name={personName} size={48} className="shrink-0" />
             <div className="min-w-0">
-              <div className="obook-eyebrow">Player</div>
-              <div className="obook-name truncate">{b.userName || 'Player'}</div>
-              {typeof b.playerCount === 'number' && b.playerCount > 0 && (
+              <div className="obook-eyebrow">{isBlocked ? 'Unavailable' : isManual ? 'Customer' : 'Player'}</div>
+              <div className="obook-name truncate">{personName}</div>
+              {isManual && b.customerPhone && <div className="obook-sub">{b.customerPhone}</div>}
+              {isManual && b.bookingSource && <div className="obook-sub">via {bookingSourceLabel(b.bookingSource)}</div>}
+              {isBlocked && b.blockReason && <div className="obook-sub">{b.blockReason}</div>}
+              {!isManual && !isBlocked && typeof b.playerCount === 'number' && b.playerCount > 0 && (
                 <div className="obook-sub">{b.playerCount} {b.playerCount === 1 ? 'player' : 'players'}</div>
               )}
             </div>
             {chip && (
-              <span className={`obook-chip ${chip.className}`}>{chip.label}</span>
+              <span className={`obook-chip ${chip.className}`}>{isManual ? 'Manual' : isBlocked ? 'Blocked' : chip.label}</span>
             )}
           </div>
 
@@ -128,13 +136,21 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
             <Row label="Court" value={courtLabel || b.venueName || '—'} sub={courtLabel && b.venueName ? b.venueName : undefined} />
             <Row label="Date" value={prettyDate(b.date) || '—'} />
             {timeLabel && <Row label="Time" value={timeLabel} sub={bookingDuration(b) || undefined} />}
-            {rate != null && <Row label="Rate" value={`${money(rate)}/hr`} sub={hours > 0 ? `${bookingDuration(b)}` : undefined} />}
+            {!isBlocked && rate != null && <Row label="Rate" value={`${money(rate)}/hr`} sub={hours > 0 ? `${bookingDuration(b)}` : undefined} />}
+            {!isBlocked && b.serviceFeeAmount != null && b.serviceFeeAmount > 0 && (
+              <>
+                <Row label="Subtotal" value={money(b.amount)} />
+                <Row label="Service fee" value={money(b.serviceFeeAmount)} />
+              </>
+            )}
+            {!isBlocked && b.paymentOption && <Row label="Payment plan" value={paymentOptionLabel(b.paymentOption)} />}
+            {!isBlocked && b.balanceDue != null && b.balanceDue > 0 && <Row label="Due at venue" value={money(b.balanceDue)} />}
             {b.paymentMethod && <Row label="Payment" value={paymentLabel(b.paymentMethod)} />}
             {booked && <Row label="Booked on" value={booked} />}
             {b.status === 'cancelled' && b.cancellationReason && <Row label="Cancelled" value={b.cancellationReason} />}
             <div className="obook-total">
-              <div className="obook-total-label">Total</div>
-              <div className="obook-total-val tabular-nums">{money(b.amount)}</div>
+              <div className="obook-total-label">{isBlocked ? 'Charge' : 'Total'}</div>
+              <div className="obook-total-val tabular-nums">{isBlocked ? 'No charge' : money((b.amount ?? 0) + (b.serviceFeeAmount ?? 0))}</div>
             </div>
           </div>
 

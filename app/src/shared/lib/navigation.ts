@@ -45,8 +45,10 @@ export type Screen =
   | { id: 'owner-new-venue' }
   | { id: 'claim-venue' }
   | { id: 'owner-bookings'; params: { status?: string } }
+  | { id: 'owner-front-desk'; params?: { venueId?: string } }
   | { id: 'owner-insights' }
   | { id: 'owner-notifications' }
+  | { id: 'owner-staff' }
   | { id: 'organizer-hub' }
   | { id: 'organizer-tournaments' }
   | { id: 'organizer-tournament'; params: { id: string } }
@@ -56,7 +58,10 @@ export type Screen =
   | { id: 'organizer-session'; params: { id: string } }
   | { id: 'organizer-rosters' }
   | { id: 'organizer-roster'; params: { id: string } }
-  | { id: 'organizer-venue-requests'; params: { tournamentId?: string } };
+  | { id: 'organizer-venue-requests'; params: { tournamentId?: string } }
+  | { id: 'admin-claims' }
+  // Open-play (V3): a courtless per-session drop-in booking at a venue.
+  | { id: 'open-play-book'; params: { venueId: string } };
 
 export type ScreenId = Screen['id'];
 
@@ -118,8 +123,10 @@ export function pathFromScreen(screen: Screen): string {
     case 'owner-new-venue': return '/owner/venues/new';
     case 'claim-venue': return '/owner/venues/claim';
     case 'owner-bookings': return `/owner/bookings${q({ status: screen.params?.status })}`;
+    case 'owner-front-desk': return `/owner/front-desk${q({ venue: screen.params?.venueId })}`;
     case 'owner-insights': return '/owner/insights';
     case 'owner-notifications': return '/owner/notifications';
+    case 'owner-staff': return '/owner/staff';
     case 'organizer-hub': return '/organizer';
     case 'organizer-tournaments': return '/organizer/tournaments';
     case 'organizer-tournament-new': return '/organizer/tournaments/new';
@@ -130,6 +137,8 @@ export function pathFromScreen(screen: Screen): string {
     case 'organizer-rosters': return '/organizer/rosters';
     case 'organizer-roster': return `/organizer/rosters/${screen.params.id}`;
     case 'organizer-venue-requests': return `/organizer/venue-requests${q({ tournamentId: screen.params?.tournamentId })}`;
+    case 'admin-claims': return '/admin/claims';
+    case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
   }
   return '/';
 }
@@ -157,6 +166,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
       return { id: 'nearby', params: lobby ? { intent: lobby } : undefined };
     case 'venues':
+      if (b && c === 'open-play') return { id: 'open-play-book', params: { venueId: b } };
       if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
       return { id: 'nearby' };
     case 'games':
@@ -200,8 +210,10 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
         return { id: 'owner-venue', params: { id: c, tab: opt(sp.get('tab')) } };
       }
       if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : {} };
+      if (b === 'front-desk') return { id: 'owner-front-desk', params: opt(sp.get('venue')) ? { venueId: sp.get('venue')! } : {} };
       if (b === 'insights') return { id: 'owner-insights' };
       if (b === 'notifications') return { id: 'owner-notifications' };
+      if (b === 'staff') return { id: 'owner-staff' };
       return { id: 'home' };
     case 'organizer':
       if (!b) return { id: 'organizer-hub' };
@@ -216,6 +228,9 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'rosters') return c ? { id: 'organizer-roster', params: { id: c } } : { id: 'organizer-rosters' };
       if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : {} };
       return { id: 'organizer-hub' };
+    case 'admin':
+      if (b === 'claims') return { id: 'admin-claims' };
+      return { id: 'home' };
     default: return { id: 'home' };
   }
 }
@@ -227,6 +242,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'court-details') return { id: 'nearby' };
   if (id === 'booking-refund') return { id: 'my-bookings' };
   if (id === 'claim-venue') return { id: 'owner-venues' };
+  if (id === 'owner-staff') return { id: 'profile' };
   if (id === 'chat') return { id: 'messages' };
   if (id === 'game-chat') return { id: 'games' };
   if (id === 'organizer-tournament' || id === 'organizer-tournament-new') return { id: 'organizer-tournaments' };
@@ -234,6 +250,8 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'organizer-session') return { id: 'organizer-open-play' };
   if (id === 'organizer-roster') return { id: 'organizer-rosters' };
   if (id.startsWith('organizer-')) return { id: 'organizer-hub' };
+  if (id === 'admin-claims') return { id: 'profile' };
+  if (id === 'open-play-book') return { id: 'nearby' };
   return { id: 'home' };
 }
 

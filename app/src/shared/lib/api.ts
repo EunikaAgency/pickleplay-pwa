@@ -280,12 +280,17 @@ export async function login(email: string, password: string): Promise<AppUser> {
   return user;
 }
 
+/** Roles a user can self-select at sign-up (admin/moderator are admin-assigned only). */
+export type RegisterRole = 'player' | 'owner' | 'organizer' | 'coach';
+
 export interface RegisterPayload {
   email: string;
   password: string;
   displayName: string;
   firstName?: string;
   lastName?: string;
+  /** Defaults to `player` server-side when omitted. */
+  role?: RegisterRole;
 }
 
 /** Create a new account (role defaults to player), then sign in: stores tokens + returns the user. */
@@ -411,6 +416,9 @@ export async function logout(): Promise<void> {
 const VENUES_PREFIX = '/api/v1/venues';
 
 /** A venue as returned by the list endpoint (many fields are null in real data). */
+/** A checkout payment option a venue can offer. */
+export type PaymentOption = 'full' | 'deposit' | 'pay_at_venue';
+
 export interface ApiVenue {
   id: string;
   slug: string;
@@ -435,6 +443,22 @@ export interface ApiVenue {
   requireBookingApproval?: boolean | null;
   /** Hours the player has to pay once the owner approves (request-to-book). */
   bookingPayWindowHours?: number | null;
+  /** Payment options offered at checkout (subset of full/deposit/pay_at_venue). Empty/unset → full only. */
+  paymentOptions?: PaymentOption[] | null;
+  /** Deposit size as a % of the total, when 'deposit' is offered. */
+  depositPercent?: number | null;
+  /** Day-based pricing: flat weekend (Sat/Sun) hourly rate override (₱). */
+  weekendPrice?: number | string | null;
+  /** Day-based pricing: flat holiday hourly rate override (₱), on `holidayDates`. */
+  holidayPrice?: number | string | null;
+  /** Dates (YYYY-MM-DD) treated as holidays for holiday pricing. */
+  holidayDates?: string[] | null;
+  /** Member pricing: % discount off the resolved rate for venue members (0 = none). */
+  memberDiscountPercent?: number | null;
+  /** Per-player surcharge: ₱ added per extra player beyond `perPlayerFeeThreshold`. */
+  perPlayerFee?: number | string | null;
+  /** Players included in the base rate before the per-player fee kicks in (default 1). */
+  perPlayerFeeThreshold?: number | null;
   googleRating?: number | null;
   googleReviewCount?: number | null;
   amenityChips?: string[] | null;
@@ -531,6 +555,12 @@ export interface ApiVenueDetail extends ApiVenue {
    * claims. `bestFor` = use-case; `whatPlayersLike` = amenities/quality.
    */
   curatedHighlights?: { bestFor: string[]; whatPlayersLike: string[] } | null;
+  /** Whether the signed-in player is a member of this venue (member pricing applies). */
+  viewerIsMember?: boolean | null;
+  /** The membership plan id the signed-in player joined here (null if not a member). */
+  viewerMembershipTier?: string | null;
+  /** ISO datetime when the player's membership expires (null if perpetual or not a member). */
+  viewerMembershipExpiresAt?: string | null;
 }
 
 export interface ListVenuesParams {
@@ -572,7 +602,10 @@ function toQuery(params: Record<string, unknown>): string {
 
 /** List venues (the app's "Courts") — one page. Pass `cursor` to fetch the next. */
 export async function listVenues(params: ListVenuesParams = {}): Promise<VenuePage> {
-  const env = await rawRequest<ApiVenue[]>(`${VENUES_PREFIX}${toQuery({ pageSize: 20, ...params })}`);
+  // Send the token when present (safe for guests — the endpoint is optionalAuth).
+  // The `managedByUserId` filter is self-only and 403s without it, so the owner/
+  // staff console (which fetches its managed venues here) needs the header.
+  const env = await rawRequest<ApiVenue[]>(`${VENUES_PREFIX}${toQuery({ pageSize: 20, ...params })}`, { auth: true });
   return { items: env.data ?? [], cursor: env.meta?.cursor ?? null };
 }
 
@@ -708,7 +741,6 @@ export async function checkOutOfVenue(idOrSlug?: string): Promise<{ checkedIn: b
 // real served paths are /api/v1/venues/courts/:id and /api/v1/venues/faqs/:id.
 const COURTS_PREFIX = '/api/v1/venues/courts';
 const FAQS_PREFIX = '/api/v1/venues/faqs';
-const STAFF_PREFIX = '/api/v1/venues/staff';
 const CLOSURES_PREFIX = '/api/v1/holiday-closures';
 const REVIEWS_PREFIX = '/api/v1/reviews';
 
@@ -917,6 +949,134 @@ export async function removeVenueStaff(staffId: string): Promise<{ message: stri
   return request<{ message: string }>(`${VENUES_PREFIX}/staff/${encodeURIComponent(staffId)}`, { method: 'DELETE', auth: true });
 }
 
+/* ─── Venue members (member pricing) ──────────────────────────── */
+
+export interface VenueMember {
+  id: string;
+  userId: string;
+  tier: string | null;
+  status: string;
+  createdAt: string;
+  displayName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+}
+
+/** List the venue's members (owner/staff). Member bookings get the member rate. */
+export async function listVenueMembers(venueId: string): Promise<VenueMember[]> {
+  const res = await request<VenueMember[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/members`, { auth: true });
+  return res ?? [];
+}
+
+/** Add a player as a venue member (owner/staff). */
+export async function addVenueMember(venueId: string, userId: string, tier?: string): Promise<VenueMember> {
+  return request<VenueMember>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/members`, { method: 'POST', body: { userId, tier }, auth: true });
+}
+
+/** Remove a venue member (owner/staff). */
+export async function removeVenueMember(venueId: string, userId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE', auth: true });
+}
+
+/** Self-service: the signed-in player joins (or switches plans on) this venue's
+ *  membership. Recorded as a VenueMember, so it shows in the owner's Members tab
+ *  and member pricing applies. `planId` is the chosen membership plan (optional). */
+export async function joinVenueMembership(venueId: string, planId?: string): Promise<VenueMember> {
+  return request<VenueMember>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/membership`, { method: 'POST', body: { planId }, auth: true });
+}
+
+/** Self-service: the signed-in player cancels their own membership at this venue. */
+export async function leaveVenueMembership(venueId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/membership`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Slot price overrides (manual surge) ─────────────────────── */
+
+export interface SlotPriceOverride {
+  id: string;
+  venueId: string;
+  courtId: string | null;
+  date: string;        // YYYY-MM-DD
+  startTime: string;   // "HH:MM"
+  endTime: string;     // "HH:MM"
+  price: number;       // absolute ₱/hr for the window
+  note?: string | null;
+  createdAt?: string;
+}
+
+/** Active slot price overrides for a venue (optionally one date). Public read. */
+export async function listSlotOverrides(venueId: string, date?: string): Promise<SlotPriceOverride[]> {
+  const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+  const res = await request<SlotPriceOverride[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/slot-overrides${qs}`, { auth: true });
+  return res ?? [];
+}
+
+/** Set a surge / discount rate for a date+time window (owner/staff). */
+export async function createSlotOverride(
+  venueId: string,
+  body: { courtId?: string; date: string; startTime: string; endTime: string; price: number; note?: string },
+): Promise<SlotPriceOverride> {
+  return request<SlotPriceOverride>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/slot-overrides`, { method: 'POST', body, auth: true });
+}
+
+/** Remove a slot price override (owner/staff). */
+export async function deleteSlotOverride(overrideId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${VENUES_PREFIX}/slot-overrides/${encodeURIComponent(overrideId)}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Staff accounts (owner sub-accounts) ─────────────────────────
+ * Org-level staff: an owner creates a login that manages ALL of their venues,
+ * bookings, and clubs (scoped server-side by parentOwnerUserId). Distinct from
+ * the per-venue VenueStaff above — this creates a brand-new account. Owner+admin
+ * only (owner.staff.manage). */
+
+const STAFF_PREFIX = '/api/v1/staff';
+
+export interface StaffAccount {
+  id: string;
+  email: string;
+  displayName: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+  parentOwnerUserId: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+}
+
+export interface CreateStaffInput {
+  email: string;
+  password: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/** List the staff accounts the current owner has created. */
+export async function listStaffAccounts(): Promise<StaffAccount[]> {
+  const res = await request<StaffAccount[]>(STAFF_PREFIX, { auth: true });
+  return res ?? [];
+}
+
+/** Create a new staff account under the current owner. */
+export async function createStaffAccount(input: CreateStaffInput): Promise<StaffAccount> {
+  return request<StaffAccount>(STAFF_PREFIX, { method: 'POST', body: input, auth: true });
+}
+
+/** Update a staff account — rename, reset password, or activate/deactivate. */
+export async function updateStaffAccount(
+  staffId: string,
+  patch: { displayName?: string; firstName?: string; lastName?: string; password?: string; isActive?: boolean },
+): Promise<StaffAccount> {
+  return request<StaffAccount>(`${STAFF_PREFIX}/${encodeURIComponent(staffId)}`, { method: 'PATCH', body: patch, auth: true });
+}
+
+/** Remove a staff account outright (the login is deleted). */
+export async function removeStaffAccount(staffId: string): Promise<{ message: string; id: string }> {
+  return request<{ message: string; id: string }>(`${STAFF_PREFIX}/${encodeURIComponent(staffId)}`, { method: 'DELETE', auth: true });
+}
+
 /** A submitted venue-ownership claim (status starts 'pending' → admin reviews). */
 export interface VenueClaim {
   id?: string;
@@ -925,6 +1085,8 @@ export interface VenueClaim {
   /** Populated by getMyClaims / getClaim (not on submit response). */
   venueName?: string;
   venueSlug?: string;
+  /** Populated by listClaims (admin) — the claimant's display name. */
+  claimantName?: string;
   status: 'pending' | 'approved' | 'rejected' | 'needs_info';
   proofDescription: string;
   proofDocumentUrls?: string[];
@@ -968,6 +1130,25 @@ export async function getClaim(id: string): Promise<VenueClaim> {
 /** Resubmit a claim that is in 'needs_info' state (V6). */
 export async function resubmitClaim(id: string, body: { proofDescription?: string; proofDocumentUrls?: string[] }): Promise<VenueClaim> {
   return request<VenueClaim>(`/api/v1/claims/${encodeURIComponent(id)}/resubmit`, { method: 'PATCH', body, auth: true });
+}
+
+/**
+ * Admin: list submitted venue-ownership claims, newest first (server caps at 50).
+ * Optional `status` filter; omit for all. Gated by `admin.moderation.manage`.
+ */
+export async function listClaims(status?: VenueClaim['status']): Promise<VenueClaim[]> {
+  const env = await rawRequest<VenueClaim[]>(`/api/v1/claims${toQuery({ status })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/**
+ * Admin: review a pending claim — `approved` links the venue to the claimant,
+ * `rejected` declines it, `needs_info` asks the claimant to resubmit. The server
+ * notifies the claimant on every outcome and 409s if the claim isn't pending.
+ * Gated by `admin.moderation.manage`.
+ */
+export async function reviewClaim(id: string, body: { status: 'approved' | 'rejected' | 'needs_info'; reviewNotes?: string }): Promise<VenueClaim> {
+  return request<VenueClaim>(`/api/v1/claims/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
 }
 
 /* --- Create-form helpers -------------------------------------------------- */
@@ -1525,6 +1706,9 @@ export interface ApiConversationSummary {
   lastSenderId?: string | null;
   lastAt?: string | null;
   unread: number;
+  /** When the conversation was started from a venue page. */
+  contextType?: string | null;
+  contextId?: string | null;
 }
 
 export interface ApiChatMessage {
@@ -1539,6 +1723,17 @@ export interface ApiConversation {
   id: string;
   otherParticipant: ApiChatParticipant | null;
   messages: ApiChatMessage[];
+  /** When the conversation was started from a venue page. */
+  contextType?: string | null;
+  contextId?: string | null;
+}
+
+export interface ApiVenueConversation {
+  id: string;
+  otherParticipant: ApiChatParticipant | null;
+  contextType: string;
+  contextId: string;
+  contextLabel: string | null;
 }
 
 /** The current user's conversation threads, newest first. */
@@ -1547,11 +1742,22 @@ export async function listConversations(): Promise<ApiConversationSummary[]> {
   return env.data ?? [];
 }
 
-/** Find or create a 1:1 thread with another user. */
-export async function startConversation(userId: string): Promise<{ id: string; otherParticipant: ApiChatParticipant | null }> {
+/** Find or create a 1:1 thread with another user. Optionally scoped to a venue
+ *  so the "Message venue" button always lands on the same thread. */
+export async function startConversation(
+  userId: string,
+  context?: { contextType: string; contextId: string },
+): Promise<{ id: string; otherParticipant: ApiChatParticipant | null }> {
   return request<{ id: string; otherParticipant: ApiChatParticipant | null }>(
-    `${MESSAGES_PREFIX}/conversations`, { method: 'POST', body: { userId }, auth: true },
+    `${MESSAGES_PREFIX}/conversations`, { method: 'POST', body: { userId, ...context }, auth: true },
   );
+}
+
+/** Find-or-create the venue-scoped conversation between the current user and the
+ *  venue owner. Returns the conversation id + venue name — the "Message venue"
+ *  button navigates to the existing chat screen with this id. */
+export async function getVenueConversation(venueId: string): Promise<ApiVenueConversation> {
+  return request<ApiVenueConversation>(`${MESSAGES_PREFIX}/venue/${encodeURIComponent(venueId)}`, { auth: true });
 }
 
 /** Load a thread (other participant + messages); marks it read. */
@@ -1856,6 +2062,8 @@ export interface ApiBooking {
   venueName?: string | null;
   venueSlug?: string | null;
   courtId?: string | null;
+  /** 'open_play' = a courtless per-session drop-in (V3); 'game' = a game's court hold; else a normal court booking. */
+  bookingType?: string | null;
   /** Half-court sub-unit index (0-based) when this booking occupies a split-court sub-unit. */
   subUnitIndex?: number | null;
   courtNumber?: string | null;     // populated by the owner bookings endpoint
@@ -1877,13 +2085,28 @@ export interface ApiBooking {
   /** Equipment rental add-on (V2). */
   hasEquipmentRental?: boolean | null;
   equipmentRentalAmount?: number | null;
+  /** Free-text note (player request or front-desk remark). */
+  notes?: string | null;
+  /** Payment breakdown: 7% platform fee, how the player paid, what's owed at the venue. */
+  serviceFeeAmount?: number | null;
+  paymentOption?: PaymentOption | null;
+  amountPaid?: number | null;
+  balanceDue?: number | null;
+  /** Owner-entered bookings: off-platform customer + source, or a slot-block reason. */
+  customerName?: string | null;
+  customerPhone?: string | null;
+  bookingSource?: string | null;   // 'walk_in' | 'phone' | 'messenger' | 'instagram' | 'other'
+  blockReason?: string | null;
   createdAt?: string | null;
+  userId?: string | null;          // the booker's id — populated by the owner bookings endpoint only
   userName?: string | null;        // populated by the owner bookings endpoint only
   userAvatarUrl?: string | null;   // populated by the owner bookings endpoint only
 }
 
 export interface CreateBookingPayload {
   venueId: string;
+  /** 'open_play' = courtless per-session drop-in (V3, priced from openPlayPrice). Omit for a normal court booking. */
+  bookingType?: string;
   courtId?: string;
   /** Half-court sub-unit index (0-based) when booking a split-court sub-unit. */
   subUnitIndex?: number;
@@ -1899,6 +2122,11 @@ export interface CreateBookingPayload {
   /** Equipment rental add-on (V2). */
   hasEquipmentRental?: boolean;
   equipmentRentalAmount?: number;
+  /** Payment breakdown (deposit / full / pay-at-venue + 7% service fee). */
+  serviceFeeAmount?: number;
+  paymentOption?: PaymentOption;
+  amountPaid?: number;
+  balanceDue?: number;
 }
 
 /** The current user's bookings, newest first (optionally filtered by status). */
@@ -1948,6 +2176,86 @@ export async function updateBookingStatus(
   body: { status: BookingStatus; cancellationReason?: string },
 ): Promise<ApiBooking> {
   return request<ApiBooking>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/bookings/${encodeURIComponent(bookingId)}`, { method: 'PATCH', body, auth: true });
+}
+
+/** Owner/staff-entered booking: a 'manual' off-platform reservation (phone /
+ *  Messenger / IG / walk-in) or a 'blocked' slot. POST /venues/:id/bookings —
+ *  gated server-side to the owner or any active staff (front-desk included). */
+export interface VenueBookingPayload {
+  bookingType: 'manual' | 'blocked';
+  courtId?: string;
+  subUnitIndex?: number;
+  date: string;                    // YYYY-MM-DD
+  startTime: string;               // "18:00"
+  endTime: string;
+  // Manual booking fields.
+  customerName?: string;
+  customerPhone?: string;
+  bookingSource?: 'walk_in' | 'phone' | 'messenger' | 'instagram' | 'other';
+  amount?: number;
+  paymentMethod?: string;
+  notes?: string;
+  // Slot-block field.
+  blockReason?: string;
+}
+
+export async function createVenueBooking(venueId: string, body: VenueBookingPayload): Promise<ApiBooking> {
+  return request<ApiBooking>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/bookings`, { method: 'POST', body, auth: true });
+}
+
+/* ─── Recurring bookings (weekly regulars / leagues) ──────────────── */
+
+export interface RecurringBookingPayload {
+  bookingType?: 'manual' | 'blocked';
+  courtId?: string;
+  subUnitIndex?: number;
+  startDate: string;     // YYYY-MM-DD (first occurrence)
+  startTime: string;     // "18:00"
+  endTime: string;
+  weeks: number;         // 2–52
+  weeklyInterval?: number; // every N weeks (default 1)
+  customerName?: string;
+  customerPhone?: string;
+  bookingSource?: 'walk_in' | 'phone' | 'messenger' | 'instagram' | 'other';
+  amount?: number;
+  notes?: string;
+  blockReason?: string;
+}
+
+export interface RecurringSeries {
+  recurringId: string;
+  bookingType: 'manual' | 'blocked';
+  courtId: string | null;
+  courtName: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  amount?: number;
+  dates: string[];
+  firstDate: string;
+  lastDate: string;
+  dayOfWeek: number | null;
+  upcomingCount: number;
+  totalCount: number;
+}
+
+/** Create a recurring weekly booking series (owner/staff). Returns created + skipped weeks. */
+export async function createRecurringBooking(
+  venueId: string,
+  body: RecurringBookingPayload,
+): Promise<{ recurringId: string; created: ApiBooking[]; skipped: { date: string; reason: string }[]; createdCount: number; skippedCount: number }> {
+  return request(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/recurring-bookings`, { method: 'POST', body, auth: true });
+}
+
+/** List the venue's recurring series (owner/staff). */
+export async function listRecurringBookings(venueId: string): Promise<RecurringSeries[]> {
+  const res = await request<RecurringSeries[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/recurring-bookings`, { auth: true });
+  return res ?? [];
+}
+
+/** Cancel a recurring series' future instances (owner/staff). */
+export async function cancelRecurringBooking(recurringId: string): Promise<{ cancelled: number }> {
+  return request(`${VENUES_PREFIX}/recurring-bookings/${encodeURIComponent(recurringId)}`, { method: 'DELETE', auth: true });
 }
 
 export interface OwnerAnalytics {
@@ -2019,10 +2327,66 @@ export async function listPayments(params: { status?: string } = {}): Promise<Ap
   return env.data ?? [];
 }
 
+/* ─── Demand data capture (searches, views, booking lifecycle) ── */
+
+export interface DemandEventPayload {
+  type: 'search' | 'venue_view' | 'booking_attempt' | 'booking_completed' | 'booking_cancelled' | 'empty_slot' | 'checkout_started' | 'checkout_abandoned' | 'booking_link_shared';
+  venueId?: string;
+  courtId?: string;
+  date?: string;        // YYYY-MM-DD
+  startHour?: string | number;  // "HH:00" or hour number
+  query?: string;
+  meta?: Record<string, unknown>;
+}
+
+/** Fire-and-forget demand signal (best-effort; always 202). OptionalAuth — guests
+ *  browsing the directory are captured too. */
+export async function recordDemandEvent(payload: DemandEventPayload): Promise<void> {
+  try {
+    await rawRequest('/api/v1/demand/events', {
+      method: 'POST',
+      body: payload as unknown as Record<string, unknown>,
+      // Send the token when present so the server can attach the actor; guests
+      // are also captured (the endpoint is optionalAuth).
+      auth: true,
+    });
+  } catch {
+    // Fire-and-forget — never surface errors to the user.
+  }
+}
+
+/** Booking-funnel leakage report for a venue (owner/manager). */
+export interface VenueLeakageReport {
+  days: number;
+  funnel: {
+    views: number;
+    uniqueViewers: number;
+    bookingStarts: number;
+    checkoutStarts: number;
+    checkoutAbandoned: number;
+    onlineBookings: number;
+    manualBookings: number;
+    linksShared: number;
+  };
+  leakageRate: number | null;
+  checkoutDropoff: number | null;
+  daily: { date: string; views: number; starts: number; checkouts: number; online: number }[];
+}
+
+/** Owner/manager leakage report for a venue over the last N days. */
+export async function getVenueLeakageReport(venueId: string, days?: number): Promise<VenueLeakageReport> {
+  return request<VenueLeakageReport>(
+    `/api/v1/demand/venues/${encodeURIComponent(venueId)}/leakage${toQuery(days != null ? { days: String(days) } : {})}`,
+    { auth: true },
+  );
+}
+
 /* ─── App settings (payment mode) ───────────────────────────── */
 
 export interface AppSettings {
   paymentTestMode: boolean;
+  /** Platform service-fee % charged to the player on top of the venue price (default 7). */
+  serviceFeePercent: number;
   testCard: { number: string; expiry: string; cvc: string };
 }
 

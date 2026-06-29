@@ -48,6 +48,11 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
 
   const st = booking.status;
   const courtLabel = booking.courtName || (booking.courtNumber ? `Court ${booking.courtNumber}` : null);
+  // Owner-entered bookings: a manual reservation shows its off-platform customer
+  // (not the staff `userName`); a blocked slot has no customer.
+  const isManual = booking.bookingType === 'manual';
+  const isBlocked = booking.bookingType === 'blocked';
+  const personName = isBlocked ? 'Blocked slot' : isManual ? (booking.customerName || 'Walk-in') : (booking.userName || 'Player');
   const openable = !!onOpen;
   return (
     <div
@@ -59,9 +64,16 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2.5 min-w-0">
-          <Avatar src={booking.userAvatarUrl} name={booking.userName || 'Player'} size={38} className="shrink-0" />
+          <Avatar src={isManual || isBlocked ? undefined : booking.userAvatarUrl} name={personName} size={38} className="shrink-0" />
           <div className="min-w-0">
-            <div className="font-semibold text-[15px] text-[var(--ink)] truncate">{booking.userName || 'Player'}</div>
+            <div className="font-semibold text-[15px] text-[var(--ink)] truncate">
+              {personName}
+              {(isManual || isBlocked) && (
+                <span className="ml-1.5 align-middle text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)]">
+                  {isBlocked ? 'BLOCKED' : 'MANUAL'}
+                </span>
+              )}
+            </div>
             {showVenue && booking.venueName && (
               <div className="text-[12px] font-bold text-[var(--primary)] truncate">
                 {booking.venueName}{courtLabel ? ` · ${courtLabel}` : ''}
@@ -76,7 +88,7 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="font-semibold text-[15px] text-[var(--ink)] tabular-nums">{money(booking.amount)}</div>
+          <div className="font-semibold text-[15px] text-[var(--ink)] tabular-nums">{isBlocked ? '—' : money(booking.amount)}</div>
           <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.className}`}>{chip.label}</span>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Icon } from './Icon';
 
 /**
  * The app's single on-brand dropdown. One look everywhere — the rounded menu
@@ -23,6 +24,10 @@ export interface DropdownOption {
   value: string;
   label: string;
   disabled?: boolean;
+  /** Optional leading icon name (see `Icon`); shown in the trigger + menu rows. */
+  icon?: string;
+  /** Optional icon colour; ignored on the active (blue) menu row so it stays white. */
+  iconColor?: string;
 }
 
 interface DropdownProps {
@@ -151,10 +156,23 @@ export function Dropdown({
         className={variant === 'pill' ? pillTrigger : fieldTrigger}
       >
         {variant === 'pill' ? (
-          <>{selected?.label ?? placeholder}{caret}</>
+          <>
+            <span className="inline-flex items-center gap-1.5">
+              {selected?.icon && (
+                <Icon name={selected.icon} size={15} className="shrink-0" style={selected.iconColor ? { color: selected.iconColor } : undefined} />
+              )}
+              {selected?.label ?? placeholder}
+            </span>
+            {caret}
+          </>
         ) : (
           <>
-            <span className={selected ? '' : 'text-[var(--muted)]'}>{selected?.label ?? placeholder}</span>
+            <span className={`flex items-center gap-2 min-w-0 ${selected ? '' : 'text-[var(--muted)]'}`}>
+              {selected?.icon && (
+                <Icon name={selected.icon} size={18} className="shrink-0" style={selected.iconColor ? { color: selected.iconColor } : undefined} />
+              )}
+              <span className="truncate">{selected?.label ?? placeholder}</span>
+            </span>
             <span className="text-[var(--muted)]">{caret}</span>
           </>
         )}
@@ -192,7 +210,17 @@ export function Dropdown({
                         : 'text-[var(--ink)] hover:bg-[var(--surface-2)]'
                   }`}
                 >
-                  <span>{opt.label}</span>
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    {opt.icon && (
+                      <Icon
+                        name={opt.icon}
+                        size={18}
+                        className="shrink-0"
+                        style={!active && opt.iconColor ? { color: opt.iconColor } : undefined}
+                      />
+                    )}
+                    <span className="truncate">{opt.label}</span>
+                  </span>
                   {active && (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <polyline points="20 6 9 17 4 12" />

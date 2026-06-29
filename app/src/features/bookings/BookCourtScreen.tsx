@@ -12,8 +12,11 @@ import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicke
 import type { Navigate } from '../../shared/lib/navigation';
 import {
   listAllVenues, createBooking, checkout, getSettings, listCourts, getVenueAvailabilityRange, getHours,
-  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type OwnerHourEntry,
+  getVenue, listSlotOverrides, recordDemandEvent,
+  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type OwnerHourEntry, type PaymentOption,
+  type SlotPriceOverride,
 } from '../../shared/lib/api';
+import { resolveHourlyRate, perPlayerSurcharge } from '../../shared/lib/pricing';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
 import { addHours, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
@@ -87,6 +90,12 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   // VenueHour pricing blocks — fetched when the venue is picked, so the rate shown
   // to the booker reflects the actual time-block price (not just the flat venue rate).
   const [venueHours, setVenueHours] = useState<OwnerHourEntry[]>([]);
+  // Manual surge / slot price overrides for the chosen date, and whether the booker
+  // is a member of this venue — both feed the pricing engine.
+  const [overrides, setOverrides] = useState<SlotPriceOverride[]>([]);
+  const [viewerIsMember, setViewerIsMember] = useState(false);
+  // Party size — drives the per-player surcharge (and is stored on the booking).
+  const [playerCount, setPlayerCount] = useState(1);
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -142,6 +151,27 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
     return () => { alive = false; };
   }, [selectedId]);
 
+  // Membership status drives member pricing — fetched once per venue (the detail
+  // endpoint computes the viewer's membership server-side).
+  useEffect(() => {
+    if (!selectedId) { setViewerIsMember(false); return; }
+    let alive = true;
+    getVenue(selectedId)
+      .then((v) => { if (alive) setViewerIsMember(!!v.viewerIsMember); })
+      .catch(() => { if (alive) setViewerIsMember(false); });
+    return () => { alive = false; };
+  }, [selectedId]);
+
+  // Manual surge / slot price overrides for the chosen date — re-fetched per date.
+  useEffect(() => {
+    if (!selectedId || !date) { setOverrides([]); return; }
+    let alive = true;
+    listSlotOverrides(selectedId, date)
+      .then((rows) => { if (alive) setOverrides(rows); })
+      .catch(() => { if (alive) setOverrides([]); });
+    return () => { alive = false; };
+  }, [selectedId, date]);
+
   // Load the payment mode once, before checkout, so we can pre-fill the demo card.
   useEffect(() => {
     let alive = true;
@@ -160,35 +190,26 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   // Price is tied to the chosen court when it has its own rate; otherwise the
   // venue's flat priceFrom applies (and when there are no courts at all).
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
-  // Time-based pricing: look up the VenueHour block that covers the chosen start
-  // time on this day of week; if it has a `price`, use that instead of the flat
-  // court/venue rate. Falls back to the court rate, then the venue rate, then 0.
-  const blockRate = useMemo(() => {
-    if (!date || !startTime) return null;
-    const dow = new Date(date + 'T00:00:00').getDay(); // 0=Sun
-    const startMin = parseInt(startTime.split(':')[0] || '0', 10) * 60 + parseInt(startTime.split(':')[1] || '0', 10);
-    const matching = venueHours.find((h) => {
-      if (h.dayOfWeek !== dow || h.isClosed || h.price == null) return false;
-      const openMin = h.openTime ? parseInt(h.openTime.split(':')[0] || '0', 10) * 60 + parseInt(h.openTime.split(':')[1] || '0', 10) : 0;
-      const closeMin = h.closeTime ? parseInt(h.closeTime.split(':')[0] || '0', 10) * 60 + parseInt(h.closeTime.split(':')[1] || '0', 10) : 1440;
-      return startMin >= openMin && startMin < closeMin;
-    });
-    return matching?.price ?? null;
-  }, [date, startTime, venueHours]);
-  // Sub-unit rate: when a sub-unit is selected on a splittable court, look up
-  // that sub-unit's specific rate; fall through to court rate → venue rate → 0.
-  const subUnitRate = useMemo(() => {
-    if (subUnitIndex == null || !selectedCourt?.subUnitRates?.length) return null;
-    const found = selectedCourt.subUnitRates.find((r) => r.index === subUnitIndex);
-    return found?.hourlyRate ?? null;
-  }, [subUnitIndex, selectedCourt]);
-  const baseRate = subUnitRate ?? (selectedCourt?.hourlyRate != null ? selectedCourt.hourlyRate : (selected?.priceFrom ?? 0));
-  const rate = blockRate ?? baseRate;
+  // Effective hourly rate via the shared pricing engine: surge → time-block →
+  // holiday → weekend → sub-unit → court → venue, then the member discount.
+  const rateInfo = useMemo(() => resolveHourlyRate({
+    venue: selected, court: selectedCourt, subUnitIndex, hours: venueHours, overrides,
+    date, startTime, isMember: viewerIsMember,
+  }), [selected, selectedCourt, subUnitIndex, venueHours, overrides, date, startTime, viewerIsMember]);
+  const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
   const equipAmount = includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0;
   const courtTotal = Math.round(rate * hours * 100) / 100;
-  const total = Math.round((courtTotal + equipAmount) * 100) / 100;
+  // Per-player surcharge — ₱ per extra player beyond the venue's included headcount.
+  const surcharge = perPlayerSurcharge(selected, playerCount);
+  // `subtotal` is the venue's price (court + equipment + per-player surcharge) — what
+  // the venue earns and what's stored as the booking `amount`. The platform service
+  // fee is added on top to form the grand total the player pays.
+  const subtotal = Math.round((courtTotal + equipAmount + surcharge) * 100) / 100;
   const isTest = settings?.paymentTestMode ?? false;
+  const serviceFeePercent = settings?.serviceFeePercent ?? 7;
+  const serviceFee = Math.round(subtotal * (serviceFeePercent / 100) * 100) / 100;
+  const grandTotal = Math.round((subtotal + serviceFee) * 100) / 100;
   // Approval venues use request-to-book: capture the card now, pay after the
   // owner approves (the last step "requests" instead of charging). A chosen court
   // can override the venue policy — 'manual' always requests, 'auto' always instant;
@@ -196,6 +217,27 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   const requiresApproval = selectedCourt?.approvalMode === 'manual' ? true
     : selectedCourt?.approvalMode === 'auto' ? false
     : !!selected?.requireBookingApproval;
+
+  // Payment options the venue offers (deposit / full / pay-at-venue). Only applied
+  // on the instant-book path — approval venues always pay in full after the owner
+  // accepts. Defaults to full-pay only when the venue hasn't configured options.
+  const paymentChoices: PaymentOption[] = useMemo(() => {
+    if (requiresApproval) return ['full'];
+    const configured = (selected?.paymentOptions ?? []).filter((o): o is PaymentOption => o === 'full' || o === 'deposit' || o === 'pay_at_venue');
+    return configured.length ? configured : ['full'];
+  }, [selected, requiresApproval]);
+  const [paymentOption, setPaymentOption] = useState<PaymentOption>('full');
+  // Keep the chosen option valid as the venue/court (and thus options) change.
+  useEffect(() => {
+    setPaymentOption((prev) => (paymentChoices.includes(prev) ? prev : paymentChoices[0]));
+  }, [paymentChoices]);
+
+  const depositPercent = Number(selected?.depositPercent) || 50;
+  // How much is charged online now vs owed at the venue, by chosen option.
+  const amountDueNow = paymentOption === 'pay_at_venue' ? 0
+    : paymentOption === 'deposit' ? Math.round(grandTotal * (depositPercent / 100) * 100) / 100
+    : grandTotal;
+  const balanceDue = Math.round((grandTotal - amountDueNow) * 100) / 100;
 
   // Live availability for the chosen court (or the venue pool when none) on this
   // date → greys out hours that court is already taken.
@@ -259,18 +301,42 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   }, [venues, query]);
 
   const totalSteps = 3;
-  const back = () => (step > 0 ? (setError(null), setStep((s) => s - 1)) : onBack());
+  const back = () => {
+    if (step > 0) {
+      // Demand signal: user left checkout without completing.
+      if (step === 2 && selected) {
+        recordDemandEvent({ type: 'checkout_abandoned', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+      }
+      setError(null);
+      setStep((s) => s - 1);
+    } else {
+      // Demand signal: user abandoned the booking flow entirely.
+      if (selected) {
+        recordDemandEvent({ type: 'checkout_abandoned', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+      }
+      onBack();
+    }
+  };
+
+  const payAtVenue = paymentOption === 'pay_at_venue';
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
     // Approval venues need a card on file (charged after approval); enforce it
-    // up front in live mode (test mode pre-fills the demo card).
+    // up front in live mode (test mode pre-fills the demo card). Pay-at-venue
+    // charges nothing now, so it never needs a card.
     if (requiresApproval && !isTest && !card.number) {
       setError('Add your card — the venue charges it after they approve your request.');
       return;
     }
+    if (!requiresApproval && !payAtVenue && !isTest && !card.number) {
+      setError('Enter your card details to pay.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
+    // Demand signal: a player is attempting to book this venue.
+    recordDemandEvent({ type: 'booking_attempt', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
     try {
       const booking = await createBooking({
         venueId: selected.id,
@@ -279,7 +345,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
         date,
         startTime,
         endTime,
-        amount: total,
+        playerCount,
+        // `amount` is the venue's price (drives revenue); the fee + split are extra.
+        amount: subtotal,
+        serviceFeeAmount: serviceFee,
+        paymentOption: requiresApproval ? 'full' : paymentOption,
+        amountPaid: requiresApproval ? 0 : amountDueNow,
+        balanceDue: requiresApproval ? 0 : balanceDue,
+        paymentMethod: payAtVenue ? 'pay_at_venue' : isTest ? 'test_card' : 'card',
         // Save the card on the request so paying after approval is one tap.
         card: requiresApproval ? maskCard(card) : undefined,
         // Equipment rental add-on (V2).
@@ -290,11 +363,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       // pays within the venue's window. Land on the "requested" confirmation.
       if (requiresApproval) {
         setDone({ confirmed: false, bookingId: booking.id });
+        recordDemandEvent({ type: 'booking_completed', venueId: selected.id, courtId: courtId || undefined });
+        return;
+      }
+      // Pay-at-venue: the booking is already confirmed at creation and nothing is
+      // charged online, so skip checkout entirely.
+      if (payAtVenue) {
+        setDone({ confirmed: true, bookingId: booking.id });
+        recordDemandEvent({ type: 'booking_completed', venueId: selected.id, courtId: courtId || undefined });
         return;
       }
       const result = await checkout({
         bookingId: booking.id,
-        amount: total,
+        amount: amountDueNow,
         currency,
         method: isTest ? 'test_card' : 'card',
         card,
@@ -302,6 +383,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       const confirmed = result.booking?.status === 'confirmed';
       const bookingId = result.booking?.id ?? booking.id;
       setDone({ confirmed, bookingId });
+      recordDemandEvent({ type: 'booking_completed', venueId: selected.id, courtId: courtId || undefined });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not complete your booking. Please try again.');
     } finally {
@@ -321,8 +403,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
     }
     setError(null);
-    if (step < totalSteps - 1) setStep((s) => s + 1);
-    else void submit();
+    if (step < totalSteps - 1) {
+      // Demand signal: user reached checkout (step 2 = payment).
+      if (step === 1 && selected) {
+        recordDemandEvent({ type: 'checkout_started', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+      }
+      setStep((s) => s + 1);
+    } else void submit();
   };
 
   if (done) {
@@ -503,6 +590,37 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
             </div>
           )}
 
+          {/* Party size — drives the per-player surcharge when the venue charges one. */}
+          {Number(selected?.perPlayerFee) > 0 && (
+            <div className="field">
+              <div className="lbl">Players</div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+                  <button type="button" aria-label="Fewer players" onClick={() => setPlayerCount((n) => Math.max(1, n - 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={playerCount <= 1}>
+                    <Icon name="minus" size={18} />
+                  </button>
+                  <div className="w-12 text-center font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums">{playerCount}</div>
+                  <button type="button" aria-label="More players" onClick={() => setPlayerCount((n) => Math.min(50, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)]">
+                    <Icon name="plus" size={18} />
+                  </button>
+                </div>
+                <div className="text-[12px] font-semibold text-[var(--muted)]">
+                  {money(Number(selected?.perPlayerFee) || 0, currency)} per player past {Number(selected?.perPlayerFeeThreshold) || 1}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Member-rate banner — the booker is a member and gets the venue's discount. */}
+          {rateInfo.memberApplied && (
+            <div className="field">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-[var(--lime-soft)] px-4 py-2.5 text-[var(--lime-ink)]">
+                <Icon name="star" size={18} />
+                <span className="text-[13px] font-bold">Member rate — {rateInfo.memberDiscountPercent}% off applied</span>
+              </div>
+            </div>
+          )}
+
           <div className="field">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -534,7 +652,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
                     <div className="text-[13px] font-semibold text-[var(--muted)]">
                       {money(rate, currency)}/hr × {hours} hr
                     </div>
-                    <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(total, currency)}</div>
+                    <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(subtotal, currency)}</div>
                   </>
                 ) : !endTime ? (
                   <div className="text-[13px] font-semibold text-[var(--muted)]">
@@ -572,7 +690,22 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
             {subUnitIndex != null && <ReviewRow label="Unit" value={`Half ${subUnitIndex + 1}`} />}
             <ReviewRow label="Date" value={prettyDate(date)} />
             <ReviewRow label="Time" value={`${to12h(startTime)} – ${to12h(endTime)}`} sub={`${hours} hr`} />
-            <ReviewRow label="Rate" value={`${money(rate, currency)}/hr`} sub={blockRate ? 'Time-block rate' : subUnitIndex != null ? 'Sub-unit rate' : undefined} />
+            <ReviewRow
+              label="Rate"
+              value={`${money(rate, currency)}/hr`}
+              sub={[
+                rateInfo.source === 'surge' ? 'Adjusted rate' : rateInfo.source === 'holiday' ? 'Holiday rate' : rateInfo.source === 'weekend' ? 'Weekend rate' : rateInfo.source === 'timeBlock' ? 'Time-block rate' : rateInfo.source === 'subUnit' ? 'Sub-unit rate' : null,
+                rateInfo.memberApplied ? `Member −${rateInfo.memberDiscountPercent}%` : null,
+              ].filter(Boolean).join(' · ') || undefined}
+            />
+            {surcharge > 0 && (
+              <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--muted)]">
+                  <Icon name="groups" size={14} /> Extra players ({Math.max(0, playerCount - (Number(selected?.perPlayerFeeThreshold) || 1))} × {money(Number(selected?.perPlayerFee) || 0, currency)})
+                </div>
+                <div className="font-heading font-semibold text-[15px] tabular-nums">{money(surcharge, currency)}</div>
+              </div>
+            )}
             {(selected as any)?.pricingTaxLabel && <div className="px-4 py-2 t-sm text-[var(--muted)] border-t-[0.5px] border-[var(--hairline)]">{(selected as any).pricingTaxLabel}</div>}
             {((selected as any)?.cancellationWindowHours != null || (selected as any)?.refundPercent != null) && (
               <div className="px-4 py-2.5 t-sm border-t-[0.5px] border-[var(--hairline)] flex items-start gap-2">
@@ -588,12 +721,55 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
                 <div className="font-heading font-semibold text-[15px]">{money(equipAmount, currency)}</div>
               </div>
             )}
+            {/* Price breakdown — venue subtotal + the platform service fee. */}
+            <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">
+              <div className="text-[13px] font-semibold text-[var(--muted)]">Subtotal</div>
+              <div className="font-heading font-semibold text-[15px] tabular-nums">{money(subtotal, currency)}</div>
+            </div>
+            <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">
+              <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--muted)]">
+                Service fee ({serviceFeePercent}%)
+              </div>
+              <div className="font-heading font-semibold text-[15px] tabular-nums">{money(serviceFee, currency)}</div>
+            </div>
             <div className="flex items-center justify-between px-4 py-4 bg-[var(--ink)] text-white">
               <div className="font-heading font-semibold text-[15px]">Total</div>
-              <div className="font-heading font-bold text-[22px]">{money(total, currency)}</div>
+              <div className="font-heading font-bold text-[22px] tabular-nums">{money(grandTotal, currency)}</div>
             </div>
           </div>
         </div>
+
+        {/* Payment option — only when the venue offers more than full-pay (instant-book). */}
+        {paymentChoices.length > 1 && (
+          <div className="field">
+            <div className="lbl">How would you like to pay?</div>
+            <div className="flex flex-col gap-2">
+              {paymentChoices.map((opt) => {
+                const sel = paymentOption === opt;
+                const meta = opt === 'full'
+                  ? { title: 'Pay in full', desc: `${money(grandTotal, currency)} now`, icon: 'lock' }
+                  : opt === 'deposit'
+                  ? { title: `Pay ${depositPercent}% deposit`, desc: `${money(Math.round(grandTotal * (depositPercent / 100) * 100) / 100, currency)} now · ${money(Math.round((grandTotal - grandTotal * (depositPercent / 100)) * 100) / 100, currency)} at the venue`, icon: 'payments' }
+                  : { title: 'Pay at the venue', desc: `Reserve now · ${money(grandTotal, currency)} on arrival`, icon: 'storefront' };
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setPaymentOption(opt)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-left ${sel ? 'bg-[var(--ink)] text-white border-[var(--ink)]' : 'bg-[var(--surface)] text-[var(--ink)] border-[var(--hairline)]'}`}
+                  >
+                    <Icon name={meta.icon} size={18} className="shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-heading font-semibold text-[14px]">{meta.title}</div>
+                      <div className={`text-[12px] font-semibold ${sel ? 'opacity-80' : 'text-[var(--muted)]'}`}>{meta.desc}</div>
+                    </div>
+                    {sel && <Icon name="check" size={16} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         </>
       )}
 
@@ -613,7 +789,20 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
               </div>
             </div>
           )}
-          {isTest && (
+          {payAtVenue && (
+            <div className="field">
+              <div className="rounded-2xl bg-[var(--surface-2)] border-[0.5px] border-[var(--hairline)] px-4 py-3 flex items-start gap-3">
+                <Icon name="storefront" size={20} className="mt-0.5 shrink-0 text-[var(--ink-2)]" />
+                <div>
+                  <div className="text-[14px] font-bold text-[var(--ink)]">Pay at the venue</div>
+                  <div className="text-[12px] font-semibold text-[var(--ink-2)]">
+                    Your court is reserved now — pay {money(grandTotal, currency)} when you arrive. No card needed.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {isTest && !payAtVenue && (
             <div className="field">
               <div className="rounded-2xl bg-[var(--lime)]/20 border-[0.5px] border-[var(--lime)] px-4 py-3 flex items-start gap-3">
                 <Icon name="science" size={20} className="mt-0.5 shrink-0 text-[var(--ink)]" />
@@ -628,41 +817,56 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
           )}
 
           <div className="field">
-            <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 flex items-center justify-between mb-4">
-              <div className="min-w-0">
-                <div className="font-heading font-semibold text-[14px] truncate">{selected.displayName}</div>
-                <div className="text-[11px] opacity-70 font-semibold">{prettyDate(date)} · {to12h(startTime)} · {hours} hr</div>
+            <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="font-heading font-semibold text-[14px] truncate">{selected.displayName}</div>
+                  <div className="text-[11px] opacity-70 font-semibold">{prettyDate(date)} · {to12h(startTime)} · {hours} hr</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">{payAtVenue ? 'Due at venue' : paymentOption === 'deposit' ? 'Pay now' : 'Total'}</div>
+                  <div className="font-heading font-bold text-[18px] text-[var(--ink)] tabular-nums">{money(payAtVenue ? grandTotal : amountDueNow, currency)}</div>
+                </div>
               </div>
-              <div className="font-heading font-bold text-[18px] text-[var(--ink)]">{money(total, currency)}</div>
+              {paymentOption === 'deposit' && balanceDue > 0 && (
+                <div className="mt-2 pt-2 border-t-[0.5px] border-[var(--hairline)] flex items-center justify-between text-[12px] font-semibold text-[var(--muted)]">
+                  <span>Balance at the venue</span>
+                  <span className="tabular-nums">{money(balanceDue, currency)}</span>
+                </div>
+              )}
             </div>
 
-            <div className="lbl">Card number</div>
-            <input
-              className="control"
-              inputMode="numeric"
-              placeholder="1234 5678 9012 3456"
-              value={card.number ?? ''}
-              onChange={(e) => setCardField('number', e.target.value)}
-            />
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <input
-                className="control"
-                placeholder="MM/YY"
-                value={card.expiry ?? ''}
-                onChange={(e) => setCardField('expiry', e.target.value)}
-                aria-label="Card expiry"
-              />
-              <input
-                className="control"
-                inputMode="numeric"
-                placeholder="CVC"
-                value={card.cvc ?? ''}
-                onChange={(e) => setCardField('cvc', e.target.value)}
-                aria-label="Card CVC"
-              />
-            </div>
-            {!isTest && cardTouched && !card.number && (
-              <div className="text-[12px] text-[var(--coral)] font-semibold mt-2">Enter your card details to pay.</div>
+            {!payAtVenue && (
+              <>
+                <div className="lbl">Card number</div>
+                <input
+                  className="control"
+                  inputMode="numeric"
+                  placeholder="1234 5678 9012 3456"
+                  value={card.number ?? ''}
+                  onChange={(e) => setCardField('number', e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <input
+                    className="control"
+                    placeholder="MM/YY"
+                    value={card.expiry ?? ''}
+                    onChange={(e) => setCardField('expiry', e.target.value)}
+                    aria-label="Card expiry"
+                  />
+                  <input
+                    className="control"
+                    inputMode="numeric"
+                    placeholder="CVC"
+                    value={card.cvc ?? ''}
+                    onChange={(e) => setCardField('cvc', e.target.value)}
+                    aria-label="Card CVC"
+                  />
+                </div>
+                {!isTest && cardTouched && !card.number && (
+                  <div className="text-[12px] text-[var(--coral)] font-semibold mt-2">Enter your card details to pay.</div>
+                )}
+              </>
             )}
           </div>
         </>
@@ -673,11 +877,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
         <Button fullWidth onClick={next} disabled={submitting || venuesLoading || venues.length === 0}>
           {step === totalSteps - 1 ? (
             submitting ? (
-              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {requiresApproval ? 'Sending…' : 'Processing…'}</>
+              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {requiresApproval ? 'Sending…' : payAtVenue ? 'Reserving…' : 'Processing…'}</>
             ) : requiresApproval ? (
               <><Icon name="calendar" size={16} /> Request booking</>
+            ) : payAtVenue ? (
+              <><Icon name="calendar" size={16} /> Reserve court</>
             ) : (
-              <><Icon name="lock" size={16} /> Pay {money(total, currency)}</>
+              <><Icon name="lock" size={16} /> Pay {money(amountDueNow, currency)}</>
             )
           ) : (
             <>Continue <Icon name="forward" size={16} /></>

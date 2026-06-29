@@ -33,13 +33,17 @@ import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
 import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
 import { OwnerProfileScreen } from './features/owner/OwnerProfileScreen';
 import { OwnerNotificationsScreen } from './features/owner/OwnerNotificationsScreen';
+import { OwnerStaffScreen } from './features/owner/OwnerStaffScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
+import { OwnerFrontDeskScreen } from './features/owner/OwnerFrontDeskScreen';
 import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
 import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
 import { OwnerNearbyScreen } from './features/owner/OwnerNearbyScreen';
 import { OwnerVenueScreen } from './features/owner/OwnerVenueScreen';
 import { OwnerNewVenueScreen } from './features/owner/OwnerNewVenueScreen';
 import { ClaimVenueScreen } from './features/owner/ClaimVenueScreen';
+import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
+import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
 import { TournamentsScreen } from './features/organizer/tournaments/TournamentsScreen';
 import { CreateTournamentScreen } from './features/organizer/tournaments/CreateTournamentScreen';
@@ -103,8 +107,10 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-new-venue': 'owner.venues.create',
   'claim-venue': 'owner.venues.claim',
   'owner-bookings': 'owner.bookings.manage',
+  'owner-front-desk': 'owner.bookings.manage',
   'owner-insights': 'owner.analytics.view',
   'owner-notifications': 'owner.notifications.view',
+  'owner-staff': 'owner.staff.manage',
   'organizer-hub': 'organizer.access',
   'organizer-tournaments': 'organizer.tournaments.manage',
   'organizer-tournament': 'organizer.tournaments.manage',
@@ -115,6 +121,8 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'organizer-rosters': 'organizer.events.manage',
   'organizer-roster': 'organizer.events.manage',
   'organizer-venue-requests': 'organizer.tournaments.manage',
+  'admin-claims': 'admin.moderation.manage',
+  'open-play-book': 'player.bookings.create',
 };
 
 // Human-readable verb phrases for the guest auth prompt ("You'll need an
@@ -144,7 +152,11 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-new-venue': 'add a venue',
   'claim-venue': 'claim a venue',
   'owner-bookings': 'see your bookings',
+  'owner-front-desk': 'run the front desk',
   'owner-insights': 'see your insights',
+  'owner-staff': 'manage your staff',
+  'admin-claims': 'review venue claims',
+  'open-play-book': 'join open play',
 };
 
 function isTabScreen(id: ScreenId): id is TabId {
@@ -216,7 +228,7 @@ function useCurrentScreen(): Screen {
 // detail/flow screens map to the tab they belong under (purely cosmetic).
 function tabForScreen(id: ScreenId): TabId {
   if (isTabScreen(id)) return id;
-  if (id === 'court-details' || id === 'book-court') return 'nearby';
+  if (id === 'court-details' || id === 'book-court' || id === 'open-play-book') return 'nearby';
   // Owner venue screens live under the "Venues" tab (which itself opens
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
   if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue') return 'nearby';
@@ -560,10 +572,14 @@ function AppInner() {
         return <ClaimVenueScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-bookings':
         return <OwnerBookingsScreen initialStatus={screen.params?.status as 'all' | 'pending_approval' | 'confirmed' | 'cancelled' | undefined} onNavigate={navigate} onBack={goBack} />;
+      case 'owner-front-desk':
+        return <OwnerFrontDeskScreen venueId={screen.params?.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'owner-insights':
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-notifications':
         return <OwnerNotificationsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-staff':
+        return <OwnerStaffScreen onNavigate={navigate} onBack={goBack} />;
       case 'organizer-hub':
         return <OrganizerHubScreen onNavigate={navigate} onBack={goBack} />;
       case 'organizer-tournaments':
@@ -584,6 +600,10 @@ function AppInner() {
         return <RosterDetailScreen key={screen.params.id} rosterId={screen.params.id} onBack={goBack} />;
       case 'organizer-venue-requests':
         return <VenueRequestsScreen tournamentId={screen.params?.tournamentId} onNavigate={navigate} onBack={goBack} />;
+      case 'admin-claims':
+        return <AdminClaimsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'open-play-book':
+        return <OpenPlayBookScreen key={screen.params.venueId} venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
       default:
         // Unknown screen id — fall back to the home tab (owner dashboard or
         // the v2.1 player home).

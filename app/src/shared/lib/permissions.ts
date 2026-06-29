@@ -52,7 +52,7 @@ export const ALL_PERMISSIONS = [
 ] as const;
 
 export type Permission = (typeof ALL_PERMISSIONS)[number];
-export type Role = 'admin' | 'moderator' | 'owner' | 'organizer' | 'coach' | 'player';
+export type Role = 'admin' | 'moderator' | 'owner' | 'staff' | 'organizer' | 'coach' | 'player';
 
 const PLAYER_PERMISSIONS: Permission[] = [
   'player.dashboard.access',
@@ -95,6 +95,24 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.tournaments.manage',
     'owner.notifications.view',
     'owner.staff.manage',
+  ],
+  // A delegated sub-account an owner (or admin) creates — runs the owner console
+  // for ALL of that owner's venues, bookings, and clubs (scoped server-side by
+  // parentOwnerUserId). Mirrors the owner role minus owner.staff.manage and
+  // owner.venues.create / owner.venues.claim (staff can't create staff or add new
+  // venues to the owner's org). Keep in sync with api shared/lib/permissions.ts.
+  staff: [
+    ...PLAYER_PERMISSIONS,
+    'owner.access',
+    'owner.venues.manage',
+    'owner.bookings.manage',
+    'owner.analytics.view',
+    'owner.games.view',
+    'owner.market.view',
+    'owner.reviews.manage',
+    'owner.coaches.manage',
+    'owner.tournaments.manage',
+    'owner.notifications.view',
   ],
   organizer: [
     ...PLAYER_PERMISSIONS,

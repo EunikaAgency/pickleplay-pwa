@@ -713,6 +713,12 @@
   margin: 0 auto;
 }
 
+/* Court detail: let the CTAs sit cleanly over the page — no grey bar/border. */
+.app-action-bar.app-action-bar--bare {
+  background: transparent;
+  border-top: none;
+}
+
 /* ─── Sticky CTA ─── */
 .sticky-cta {
   position: fixed;
@@ -1852,3 +1858,7 @@
    genuinely exceeds the sheet's max-height (then flex-shrink + min-height:0
    let it become scrollable). Overrides the global `.sheet-body { flex: 1 }`. */
 .obook-sheet .sheet-body { flex: 0 1 auto; min-height: 0; }
+
+/* Membership sheet: same content-hugging body so the sheet shows all plans
+   without a forced scroll (it only scrolls if the plans overflow a small screen). */
+.membership-sheet .sheet-body { flex: 0 1 auto; min-height: 0; }

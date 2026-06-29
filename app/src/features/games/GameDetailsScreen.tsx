@@ -10,6 +10,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
+import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
 import { getGame, joinGame, leaveGame, deleteGame, startConversation, ApiError, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
@@ -51,6 +52,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   // Joining inside the grace window makes the joiner acknowledge the no-refund
   // rule first; this gates the actual join behind a confirmation modal.
   const [confirmJoinOpen, setConfirmJoinOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -267,7 +269,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 <Icon name="back" size={18} />
               </button>
               <div className="flex gap-2">
-                <button className="icon-btn" aria-label="Share">
+                <button className="icon-btn" onClick={() => setShareOpen(true)} aria-label="Share this game">
                   <Icon name="share" size={16} />
                 </button>
                 <button className="icon-btn" aria-label="Save">
@@ -581,6 +583,15 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
           </BottomSheet>
 
           <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
+
+          <ShareLobbySheet
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            gameId={game.id}
+            title={gameTitle(game)}
+            subtitle={[timeLine(game), gameLocation(game), spotsLabel(game)].filter(Boolean).join(' · ')}
+            onNavigate={onNavigate}
+          />
         </div>
       )}
     </DemoBranch>

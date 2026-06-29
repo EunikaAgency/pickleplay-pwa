@@ -13,14 +13,17 @@ import type { Navigate } from '../../shared/lib/navigation';
 import { VenueOverviewTab } from './tabs/VenueOverviewTab';
 import { InsightsTab } from './tabs/InsightsTab';
 import { BookingsInboxTab } from './tabs/BookingsInboxTab';
+import { MembersTab } from './tabs/MembersTab';
 import { ListingEditorTab } from './tabs/ListingEditorTab';
 import { LocationEditorTab } from './tabs/LocationEditorTab';
 import { ClosuresEditorTab } from './tabs/ClosuresEditorTab';
 import { CourtsEditorTab } from './tabs/CourtsEditorTab';
+import { SlotPricingTab } from './tabs/SlotPricingTab';
 import { FaqsEditorTab } from './tabs/FaqsEditorTab';
 import { ReviewsInboxTab } from './tabs/ReviewsInboxTab';
 import { PhotosTab } from './tabs/PhotosTab';
 import { StaffEditorTab } from './tabs/StaffEditorTab';
+import { LeakageTab } from './tabs/LeakageTab';
 
 interface OwnerVenueScreenProps {
   venueId: string; // the slug (or _id) passed via navigation params
@@ -29,35 +32,45 @@ interface OwnerVenueScreenProps {
   onBack: () => void;
 }
 
-type TabId = 'overview' | 'insights' | 'bookings' | 'listing' | 'location' | 'courts' | 'closures' | 'faqs' | 'reviews' | 'photos' | 'staff';
+type TabId = 'overview' | 'insights' | 'bookings' | 'members' | 'listing' | 'location' | 'courts' | 'pricing' | 'closures' | 'faqs' | 'reviews' | 'photos' | 'staff' | 'leakage';
 
 // `perm` gates a tab behind a permission; tabs without one are always shown.
+// Structural-edit tabs are hidden for front-desk staff (they can only operate,
+// not change the venue listing/courts/pricing/faqs/photos/staff).
+const STRUCTURAL_TABS: TabId[] = ['listing', 'location', 'courts', 'pricing', 'closures', 'faqs', 'photos', 'staff'];
+
 const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
   { id: 'overview', label: 'Overview', icon: 'home' },
   { id: 'insights', label: 'Insights', icon: 'bar_chart', perm: 'owner.analytics.view' },
   { id: 'bookings', label: 'Bookings', icon: 'calendar', perm: 'owner.bookings.manage' },
+  { id: 'members', label: 'Membership', icon: 'group', perm: 'owner.bookings.manage' },
   { id: 'listing', label: 'Listing', icon: 'storefront' },
   { id: 'location', label: 'Location', icon: 'location' },
   { id: 'courts', label: 'Courts', icon: 'paddle' },
+  { id: 'pricing', label: 'Slot pricing', icon: 'bolt', perm: 'owner.bookings.manage' },
   { id: 'closures', label: 'Closures', icon: 'calendar' },
   { id: 'faqs', label: 'FAQs', icon: 'help' },
   { id: 'reviews', label: 'Reviews', icon: 'star' },
   { id: 'photos', label: 'Photos', icon: 'camera' },
   { id: 'staff', label: 'Staff', icon: 'group', perm: 'owner.staff.manage' },
+  { id: 'leakage', label: 'Leakage', icon: 'leak', perm: 'owner.bookings.manage' },
 ];
 
 const TAB_TITLE: Record<TabId, string> = {
   overview: 'Overview',
   insights: 'Insights',
   bookings: 'Bookings',
+  members: 'Membership',
   listing: 'Listing',
   location: 'Location',
   courts: 'Courts',
+  pricing: 'Slot pricing',
   closures: 'Closures',
   faqs: 'FAQs',
   reviews: 'Reviews',
   photos: 'Photos',
   staff: 'Staff',
+  leakage: 'Leakage',
 };
 
 export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack }: OwnerVenueScreenProps) {
@@ -143,12 +156,17 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
 
   const vid = entityId(venue);
   const state = venue.state || 'unclaimed';
+  // Staff see a role badge — "Manager" or "Front desk" — so it's clear what they
+  // can do here (servers won't let them make structural edits, and the tab strip
+  // hides those tabs for front-desk).
+  const viewerRole = venue.viewerStaffRole;
+  const staffBadge = viewerRole === 'front_desk' ? 'Front desk' : viewerRole === 'manager' ? 'Manager' : null;
 
   return (
     <div className="scroll safe-top safe-bottom">
       <ScreenHeader
         onBack={back}
-        eyebrow={`Owner · ${state}`}
+        eyebrow={`Owner · ${state}${staffBadge ? ` · ${staffBadge}` : ''}`}
         title={venue.displayName || 'Venue'}
         subtitle={tab === 'overview' ? undefined : TAB_TITLE[tab]}
         action={
@@ -164,7 +182,12 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
       />
 
       <div ref={tabsRef} className="scroll-x flex gap-2 px-5 pb-2 cursor-grab active:cursor-grabbing select-none">
-        {TABS.filter((t) => !t.perm || userHasPermission(currentUser, t.perm)).map((t) => (
+        {TABS
+          .filter((t) => !t.perm || userHasPermission(currentUser, t.perm))
+          // Front-desk staff see operational tabs only — structural edits are
+          // hidden (and 403'd server-side if they reach them anyway).
+          .filter((t) => venue?.viewerStaffRole !== 'front_desk' || !STRUCTURAL_TABS.includes(t.id))
+          .map((t) => (
           <Chip key={t.id} className="chip-tab" selected={tab === t.id} onClick={() => goTab(t.id)}>
             <Icon name={t.icon} size={13} /> {t.label}
           </Chip>
@@ -175,14 +198,17 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
         {tab === 'overview' && <VenueOverviewTab venue={venue} venueId={vid} onOpenTab={(t) => goTab(t as TabId)} />}
         {tab === 'insights' && <InsightsTab venueId={vid} />}
         {tab === 'bookings' && <BookingsInboxTab venueId={vid} />}
+        {tab === 'members' && <MembersTab venueId={vid} venue={venue} onNavigate={onNavigate} />}
         {tab === 'listing' && <ListingEditorTab venue={venue} venueId={vid} reload={reload} onDeleted={() => onNavigate('owner-venues', undefined, { replace: true })} />}
         {tab === 'location' && <LocationEditorTab venue={venue} venueId={vid} reload={reload} />}
         {tab === 'courts' && <CourtsEditorTab venueId={vid} reload={reload} />}
+        {tab === 'pricing' && <SlotPricingTab venueId={vid} />}
         {tab === 'closures' && <ClosuresEditorTab venueId={vid} />}
         {tab === 'faqs' && <FaqsEditorTab venueId={vid} />}
         {tab === 'reviews' && <ReviewsInboxTab venueId={vid} />}
         {tab === 'photos' && <PhotosTab venue={venue} venueId={vid} reload={reload} />}
         {tab === 'staff' && <StaffEditorTab venueId={vid} />}
+        {tab === 'leakage' && <LeakageTab venueId={vid} />}
       </div>
     </div>
   );

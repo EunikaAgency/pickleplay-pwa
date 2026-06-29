@@ -7,8 +7,10 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
+import { MembershipSheet } from './MembershipSheet';
 import type { Navigate } from '../../shared/lib/navigation';
-import { apiImageUrl, getVenue, listGames, ApiError, type ApiVenueDetail, type ApiGame } from '../../shared/lib/api';
+import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, getVenueConversation, recordDemandEvent, ApiError, type ApiVenueDetail, type ApiGame } from '../../shared/lib/api';
+import { useAuthStore } from '../../shared/lib/authStore';
 import {
   indoorLabel, priceRangeLabel, currencySymbol, locationLine, venueAmenities,
   mapsUrl, venueImage, venueCoords,
@@ -140,6 +142,8 @@ export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: Cour
         if (cancelled) return;
         setVenue(v);
         setStatus('ready');
+        // Demand signal: a player (or guest) viewed this venue.
+        recordDemandEvent({ type: 'venue_view', venueId: v.id });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -245,8 +249,47 @@ function CourtDetail({
   // Saved (device-local favourite) + share state.
   const [saved, setSaved] = useState(() => readSavedVenues().includes(venue.id));
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
+  const currentUser = useAuthStore((s) => s.user);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
+
+  // Venue membership, persisted server-side (VenueMember). Seeded from the venue
+  // detail's viewer fields so a returning member sees their plan; joining/cancelling
+  // hits the self-service membership endpoints. Members surface in the owner's
+  // Members tab and get member pricing at checkout.
+  //
+  // A membership with a future expiresAt (or null = perpetual) is "active" and the
+  // button is hidden entirely. Once expired, the button reappears as "Renew
+  // Subscription" so the player can extend it.
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const [membershipPlanId, setMembershipPlanId] = useState<string | null>(
+    () => venue.viewerMembershipTier ?? (venue.viewerIsMember ? 'member' : null),
+  );
+  const [membershipOpen, setMembershipOpen] = useState(false);
+  const isMember = membershipPlanId != null;
+  const membershipExpiresAt = venue.viewerMembershipExpiresAt ?? null;
+  const isExpired = isMember && membershipExpiresAt != null && new Date(membershipExpiresAt) <= new Date();
+
+  // Guests can't hold a membership — send them to sign in first. Logged-in
+  // players open the plan chooser. When renewing, the sheet opens in renewal mode
+  // (the existing plan is pre-selected but the CTA says "Renew").
+  const openMembership = () => {
+    if (!isLoggedIn) { onNavigate('login'); return; }
+    setMembershipOpen(true);
+  };
+
+  const joinMembership = (planId: string) => {
+    const prev = membershipPlanId;
+    setMembershipPlanId(planId); // optimistic — the sheet shows success right away
+    joinVenueMembership(venue.id, planId).catch(() => setMembershipPlanId(prev));
+  };
+  const cancelMembership = () => {
+    const prev = membershipPlanId;
+    setMembershipPlanId(null);
+    setMembershipOpen(false);
+    leaveVenueMembership(venue.id).catch(() => setMembershipPlanId(prev));
+  };
 
   // Best-effort distance: if the device already granted location (or grants it
   // now), show how far the venue is. Silent on denial — it's a nicety.
@@ -281,6 +324,22 @@ function CourtDetail({
       /* user cancelled the share sheet — nothing to do */
     }
   };
+
+  // Open a venue-scoped conversation with the venue owner. Guests are routed
+  // to login; logged-in owners don't see this (can't message themselves).
+  const messageVenue = async () => {
+    if (!currentUser) { onNavigate('login'); return; }
+    setMessageLoading(true);
+    try {
+      const conv = await getVenueConversation(venue.id);
+      onNavigate('chat', { id: conv.id, name: conv.contextLabel ?? 'Venue' });
+    } catch {
+      /* network or the venue has no owner — silent, the button is disabled */
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+  const isOwner = currentUser && venue.ownerUserId && String(currentUser.id) === String(venue.ownerUserId);
 
   // Real games hosted at this venue (published = joinable). Read-only surface of
   // already-public game browse, so no new permission gates it.
@@ -385,7 +444,13 @@ function CourtDetail({
             <div className="val">{price || '—'}</div>
             {(venue as any).pricingTaxLabel && <div className="t-sm mt-0.5 text-[var(--muted)]">{(venue as any).pricingTaxLabel}</div>}
             {venue.openPlayPrice != null && Number(venue.openPlayPrice) > 0 && (
-              <div className="t-sm mt-1 font-semibold text-[var(--lime-ink,var(--muted))]">Open play: {sym}{Number(venue.openPlayPrice)}/session</div>
+              <button
+                type="button"
+                onClick={() => onNavigate('open-play-book', { venueId: venue.id })}
+                className="mt-1 inline-flex items-center gap-1 text-[13px] font-bold text-[var(--lime-ink,var(--primary))]"
+              >
+                Join open play · {sym}{Number(venue.openPlayPrice)}/session <Icon name="chevron_right" size={14} />
+              </button>
             )}
           </div>
           <div className="kv">
@@ -725,13 +790,27 @@ function CourtDetail({
           </div>
         )}
 
-        {/* Contact — call or visit the venue's site. */}
-        {(venue.phone || venue.website) && (
+        {/* Contact — call, message, or visit the venue's site. */}
+        {(venue.phone || venue.website || (venue.ownerUserId && !isOwner)) && (
           <div className="section p-0!">
             <div className="section-head px-0">
               <div className="hd-2">Contact</div>
             </div>
             <div className="flex flex-col gap-2">
+              {/* Message the venue owner directly (replaces Messenger/IG DMs). */}
+              {venue.ownerUserId && !isOwner && (
+                <button
+                  className="flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)] disabled:opacity-50"
+                  onClick={messageVenue}
+                  disabled={messageLoading}
+                >
+                  <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center">
+                    <Icon name="chat" size={15} />
+                  </span>
+                  <span>{messageLoading ? 'Opening chat…' : 'Message venue'}</span>
+                  <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />
+                </button>
+              )}
               {venue.phone && (
                 <a
                   href={`tel:${venue.phone}`}
@@ -816,8 +895,8 @@ function CourtDetail({
         </div>
       </div>
 
-      <div className="app-action-bar">
-        {price ? (
+      <div className="app-action-bar app-action-bar--bare">
+        {price && (
           <>
             {requireApproval && intent !== 'lobby' && (
               <div className="flex items-start gap-2 mb-2 text-[12px] font-semibold text-[var(--ink-2)]">
@@ -831,21 +910,66 @@ function CourtDetail({
                 <span>Free cancellation up to <strong>{(venue as any).cancellationWindowHours ?? 24}h</strong> before — <strong>{(venue as any).refundPercent ?? 100}%</strong> refund.{((venue as any).noShowFee || 0) > 0 ? ` ₱${(venue as any).noShowFee} no-show fee.` : ''}</span>
               </div>
             )}
-            <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}>
-              <Icon name="calendar" size={16} /> {ctaLabel}
-            </Button>
           </>
+        )}
+
+        {/* The lobby hand-off is a focused book-then-create flow — no membership CTA there. */}
+        {intent === 'lobby' ? (
+          <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}>
+            <Icon name="calendar" size={16} /> {ctaLabel}
+          </Button>
         ) : (
           <>
-            <Button fullWidth variant="outline" disabled>
-              <Icon name="lock" size={16} /> Booking unavailable
-            </Button>
-            <div className="text-[12px] text-[var(--muted)] font-semibold mt-2 text-center">
-              No rates listed for this court yet.
+            <div className="flex gap-2.5">
+              {/* Membership button: hidden when the player has an active (non-expired)
+                  membership — they're already a member. Shown as "Renew Subscription"
+                  when expired, and "Join Membership" for non-members. */}
+              {!isMember || isExpired ? (
+                <Button
+                  variant={isExpired ? 'brand' : 'outline'}
+                  className={`flex-1 text-[15px] px-3 ${isExpired ? '' : 'shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]'}`}
+                  onClick={openMembership}
+                >
+                  <Icon name={isExpired ? 'refresh' : 'star'} size={16} />
+                  {isExpired ? 'Renew Subscription' : 'Join Membership'}
+                </Button>
+              ) : null}
+              {price ? (
+                <Button
+                  className={`text-[15px] px-3 ${!isMember || isExpired ? 'flex-1' : 'flex-1'}`}
+                  onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}
+                >
+                  <Icon name="calendar" size={16} /> {ctaLabel}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="flex-1 text-[15px] px-3 shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]"
+                  disabled
+                >
+                  <Icon name="lock" size={16} /> Unavailable
+                </Button>
+              )}
             </div>
+            {!price && (
+              <div className="text-[12px] text-[var(--muted)] font-semibold mt-2 text-center">
+                No rates listed for this court yet — membership still available.
+              </div>
+            )}
           </>
         )}
       </div>
+
+      <MembershipSheet
+        open={membershipOpen}
+        onClose={() => setMembershipOpen(false)}
+        venueName={venue.displayName}
+        currency={sym}
+        currentPlanId={membershipPlanId}
+        isRenewal={isExpired}
+        onJoin={joinMembership}
+        onCancel={cancelMembership}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Toast } from '../../../shared/components/ui/Toast';
-import type { OwnerVenueDetail } from '../../../shared/lib/api';
+import { recordDemandEvent, type OwnerVenueDetail } from '../../../shared/lib/api';
 
 /**
  * Build the venue's public booking link: the system slug, or the owner's custom
@@ -28,6 +28,10 @@ export function BookingLinkShare({ venue, withToast = false }: BookingLinkShareP
   const [toast, setToast] = useState(false);
   const link = bookingLinkFor(venue);
 
+  const signalShare = () => {
+    recordDemandEvent({ type: 'booking_link_shared', venueId: venue.id });
+  };
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
@@ -37,6 +41,7 @@ export function BookingLinkShare({ venue, withToast = false }: BookingLinkShareP
         setToast(true);
         setTimeout(() => setToast(false), 2000);
       }
+      signalShare();
     } catch {
       /* clipboard unavailable */
     }
@@ -50,6 +55,7 @@ export function BookingLinkShare({ venue, withToast = false }: BookingLinkShareP
           text: `Book a court at ${venue.displayName || 'our venue'} on PickleBallers`,
           url: link,
         });
+        signalShare();
       } catch {
         /* user dismissed the share sheet — no-op */
       }

@@ -10,7 +10,7 @@ import { listBookings, cancelBooking, checkout, type ApiBooking } from '../../sh
 import type { Navigate } from '../../shared/lib/navigation';
 import {
   isCancellable, money, prettyDate, bookingPhase, bookingPhaseChip,
-  timeRange, bookingDuration, to12h, type BookingPhase,
+  timeRange, bookingDuration, to12h, paymentOptionLabel, type BookingPhase,
 } from './bookingDisplay';
 
 /** "Mon, Jun 23, 6:00 PM" — the pay-by deadline for an approved request. */
@@ -139,7 +139,9 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
     setPaying(b.id);
     setPayError(null);
     try {
-      const res = await checkout({ bookingId: b.id, amount: b.amount ?? 0, currency: 'PHP', method: 'card' });
+      // Approved request-to-book pays in full: the venue subtotal + the service fee.
+      const due = (b.amount ?? 0) + (b.serviceFeeAmount ?? 0);
+      const res = await checkout({ bookingId: b.id, amount: due, currency: 'PHP', method: 'card' });
       const status = res.booking?.status ?? 'confirmed';
       setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status } : x)));
       closeDetail();
@@ -248,7 +250,9 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
                             <div className="font-heading font-semibold text-[15px] text-[var(--ink)] truncate">
                               {b.venueName || 'Court booking'}
                             </div>
-                            <div className="text-[12px] font-semibold text-[var(--muted)] mt-0.5">{when || '—'}</div>
+                            <div className="text-[12px] font-semibold text-[var(--muted)] mt-0.5">
+                              {b.bookingType === 'open_play' && <span className="text-[var(--lime-ink)]">Open play · </span>}{when || '—'}
+                            </div>
                           </div>
                           <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${chip.className}`}>
                             {chip.label}
@@ -287,7 +291,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
               >
                 {paying === detail.id
                   ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={16} /></span> Paying…</>
-                  : <><Icon name="lock" size={16} /> Pay {money(detail.amount)}</>}
+                  : <><Icon name="lock" size={16} /> Pay {money((detail.amount ?? 0) + (detail.serviceFeeAmount ?? 0))}</>}
               </button>
               {payByLabel(detail.paymentDueAt) && (
                 <div className="text-[12px] text-[var(--muted)] text-center">Pay by {payByLabel(detail.paymentDueAt)} to confirm your court.</div>
@@ -351,9 +355,22 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
             <DetailRow label="Time" value={timeRange(detail) || (detail.startTime ? to12h(detail.startTime) : '—')} />
             {bookingDuration(detail) && <DetailRow label="Duration" value={bookingDuration(detail)} />}
             {detail.playerCount ? <DetailRow label="Players" value={`${detail.playerCount}`} /> : null}
-            <DetailRow label="Amount" value={money(detail.amount)} />
             {detail.hasEquipmentRental && (
               <DetailRow label="Incl. equipment" value={money(detail.equipmentRentalAmount)} />
+            )}
+            {/* Price breakdown — subtotal, the platform service fee, and the total. */}
+            {detail.serviceFeeAmount != null && detail.serviceFeeAmount > 0 ? (
+              <>
+                <DetailRow label="Subtotal" value={money(detail.amount)} />
+                <DetailRow label="Service fee" value={money(detail.serviceFeeAmount)} />
+                <DetailRow label="Total" value={money((detail.amount ?? 0) + detail.serviceFeeAmount)} />
+              </>
+            ) : (
+              <DetailRow label="Amount" value={money(detail.amount)} />
+            )}
+            {detail.paymentOption && <DetailRow label="Payment plan" value={paymentOptionLabel(detail.paymentOption)} />}
+            {detail.balanceDue != null && detail.balanceDue > 0 && (
+              <DetailRow label="Due at venue" value={money(detail.balanceDue)} />
             )}
             <DetailRow label="Status" value={bookingPhaseChip(detail).label} />
             {detail.status === 'awaiting_payment' && payByLabel(detail.paymentDueAt) && (
@@ -361,7 +378,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
             )}
             {detail.paymentMethod && <DetailRow label="Payment" value={detail.paymentMethod === 'test_card' ? 'Test card' : detail.paymentMethod} />}
             {bookedOn(detail) && <DetailRow label="Booked on" value={bookedOn(detail)!} />}
-            <DetailRow label="Reference" value={`#${detail.id.slice(-6).toUpperCase()}`} />
+            <DetailRow label="Booking ref" value={`#${detail.id.slice(-6).toUpperCase()}`} />
           </div>
         )}
       </BottomSheet>

@@ -23,11 +23,11 @@ Every row of the master sheet, checked against the actual code.
 | Member pricing (venue-member rate) | High | ⬜ | No membership concept in the owner slice. |
 | Manual surge adjustment (owner raises/lowers a slot) | High | ⬜ | Not built. |
 | Currency / VAT / tax-inclusive display | High | ✅ | Currency shown (₱ via `money()`); **`pricingTaxLabel` field added** (2026-06-25) — owner-editable ("VAT inclusive" default), shown on public page + checkout review. |
-| Deposit vs full vs pay-at-venue at checkout | Must | ⬜ | Full-pay only (request-approval still pays full, later). No deposit / pay-at-venue. |
-| 7% player service fee display | Must | ⬜ | No fee shown — total is `rate × hours` only. |
-| Open-play / per-session pricing | High | ⬜ | Not a court-booking price mode (`venue.openPlayPrice` is unused data). *(Organizer open-play sessions are a separate feature.)* |
-| Equipment / paddle rental add-ons | Medium | ⬜ | `venue.equipmentRentalPrice` is unused data; no checkout line item. |
-| Half-court / split-court pricing | Medium | ✅ | `Court.isSplittable` + `splitCount` (2-4 units) in model + CourtsEditorTab UI. Sub-court booking enforcement not yet in booking flow. |
+| Deposit vs full vs pay-at-venue at checkout | Must | ✅ | **DONE (2026-06-26).** Owner enables any of full/deposit/pay-at-venue + a deposit % in `ListingEditorTab` (`Venue.paymentOptions`/`depositPercent`); `BookCourtScreen` shows a payment-option selector on instant-book venues — full charges the total, deposit charges `depositPercent%` now + shows balance due at venue, pay-at-venue reserves with no online charge (skips checkout). Persisted on the booking (`paymentOption`/`amountPaid`/`balanceDue`). |
+| 7% player service fee display | Must | ✅ | **DONE (2026-06-26).** Single platform fee in `AppSettings.serviceFeePercent` (default 7, admin-editable), surfaced via `GET /settings`; shown as its own line in `BookCourtScreen` review/checkout + `MyBookings`/owner detail (Subtotal + Service fee + Total). Stored as `Booking.serviceFeeAmount`; the venue's `amount` stays its own price so revenue analytics are unchanged. |
+| Open-play / per-session pricing | High | ✅ | **Phase 1 DONE (2026-06-26).** `venue.openPlayPrice` is now a real booking mode: a "Join open play" CTA on the court page → `OpenPlayBookScreen` (date + time + party size) → `createBooking({ bookingType:'open_play' })` (courtless, instant-confirm, priced `openPlayPrice × players`) → checkout → shows in My Bookings tagged "Open play". *(Phase 2 — scheduled open-play sessions w/ capacity — remains for later; organizer open-play sessions are still separate.)* |
+| Equipment / paddle rental add-ons | Medium | ✅ | **DONE (2026-06-26).** Owner sets `venue.equipmentRentalPrice`; `BookCourtScreen` shows a rental toggle that adds it to the total and persists `hasEquipmentRental`/`equipmentRentalAmount` on the booking; shown as a line item on the booking detail. |
+| Half-court / split-court pricing | Medium | ✅ | `Court.isSplittable` + `splitCount` (2-4 units) + per-unit `subUnitRates` in model + CourtsEditorTab UI. **Sub-court booking now enforced (2026-06-26)** — `BookCourtScreen` has a sub-unit picker + per-unit rate lookup; `createBooking` validates `subUnitIndex` and clash/capacity handle sub-unit vs whole-court. |
 | Suggested dynamic pricing | Roadmap | ⏸️ | Deferred. |
 | Automated dynamic pricing (opt-in) | Later | ⏸️ | Deferred. |
 
@@ -37,7 +37,7 @@ Every row of the master sheet, checked against the actual code.
 | Auto-generated booking link (+ custom slug) | Must | ✅ | `…/venues/<slug>` + optional `bookingSlug`, live availability check, Copy/Share. |
 | Manual vs automatic approval, per venue | High | ✅ | **Per-venue** (`requireBookingApproval` in `ListingEditorTab`) **+ per-court override** (`Court.approvalMode` `inherit`/`auto`/`manual` in `CourtsEditorTab`; `createBooking` resolves court-over-venue). |
 | Double-booking collision handling | Must | ✅ | Clash detection in `bookings.controller` (court + venue-pool). |
-| Manual booking / slot blocking (phone/Messenger/IG/walk-in) | Must | ⬜ | **#1 meeting priority — zero backend, zero UI.** No owner-create-booking endpoint, no slot-block (court-level unavailability), no walk-in entry, no front-desk quick-book. Only player-initiated `POST /bookings` exists. Needs: (a) owner `POST /venues/:id/bookings` endpoint with `bookingType:'manual'|'blocked'`, (b) slot-block UI in courts/calendar, (c) front-desk quick-book form (pick court→time→player→confirm, no payment). |
+| Manual booking / slot blocking (phone/Messenger/IG/walk-in) | Must | ✅ | **DONE (2026-06-26) — the #1 meeting priority.** (a) Owner `POST /api/v1/venues/:id/bookings` (gated by `requireVenueManager` — owner OR active staff incl. front-desk) with `bookingType:'manual'` (off-platform customer name/phone + source phone/messenger/instagram/walk_in) or `'blocked'` (slot unavailable + reason); reuses `findSlotConflict` so it's double-booking-guarded; no payment. (b)+(c) New `OwnerFrontDeskScreen` (`owner-front-desk`) front-desk console with an "Add booking" quick-book form (court→date→time→customer→pay method→amount) and a "Block slot" form. Manual/blocked bookings show on the schedule + owner inbox tagged MANUAL/BLOCKED and are excluded from players' "My bookings". |
 | Cancellation & refund rules (window, fees, no-show) | High | ✅ | Player cancel + refund-request exists; **owner-configurable policy built** (2026-06-25) — `cancellationWindowHours`, `refundPercent`, `noShowFee` on Venue model, editable in ListingEditorTab, shown on CourtDetailsScreen + BookCourtScreen review step. |
 | Recurring bookings (weekly regulars, leagues) | High | ⬜ | Not for court bookings. *(Organizer recurring open-play is separate.)* |
 | Booking modification (reschedule, change court) | Medium | ⬜ | Not built. |
@@ -67,10 +67,10 @@ Every row of the master sheet, checked against the actual code.
 | Requirement | Priority | Status | Reality in code |
 |---|---|---|---|
 | Owner view: revenue, occupancy, performance | Must | ✅ | `OwnerHomeScreen`, `VenueOverviewTab`, `OwnerInsightsScreen`. |
-| Operator/staff view (today's schedule, pending, manual entries, cancellations) | High | ⬜ | No operator-role view; depends on manual-booking + staff wiring (see gap #6 below). |
-| Role-based dashboard users (owner / manager / front-desk) | High | 🟡 | `VenueStaff` model + `:id/staff` routes + StaffEditorTab UI done. **But app never calls `listManagedVenues` — uses `listOwnerVenues` only, so staff see zero venues.** `viewerStaffRole` returned by API but never consumed. No role-tailored views. |
-| Multi-user/staff accounts with permissions | High | 🟡 | Backend (model+routes+perms) + StaffEditorTab UI done. **But `listManagedVenues` is never called — staff see zero venues because only `listOwnerVenues` is used.** `viewerStaffRole` returned by API but never consumed in app. No role-based view separation (front_desk sees full owner console but gets 403s on structural edits). |
-| Owner identity verification / anti-fraud on claim | Medium | 🟡 | Claim form collects legal name, role/title, contact, proof links. **No formal ID document upload** (links only — no file picker for scanned IDs/permits). **No admin review UI** in app or web (API-only). No "needs more info" state between pending→approved/rejected. |
+| Operator/staff view (today's schedule, pending, manual entries, cancellations) | High | ✅ | **DONE (2026-06-26).** New `OwnerFrontDeskScreen` (`owner-front-desk`) = the operator console: today's schedule (time-sorted, with a date stepper), pending-approval list (inline approve/decline), KPIs (bookings today / awaiting approval / manual today), a venue picker for multi-venue owners, and the manual-booking + slot-block actions. Gated by `owner.bookings.manage` (so active staff can run it). |
+| Role-based dashboard users (owner / manager / front-desk) | High | 🟡 | **Mostly done (2026-06-26):** `VenueStaff` model + `:id/staff` routes + StaffEditorTab + `OwnerStaffScreen` (create/manage staff logins); **staff now see the owner's venues** — `useOwnerDashboard` calls `listManagedVenues` via `effectiveOwnerId`. **Residual:** `viewerStaffRole` not yet consumed for role-tailored views (front-desk sees full console; structural edits blocked server-side). |
+| Multi-user/staff accounts with permissions | High | 🟡 | **Mostly done (2026-06-26):** staff accounts (create/manage via `OwnerStaffScreen`) + scoping (`parentOwnerUserId`/`effectiveOwnerId`); **staff see the owner's venues** (`listManagedVenues` wired). **Residual:** `viewerStaffRole` not consumed for role-tailored view separation (front_desk sees full console; 403s on structural edits server-side). |
+| Owner identity verification / anti-fraud on claim | Medium | ✅ | **DONE (2026-06-26).** Claim form collects legal name/role/contact/proof links **+ ID document upload** (`uploadClaimMedia`); **`needs_info` state + resubmit flow** + claimant notifications; **admin review UI on both surfaces** — web `ClaimsQueuePage` (existing) + app `AdminClaimsScreen` (new). |
 
 ### Analytics
 | Requirement | Priority | Status | Reality in code |
@@ -124,14 +124,14 @@ Every row of the master sheet, checked against the actual code.
 
 ## 2. ⬜ Remaining — Must-have for owner demo
 
-- ⬜ **Manual booking / slot blocking** *(#1 meeting priority)* — owner enters an off-platform booking (phone / Messenger / IG / walk-in) **or** blocks a single time slot. Today: full-day closures only, no slot-level entry, no owner-create-booking endpoint. Needs new API endpoint (`POST /venues/:id/bookings` owner-gated) + Calendar UI with slot-level block + front-desk quick-book form. See gap #7 below for full spec.
+- ✅ **Manual booking / slot blocking** *(#1 meeting priority)* — **DONE (2026-06-26).** `POST /api/v1/venues/:id/bookings` (owner/staff-gated, `bookingType:'manual'|'blocked'`, double-booking-guarded via `findSlotConflict`, no payment) + the new `OwnerFrontDeskScreen` "Add booking" / "Block slot" forms. See gap #7 below (now resolved).
 - ✅ **Functional pricing rules (not display-only)** — **DONE** (2026-06-25): VenueHour time-block prices now resolved in BookCourtScreen rate calculation. If the selected start time falls in a priced block, that rate applies; otherwise falls back to court/venue rate.
 - ✅ **Time-based pricing applied** — **DONE** (2026-06-25): `getHours` fetch + block-rate lookup in BookCourtScreen; "Time-block rate" sub-label shown when active.
-- ⬜ **Deposit vs full vs pay-at-venue** — decide + build the first-demo payment flow (only full-pay exists).
-- ⬜ **7% player service fee display** — single fee shown to player (PayMongo buried inside).
+- ✅ **Deposit vs full vs pay-at-venue** — **DONE (2026-06-26):** owner-configurable options + deposit % in `ListingEditorTab`; player picks at checkout (`BookCourtScreen`). Persisted on the booking.
+- ✅ **7% player service fee display** — **DONE (2026-06-26):** single platform fee (`AppSettings.serviceFeePercent`, default 7) shown as its own line in checkout + booking detail.
 - ✅ **VAT / tax-inclusive display convention** — **DONE** (2026-06-25): `pricingTaxLabel` on Venue (default "VAT inclusive"), owner-editable, shown on public page + checkout.
-- ⬜ **Operator/staff dashboard view** — today's schedule / pending / manual entries / cancellations (needs staff wiring fix + manual booking API + dedicated front-desk screen).
-- 🟡 **Staff wiring fix** — switch `useOwnerDashboard` from `listOwnerVenues` to `listManagedVenues` so staff can actually see their venues; consume `viewerStaffRole` to gate tabs (hide structural-edit tabs for non-owners; show role badge per venue). **One-line change in useOwnerDashboard + a role check in OwnerVenueScreen.**
+- ✅ **Operator/staff dashboard view** — **DONE (2026-06-26):** `OwnerFrontDeskScreen` (`owner-front-desk`) — today's schedule + pending approvals + manual-entry count + venue picker + Add-booking/Block-slot. Reached from the OwnerHome "Front desk" quick action; gated by `owner.bookings.manage`.
+- 🟡 **Staff wiring** — **DONE (2026-06-26):** `useOwnerDashboard` now calls `listManagedVenues` (via `effectiveOwnerId`), so staff see the owner's venues. **Residual:** consume `viewerStaffRole` to gate tabs (hide structural-edit tabs for front-desk; show role badge per venue) — not yet wired.
 
 ## 3. ⬜ High priority (post-demo near-term)
 
@@ -141,10 +141,10 @@ Every row of the master sheet, checked against the actual code.
 - ⬜ **Per-player surcharge** — base rate + ₱/extra player (Pickleball-Junction style).
 - ⬜ **Recurring bookings** (weekly regulars, leagues).
 - ✅ **Owner-configurable cancellation / refund policy** — **DONE** (2026-06-25): `cancellationWindowHours`/`refundPercent`/`noShowFee` on Venue, editable in ListingEditorTab, shown on CourtDetails + BookCourtScreen.
-- 🟡 **Multi-user / staff accounts with role-based permissions** — **PARTIAL** (2026-06-25): `StaffEditorTab` built — search-by-name, role picker (manager/front_desk), add/remove working. **BUT: `listManagedVenues` never called in the app — only `listOwnerVenues` is used, so staff see zero venues.** `viewerStaffRole` returned by API but never consumed — no role-tailored views. See gap analysis for full spec.
+- 🟡 **Multi-user / staff accounts with role-based permissions** — **MOSTLY DONE** (2026-06-26): staff accounts (create/manage via `OwnerStaffScreen`) + `StaffEditorTab` + account scoping; **staff now see the owner's venues** (`listManagedVenues` wired via `effectiveOwnerId`). **Residual:** `viewerStaffRole` not consumed for role-tailored views.
 - ✅ **Owner-editable address in the editor** — **DONE** (2026-06-25): `LocationEditorTab` has full structured address fields (line1/line2/city/region/postcode) + map pin + type-ahead search.
 - ✅ **Active completion prompts** — **DONE** (2026-06-25): `CompletenessMeter` now receives `onJump` from VenueOverviewTab, so every incomplete item is a tappable nudge to its editor tab.
-- 🟡 **Owner identity verification** — **PARTIAL** (2026-06-25): claim form collects legal name, role/title, verification contact + proof links. **Missing: file upload for scanned IDs/permits (links only), admin review UI (API-only), "needs more info" claim state.**
+- ✅ **Owner identity verification** — **DONE (2026-06-26)**: claim form collects legal name, role/title, verification contact + proof links, **file upload** for scanned IDs/permits (`uploadClaimMedia`), a **"needs more info" claim state + resubmit flow** (`/claims/mine`, `/claims/:id/resubmit`), and claimant status notifications. The **admin claim-review UI** now exists on both surfaces — web `ClaimsQueuePage` (existing) and the new app `AdminClaimsScreen` (`admin-claims`, gated by `admin.moderation.manage`: approve / reject / request-more-info → `PATCH /claims/:id`).
 - ⬜ **Demand data capture** (searches/views/attempts/cancellations/empty slots) — foundation for future dynamic pricing.
 
 ## 4. ⬜ Strategic / medium
@@ -154,32 +154,31 @@ Every row of the master sheet, checked against the actual code.
 - ⬜ **Booking modification** (reschedule, change court).
 - ⬜ **Overbooking / waitlist** for full slots.
 - ✅ **Buffer / turnover time** between bookings — optional per-court `Court.turnoverMinutes` gap, enforced by the booking guard + reflected in the time picker.
-- ✅ **Half-court / split-court** — `Court.isSplittable` + `splitCount` (2-4) in model + CourtsEditorTab UI (sub-court booking enforcement not yet in booking flow, but model + config ready).
-- ⬜ **Open-play / per-session** booking as a price mode (confirm Phase-1 vs Phase-2 with Emmanuel).
-- ⬜ **Equipment / paddle rental** add-on line items at checkout.
+- ✅ **Half-court / split-court** — `Court.isSplittable` + `splitCount` (2-4) + per-unit `subUnitRates` in model + CourtsEditorTab UI; **sub-court booking now enforced (2026-06-26)** — `BookCourtScreen` sub-unit picker + rate; `createBooking` validates `subUnitIndex`, and clash/capacity handle sub-unit vs whole-court.
+- ✅ **Open-play / per-session** booking as a price mode — **Phase 1 DONE (2026-06-26)**: courtless per-session drop-in booking (`bookingType:'open_play'`, priced from `openPlayPrice`), reachable from the court page, paid via the existing checkout. *(Phase 2 — scheduled sessions with capacity — deferred; needs Emmanuel's call.)*
+- ✅ **Equipment / paddle rental** add-on line items at checkout — **DONE (2026-06-26)**: `BookCourtScreen` rental toggle adds `venue.equipmentRentalPrice` to the total; `hasEquipmentRental`/`equipmentRentalAmount` persisted + shown on the booking detail.
 - ✅ **Platform-curated highlights** — `computeVenueHighlights()` in API generates `bestFor` + `whatPlayersLike` from amenities/ratings/bookings/editorial; ListingEditorTab + CourtDetailsScreen render them as read-only curated chips.
 - ⬜ **Payout schedule & reconciliation** to venue (split-payment / settlement).
 - ⬜ **BIR-compliant / official receipts.**
 - ⬜ **In-app owner↔player messaging / inquiry** (replace Messenger/IG coordination).
 - ✅ **Push notifications** — **Web Push (VAPID) done** — covers Android + iOS 16.4+ for a PWA via service worker. SSE handles in-app real-time. No Firebase/APNs needed (not a native app).
-- 🟡 **Owner identity verification** — **PARTIAL** (2026-06-25): claim form collects legal name, role/title, verification contact + proof links. **Missing: file upload for scanned IDs/permits, admin review UI, "needs more info" claim state.**
+- ✅ **Owner identity verification** — **DONE (2026-06-26)**: claim form collects legal name, role/title, verification contact + proof links, **file upload** for scanned IDs/permits, a **"needs more info" claim state + resubmit flow**, and claimant status notifications. The **admin claim-review UI** now exists on both surfaces — web `ClaimsQueuePage` (existing) and the new app `AdminClaimsScreen`.
 
 ## 4b. 🔴 Critical wiring gaps (found in 2026-06-25 deep-dive)
 
 These are features where the backend is built but the app doesn't wire to it — the code exists but is invisible to users.
 
-### Gap 6: Staff can't see their venues (`listManagedVenues` unused)
+### Gap 6: Staff venue visibility — ✅ RESOLVED (2026-06-26); role-tailored views still 🟡
 
-**Severity: 🔴 Blocker for multi-user demo.** An owner adds staff via StaffEditorTab, the API returns `viewerStaffRole` and supports `managedByUserId` — but the app never uses any of it.
+**Severity: 🟡 Minor.** Staff accounts + scoping shipped (`OwnerStaffScreen`), and `useOwnerDashboard` now calls `listManagedVenues` (via `effectiveOwnerId`) so **staff see the owner's venues**. What remains is cosmetic role gating.
 
 | What | File | Status |
 |---|---|---|
-| `listManagedVenues(userId)` client function | `app/src/shared/lib/api.ts:829` | ✅ Exists, never called |
-| `listVenues({ managedByUserId })` API param | `api/src/features/venues/venues.controller.ts:347` | ✅ Backend ready |
-| `viewerStaffRole` on venue responses | `api/src/features/venues/venues.controller.ts:419-420` | ✅ Returned, never read |
-| `useOwnerDashboard` calls `listOwnerVenues` | `app/src/features/owner/hooks/useOwnerDashboard.ts:54` | ❌ Should call `listManagedVenues` |
-| `OwnerVenueScreen` gates tabs by `viewerStaffRole` | `app/src/features/owner/OwnerVenueScreen.tsx` | ❌ No role check — all tabs shown to everyone |
-| Front-desk specific view ("today's schedule, check-ins, manual entries") | — | ❌ Doesn't exist |
+| `listManagedVenues(userId)` client function | `app/src/shared/lib/api.ts` | ✅ Now called by `useOwnerDashboard` |
+| `listVenues({ managedByUserId })` / `effectiveOwnerId` | `api/src/features/venues/venues.controller.ts` | ✅ Backend ready + used |
+| `useOwnerDashboard` venue source | `app/src/features/owner/hooks/useOwnerDashboard.ts` | ✅ Uses `listManagedVenues` |
+| `viewerStaffRole` consumed for role-tailored tab gating | `app/src/features/owner/OwnerVenueScreen.tsx` | ❌ Not yet — all tabs shown (structural edits 403 server-side) |
+| Front-desk specific view ("today's schedule, check-ins, manual entries") | — | ❌ Doesn't exist (ties to manual-booking Gap 7) |
 
 **Fix plan (app-only, no API change):**
 1. `useOwnerDashboard` → call `listManagedVenues(user.id)` instead of `listOwnerVenues(user.id)`
@@ -187,24 +186,26 @@ These are features where the backend is built but the app doesn't wire to it —
 3. `OwnerVenuesScreen` → show a role badge per venue card (`viewerStaffRole`)
 4. (Future) Front-desk sees a focused "Today" dashboard instead of the full console
 
-### Gap 7: Manual booking / slot blocking — zero implementation
+### Gap 7: Manual booking / slot blocking — ✅ RESOLVED (2026-06-26)
 
-**Severity: 🔴 #1 meeting priority, not started.** The only booking path is player-initiated `POST /api/v1/bookings`. No owner-side create, no slot block, no walk-in entry.
+**Severity: ✅ Done — the #1 meeting priority.** Owner/staff can now record off-platform bookings and block slots.
 
-| Need | Details |
+| Need | Status |
 |---|---|
-| Owner-create-booking endpoint | `POST /api/v1/venues/:id/bookings` — gated by `owner.bookings.manage` or staff via `requireVenueManager` |
-| `Booking.bookingType` | Add `'manual'` (staff-entered) and `'blocked'` (slot unavailable) variants |
-| Slot-block UI | Calendar/day view in the owner console — tap a court+time, "Block slot" action |
-| Front-desk quick-book | Streamlined form: pick court → time → player name/phone → confirm (no payment) |
+| Owner-create-booking endpoint | ✅ `POST /api/v1/venues/:id/bookings` — gated by `requireVenueManager` (owner OR active staff incl. front-desk) |
+| `Booking.bookingType` | ✅ `'manual'` (off-platform customer name/phone + source) + `'blocked'` (slot unavailable + reason); plus `createdByUserId` |
+| Slot-block UI | ✅ "Block slot" form in `OwnerFrontDeskScreen` (court + date + time + reason) |
+| Front-desk quick-book | ✅ "Add booking" form (court → date → time → customer → pay method → amount, no online payment) |
 
-### Gap 8: Claim identity verification — missing admin UI + file upload
+Both flows reuse the player flow's `findSlotConflict` double-booking guard (exported, optional userId); manual/blocked rows are excluded from players' "My bookings" and tagged MANUAL/BLOCKED in the owner inbox + detail sheet.
 
-**Severity: 🟡 Partial.** Claim form collects identity text fields but:
-- `proofDocumentUrls` are free-text URL strings (one per line), not actual file uploads — no way to upload a scanned business permit or government ID
-- No admin review UI in app or web (only API `PATCH /claims/:id`)
-- No intermediate claim states (only pending→approved/rejected, no "needs more info")
-- No notification to claimant on status change
+### Gap 8: Claim identity verification — ✅ RESOLVED (2026-06-26)
+
+**Severity: ✅ Done.** Both sides of the claim flow are now complete:
+- ✅ **File upload** — `ClaimVenueScreen` uploads scanned permits/IDs via `uploadClaimMedia` (was free-text URLs only); links still supported alongside.
+- ✅ **Intermediate `needs_info` state + resubmit** — reviewer can request more info; claimant sees it on the success screen and resubmits via `/claims/:id/resubmit` (`/claims/mine` for status).
+- ✅ **Claimant notification on status change** — approve / reject / needs-info all notify the claimant.
+- ✅ **Admin review UI** — web `ClaimsQueuePage` (existing) and the new app `AdminClaimsScreen` (`admin-claims`, gated by `admin.moderation.manage`) both list claims and approve / reject / request-more-info via `PATCH /claims/:id`. *(The earlier "no admin review UI in app or web" note was inaccurate — web already had `ClaimsQueuePage`; only the app was missing it.)*
 
 ## 5. ⏸️ Roadmap (later, per meeting)
 
@@ -223,14 +224,14 @@ These are features where the backend is built but the app doesn't wire to it —
 - ✅ Configure court availability + operating hours (per court)
 - ✅ Court details — name, surface, description, thumbnail, photo gallery with preview
 - ✅ Set basic + peak pricing rules **that actually apply** *(time-block rates now resolved in checkout)*
-- ⬜ Manually block a time slot (phone / Messenger / Instagram / walk-in) — **#1 priority, zero implementation**
+- ✅ Manually block a time slot + record a phone / Messenger / Instagram / walk-in booking — **#1 priority, DONE 2026-06-26** (`OwnerFrontDeskScreen` + `POST /venues/:id/bookings`)
 - ✅ Choose manual or automatic approval for bookings (per venue + per court override)
 - ✅ System auto-generates a venue / court booking link (+ custom slug w/ live check)
 - ✅ Booking link shareable / embeddable separate from venue website
-- ⬜ Single player service fee (7%) + VAT-inclusive display at checkout
+- ✅ Single player service fee (7%) + VAT-inclusive display at checkout — **DONE 2026-06-26**
 - ⬜ Explain future features (demand insights, dynamic pricing) without faking them
-- 🟡 Staff/role-based views — backend + UI done, but `listManagedVenues` not wired (staff see zero venues)
-- 🟡 Claim identity verification — form done, missing file upload + admin review UI
+- 🟡 Staff/role-based views — staff accounts + venue visibility done (`listManagedVenues` wired); only `viewerStaffRole` role-tailored view gating remains
+- ✅ Claim identity verification — claimant side (form + file upload + needs-info/resubmit + notifications) **and** admin review UI (web `ClaimsQueuePage` + new app `AdminClaimsScreen`) both done
 
 ---
 
@@ -257,17 +258,17 @@ Items below are scoped strictly to **venue model, court model, venue setup, and 
 
 | # | Task | Priority | Details |
 |---|---|---|---|
-| V1 | **Half-court / split-court booking enforcement** | Medium | Model + config UI done (`Court.isSplittable`, `splitCount` 2-4, editor toggle). But `createBooking` in the API does not check split-court sub-units — can't book "Court A, half 1" vs "Court A, half 2." Sub-court units exist only as data; booking flow treats the court as one unit. |
-| V2 | **Equipment rental as checkout line item** | Medium | `Venue.equipmentRentalPrice` exists in model + editable in `ListingEditorTab`, but is dead data — never appears in checkout or player-facing UI. Needs a line-item adder in BookCourtScreen review step. |
-| V3 | **Open-play / per-session booking mode** | High | `Venue.openPlayPrice` exists in model + editable in `ListingEditorTab`, but unused — no "open play" booking path. Confirm with Emmanuel if Phase 1 or Phase 2. |
-| V4 | **Sub-court pricing** | Medium | When a court is splittable, each sub-unit currently inherits the court `hourlyRate`. No per-sub-unit price config. Blocked by V1 (sub-court enforcement). |
+| V3 | **Open-play / per-session booking mode** | High | **Phase 1 DONE (2026-06-26).** Real open-play booking path: "Join open play" CTA → `OpenPlayBookScreen` → courtless `bookingType:'open_play'` booking priced from `openPlayPrice`, instant-confirm, in My Bookings. *(Phase 2 — scheduled sessions + capacity — deferred pending Emmanuel.)* |
+
+_V1 (split-court enforcement), V2 (equipment rental), V4 (sub-court pricing) — **DONE 2026-06-26**; moved to ✅ below._
 
 ### 🟡 Partial
 
 | # | Task | Done | Missing |
 |---|---|---|---|
-| V5 | **Owner identity verification on claim** | Claim form collects legal name, role/title, contact, proof links (`ClaimVenueScreen.tsx` + `POST /claims`) | No file upload for scanned IDs/permits (free-text URL strings only, one per line). No admin review UI in app or web (API-only `PATCH /claims/:id`). No "needs more info" state between `pending` → `approved`/`rejected`. No notification to claimant on status change. |
-| V6 | **Venue claim lifecycle depth** | Basic `state: 'unclaimed'` → claim → `'claimed'` works | No "needs more info" intermediate state. `Venue.state` only tracks `unclaimed` (default); no `claimed`/`verified`/`suspended` lifecycle. Claim review is API-only — no admin-facing screen. |
+| V6 | **Venue claim lifecycle depth** | ✅ effectively resolved *(2026-06-26)*: `unclaimed`→`claimed` + `needs_info` + admin review UI; **`verified` already exists** (`isVerified` → "Verified" chip) and **"suspended" already works** (public `listVenues`/`getVenue` exclude `listingStatus ∈ {pending,rejected}`). | Residual (deferred, not demo-required): suspending an *already-published* venue (`reviewVenueApproval` only acts on `pending`) + an in-app admin venues screen. Web already has `AdminVenuesPage`. |
+
+_V5 (owner identity verification on claim) — **DONE 2026-06-26**; moved to ✅ below._
 
 ### ✅ Already done (venue-only)
 
@@ -289,13 +290,13 @@ Items below are scoped strictly to **venue model, court model, venue setup, and 
 | ✅ | Separate website vs booking link fields |
 | ✅ | Auto-generated booking link + custom slug + Copy/Share |
 | ✅ | Court editor 3-tab reorg (Court Info / Gallery / Hours) |
+| ✅ | Split-court booking enforcement (V1) — `createBooking` validates `subUnitIndex`; clash + pool-capacity handle sub-unit vs whole-court; `BookCourtScreen` sub-unit picker *(2026-06-26)* |
+| ✅ | Equipment rental checkout line item (V2) — `BookCourtScreen` toggle adds `equipmentRentalPrice` to the total; `hasEquipmentRental`/`equipmentRentalAmount` persisted + shown on booking detail *(2026-06-26)* |
+| ✅ | Sub-court pricing (V4) — per-unit `Court.subUnitRates` config in CourtsEditorTab; resolved in `BookCourtScreen` *(2026-06-26)* |
+| ✅ | Owner identity verification on claim (V5) — proof links + ID upload, `needs_info`/resubmit, claimant notifications, **admin review UI** (web `ClaimsQueuePage` + app `AdminClaimsScreen`) *(2026-06-26)* |
 
 ### 🎯 Venue demo-readiness gaps only
 
 | # | Gap | Impact |
 |---|---|---|
-| V1 | Split-court booking not enforced | Can't demo "book half-court" — model says it exists but booking doesn't honor it |
-| V5 | Claim identity verification incomplete | Can't demo a trustworthy claim review; ID docs are text URLs, no admin UI |
-| V3 | Open-play mode unused | `openPlayPrice` field visible in editor but does nothing — may confuse demo |
-
-**Bottom line:** Venue setup is ~90% complete. The remaining venue-specific gaps are: split-court enforcement (V1), equipment rental wiring (V2), open-play booking mode (V3), and claim identity verification depth (V5+V6). Everything else in the full audit (manual booking, staff wiring, pricing tiers, payments, analytics) falls outside the "venue model" scope.
+**Bottom line:** Venue setup is **~99% complete**. V1 (split-court enforcement), V2 (equipment rental), V4 (sub-court pricing), V5 (claim identity verification incl. admin review UI on web + app), and **V3 open-play (Phase 1)** are done; V6 lifecycle is effectively resolved (only a deferred, not-demo-required admin "suspend a published venue" tweak remains). No open venue-feature gap blocks the demo. Everything else in the full audit (manual booking, staff wiring, pricing tiers, payments, analytics) falls outside the "venue model" scope. *(Open follow-up beyond venue scope: open-play **Phase 2** — scheduled sessions + capacity — pending Emmanuel's call.)*

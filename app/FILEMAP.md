@@ -73,8 +73,11 @@ src/
                        #   approved booking shows "Pay {amount} by <deadline>" → checkout → confirmed),
                        #   BookingRefund (refund/cancel a single court booking — reached after a host
                        #   deletes a lobby but keeps the court; loads getBooking → cancelBooking),
+                       #   OpenPlayBook (V3 — courtless per-session drop-in: date+time+party →
+                       #   createBooking{bookingType:'open_play'} priced from venue.openPlayPrice →
+                       #   checkout; reached from the court page "Join open play" CTA),
                        #   bookingDisplay (status chips incl. awaiting_payment "Pay to confirm")
-    venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails, NearbyFilterSheet, venueFilters (filter model+predicate)
+    venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails (+ "Join Membership"/"Renew Subscription" CTA beside "Book this court" → MembershipSheet; button hidden when membership is active per viewerMembershipExpiresAt), NearbyFilterSheet, venueFilters (filter model+predicate), MembershipSheet (subscription-plan picker BottomSheet; handles join, switch, and renewal) + membership.ts (default plans + helpers; join persists server-side as a VenueMember via joinVenueMembership/leaveVenueMembership, seeded from venue.viewerMembershipTier + viewerMembershipExpiresAt — surfaces in the owner Members tab + member pricing; expiry computed from plan cadence)
     tournaments/       # Player Tournament tab (live): v2/TournamentsScreenV2 (role-aware tabs —
                        #   Open · Managing(organizer)/Joined(player) · Results), v2/TournamentDetailScreen
                        #   (overview + register/withdraw + announcements + Chat),
@@ -117,9 +120,15 @@ src/
                        #   (crossSearch → GET /api/v1/search?type=all); debounced, recent
                        #   searches in localStorage, player rows open a DM. Gated by player.search.use
     owner/             # venue-owner console (the one feature with internal subfolders — it's
-                       # ~3x any other slice). Root = the 8 screens: OwnerHome (the Home tab for
+                       # ~3x any other slice). Root = the screens: OwnerHome (the Home tab for
                        # owners — dashboard: revenue hero + KPIs + cross-venue pending/upcoming +
-                       # venue cards), OwnerBookings (all-venues inbox: When tabs
+                       # venue cards + a "Front desk" quick action), OwnerFrontDesk (the
+                       # operator/staff console — owner-front-desk: today's schedule +
+                       # pending approvals + manual-entry count for one venue (venue picker
+                       # when multi-venue); "Add booking" records an off-platform
+                       # phone/Messenger/IG/walk-in reservation, "Block slot" makes a time
+                       # unavailable — both via createVenueBooking → POST /venues/:id/bookings,
+                       # double-booking-guarded, no payment flow), OwnerBookings (all-venues inbox: When tabs
                        # upcoming/ongoing/past + OwnerBookingsFilterSheet for
                        # status/sort/venue; tap a row → OwnerBookingDetailSheet:
                        # full checkout-style breakdown + the player who booked +
@@ -133,11 +142,20 @@ src/
                        # OwnerVenues (list w/ per-card glance + "Claim" entry), OwnerVenue
                        # (tabbed host), OwnerNewVenue (create), ClaimVenue (search the
                        # directory for an unclaimed listing → submit an ownership claim
-                       # with proof; gated by owner.venues.claim).
+                       # with proof; gated by owner.venues.claim); OwnerStaff (org-level
+                       # staff accounts — create a login that manages ALL the owner's
+                       # venues/bookings/clubs; reached from the Profile "Staff" row,
+                       # gated by owner.staff.manage; distinct from the per-venue Team tab).
       tabs/            # the OwnerVenue panels: Overview (business dashboard: revenue/bookings/
                        # occupancy KPIs + revenue trend chart), Insights (per-venue segmented
                        # analytics), Bookings (per-venue inbox — Approve a request-to-book →
-                       # awaiting_payment, or Decline/Cancel), Listing (identity/contact/pricing/
+                       # awaiting_payment, or Decline/Cancel), Membership (the venue's actual
+                       # MEMBERS — players who joined the membership (VenueMember, via the
+                       # court page's "Join Membership") + anyone the owner adds by hand;
+                       # member pricing applies. NOT booking-derived — "Add member" opens a
+                       # search field (finds any player by name via /search?type=players) above
+                       # a picker of past players; remove revokes it),
+                       # Listing (identity/contact/pricing/
                        # amenities + a "Booking policy" section: require-approval toggle +
                        # pay-window)/Location/Courts/Closures/Faqs/Reviews/Photos editors.
                        # Courts owns per-court details (name auto-numbered, surface,
@@ -179,6 +197,13 @@ src/
       openplay/        # OpenPlayScreen (series list + create), SessionRosterScreen (roster mgmt)
       rosters/         # RostersScreen (lists + create), RosterDetailScreen (members CRUD)
       venues/          # VenueRequestsScreen (submit + track tournament venue requests)
+    admin/             # moderation console (gated by admin.moderation.manage) — entry from
+                       # OwnerProfile "Venue claims" row (admins) / ProfileScreenV2 "Admin"
+                       # section (moderators). AdminClaimsScreen (admin-claims) lists submitted
+                       # venue-ownership claims (status filter, pending first) and approves /
+                       # rejects / requests-more-info on a pending claim with a note relayed to
+                       # the claimant. Consumes listClaims/reviewClaim in shared/lib/api.ts
+                       # (GET/PATCH /api/v1/claims). Reuses the same API the web console uses.
 
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
@@ -340,8 +365,9 @@ src/
   (operating hours are per-court, inside the Courts tab; Closures = venue-wide dates);
   `OwnerNewVenueScreen` creates one; `ClaimVenueScreen` (`claim-venue`, gated by
   `owner.venues.claim`) searches the directory for an **unclaimed** listing and submits an
-  ownership claim with proof (admin reviews → on approve the venue becomes `claimed` +
-  links to the owner). All gated by `SCREEN_PERMISSIONS` in `App.tsx`.
+  ownership claim with proof + ID upload (claimant tracks status + resubmits on `needs_info`).
+  An admin reviews it in `features/admin/AdminClaimsScreen` (`admin-claims`) → on approve the
+  venue becomes `claimed` + links to the owner. All gated by `SCREEN_PERMISSIONS` in `App.tsx`.
   Same API the web `/owner/` console uses; no API changes. (Known gaps mirror web: photos
   are upload-only, address text/city are staff-managed, no token refresh on 401.)
 - **Organizer console (Phase 3):** users with `organizer.access` see an **"Organize"** row
@@ -428,6 +454,9 @@ src/
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
+| Front desk — manual/walk-in booking + slot blocking + today's schedule | `features/owner/OwnerFrontDeskScreen.tsx` (`owner-front-desk`, from OwnerHome quick action); `createVenueBooking` in `shared/lib/api.ts` → `POST /venues/:id/bookings` |
+| Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
+| Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one) |

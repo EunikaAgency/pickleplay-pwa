@@ -7,7 +7,7 @@ import { FormField } from '../../../shared/components/forms/FormField';
 import { FormSelect } from '../../../shared/components/forms/FormSelect';
 import { OwnerSection } from '../components/OwnerSection';
 import { BookingLinkShare } from '../components/BookingLinkShare';
-import { updateVenue, checkBookingSlug, deleteVenue, ApiError, type OwnerVenueDetail, type BookingSlugCheck } from '../../../shared/lib/api';
+import { updateVenue, checkBookingSlug, deleteVenue, ApiError, type OwnerVenueDetail, type BookingSlugCheck, type PaymentOption } from '../../../shared/lib/api';
 
 interface ListingEditorTabProps {
   venue: OwnerVenueDetail;
@@ -119,9 +119,20 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
     offPeakPrice: str(venue.offPeakPrice),
     openPlayPrice: str(venue.openPlayPrice),
     equipmentRentalPrice: str(venue.equipmentRentalPrice),
+    // Day-based pricing — flat weekend/holiday hourly overrides.
+    weekendPrice: str(venue.weekendPrice),
+    holidayPrice: str(venue.holidayPrice),
+    // Member pricing — % off the resolved rate for venue members.
+    memberDiscountPercent: str(venue.memberDiscountPercent || ''),
+    // Per-player surcharge — ₱ per extra player + the included headcount.
+    perPlayerFee: str(venue.perPlayerFee || ''),
+    perPlayerFeeThreshold: str(venue.perPlayerFeeThreshold ?? 1),
     priceNotes: str(venue.priceNotes),
     pricingTaxLabel: str(venue.pricingTaxLabel ?? 'VAT inclusive'),
   });
+  // Holiday dates (YYYY-MM-DD) for holiday pricing — managed as a small date list.
+  const [holidayDates, setHolidayDates] = useState<string[]>(venue.holidayDates ?? []);
+  const [holidayDraft, setHolidayDraft] = useState('');
   // Cancellation & refund policy — owner-configurable per venue.
   const [cancelWindow, setCancelWindow] = useState(str(venue.cancellationWindowHours ?? 24));
   const [refundPct, setRefundPct] = useState(str(venue.refundPercent ?? 100));
@@ -140,6 +151,15 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
   // Booking policy: require-approval (request-to-book) + the per-venue pay-window.
   const [requireApproval, setRequireApproval] = useState<boolean>(Boolean(venue.requireBookingApproval));
   const [payWindow, setPayWindow] = useState<string>(str(venue.bookingPayWindowHours || 24));
+  // Payment options offered at checkout (deposit / full / pay-at-venue) + deposit size.
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>(
+    (venue.paymentOptions ?? ['full']).filter((o): o is PaymentOption => o === 'full' || o === 'deposit' || o === 'pay_at_venue'),
+  );
+  const [depositPercent, setDepositPercent] = useState<string>(str(venue.depositPercent ?? 50));
+  const togglePaymentOption = (opt: PaymentOption) => {
+    setStatus('idle');
+    setPaymentOptions((prev) => (prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]));
+  };
   // Auto-generated booking link: the system builds …/venues/<slug>; the owner can
   // optionally vanity-name it with a custom slug (saved as `bookingSlug`).
   const [customSlug, setCustomSlug] = useState<string>(str(venue.bookingSlug));
@@ -217,9 +237,17 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
       // booking-link slug (empty string clears it back to the system slug).
       await updateVenue(venueId, {
         ...form, ...chips, ...amenities,
+        // Pricing rules — coerce the numeric ones; blank clears them (→ 0 / unset).
+        memberDiscountPercent: Number(form.memberDiscountPercent) || 0,
+        perPlayerFee: Number(form.perPlayerFee) || 0,
+        perPlayerFeeThreshold: Number(form.perPlayerFeeThreshold) || 1,
+        holidayDates,
         bookingSlug: customSlug.trim(),
         requireBookingApproval: requireApproval,
         bookingPayWindowHours: Number(payWindow) || 24,
+        // Always keep at least full-pay; default-fall-back if the owner cleared all.
+        paymentOptions: paymentOptions.length ? paymentOptions : ['full'],
+        depositPercent: Number(depositPercent) || 50,
         cancellationWindowHours: Number(cancelWindow) || 24,
         refundPercent: Number(refundPct) ?? 100,
         noShowFee: Number(noShowFee) || 0,
@@ -350,6 +378,38 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             />
           </div>
         )}
+
+        {/* Payment options offered at checkout (instant-book). */}
+        {!requireApproval && (
+          <div className="mt-4 pt-4 border-t-[0.5px] border-[var(--hairline)]">
+            <div className="lbl">Payment options at checkout</div>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { id: 'full', label: 'Pay in full' },
+                { id: 'deposit', label: 'Deposit' },
+                { id: 'pay_at_venue', label: 'Pay at venue' },
+              ] as { id: PaymentOption; label: string }[]).map((o) => (
+                <Chip key={o.id} selected={paymentOptions.includes(o.id)} onClick={() => togglePaymentOption(o.id)}>
+                  {paymentOptions.includes(o.id) && <Icon name="check" size={12} />} {o.label}
+                </Chip>
+              ))}
+            </div>
+            <div className="t-sm mt-2 text-[var(--muted)]">
+              Players choose one of these when they book. Full-payment always applies if you pick none.
+            </div>
+            {paymentOptions.includes('deposit') && (
+              <div className="field p-0! mt-3">
+                <FormField
+                  label="Deposit (% of total)"
+                  hint="How much the player pays online now; the rest is collected at the venue."
+                  value={depositPercent}
+                  inputMode="numeric"
+                  onChange={(e) => { setDepositPercent(e.target.value.replace(/[^\d]/g, '')); setStatus('idle'); }}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </OwnerSection>
 
       <OwnerSection title="Pricing" icon="bolt" description="Display pricing in PHP — shown on your public page, not charged.">
@@ -373,6 +433,59 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             onChange={(e) => set('pricingTaxLabel')(e.target.value)}
           />
         </div>
+      </OwnerSection>
+
+      <OwnerSection title="Day-based pricing" icon="calendar" description="Charge a different hourly rate on weekends and holidays. Leave blank to use the base rate. (Your per-time hours pricing on the Courts tab, when set, takes priority.)">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Weekend rate (₱/hr)" hint="Applied on Saturdays & Sundays." value={form.weekendPrice} inputMode="decimal" onChange={(e) => set('weekendPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Holiday rate (₱/hr)" hint="Applied on the holiday dates below." value={form.holidayPrice} inputMode="decimal" onChange={(e) => set('holidayPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
+        </div>
+        <div className="field p-0! mt-3.5">
+          <label className="lbl">Holiday dates</label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {holidayDates.length === 0 && <span className="t-sm">None yet.</span>}
+            {[...holidayDates].sort().map((d) => (
+              <span key={d} className="chip active gap-1.5">
+                {d}
+                <button type="button" onClick={() => { setHolidayDates((xs) => xs.filter((x) => x !== d)); setStatus('idle'); }} aria-label={`Remove ${d}`}>
+                  <Icon name="close" size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="date" className="control" value={holidayDraft} onChange={(e) => setHolidayDraft(e.target.value)} aria-label="Holiday date" />
+            <button
+              type="button"
+              onClick={() => { if (holidayDraft && !holidayDates.includes(holidayDraft)) { setHolidayDates((xs) => [...xs, holidayDraft]); setStatus('idle'); } setHolidayDraft(''); }}
+              className="px-4 rounded-2xl bg-[var(--surface-2)] text-[var(--primary)] font-bold text-[13px] shrink-0"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </OwnerSection>
+
+      <OwnerSection title="Member pricing" icon="star" description="Give your venue members a discount. Add members from the Membership tab; the discount applies automatically at checkout for them.">
+        <FormField
+          label="Member discount (%)"
+          hint="Percent off the booking rate for venue members. 0 = no member discount."
+          value={form.memberDiscountPercent}
+          inputMode="numeric"
+          onChange={(e) => set('memberDiscountPercent')(e.target.value.replace(/[^\d]/g, ''))}
+        />
+      </OwnerSection>
+
+      <OwnerSection title="Per-player surcharge" icon="groups" description="Charge a base court rate plus a fee per extra player (e.g. ₱800 base + ₱100 per extra head). Leave the fee blank for flat court pricing.">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Fee per extra player (₱)" value={form.perPlayerFee} inputMode="decimal" onChange={(e) => set('perPlayerFee')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Players included" hint="Heads covered by the base rate before the fee applies." value={form.perPlayerFeeThreshold} inputMode="numeric" onChange={(e) => set('perPlayerFeeThreshold')(e.target.value.replace(/[^\d]/g, ''))} />
+        </div>
+        {(Number(form.perPlayerFee) || 0) > 0 && (
+          <p className="t-sm text-[var(--muted)] mt-2">
+            Players past <strong className="text-[var(--ink)]">{Number(form.perPlayerFeeThreshold) || 1}</strong> are charged an extra <strong className="text-[var(--ink)]">₱{Number(form.perPlayerFee).toLocaleString()}</strong> each.
+          </p>
+        )}
       </OwnerSection>
 
       <OwnerSection title="Cancellation & refund policy" icon="close" description="Set the rules players see before booking. The platform enforces these automatically.">

@@ -6,7 +6,7 @@ interface FormSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 
   hint?: string;
   error?: string;
   required?: boolean;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; icon?: string; iconColor?: string }>;
   containerClassName?: string;
   placeholder?: string;
 }

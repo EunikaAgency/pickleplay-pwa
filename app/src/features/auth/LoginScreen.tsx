@@ -2,14 +2,25 @@ import { useState, type FormEvent } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { FormField } from '../../shared/components/forms/FormField';
+import { FormSelect } from '../../shared/components/forms/FormSelect';
 import { useForm } from '../../shared/hooks/useForm';
-import { ApiError } from '../../shared/lib/api';
+import { ApiError, type RegisterRole } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { ROLE_META } from '../../shared/lib/roleDisplay';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
   onBack?: () => void;
 }
+
+// Roles a new account can pick at sign-up. Mirrors the API's REGISTERABLE_ROLES
+// (player/owner/organizer/coach); admin/moderator are assigned by an admin only.
+const ROLE_OPTIONS: { value: RegisterRole; label: string; icon: string; iconColor: string }[] = [
+  { value: 'player',    label: 'Player',    icon: 'paddle',   iconColor: ROLE_META.player.color },
+  { value: 'owner',     label: 'Owner',     icon: 'location', iconColor: ROLE_META.owner.color },
+  { value: 'organizer', label: 'Organizer', icon: 'trophy',   iconColor: ROLE_META.organizer.color },
+  { value: 'coach',     label: 'Coach',     icon: 'star',     iconColor: ROLE_META.coach.color },
+];
 
 // Dev-only one-tap logins, one per role, so any role's surfaces can be reviewed
 // fast. Seeded emails (password123) except admin; re-running the user seed
@@ -27,6 +38,7 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
   const register = useAuthStore((s) => s.register);
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [name, setName] = useState('');
+  const [role, setRole] = useState<RegisterRole>('player');
   const [nameTouched, setNameTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -65,7 +77,7 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
     setSubmitError(null);
     setLoading(true);
     try {
-      await register({ email: form.values.email.trim(), password: form.values.password, displayName: name.trim() });
+      await register({ email: form.values.email.trim(), password: form.values.password, displayName: name.trim(), role });
       onLoginSuccess();
     } catch (err) {
       setSubmitError(
@@ -139,6 +151,17 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
                 placeholder="Your name"
                 leadingIcon="user"
                 error={nameTouched && !name.trim() ? 'Name is required.' : undefined}
+              />
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div className="field">
+              <FormSelect
+                label="I'm joining as"
+                options={ROLE_OPTIONS}
+                value={role}
+                onChange={(e) => setRole(e.target.value as RegisterRole)}
               />
             </div>
           )}
