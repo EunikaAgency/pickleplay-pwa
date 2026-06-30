@@ -1,5 +1,8 @@
+import { useCallback } from 'react';
 import { ChatThread } from '../../shared/components/ui/ChatThread';
 import { useClubChat } from './useClubChat';
+import { extractGameUrl, stripUrl, apiGameToCardData } from '../../shared/lib/game-link';
+import { getGame } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface ClubChatScreenProps {
@@ -14,7 +17,24 @@ interface ClubChatScreenProps {
  * deep-link (`/clubs/:slug/chat`). In-app, the same conversation is reached as
  * the Chat tab on the club detail (ClubChatPanel); both share useClubChat. */
 export function ClubChatScreen({ clubId, name, onNavigate, onBack }: ClubChatScreenProps) {
-  const { messages, title, loading, error, send, edit, remove } = useClubChat(clubId);
+  const { messages, title, loading, error, send: rawSend, edit, remove } = useClubChat(clubId);
+
+  /** Detect game URLs in outgoing messages → fetch game → attach as a rich card. */
+  const send = useCallback(async (body: string) => {
+    const match = extractGameUrl(body);
+    if (match) {
+      try {
+        const game = await getGame(match.gameId);
+        const card = apiGameToCardData(game);
+        await rawSend(stripUrl(body, match.url), card);
+        return;
+      } catch {
+        // Game fetch failed — send as plain text so the URL still shows.
+      }
+    }
+    await rawSend(body);
+  }, [rawSend]);
+
   return (
     <ChatThread
       title={name ?? title ?? ''}

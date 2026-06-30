@@ -100,7 +100,8 @@ src/
                        #   style dedicated "Edit post" page — author-only, edits the
                        #   body via PATCH /posts/:id), ClubChat (live member group
                        #   chat — separate from the feed; shared ChatThread UI,
-                       #   realtime via club.message on the per-user SSE stream),
+                       #   realtime via club.message on the per-user SSE stream;
+                       #   detects pasted game URLs → rich GameChatCard via game-link.ts),
                        #   CreateClub + EditClub (live: POST/PATCH
                        #   /clubs — name/description/visibility + cover-photo upload
                        #   + member limit). All via the clubs client in api.ts.
@@ -279,6 +280,9 @@ src/
   `Owner*` types, **and
   the games endpoints** (`listGames`/`getGame`/`createGame`/`joinGame`/`leaveGame` → `ApiGame`);
   `features/games/gameDisplay.ts` holds the game formatters (day/time/location/title/spots).
+- **`shared/lib/game-link.ts`** — `extractGameUrl(body)` detects game URLs in text
+  (`/games/<id>` or full URLs) and extracts the game ID; `apiGameToCardData(game)`
+  maps an `ApiGame` → `GameLinkCard` (used by the club chat send wrappers).
 - **`shared/lib/demoState.tsx`** — `DemoStateProvider`/`useDemoState`; lets reviewers flip
   normal/empty/loading/error/offline. Screens branch on it via `DemoBranch`.
 - **`shared/styles/index.css`** — design tokens + most component classes (`.avatar`,

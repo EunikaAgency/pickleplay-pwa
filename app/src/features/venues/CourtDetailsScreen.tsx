@@ -334,7 +334,8 @@ function CourtDetail({
   };
 
   // Fetch the venue's active API subscription plans so the sheet renders the
-  // owner's real plans when available (falls back to hardcoded defaults).
+  // owner's real plans. When the venue has none, the sheet shows an empty state
+  // and the "Join Membership" button is hidden.
   const [apiPlans, setApiPlans] = useState<ApiSubscriptionPlan[] | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -1009,7 +1010,7 @@ function CourtDetail({
                   membership — they're already a member. Shown as "Renew Subscription"
                   when expired, and "Join Membership" for non-members.
                   Also hidden when the player has a pending invite — the Accept banner above replaces it. */}
-              {hasPendingInvite ? null : !isMember || isExpired ? (
+              {hasPendingInvite ? null : (!isMember || isExpired) && apiPlans && apiPlans.length > 0 ? (
                 <Button
                   variant={isExpired ? 'brand' : 'outline'}
                   className={`flex-1 text-[15px] px-3 ${isExpired ? '' : 'shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]'}`}
@@ -1038,7 +1039,9 @@ function CourtDetail({
             </div>
             {!price && (
               <div className="text-[12px] text-[var(--muted)] font-semibold mt-2 text-center">
-                No rates listed for this court yet — membership still available.
+                {apiPlans && apiPlans.length > 0
+                  ? 'No rates listed for this court yet — membership still available.'
+                  : 'No rates listed for this court yet.'}
               </div>
             )}
           </>

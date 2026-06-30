@@ -86,9 +86,6 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
         ...(userHasPermission(currentUser, 'player.payments.view')
           ? [{ key: 'payment-history', icon: 'payments', label: 'Payment history', color: '#c89000', onClick: () => onNavigate('payment-history') } as MenuItem]
           : []),
-        ...(userHasPermission(currentUser, 'user.messages.send')
-          ? [{ key: 'messages', icon: 'chat', label: 'Messages', color: 'var(--primary)', onClick: () => onNavigate('messages') } as MenuItem]
-          : []),
         { key: 'clubs', icon: 'groups', label: 'Clubs', color: 'var(--coral)', onClick: () => onNavigate('clubs') },
         ...(isOwner
           ? [{ key: 'owner-venues', icon: 'storefront', label: 'My venues', color: 'var(--primary)', onClick: () => onNavigate('owner-venues') } as MenuItem]
@@ -102,6 +99,9 @@ export function ProfileScreen({ onNavigate, onLogout }: ProfileScreenProps) {
       title: 'Account',
       items: [
         { key: 'account', icon: 'user', label: 'Account', color: 'var(--primary)', onClick: () => onNavigate('edit-profile') },
+        ...(userHasPermission(currentUser, 'user.messages.send')
+          ? [{ key: 'messages', icon: 'chat', label: 'Messages', color: 'var(--primary)', onClick: () => onNavigate('messages') } as MenuItem]
+          : []),
         {
           key: 'dupr',
           icon: 'verified',

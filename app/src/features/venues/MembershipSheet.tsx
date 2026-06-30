@@ -80,6 +80,12 @@ export function MembershipSheet({
     if (apiPlans && apiPlans.length > 0) {
       return apiPlans.map((p) => apiPlanToMembershipPlan(p, currency));
     }
+    // When the venue has no owner-configured plans (empty array), show nothing —
+    // don't fall back to hardcoded defaults. The owner creates plans via Manage
+    // Subscription; until then the venue simply has no memberships available.
+    if (Array.isArray(apiPlans) && apiPlans.length === 0) return [];
+    // apiPlans is null (still loading) — show the hardcoded defaults so the sheet
+    // isn't empty while the fetch runs. They'll be replaced once real plans arrive.
     return MEMBERSHIP_PLANS;
   }, [apiPlans, currency]);
 
@@ -126,7 +132,7 @@ export function MembershipSheet({
           <Button fullWidth onClick={onClose}>
             Done
           </Button>
-        ) : (
+        ) : plans.length === 0 ? null : (
           <Button fullWidth onClick={handleJoin} disabled={isCurrent && !isRenewal}>
             <Icon name={isRenewal ? 'refresh' : 'star'} size={16} />
             {isCurrent && !isRenewal
@@ -166,6 +172,20 @@ export function MembershipSheet({
         </div>
       ) : (
         <div className="flex flex-col gap-3 px-5 pb-1">
+          {plans.length === 0 && (
+            <div className="text-center py-8">
+              <div className="w-[56px] h-[56px] rounded-full bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] inline-flex items-center justify-center mb-3">
+                <Icon name="card_membership" size={28} className="text-[var(--muted)]" />
+              </div>
+              <p className="font-heading font-semibold text-[16px] text-[var(--ink)]">
+                No membership plans yet
+              </p>
+              <p className="text-[13px] text-[var(--muted)] font-semibold mt-1 max-w-[280px] mx-auto leading-relaxed">
+                This venue hasn't published any membership plans. Check back later or contact the
+                venue owner.
+              </p>
+            </div>
+          )}
           {currentPlanId && !isRenewal && (
             <div className="flex items-center gap-2.5 bg-[var(--lime-soft)] text-[var(--lime-ink)] rounded-[14px] px-4 py-3 text-[13px] font-bold">
               <Icon name="verified" size={16} />

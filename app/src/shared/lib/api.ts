@@ -2083,6 +2083,23 @@ export async function unsubscribePush(endpoint: string): Promise<void> {
   await request(`${PUSH_PREFIX}/unsubscribe`, { method: 'POST', body: { endpoint }, auth: true });
 }
 
+/* ─── FCM token registration ──────────────────────────────────── */
+
+export interface FcmTokenPayload {
+  token: string;
+  userAgent?: string;
+}
+
+/** Register an FCM token for this device (Google push, better Android delivery). */
+export async function subscribeFcmToken(body: FcmTokenPayload): Promise<void> {
+  await request(`${PUSH_PREFIX}/fcm-subscribe`, { method: 'POST', body, auth: true });
+}
+
+/** Remove an FCM token server-side (logout / disable push). */
+export async function unsubscribeFcmToken(token: string): Promise<void> {
+  await request(`${PUSH_PREFIX}/fcm-unsubscribe`, { method: 'POST', body: { token }, auth: true });
+}
+
 /* ─── Clubs (communities + feed) ─────────────────────────────── */
 //
 // A club is a community with members and a Facebook-style post feed. Browse +
