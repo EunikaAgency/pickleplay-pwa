@@ -1,4 +1,4 @@
-# Ivan Report — 2026-06-30: Push Notifications & Automated Dynamic Pricing
+# Ivan Report — 2026-06-30: Push Notifications, Automated Dynamic Pricing & Pricing UI Cleanup
 
 ## 1. FCM Push Notifications (Dual-Channel)
 
@@ -148,3 +148,54 @@ For each venue, for each day-of-week × hour combination:
 - PM2 restarted with `--update-env` for both services
 - PM2 saved for reboot persistence
 - `.gitignore` — removed `/api/` exclusion (now tracked in monorepo)
+
+---
+
+## 3. Pricing UI Cleanup — Listing Tab
+
+**Problem:** The Listing tab had 5 scattered pricing sections with redundant fields, dead fields, and misleading descriptions. Owners were confused about which pricing applied where.
+
+### Removed
+
+| Field | Reason |
+|---|---|
+| `peakPrice` / `offPeakPrice` | Dead fields — never used by the pricing engine. Replaced by the Hours tab's per-time-window pricing. |
+| `pricingTaxLabel` | Always "VAT inclusive" in PH. Unnecessary per-venue config. |
+| `pricingCurrency` | Always PHP. System-wide default, not per-venue. |
+
+### Before (5 scattered sections)
+
+```
+"Pricing"              → priceFrom, peak, off-peak, open play, equipment, notes, tax label
+"Day-based pricing"    → weekend rate, holiday rate, holiday dates
+"Member pricing"       → member discount % (1 field, whole section)
+"Per-player surcharge" → fee + threshold (2 fields, whole section)
++ "Booking policy"     → approval, payment options, deposit
+```
+
+### After (3 clean sections)
+
+```
+"Hourly rate"          → default rate + hint about court/time overrides
+"Weekend & holiday"    → weekend rate, holiday rate, holiday dates
+"Extras"               → equipment, open play, per-player, member discount, notes
+```
+
+### Pricing precedence (now clear in the UI)
+
+The Listing tab's sections are the **venue-wide defaults**. They apply only when no more specific rate is set:
+
+| Priority | Where set | What |
+|---|---|---|
+| 1 (highest) | **Pricing** tab | Surge — manual slot override for a specific date+time |
+| 2 | **Hours** tab | Time-block rate — per-day, per-hour pricing window |
+| 3 | Listing tab ↑ | Holiday rate (if date is a holiday) |
+| 4 | Listing tab ↑ | Weekend rate (Sat/Sun) |
+| 5 | **Courts** tab | Sub-unit rate (half-court) |
+| 6 | **Courts** tab | Court's own hourly rate |
+| 7 (fallback) | Listing tab ↑ | Venue default rate |
+
+After the rate resolves, **Extras** (per-player, equipment, member discount) are added independently.
+
+### File changed
+- `app/src/features/owner/tabs/ListingEditorTab.tsx` — 25 insertions, 42 deletions
