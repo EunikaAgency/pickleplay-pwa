@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
+import { GameShareCard } from '../../shared/components/ui/GameShareCard';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
@@ -13,7 +14,7 @@ import { userHasPermission } from '../../shared/lib/permissions';
 import {
   getClub, getClubPost, listClubReplies, createClubPost, reactClubPost, unreactClubPost, editClubPost, deleteClubPost,
   apiUrl, apiImageUrl, getAccessToken,
-  type ApiClub, type ApiClubPost,
+  type ApiClub, type ApiClubPost, type ClubAttachment,
 } from '../../shared/lib/api';
 
 interface ClubPostScreenProps {
@@ -227,21 +228,29 @@ export function ClubPostScreen({ clubId, postId, onNavigate, onBack }: ClubPostS
       ) : (
         <p className={`${isComment ? 'text-[14px]' : 'mt-2.5'} whitespace-pre-wrap break-words`}>{p.isDeleted ? <em className="text-[var(--muted)]">deleted</em> : p.body}</p>
       )}
-      {!p.isDeleted && (p.attachments?.length ?? 0) > 0 && (
-        (p.attachments?.length ?? 0) === 1 ? (
-          <button type="button" onClick={() => setLightbox(apiImageUrl(p.attachments?.[0]?.url))} className={`block w-full ${isComment ? 'mt-1.5' : 'mt-2.5'}`}>
-            <img src={apiImageUrl(p.attachments?.[0]?.url)} alt="Attachment" loading="lazy" className={`w-full h-auto ${isComment ? 'max-h-[60vh] rounded-lg' : 'max-h-[75vh] rounded-xl'} object-contain bg-[var(--surface-2)]`} />
+      {/* Rich game share cards (Facebook-style link previews). */}
+      {!p.isDeleted && p.attachments?.filter((a): a is ClubAttachment & { type: 'game_link' } => a.type === 'game_link').map((a) => (
+        <GameShareCard key={a.gameId} attachment={a} onNavigate={onNavigate} />
+      ))}
+
+      {/* Photo / GIF attachments (filtered to non-game_link). */}
+      {!p.isDeleted && (() => {
+        const photos = p.attachments?.filter((a) => a.type !== 'game_link') ?? [];
+        if (photos.length === 0) return null;
+        return photos.length === 1 ? (
+          <button type="button" onClick={() => setLightbox(apiImageUrl(photos[0].url))} className={`block w-full ${isComment ? 'mt-1.5' : 'mt-2.5'}`}>
+            <img src={apiImageUrl(photos[0].url)} alt="Attachment" loading="lazy" className={`w-full h-auto ${isComment ? 'max-h-[60vh] rounded-lg' : 'max-h-[75vh] rounded-xl'} object-contain bg-[var(--surface-2)]`} />
           </button>
         ) : (
           <div className={`${isComment ? 'mt-1.5' : 'mt-2.5'} grid grid-cols-2 gap-1.5`}>
-            {p.attachments?.map((a, i) => (
+            {photos.map((a, i) => (
               <button key={i} type="button" onClick={() => setLightbox(apiImageUrl(a.url))} className="block">
                 <img src={apiImageUrl(a.url)} alt="Attachment" loading="lazy" className={`w-full aspect-square object-cover ${isComment ? 'rounded-lg' : 'rounded-xl'}`} />
               </button>
             ))}
           </div>
-        )
-      )}
+        );
+      })()}
     </>
   );
 

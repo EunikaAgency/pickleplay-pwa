@@ -12,6 +12,8 @@ import {
   isCancellable, money, prettyDate, bookingPhase, bookingPhaseChip,
   timeRange, bookingDuration, to12h, paymentOptionLabel, type BookingPhase,
 } from './bookingDisplay';
+import { ModifyBookingSheet } from './ModifyBookingSheet';
+import { WaitlistSection } from './WaitlistSection';
 
 /** "Mon, Jun 23, 6:00 PM" — the pay-by deadline for an approved request. */
 function payByLabel(iso?: string | null): string {
@@ -81,6 +83,8 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
   // Pay-after-approval (request-to-book): charging an 'awaiting_payment' booking.
   const [paying, setPaying] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  // Modify booking sheet.
+  const [modifyTarget, setModifyTarget] = useState<ApiBooking | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -272,6 +276,9 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
             ))}
           </div>
         )}
+
+        {/* Waitlist — court slots the user is waiting on */}
+        <WaitlistSection />
       </div>
 
       {/* Booking details */}
@@ -312,7 +319,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
               <div className="rounded-xl bg-[var(--surface-2)] p-3">
                 <div className="text-[13px] font-bold text-[var(--ink)]">Cancel this booking?</div>
                 <div className="text-[12px] text-[var(--muted)] mt-0.5">
-                  Your court reservation will be released and the time freed up. This can’t be undone.
+                  Your court reservation will be released and the time freed up. This can't be undone.
                 </div>
                 <div className="flex gap-2 mt-3">
                   <button
@@ -336,14 +343,34 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
                 </div>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setConfirming(true)}
-                className="w-full h-11 rounded-xl bg-[var(--coral)]/12 text-[var(--coral)] font-heading font-bold text-[14px] flex items-center justify-center gap-1.5"
-              >
-                <Icon name="close" size={16} /> Cancel booking
-              </button>
+              <div className="flex flex-col gap-2">
+                {/* Modify — available for upcoming confirmed (non-pending, non-cancelled) bookings. */}
+                {detail && detail.status !== 'cancelled' && detail.status !== 'pending_approval' && detail.status !== 'awaiting_payment' && (
+                  <button
+                    type="button"
+                    onClick={() => { closeDetail(); setModifyTarget(detail); }}
+                    className="w-full h-11 rounded-xl bg-[var(--primary-soft)] text-[var(--primary-deep)] font-heading font-bold text-[14px] flex items-center justify-center gap-1.5"
+                  >
+                    <Icon name="edit" size={16} /> Modify booking
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setConfirming(true)}
+                  className="w-full h-11 rounded-xl bg-[var(--coral)]/12 text-[var(--coral)] font-heading font-bold text-[14px] flex items-center justify-center gap-1.5"
+                >
+                  <Icon name="close" size={16} /> Cancel booking
+                </button>
+              </div>
             )
+          ) : detail && detail.status !== 'cancelled' && detail.status !== 'pending_approval' && detail.status !== 'awaiting_payment' ? (
+            <button
+              type="button"
+              onClick={() => { closeDetail(); setModifyTarget(detail); }}
+              className="w-full h-11 rounded-xl bg-[var(--primary-soft)] text-[var(--primary-deep)] font-heading font-bold text-[14px] flex items-center justify-center gap-1.5"
+            >
+              <Icon name="edit" size={16} /> Modify booking
+            </button>
           ) : undefined
         }
       >
@@ -382,6 +409,13 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
           </div>
         )}
       </BottomSheet>
+
+      {/* Modify booking sheet */}
+      <ModifyBookingSheet
+        booking={modifyTarget}
+        onClose={() => setModifyTarget(null)}
+        onModified={() => setReloadKey((k) => k + 1)}
+      />
     </div>
   );
 }

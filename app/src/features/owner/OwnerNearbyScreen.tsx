@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Icon } from '../../shared/components/ui/Icon';
@@ -104,6 +104,8 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
   const points = useMemo<LatLng[]>(() => mappable.map((r) => r.coords as LatLng), [mappable]);
   const pendingTotal = useMemo(() => rows.reduce((n, r) => n + (r.glance?.pendingCount ?? 0), 0), [rows]);
   const missingCount = rows.length - mappable.length;
+  const listRef = useRef<HTMLDivElement>(null);
+  const scrollToList = () => { listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
   // Open a venue's console — jump straight to the Location editor when it has no
   // map pin yet, otherwise land on the overview.
@@ -247,12 +249,16 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
 
         {/* Some venues have no map pin yet — nudge the owner to add one */}
         {missingCount > 0 && mappable.length > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--coral-soft)] text-[var(--coral)] text-[12px] font-semibold">
+          <button
+            type="button"
+            onClick={scrollToList}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[var(--coral-soft)] text-[var(--coral)] text-[12px] font-semibold w-full text-left active:scale-[0.99]"
+          >
             <Icon name="location" size={14} />
-            <span className="flex-1">
-              {missingCount} of {rows.length} venue{rows.length === 1 ? '' : 's'} {missingCount === 1 ? "isn't" : "aren't"} on the map yet — add a location below.
+            <span>
+              {missingCount} {missingCount === 1 ? 'venue' : 'venues'} {missingCount === 1 ? "isn't" : "aren't"} on the map yet — tap to find {missingCount === 1 ? 'it' : 'them'}.
             </span>
-          </div>
+          </button>
         )}
 
         {/* Legend */}
@@ -266,7 +272,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
         </div>
 
         {/* Venue list — attention-sorted; tap to open the console */}
-        <section className="space-y-3">
+        <section ref={listRef} className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="hd-2">All venues</div>
             <span className="t-sm">{venues.length} venue{venues.length === 1 ? '' : 's'}</span>
@@ -300,8 +306,11 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
                       <Icon name="location" size={12} /> <span className="truncate">{locationLine(r.venue) || '—'}</span>
                     </div>
                     {r.coords == null && (
-                      <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--coral-soft)] text-[var(--coral)] self-start">
-                        <Icon name="location" size={11} /> Add location
+                      <span
+                        className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[var(--coral)] text-white self-start"
+                        onClick={(e) => { e.stopPropagation(); onNavigate('owner-venue', { id: r.venue.slug || r.venue.id, tab: 'location' }); }}
+                      >
+                        <Icon name="location" size={12} /> Add location
                       </span>
                     )}
                     <div className="mt-2 flex items-center justify-between gap-1 text-[12px]">

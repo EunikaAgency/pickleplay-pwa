@@ -4,6 +4,8 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Icon } from '../../../shared/components/ui/Icon';
 import type { Navigate } from '../../../shared/lib/navigation';
 import { listBookings, listGames, type ApiBooking } from '../../../shared/lib/api';
+import { useAuthStore } from '../../../shared/lib/authStore';
+import { userHasPermission } from '../../../shared/lib/permissions';
 import { prettyDate, timeRange, todayYMD } from '../../bookings/bookingDisplay';
 
 type Step = 'choice' | 'host';
@@ -37,7 +39,11 @@ function isHostable(b: ApiBooking, usedBookingIds: Set<string>, today: string): 
 }
 
 export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'choice' }: CreateChoiceSheetProps) {
-  const [step, setStep] = useState<Step>(initialStep);
+  const me = useAuthStore((s) => s.user);
+  const isOrganizer = !!me && userHasPermission(me, 'organizer.access');
+  // Organizers manage games — they don't join. Skip the choice step entirely.
+  const effectiveInitial = isOrganizer ? 'host' : initialStep;
+  const [step, setStep] = useState<Step>(effectiveInitial);
   const [loading, setLoading] = useState(false);
   // null = not loaded yet (distinguishes "loading" from "loaded, empty").
   const [bookings, setBookings] = useState<ApiBooking[] | null>(null);
@@ -46,8 +52,8 @@ export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'ch
   // mounted (only `open` toggles), so a prop alone can't drive the step — sync it
   // here. Opening at 'host' lets the booking-load effect below kick in right away.
   useEffect(() => {
-    if (open) setStep(initialStep);
-  }, [open, initialStep]);
+    if (open) setStep(effectiveInitial);
+  }, [open, effectiveInitial]);
 
   // Close + reset, so the next open re-fetches bookings (state changes here are in
   // an event handler, not an effect, by design). The open effect above restores
@@ -133,10 +139,10 @@ export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'ch
             </Button>
             <button
               type="button"
-              onClick={() => setStep('choice')}
+              onClick={isOrganizer ? close : () => setStep('choice')}
               className="w-full mt-2.5 py-2 text-[14px] font-bold text-[var(--primary)]"
             >
-              Back
+              {isOrganizer ? 'Close' : 'Back'}
             </button>
           </div>
         ) : (

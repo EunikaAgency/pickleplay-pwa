@@ -8,12 +8,16 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import {
   listConversations,
   searchPlayers,
+  getOwnerPlayerSuggestions,
   startConversation,
   deleteConversation,
   type ApiConversationSummary,
   type ApiPlayer,
+  type OwnerPlayerSuggestion,
 } from '../../shared/lib/api';
 import { onRealtime } from '../../shared/lib/realtimeBus';
+import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface ConversationsScreenProps {
@@ -21,7 +25,7 @@ interface ConversationsScreenProps {
   onBack: () => void;
 }
 
-/** Short relative time for a conversation's last activity. */
+/** Short relative time for a conversation's last activity, or a booking's age. */
 function timeAgo(iso?: string | null): string {
   if (!iso) return '';
   const then = new Date(iso).getTime();
@@ -37,7 +41,29 @@ function timeAgo(iso?: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+/** Short booking date: "Jun 30" or "Jun 30, 2026" for past years. */
+function prettyBookingDate(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00'));
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+  return d.toLocaleDateString(undefined, opts);
+}
+
+/** "HH:MM" → "3:00 PM". */
+function to12h(t?: string | null): string {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return t;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenProps) {
+  const user = useAuthStore((s) => s.user);
+  const isOwner = userHasPermission(user, 'owner.access');
   const [items, setItems] = useState<ApiConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +77,11 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [starting, setStarting] = useState(false);
+
+  // Owner suggestion list: pre-fetched when the owner opens the compose screen
+  // so they can browse players who've interacted with their venues without typing.
+  const [suggestions, setSuggestions] = useState<OwnerPlayerSuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -68,6 +99,8 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
   useEffect(() => onRealtime('message', () => setReloadKey((k) => k + 1)), []);
 
   // Debounced people search while composing. A blank/short query clears results.
+  // Owners filter their pre-loaded suggestion list locally instead of hitting the
+  // API again. Non-owners use the global searchPlayers.
   const reqId = useRef(0);
   useEffect(() => {
     if (!composing) return;
@@ -76,6 +109,24 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
       setResults([]); setSearched(false); setSearching(false);
       return;
     }
+    // Owner path: filter the already-loaded suggestions by name.
+    if (isOwner) {
+      setSearching(true);
+      const id = ++reqId.current;
+      const t = setTimeout(() => {
+        const lower = q.toLowerCase();
+        const filtered = suggestions.filter((s) =>
+          s.displayName.toLowerCase().includes(lower),
+        );
+        if (id === reqId.current) {
+          setResults(filtered.map((s) => ({ id: s.id, displayName: s.displayName, avatarUrl: s.avatarUrl })));
+          setSearched(true);
+          setSearching(false);
+        }
+      }, 300);
+      return () => clearTimeout(t);
+    }
+    // Non-owner path: global API search.
     setSearching(true);
     const id = ++reqId.current;
     const t = setTimeout(async () => {
@@ -89,10 +140,23 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [query, composing]);
+  }, [query, composing, isOwner, suggestions]);
 
-  const openCompose = () => { setComposing(true); setQuery(''); setResults([]); setSearched(false); };
-  const closeCompose = () => { setComposing(false); setQuery(''); setResults([]); setSearched(false); };
+  const openCompose = () => {
+    setComposing(true); setQuery(''); setResults([]); setSearched(false);
+    // Owners: pre-load venue players so the suggestion list is ready right away.
+    if (isOwner && user?.id) {
+      setSuggestionsLoading(true);
+      getOwnerPlayerSuggestions(user.id)
+        .then((s) => setSuggestions(s))
+        .catch(() => setSuggestions([]))
+        .finally(() => setSuggestionsLoading(false));
+    }
+  };
+  const closeCompose = () => {
+    setComposing(false); setQuery(''); setResults([]); setSearched(false);
+    setSuggestions([]); setSuggestionsLoading(false);
+  };
 
   const removeConv = async (c: ApiConversationSummary) => {
     if (!window.confirm('Delete this conversation? It will come back if they message you again.')) return;
@@ -116,7 +180,36 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
     }
   };
 
+  // Start a conversation from an owner suggestion — scoped to the booking or venue.
+  const startWithSuggestion = async (s: OwnerPlayerSuggestion) => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const context = s.latestBooking
+        ? { contextType: 'booking' as const, contextId: s.latestBooking.bookingId }
+        : s.memberVenueId
+          ? { contextType: 'venue' as const, contextId: s.memberVenueId }
+          : undefined;
+      const conv = await startConversation(s.id, context);
+      closeCompose();
+      onNavigate('chat', { id: conv.id, name: s.displayName });
+    } catch {
+      setStarting(false);
+    }
+  };
+
+  // The "Browse" list the owner sees before typing — players who've booked or
+  // are members, with their most recent booking context displayed.
+  const visibleSuggestions = isOwner
+    ? (query.trim().length < 2 ? suggestions : suggestions.filter((s) =>
+        s.displayName.toLowerCase().includes(query.trim().toLowerCase()),
+      ))
+    : [];
+
   if (composing) {
+    const showOwnerSuggestions = isOwner && query.trim().length < 2;
+    const showOwnerSearch = isOwner && query.trim().length >= 2;
+
     return (
       <div className="scroll pb-10 pt-[calc(20px+env(safe-area-inset-top))]">
         <ScreenHeader onBack={closeCompose} backIcon="close" title="New message" />
@@ -129,37 +222,130 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search players by name…"
+              placeholder={isOwner ? 'Filter players by name…' : 'Search players by name…'}
               className="w-full h-12 rounded-[12px] bg-[var(--surface-2)] pl-10 pr-4 text-[15px] outline-none focus:ring-2 focus:ring-[var(--primary)]"
             />
           </div>
 
-          {query.trim().length < 2 ? (
-            <p className="t-sm px-1">Type at least 2 letters to find a player.</p>
-          ) : searching ? (
-            <LoadingSkeleton variant="list-row" count={4} />
-          ) : searched && results.length === 0 ? (
-            <EmptyState icon="search" title="No players found" description="Try a different name." />
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {results.map((p) => (
-                <button
-                  key={p.id}
-                  className="organizer m-0! disabled:opacity-50"
-                  disabled={starting}
-                  onClick={() => startWith(p)}
-                >
-                  <Avatar src={p.avatarUrl} name={p.displayName} size={44} />
-                  <div className="meta min-w-0">
-                    <div className="name truncate">{p.displayName}</div>
-                    <div className="t-sm truncate">
-                      {p.skillLevel != null ? `DUPR ${p.skillLevel}` : p.skillLevelLabel ?? 'Player'}
+          {/* ── Owner: suggestion list before typing ── */}
+          {showOwnerSuggestions && (
+            suggestionsLoading ? (
+              <LoadingSkeleton variant="list-row" count={5} />
+            ) : suggestions.length === 0 ? (
+              <EmptyState icon="users" title="No players yet" description="Players who book or join your venues will appear here." />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {suggestions.map((s) => {
+                  const bk = s.latestBooking;
+                  return (
+                    <button
+                      key={s.id}
+                      className="organizer m-0! disabled:opacity-50"
+                      disabled={starting}
+                      onClick={() => startWithSuggestion(s)}
+                    >
+                      <Avatar src={s.avatarUrl} name={s.displayName} size={44} />
+                      <div className="meta min-w-0">
+                        <div className="name truncate">{s.displayName}</div>
+                        <div className="t-sm truncate">
+                          {bk ? (
+                            <span>
+                              Booked {timeAgo(bk.createdAt)}
+                              {bk.date ? ` · ${prettyBookingDate(bk.date)}` : ''}
+                              {bk.startTime ? `, ${to12h(bk.startTime)}` : ''}
+                            </span>
+                          ) : (
+                            'Member'
+                          )}
+                          {s.isMember && bk && (
+                            <span className="inline-flex items-center gap-0.5 ml-1 text-[10px] font-bold uppercase tracking-wide px-1 py-0.5 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)]">
+                              <Icon name="star" size={9} /> Member
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Icon name="message" size={18} />
+                    </button>
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {/* ── Owner: search filter results ── */}
+          {showOwnerSearch && (
+            searching ? (
+              <LoadingSkeleton variant="list-row" count={4} />
+            ) : visibleSuggestions.length === 0 ? (
+              <EmptyState icon="search" title="No players found" description="Try a different name." />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {visibleSuggestions.map((s) => {
+                  const bk = s.latestBooking;
+                  return (
+                    <button
+                      key={s.id}
+                      className="organizer m-0! disabled:opacity-50"
+                      disabled={starting}
+                      onClick={() => startWithSuggestion(s)}
+                    >
+                      <Avatar src={s.avatarUrl} name={s.displayName} size={44} />
+                      <div className="meta min-w-0">
+                        <div className="name truncate">{s.displayName}</div>
+                        <div className="t-sm truncate">
+                          {bk ? (
+                            <span>
+                              Booked {timeAgo(bk.createdAt)}
+                              {bk.date ? ` · ${prettyBookingDate(bk.date)}` : ''}
+                              {bk.startTime ? `, ${to12h(bk.startTime)}` : ''}
+                            </span>
+                          ) : (
+                            'Member'
+                          )}
+                          {s.isMember && bk && (
+                            <span className="inline-flex items-center gap-0.5 ml-1 text-[10px] font-bold uppercase tracking-wide px-1 py-0.5 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)]">
+                              <Icon name="star" size={9} /> Member
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <Icon name="message" size={18} />
+                    </button>
+                  );
+                })}
+              </div>
+            )
+          )}
+
+          {/* ── Non-owner: existing search flow ── */}
+          {!isOwner && (
+            query.trim().length < 2 ? (
+              <p className="t-sm px-1">Type at least 2 letters to find a player.</p>
+            ) : searching ? (
+              <LoadingSkeleton variant="list-row" count={4} />
+            ) : searched && results.length === 0 ? (
+              <EmptyState icon="search" title="No players found" description="Try a different name." />
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {results.map((p) => (
+                  <button
+                    key={p.id}
+                    className="organizer m-0! disabled:opacity-50"
+                    disabled={starting}
+                    onClick={() => startWith(p)}
+                  >
+                    <Avatar src={p.avatarUrl} name={p.displayName} size={44} />
+                    <div className="meta min-w-0">
+                      <div className="name truncate">{p.displayName}</div>
+                      <div className="t-sm truncate">
+                        {p.skillLevel != null ? `DUPR ${p.skillLevel}` : p.skillLevelLabel ?? 'Player'}
+                      </div>
                     </div>
-                  </div>
-                  <Icon name="message" size={18} />
-                </button>
-              ))}
-            </div>
+                    <Icon name="message" size={18} />
+                  </button>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>

@@ -564,6 +564,9 @@
 .chip-tab {
   border: 1.5px solid var(--field-border);
 }
+.chip-tab.active {
+  border-color: var(--ink);
+}
 
 /* ─── Segmented control ─── */
 .seg {
@@ -1274,6 +1277,71 @@
 .sheet .sheet-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 0; }
 .sheet .sheet-body::-webkit-scrollbar { display: none; }
 
+/* ── Plan-picker sheet (membership invite accept → no-tier path) ────────
+   Spring-like popup entrance (overshoots then settles) + staggered card
+   entrance + selection pop. Overrides the default .sheet linear slide-up. */
+
+/* Sheet panel: spring-bounce up instead of the default linear slide.
+   The backdrop still uses the global .sheet-backdrop fade (opacity .25s). */
+.plan-pick-sheet.open {
+  transition: transform .45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Title + subtitle drop in slightly after the panel lands. */
+@keyframes plan-head-in {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.plan-pick-sheet .sheet-head {
+  animation: plan-head-in .3s .15s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Cards: staggered fade + slide up, one after the other. */
+@keyframes plan-card-in {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.plan-pick-sheet .plan-card {
+  animation: plan-card-in .4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.plan-pick-sheet .plan-card:nth-child(2) { animation-delay: 0.08s; }
+.plan-pick-sheet .plan-card:nth-child(3) { animation-delay: 0.16s; }
+.plan-pick-sheet .plan-card:nth-child(4) { animation-delay: 0.24s; }
+
+/* Selected plan gets a quick pop so it reads as "I picked this". */
+.plan-pick-sheet .plan-card {
+  transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease;
+}
+.plan-pick-sheet .plan-card[aria-pressed="true"] {
+  animation: plan-card-in .4s cubic-bezier(0.22, 0.61, 0.36, 1) both, plan-card-pop .3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes plan-card-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* Activating… spinner bounces gently while the API call is in flight. */
+@keyframes plan-activate-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.96); }
+  50%      { opacity: 1;   transform: scale(1); }
+}
+.plan-pick-sheet .plan-activating {
+  animation: plan-activate-pulse .8s ease-in-out infinite;
+}
+
+/* Footer button slides up from below the fold. */
+@keyframes plan-footer-in {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.plan-pick-sheet + div .shrink-0,
+.plan-pick-sheet .sheet-footer {
+  animation: plan-footer-in .35s .2s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
 /* Inputs */
 .field { margin-bottom: 16px; padding: 0 20px; }
 .field .lbl { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
@@ -1851,6 +1919,9 @@
 .obook-btn-cancel { background: #EEF1FB; color: #64748B; padding: 0 20px; }
 .obook-btn-cancel.full { flex: 1; }
 .obook-btn-cancel:hover { background: #E1E8FF; }
+.obook-btn-message { background: var(--primary); color: #fff; padding: 0 20px; }
+.obook-btn-message:hover { filter: brightness(1.1); }
+.obook-btn-message.full { flex: 1; }
 .obook-summary .obook-row:last-of-type { border-bottom: none; }
 
 /* Booking-detail sheet: size the body to its content so it isn't a forced

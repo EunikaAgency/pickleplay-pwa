@@ -7,6 +7,7 @@ import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { crossSearch, startConversation, type CrossSearchResults, type SearchResult } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
+import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface SearchScreenProps {
@@ -54,6 +55,7 @@ const EMPTY_RESULTS: CrossSearchResults = { courts: [], games: [], clubs: [], pl
 export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
   const user = useAuthStore((s) => s.user);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const { trackSearch } = useDemandTracking();
   // Browse aid like Nearby: open to guests; for signed-in users it's gated by
   // the search capability so accounts can have it withheld.
   const canSearch = !isLoggedIn || userHasPermission(user, 'player.search.use');
@@ -78,13 +80,18 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
     setError(false);
     try {
       const res = await crossSearch(q);
-      if (id === reqId.current) setResults(res);
+      if (id === reqId.current) {
+        setResults(res);
+        // Demand signal: record search when results are non-empty.
+        const total = res.courts.length + res.games.length + res.clubs.length + res.players.length;
+        if (total > 0) trackSearch(q);
+      }
     } catch {
       if (id === reqId.current) setError(true);
     } finally {
       if (id === reqId.current) setLoading(false);
     }
-  }, []);
+  }, [trackSearch]);
 
   useEffect(() => {
     if (!hasQuery || !canSearch) {

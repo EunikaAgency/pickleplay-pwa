@@ -9,8 +9,10 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { MembershipSheet } from './MembershipSheet';
 import type { Navigate } from '../../shared/lib/navigation';
-import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, getVenueConversation, recordDemandEvent, ApiError, type ApiVenueDetail, type ApiGame } from '../../shared/lib/api';
+import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan } from '../../shared/lib/api';
+import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { onRealtime } from '../../shared/lib/realtimeBus';
 import {
   indoorLabel, priceRangeLabel, currencySymbol, locationLine, venueAmenities,
   mapsUrl, venueImage, venueCoords,
@@ -130,6 +132,7 @@ function readSavedVenues(): string[] {
 }
 
 export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: CourtDetailsScreenProps) {
+  const { trackVenueView } = useDemandTracking();
   const [venue, setVenue] = useState<ApiVenueDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
 
@@ -143,7 +146,7 @@ export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: Cour
         setVenue(v);
         setStatus('ready');
         // Demand signal: a player (or guest) viewed this venue.
-        recordDemandEvent({ type: 'venue_view', venueId: v.id });
+        trackVenueView(v.id);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -274,15 +277,25 @@ function CourtDetail({
   // Guests can't hold a membership — send them to sign in first. Logged-in
   // players open the plan chooser. When renewing, the sheet opens in renewal mode
   // (the existing plan is pre-selected but the CTA says "Renew").
-  const openMembership = () => {
+  // When mode='invite', the player is accepting a pending membership invite.
+  const [membershipMode, setMembershipMode] = useState<'join' | 'invite'>('join');
+  const openMembership = (mode: 'join' | 'invite' = 'join') => {
     if (!isLoggedIn) { onNavigate('login'); return; }
+    setMembershipMode(mode);
     setMembershipOpen(true);
   };
 
   const joinMembership = (planId: string) => {
     const prev = membershipPlanId;
     setMembershipPlanId(planId); // optimistic — the sheet shows success right away
-    joinVenueMembership(venue.id, planId).catch(() => setMembershipPlanId(prev));
+    // When the venue has API plans, use subscribeToPlan so the VenueMember tier
+    // is the plan name (e.g. "Monthly") instead of the plan ObjectId. Falls back
+    // to joinVenueMembership for venues without API plans.
+    if (apiPlans && apiPlans.length > 0) {
+      subscribeToPlan(planId).catch(() => setMembershipPlanId(prev));
+    } else {
+      joinVenueMembership(venue.id, planId).catch(() => setMembershipPlanId(prev));
+    }
   };
   const cancelMembership = () => {
     const prev = membershipPlanId;
@@ -290,6 +303,46 @@ function CourtDetail({
     setMembershipOpen(false);
     leaveVenueMembership(venue.id).catch(() => setMembershipPlanId(prev));
   };
+
+  // Pending invite — the owner invited this player to the membership. The player
+  // can accept (with an optional plan choice) or decline. Shown as a banner above
+  // the CTA bar; tapping "Accept" opens the plan picker (same as Join Membership).
+  // Tracked as local state so it can be cleared when the invite is removed
+  // server-side (owner cancels before the player responds).
+  const [hasPendingInvite, setHasPendingInvite] = useState(
+    () => venue.viewerPendingMembershipTier !== undefined && venue.viewerPendingMembershipTier !== null,
+  );
+  // Listen for the owner removing the invite while the player is on this page —
+  // the backend sends a venue_membership_removed notification via SSE.
+  useEffect(() => onRealtime('notification', (p: any) => {
+    if (p?.type === 'venue_membership_removed') setHasPendingInvite(false);
+  }), []);
+  const acceptInvite = (planId: string) => {
+    // Look up the plan name so the VenueMember tier shows "Monthly" etc., not the ObjectId.
+    const plan = apiPlans?.find((p) => p.id === planId);
+    const tier = plan?.name || planId;
+    setHasPendingInvite(false);
+    setMembershipPlanId(planId);
+    respondToVenueMembershipInvite(venue.id, true, tier).catch(() => {
+      setMembershipPlanId(null);
+      setHasPendingInvite(true);
+    });
+  };
+  const declineInvite = () => {
+    setHasPendingInvite(false);
+    respondToVenueMembershipInvite(venue.id, false).catch(() => setHasPendingInvite(true));
+  };
+
+  // Fetch the venue's active API subscription plans so the sheet renders the
+  // owner's real plans when available (falls back to hardcoded defaults).
+  const [apiPlans, setApiPlans] = useState<ApiSubscriptionPlan[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    listPublicPlans(venue.id)
+      .then((rows) => { if (!cancelled) setApiPlans(rows); })
+      .catch(() => { /* keep fallback plans */ });
+    return () => { cancelled = true; };
+  }, [venue.id]);
 
   // Best-effort distance: if the device already granted location (or grants it
   // now), show how far the venue is. Silent on denial — it's a nicety.
@@ -913,6 +966,33 @@ function CourtDetail({
           </>
         )}
 
+        {/* ── Pending invite banner ──────────────────────────────── */}
+        {hasPendingInvite && (
+          <div className="mb-3 flex items-center gap-3 bg-[var(--lime-soft)] text-[var(--lime-ink)] rounded-[16px] px-4 py-3">
+            <Icon name="card_membership" size={20} className="shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-[13px]">You've been invited to join the membership</p>
+              <p className="text-[11px] font-semibold opacity-80">Accept and pick a plan to get started.</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={declineInvite}
+                className="px-3 h-8 rounded-full text-[11px] font-bold bg-white/30"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                onClick={() => openMembership('invite')}
+                className="px-3 h-8 rounded-full text-[11px] font-bold bg-[var(--ink)] text-white"
+              >
+                Accept
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* The lobby hand-off is a focused book-then-create flow — no membership CTA there. */}
         {intent === 'lobby' ? (
           <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}>
@@ -923,12 +1003,13 @@ function CourtDetail({
             <div className="flex gap-2.5">
               {/* Membership button: hidden when the player has an active (non-expired)
                   membership — they're already a member. Shown as "Renew Subscription"
-                  when expired, and "Join Membership" for non-members. */}
-              {!isMember || isExpired ? (
+                  when expired, and "Join Membership" for non-members.
+                  Also hidden when the player has a pending invite — the Accept banner above replaces it. */}
+              {hasPendingInvite ? null : !isMember || isExpired ? (
                 <Button
                   variant={isExpired ? 'brand' : 'outline'}
                   className={`flex-1 text-[15px] px-3 ${isExpired ? '' : 'shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]'}`}
-                  onClick={openMembership}
+                  onClick={() => openMembership()}
                 >
                   <Icon name={isExpired ? 'refresh' : 'star'} size={16} />
                   {isExpired ? 'Renew Subscription' : 'Join Membership'}
@@ -966,10 +1047,31 @@ function CourtDetail({
         venueName={venue.displayName}
         currency={sym}
         currentPlanId={membershipPlanId}
-        isRenewal={isExpired}
-        onJoin={joinMembership}
-        onCancel={cancelMembership}
+        isRenewal={isExpired || membershipMode === 'invite'}
+        onJoin={membershipMode === 'invite' ? acceptInvite : joinMembership}
+        onCancel={membershipMode === 'invite' ? declineInvite : cancelMembership}
+        apiPlans={apiPlans}
       />
+
+      {/* ── FAQs ── */}
+      {venue.faqs && venue.faqs.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-heading font-bold text-[16px] text-[var(--ink)] mb-3 flex items-center gap-2">
+            <Icon name="help" size={18} /> Frequently asked questions
+          </h2>
+          <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] divide-y-[0.5px] divide-[var(--hairline)] overflow-hidden">
+            {venue.faqs.map((faq: any, i: number) => (
+              <details key={faq.id ?? i} className="group">
+                <summary className="flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer list-none select-none">
+                  <span className="font-semibold text-[14px] text-[var(--ink)] flex-1">{faq.question}</span>
+                  <Icon name="expand_more" size={18} className="text-[var(--muted)] transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="px-4 pb-3.5 text-[14px] text-[var(--ink-2)] leading-relaxed">{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

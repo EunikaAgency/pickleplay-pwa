@@ -53,7 +53,7 @@ const CourtIco = ({ size = 14 }: IcoProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /></svg>
 );
 
-const QA_ICONS: Record<string, ReactNode> = { storefront: <Storefront />, calendar: <CalendarIco />, plus: <Plus />, frontdesk: <FrontDeskIco /> };
+const QA_ICONS: Record<string, ReactNode> = { storefront: <Storefront />, calendar: <CalendarIco />, plus: <Plus />, frontdesk: <FrontDeskIco />, settlements: <CardIco /> };
 const QA_TONES = ['ohome-qa-lime', 'ohome-qa-blue', 'ohome-qa-neutral', 'ohome-qa-neutral'];
 
 // Inline pending-booking row with Confirm / Decline (owner home only).
@@ -147,6 +147,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
     { icon: 'storefront', label: 'My venues', onPress: () => onNavigate('owner-venues') },
     ...(canBookings ? [{ icon: 'frontdesk', label: 'Front desk', onPress: () => onNavigate('owner-front-desk', {}) }] : []),
     ...(canBookings ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
+    { icon: 'settlements', label: 'Settlements', onPress: () => onNavigate('owner-settlements') },
     ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];
 
@@ -156,7 +157,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
         <span style={{ width: 40 }} aria-hidden="true" />
         <button className="ohome-brand" onClick={() => onNavigate('owner-venues')} aria-label="My venues">Pickle<span>Ballers</span></button>
         <button
-          onClick={() => onNavigate('owner-notifications')}
+          onClick={() => onNavigate('notifications')}
           aria-label="Notifications"
           className="ohome-iconbtn"
         >

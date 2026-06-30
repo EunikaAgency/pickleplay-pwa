@@ -146,6 +146,19 @@ src/
                        # staff accounts — create a login that manages ALL the owner's
                        # venues/bookings/clubs; reached from the Profile "Staff" row,
                        # gated by owner.staff.manage; distinct from the per-venue Team tab).
+                       # SubscriptionPlans (owner-subscription-plans, reachable from the
+                       # Membership tab's "Manage Subscription" button) — CRUD screen for
+                       # venue membership plans (SubscriptionPlan + versioned
+                       # SubscriptionPlanVersion); create/edit via CreateEditPlanSheet
+                       # (match the player MembershipSheet design); versioning:
+                       # structural edits (price/billing/benefits) create a new version
+                       # so existing subscribers stay on their version until renewal.
+      components/      # BookingLinkShare (copy/share the auto-generated booking link +
+                       # optional custom slug; rendered on the Overview tab + Listing
+                       # editor), AddressAutocomplete (live type-ahead geocode search),
+                       # CreateEditPlanSheet (owner creates/edits subscription plans —
+                       # name/price/billing-cycle/benefits/status/settings; BottomSheet
+                       # matching the player MembershipSheet design).
       tabs/            # the OwnerVenue panels: Overview (business dashboard: revenue/bookings/
                        # occupancy KPIs + revenue trend chart), Insights (per-venue segmented
                        # analytics), Bookings (per-venue inbox — Approve a request-to-book →
@@ -154,7 +167,9 @@ src/
                        # court page's "Join Membership") + anyone the owner adds by hand;
                        # member pricing applies. NOT booking-derived — "Add member" opens a
                        # search field (finds any player by name via /search?type=players) above
-                       # a picker of past players; remove revokes it),
+                       # a picker of past players; remove revokes it. A "Manage Subscription"
+                       # button opens the SubscriptionPlansScreen for the owner to create,
+                       # edit, duplicate, enable/disable and delete plans),
                        # Listing (identity/contact/pricing/
                        # amenities + a "Booking policy" section: require-approval toggle +
                        # pay-window)/Location/Courts/Closures/Faqs/Reviews/Photos editors.
@@ -165,6 +180,10 @@ src/
                        # operating hours (+ hours pricing, via WeeklyHoursEditor);
                        # Closures = venue-wide holiday dates only (operating hours
                        # moved per-court).
+                       # Demand tab: unified demand-analytics (GET /demand/venues/:id) —
+                       # 9-signal summary grid, conversion + cancellation rate,
+                       # demand-by-hour heatmap, supply summary with occupancy,
+                       # quick link to the Leakage funnel + inline pricing suggestions.
       components/      # reusable blocks: OwnerSection/OwnerStat/VenueCard/OwnerBookingRow/
                        # OwnerGameCard/CompletenessMeter/MapPinPicker (tap-to-drop-pin Leaflet
                        # map; new-venue form reverse-geocodes the pin to auto-fill the city)/
@@ -225,6 +244,9 @@ src/
                         #   (drag/wheel-pan a .scroll-x carousel on desktop), useVenueAvailability
                         #   (per-hour availability → greys out taken hours; pass a courtId to
                         #    scope it to that court, else the whole-venue pool),
+                        #   useDemandTracking (typed fire-and-forget demand-signal capture —
+                        #    search, venue_view, booking_attempt/completed, checkout_started/
+                        #    abandoned, booking_link_shared),
                         #   useNotificationPolling (keeps the unread badge live: polls +
                         #    refreshes on focus/visibility while signed in — now a fallback),
                         #   useRealtimeStream (one app-wide EventSource to GET /api/v1/me/stream;
@@ -454,6 +476,8 @@ src/
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
+| Owner subscription plans (membership tiers) | `features/owner/SubscriptionPlansScreen.tsx` (`owner-subscription-plans`, from Members tab "Manage Subscription"), `features/owner/components/CreateEditPlanSheet.tsx` (create/edit form), `shared/lib/api.ts` → `listSubscriptionPlans`/`createSubscriptionPlan`/`updateSubscriptionPlan`(versioning)/`deleteSubscriptionPlan`/`duplicateSubscriptionPlan`/`toggleSubscriptionPlan`/`listPublicPlans`/`subscribeToPlan`; player-side: `MembershipSheet.tsx` uses `listPublicPlans` when the owner has active plans (falls back to hardcoded defaults); backed by `SubscriptionPlan`/`SubscriptionPlanVersion`/`VenueSubscription` models in `api/src/features/venues/` |
+| Demand data capture (searches, views, bookings funnel, empty slots) | `shared/hooks/useDemandTracking.ts` (client-side signals); `shared/lib/api.ts` → `recordDemandEvent` / `getVenueDemand` / `getVenueLeakageReport` / `getSuggestedPricing`; owner Demand/Leakage/Insights tabs; backed by `api/src/features/demand/` |
 | Front desk — manual/walk-in booking + slot blocking + today's schedule | `features/owner/OwnerFrontDeskScreen.tsx` (`owner-front-desk`, from OwnerHome quick action); `createVenueBooking` in `shared/lib/api.ts` → `POST /venues/:id/bookings` |
 | Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
 | Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |

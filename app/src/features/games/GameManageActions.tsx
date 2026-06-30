@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
-import { deleteGame, type ApiGame } from '../../shared/lib/api';
+import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
+import { deleteGame, apiImageUrl, type ApiGame } from '../../shared/lib/api';
+import { gameTitle, gameLocation, gameTypeLabel, dayParts, timeLine, spotsLabel } from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface GameManageActionsProps {
@@ -21,6 +23,7 @@ export function GameManageActions({ game, onNavigate, onDeleted, className = '' 
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const canEdit = EDITABLE.has(game.status ?? '');
   const canDelete = !UNDELETABLE.has(game.status ?? '');
@@ -63,21 +66,42 @@ export function GameManageActions({ game, onNavigate, onDeleted, className = '' 
   }
 
   return (
-    <div className={`flex items-center gap-4 ${className}`}>
-      {canEdit && (
-        <button className="text-[13px] font-bold text-[var(--primary)] flex items-center gap-1" onClick={() => onNavigate('edit-game', { id: game.id })}>
-          <Icon name="edit" size={14} /> Edit
+    <>
+      <div className={`flex items-center gap-4 ${className}`}>
+        <button className="text-[13px] font-bold text-[var(--primary)] flex items-center gap-1" onClick={() => setShareOpen(true)}>
+          <Icon name="share" size={14} /> Share
         </button>
-      )}
-      {canDelete ? (
-        <button className="text-[13px] font-bold text-[var(--coral)] flex items-center gap-1" onClick={() => { setError(null); setConfirming(true); }}>
-          <Icon name="close" size={14} /> Delete
-        </button>
-      ) : (
-        <span className="text-[12px] font-semibold text-[var(--muted)] flex items-center gap-1">
-          <Icon name="lock" size={13} /> Booked — cancel the booking to remove
-        </span>
-      )}
-    </div>
+        {canEdit && (
+          <button className="text-[13px] font-bold text-[var(--primary)] flex items-center gap-1" onClick={() => onNavigate('edit-game', { id: game.id })}>
+            <Icon name="edit" size={14} /> Edit
+          </button>
+        )}
+        {canDelete ? (
+          <button className="text-[13px] font-bold text-[var(--coral)] flex items-center gap-1" onClick={() => { setError(null); setConfirming(true); }}>
+            <Icon name="close" size={14} /> Delete
+          </button>
+        ) : (
+          <span className="text-[12px] font-semibold text-[var(--muted)] flex items-center gap-1">
+            <Icon name="lock" size={13} /> Booked — cancel the booking to remove
+          </span>
+        )}
+      </div>
+
+      <ShareLobbySheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        gameId={game.id}
+        title={gameTitle(game)}
+        subtitle={[timeLine(game), gameLocation(game), spotsLabel(game)].filter(Boolean).join(' · ')}
+        image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || ''}
+        gameType={gameTypeLabel(game)}
+        skillLabel={game.skillLabel ?? undefined}
+        dateTime={[dayParts(game).day === 'TODAY' ? 'Today' : dayParts(game).day === 'TOM' ? 'Tomorrow' : dayParts(game).day, timeLine(game)].filter(Boolean).join(' · ') || undefined}
+        venue={gameLocation(game)}
+        spotsLeft={game.spotsLeft ?? undefined}
+        capacity={game.capacity ?? undefined}
+        onNavigate={onNavigate}
+      />
+    </>
   );
 }

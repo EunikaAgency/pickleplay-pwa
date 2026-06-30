@@ -4,7 +4,8 @@ import { Avatar } from '../../../shared/components/ui/Avatar';
 import { BottomSheet } from '../../../shared/components/ui/BottomSheet';
 import { OwnerSection } from '../components/OwnerSection';
 import { OwnerStat } from '../components/OwnerStat';
-import { getVenueBookings, listVenueMembers, addVenueMember, removeVenueMember, searchPlayers, type ApiBooking, type ApiPlayer, type VenueMember, type OwnerVenueDetail } from '../../../shared/lib/api';
+import { getVenueBookings, listVenueMembers, addVenueMember, removeVenueMember, searchPlayers, startConversation, type ApiBooking, type ApiPlayer, type VenueMember, type OwnerVenueDetail } from '../../../shared/lib/api';
+import { onRealtime } from '../../../shared/lib/realtimeBus';
 import type { Navigate } from '../../../shared/lib/navigation';
 
 interface MembersTabProps {
@@ -66,10 +67,20 @@ function InviteLink({ venue }: { venue: OwnerVenueDetail }) {
 // Friendly label for a stored membership tier (the plan id the player chose, or a
 // free-text tier the owner set). Kept local so the owner slice doesn't import the
 // player-side membership plans.
-const PLAN_LABELS: Record<string, string> = { monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annual' };
 function planLabel(tier: string | null | undefined): string {
   if (!tier) return 'Member';
-  return PLAN_LABELS[tier] ?? tier;
+  // Normalise: if the tier is a known cadence or plan name (case-insensitive),
+  // show the canonical title-cased label. Otherwise display as-is (handles custom
+  // plan names like "Premium Membership" and legacy ObjectId tiers).
+  const key = tier.toLowerCase();
+  if (key === 'monthly') return 'Monthly';
+  if (key === 'quarterly') return 'Quarterly';
+  if (key === 'annual') return 'Annual';
+  if (key === 'weekly') return 'Weekly';
+  // If it looks like a MongoDB ObjectId (24 hex chars), the join flow predates
+  // the subscribeToPlan fix — show a generic label rather than the raw id.
+  if (/^[0-9a-fA-F]{24}$/.test(tier)) return 'Member';
+  return tier;
 }
 
 function sinceLabel(iso: string | undefined): string {
@@ -106,11 +117,13 @@ function buildCandidates(bookings: ApiBooking[]): Candidate[] {
 // Member pricing (Venue.memberDiscountPercent) applies to them. This is NOT the
 // rolled-up community of everyone who's booked or played — booking a court does
 // not make someone a member.
-export function MembersTab({ venueId, venue }: MembersTabProps) {
+export function MembersTab({ venueId, venue, onNavigate }: MembersTabProps) {
   const [members, setMembers] = useState<VenueMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [pending, setPending] = useState<string | null>(null); // userId mid-mutation
+  const [messagingUserId, setMessagingUserId] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState<{ userId: string; name: string } | null>(null);
 
   // Candidate pool for the manual "Add member" picker — lazy-loaded when opened.
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
@@ -133,6 +146,7 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     let cancelled = false;
     listVenueMembers(venueId)
@@ -140,7 +154,13 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [venueId]);
+  }, [venueId, tick]);
+
+  // Refetch the member list in realtime whenever a player accepts or declines an
+  // invite — the owner sees the status change instantly, no manual refresh needed.
+  useEffect(() => onRealtime('notification', (p: any) => {
+    if (p?.type === 'venue_membership_response') setTick((t) => t + 1);
+  }), []);
 
   // Fetch the candidate pool only when the owner first opens "Add member".
   useEffect(() => {
@@ -201,10 +221,25 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
       // Refetch to get the identity-enriched row; the picker recomputes and drops them.
       const rows = await listVenueMembers(venueId);
       setMembers(rows);
+      closeAddSheet(); // auto-close on success
     } catch {
       /* leave the list as-is on failure (e.g. already a member) */
     } finally {
       setPending(null);
+    }
+  };
+
+  const messageMember = async (member: VenueMember) => {
+    const uid = String(member.userId);
+    if (messagingUserId) return;
+    setMessagingUserId(uid);
+    try {
+      const conv = await startConversation(uid, { contextType: 'venue', contextId: venueId });
+      onNavigate('chat', { id: conv.id, name: conv.otherParticipant?.displayName ?? member.displayName ?? 'Player' });
+    } catch {
+      /* silent */
+    } finally {
+      setMessagingUserId(null);
     }
   };
 
@@ -218,6 +253,7 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
       setMembers(prev); // restore on failure
     } finally {
       setPending(null);
+      setConfirmRemove(null);
     }
   };
 
@@ -227,7 +263,7 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
       onClick={() => setAddOpen(true)}
       className="mt-3 w-full flex items-center justify-center gap-2 h-11 rounded-2xl bg-[var(--ink)] text-white font-heading font-bold text-[14px]"
     >
-      <Icon name="add" size={18} /> Add member
+      <Icon name="add" size={18} /> Invite member
     </button>
   );
 
@@ -235,8 +271,8 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
     <BottomSheet
       open={addOpen}
       onClose={closeAddSheet}
-      title="Add a member"
-      subtitle="Search any player by name, or pick from past visitors below."
+      title="Invite a member"
+      subtitle="Pick a player to invite — they'll get a notification to accept before the membership is active."
     >
       {/* ── Search ─────────────────────────────────────────── */}
       <div className="px-5 pb-1">
@@ -287,7 +323,7 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
                   )}
                 </div>
                 <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-[var(--primary)] text-white font-bold text-[12px] shrink-0">
-                  <Icon name="add" size={14} /> Add
+                  <Icon name="add" size={14} /> Invite
                 </span>
               </button>
             ))}
@@ -318,7 +354,7 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
                   <div className="t-sm truncate">{c.visits} booking{c.visits === 1 ? '' : 's'} here</div>
                 </div>
                 <span className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-[var(--primary)] text-white font-bold text-[12px] shrink-0">
-                  <Icon name="add" size={14} /> Add
+                  <Icon name="add" size={14} /> Invite
                 </span>
               </button>
             ))}
@@ -343,7 +379,18 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
         title="Members"
         icon="group"
         description="Players who've joined your venue's membership."
-        action={<InviteLink venue={venue} />}
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('owner-subscription-plans', { venueId, venueName: venue.displayName || 'Venue' })}
+              className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-[var(--primary)] text-white font-bold text-[12px]"
+            >
+              <Icon name="settings" size={14} /> Manage Subscription
+            </button>
+            <InviteLink venue={venue} />
+          </div>
+        }
       >
         <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm">
           No members yet. When a player joins your membership from your venue's page, they'll show up here.
@@ -355,45 +402,81 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
     );
   }
 
+  const activeCount = members.filter((m) => m.status !== 'pending').length;
+  const pendingCount = members.length - activeCount;
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <OwnerStat label="Members" value={members.length} icon="group" tone="primary" />
+        <OwnerStat label={activeCount === 1 ? 'Member' : 'Members'} value={activeCount} icon="group" tone="primary" />
         <OwnerStat label="Member rate" value={discount > 0 ? `${discount}% off` : 'Not set'} icon="sell" tone="lime" />
       </div>
 
       <OwnerSection
         title="Members"
         icon="group"
-        description={`${members.length} ${members.length === 1 ? 'player has' : 'players have'} joined your membership.`}
-        action={<InviteLink venue={venue} />}
+        description={
+          pendingCount > 0
+            ? `${activeCount} ${activeCount === 1 ? 'member' : 'members'} · ${pendingCount} pending invite${pendingCount === 1 ? '' : 's'}.`
+            : `${activeCount} ${activeCount === 1 ? 'player has' : 'players have'} joined your membership.`
+        }
+        action={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('owner-subscription-plans', { venueId, venueName: venue.displayName || 'Venue' })}
+              className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-[var(--primary)] text-white font-bold text-[12px]"
+            >
+              <Icon name="settings" size={14} /> Manage Subscription
+            </button>
+            <InviteLink venue={venue} />
+          </div>
+        }
       >
         <div className="space-y-1">
           {members.map((m) => {
             const name = m.displayName?.trim() || m.email || 'Member';
             const userId = String(m.userId);
+            const isPending = m.status === 'pending';
             return (
               <div key={m.id} className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl hover:bg-[var(--surface-2)]">
                 <Avatar name={name} src={m.avatarUrl} size={38} className="shrink-0" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold text-[14px] text-[var(--ink)] truncate">{name}</span>
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] shrink-0">
-                      <Icon name="star" size={10} /> {planLabel(m.tier)}
-                    </span>
+                    {isPending ? (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)] shrink-0">
+                        <Icon name="schedule" size={10} /> Pending
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] shrink-0">
+                        <Icon name="star" size={10} /> {planLabel(m.tier)}
+                      </span>
+                    )}
                   </div>
                   <div className="t-sm truncate">
-                    Member{sinceLabel(m.createdAt) ? ` since ${sinceLabel(m.createdAt)}` : ''}
+                    {isPending
+                      ? 'Invited — waiting for them to accept'
+                      : `Member${sinceLabel(m.createdAt) ? ` since ${sinceLabel(m.createdAt)}` : ''}`}
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => removeMember(userId)}
+                  onClick={() => messageMember(m)}
+                  disabled={messagingUserId === userId}
+                  aria-label={`Message ${name}`}
+                  className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[var(--primary)] bg-[var(--surface-2)] disabled:opacity-50"
+                >
+                  <Icon name="message" size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove({ userId, name })}
                   disabled={pending === userId}
-                  aria-label={`Remove ${name} from members`}
+                  aria-label={isPending ? `Cancel invite for ${name}` : `Remove ${name} from members`}
                   className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-[var(--muted)] bg-[var(--surface-2)] disabled:opacity-50"
                 >
-                  <Icon name="person_remove" size={16} />
+                  <Icon name={isPending ? 'close' : 'person_remove'} size={16} />
                 </button>
               </div>
             );
@@ -410,6 +493,41 @@ export function MembersTab({ venueId, venue }: MembersTabProps) {
         {addMemberBtn}
         {addSheet}
       </OwnerSection>
+
+      {/* ── Remove confirmation ────────────────────────────────── */}
+      {confirmRemove && (
+        <div className="fixed inset-0 z-[1500] flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setConfirmRemove(null)} />
+          <div className="relative bg-[var(--bg)] rounded-t-[24px] sm:rounded-[24px] w-full max-w-[420px] px-5 pt-5 pb-8 shadow-xl animate-slide-up">
+            <div className="flex items-center justify-center mb-2">
+              <div className="w-9 h-1 rounded-full bg-[var(--hairline)]" />
+            </div>
+            <h3 className="font-heading font-semibold text-[17px] text-[var(--ink)]">
+              Remove {confirmRemove.name}?
+            </h3>
+            <p className="t-sm text-[var(--muted)] mt-1 leading-relaxed">
+              They will lose member pricing and any active subscription will be cancelled.
+            </p>
+            <div className="flex gap-3 mt-5">
+              <button
+                type="button"
+                onClick={() => setConfirmRemove(null)}
+                className="flex-1 h-11 rounded-[14px] bg-[var(--surface-2)] text-[var(--ink)] font-semibold text-[14px]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => removeMember(confirmRemove.userId)}
+                disabled={pending === confirmRemove.userId}
+                className="flex-1 h-11 rounded-[14px] bg-[var(--coral)] text-white font-semibold text-[14px] disabled:opacity-50"
+              >
+                {pending === confirmRemove.userId ? 'Removing…' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

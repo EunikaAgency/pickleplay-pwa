@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Avatar } from '../../../shared/components/ui/Avatar';
-import { updateBookingStatus, type ApiBooking, type BookingStatus } from '../../../shared/lib/api';
+import { startConversation, updateBookingStatus, type ApiBooking, type BookingStatus } from '../../../shared/lib/api';
 import { money, prettyDate, to12h, statusChip } from '../../bookings/bookingDisplay';
+import type { Navigate } from '../../../shared/lib/navigation';
 
 function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'primary' | 'lime' | 'ghost'; onClick: () => void; busy: boolean }) {
   const cls = tone === 'primary'
@@ -21,16 +22,18 @@ function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'pr
 // already paid, so there's no "mark paid" step — the owner can only cancel.
 // `showVenue` tags the row with its venue name (the cross-venue inbox uses it).
 // Shared by BookingsInboxTab (per-venue) and OwnerBookingsScreen (all venues).
-export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOpen }: {
+export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOpen, onNavigate }: {
   booking: ApiBooking;
   canManage: boolean;
   showVenue?: boolean;
   onChanged: (b: ApiBooking) => void;
   /** Tap the row body to open the full booking detail (omitted = not tappable). */
   onOpen?: (b: ApiBooking) => void;
+  onNavigate?: Navigate;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messaging, setMessaging] = useState(false);
   const chip = statusChip(booking.status);
 
   const act = async (status: BookingStatus) => {
@@ -43,6 +46,19 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
     } catch (e) {
       setError(e instanceof Error && /409|cancel/i.test(e.message) ? "Already cancelled — can't change." : "Couldn't update. Try again.");
       setBusy(false);
+    }
+  };
+
+  const messagePlayer = async () => {
+    if (!booking.userId || messaging || !onNavigate) return;
+    setMessaging(true);
+    try {
+      const conv = await startConversation(booking.userId, { contextType: 'booking', contextId: booking.id });
+      onNavigate('chat', { id: conv.id, name: conv.otherParticipant?.displayName ?? personName });
+    } catch {
+      /* silent */
+    } finally {
+      setMessaging(false);
     }
   };
 
@@ -96,6 +112,9 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
       {canManage && st !== 'cancelled' && (
         <div className="flex flex-wrap items-center gap-2 mt-3">
           {st === 'pending_approval' && <ActionButton label="Approve" tone="primary" busy={busy} onClick={() => act('awaiting_payment')} />}
+          {!isManual && !isBlocked && booking.userId && (
+            <ActionButton label="Message" tone="lime" busy={messaging} onClick={messagePlayer} />
+          )}
           <div className="flex-1" />
           <ActionButton label={st === 'pending_approval' ? 'Decline' : 'Cancel'} tone="ghost" busy={busy} onClick={() => act('cancelled')} />
         </div>

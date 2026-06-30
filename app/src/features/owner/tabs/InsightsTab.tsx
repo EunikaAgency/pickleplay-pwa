@@ -8,12 +8,14 @@ import { OwnerSection } from '../components/OwnerSection';
 import { bucketRevenue, pctChange, type RevenueBucket } from '../utils/ownerMetrics';
 import { getVenueAnalytics, listGames, type OwnerAnalytics, type ApiGame } from '../../../shared/lib/api';
 import { money } from '../../bookings/bookingDisplay';
+import { DemandTab } from './DemandTab';
+import { LeakageTab } from './LeakageTab';
 
 interface InsightsTabProps {
   venueId: string;
 }
 
-type Section = 'revenue' | 'bookings' | 'utilization' | 'courts';
+type Section = 'revenue' | 'bookings' | 'utilization' | 'courts' | 'demand' | 'leakage';
 
 const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 // Server uses JS getDay() (0=Sun..6=Sat); map to a Mon-first row index.
@@ -80,6 +82,8 @@ export function InsightsTab({ venueId }: InsightsTabProps) {
           { value: 'bookings', label: 'Bookings' },
           { value: 'utilization', label: 'Usage' },
           { value: 'courts', label: 'Courts' },
+          { value: 'demand', label: 'Demand' },
+          { value: 'leakage', label: 'Leakage' },
         ]}
       />
 
@@ -211,6 +215,12 @@ export function InsightsTab({ venueId }: InsightsTabProps) {
           </OwnerSection>
         </>
       )}
+
+      {/* ── Demand (player behaviour signals) ── */}
+      {section === 'demand' && <DemandTab venueId={venueId} onOpenTab={() => {}} />}
+
+      {/* ── Leakage (online vs offline bookings funnel) ── */}
+      {section === 'leakage' && <LeakageTab venueId={venueId} />}
     </div>
   );
 }

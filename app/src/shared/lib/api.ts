@@ -561,6 +561,12 @@ export interface ApiVenueDetail extends ApiVenue {
   viewerMembershipTier?: string | null;
   /** ISO datetime when the player's membership expires (null if perpetual or not a member). */
   viewerMembershipExpiresAt?: string | null;
+  /** If the viewer has a *pending* membership invite, its tier (null = no plan set
+   *  yet — the app should show the plan picker before accepting). Undefined when the
+   *  viewer has no pending invite at all. */
+  viewerPendingMembershipTier?: string | null;
+  /** FAQs for this venue. */
+  faqs?: { id: string; question: string; answer: string }[];
 }
 
 export interface ListVenuesParams {
@@ -988,6 +994,118 @@ export async function joinVenueMembership(venueId: string, planId?: string): Pro
 /** Self-service: the signed-in player cancels their own membership at this venue. */
 export async function leaveVenueMembership(venueId: string): Promise<{ message: string }> {
   return request<{ message: string }>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/membership`, { method: 'DELETE', auth: true });
+}
+
+/** The invited player accepts (or declines) an owner-sent membership invite.
+ *  Accepting activates their membership; declining drops it from the owner's list.
+ *  Pass `planId` to set the subscription tier on accept (the app shows a plan picker
+ *  when the invite has no tier, then sends the player's choice here). */
+export async function respondToVenueMembershipInvite(venueId: string, accept: boolean, planId?: string): Promise<{ accepted?: boolean }> {
+  return request<{ accepted?: boolean }>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/membership/respond`, { method: 'POST', body: { accept, planId }, auth: true });
+}
+
+/* ─── Subscription plans (owner-defined membership tiers) ──────────── */
+
+export interface ApiSubscriptionPlanVersion {
+  id: string;
+  planId: string;
+  versionNumber: number;
+  price: number;
+  currency: string;
+  billingCycle: 'weekly' | 'monthly' | 'quarterly' | 'semiAnnual' | 'annual' | 'custom';
+  customBillingDays: number | null;
+  benefits: string[];
+  maxMembers: number | null;
+  freeTrialDays: number | null;
+  autoRenew: boolean;
+  createdAt: string;
+}
+
+export interface ApiSubscriptionPlan {
+  id: string;
+  venueId: string;
+  name: string;
+  description: string;
+  status: 'active' | 'draft' | 'disabled';
+  memberCount: number;
+  currentVersion: ApiSubscriptionPlanVersion | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSubscriptionPlanPayload {
+  name: string;
+  description?: string;
+  price: number;
+  currency?: string;
+  billingCycle: ApiSubscriptionPlanVersion['billingCycle'];
+  customBillingDays?: number | null;
+  benefits?: string[];
+  maxMembers?: number | null;
+  freeTrialDays?: number | null;
+  autoRenew?: boolean;
+  status?: 'active' | 'draft' | 'disabled';
+}
+
+export interface UpdateSubscriptionPlanPayload {
+  name?: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  billingCycle?: ApiSubscriptionPlanVersion['billingCycle'];
+  customBillingDays?: number | null;
+  benefits?: string[];
+  maxMembers?: number | null;
+  freeTrialDays?: number | null;
+  autoRenew?: boolean;
+  status?: 'active' | 'draft' | 'disabled';
+}
+
+/** Owner/staff: list all subscription plans for a venue. */
+export async function listSubscriptionPlans(venueId: string): Promise<ApiSubscriptionPlan[]> {
+  const res = await request<ApiSubscriptionPlan[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/subscription-plans`, { auth: true });
+  return res ?? [];
+}
+
+/** Owner/staff: create a subscription plan. */
+export async function createSubscriptionPlan(venueId: string, body: CreateSubscriptionPlanPayload): Promise<ApiSubscriptionPlan> {
+  return request<ApiSubscriptionPlan>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/subscription-plans`, { method: 'POST', body, auth: true });
+}
+
+/** Owner/staff: get a single subscription plan. */
+export async function getSubscriptionPlan(planId: string): Promise<ApiSubscriptionPlan> {
+  return request<ApiSubscriptionPlan>(`${VENUES_PREFIX}/subscription-plans/${encodeURIComponent(planId)}`, { auth: true });
+}
+
+/** Owner/staff: update a subscription plan (versioning: structural changes create new version). */
+export async function updateSubscriptionPlan(planId: string, body: UpdateSubscriptionPlanPayload): Promise<ApiSubscriptionPlan> {
+  return request<ApiSubscriptionPlan>(`${VENUES_PREFIX}/subscription-plans/${encodeURIComponent(planId)}`, { method: 'PATCH', body, auth: true });
+}
+
+/** Owner/staff: delete a subscription plan (only if no active subscribers). */
+export async function deleteSubscriptionPlan(planId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${VENUES_PREFIX}/subscription-plans/${encodeURIComponent(planId)}`, { method: 'DELETE', auth: true });
+}
+
+/** Owner/staff: duplicate a subscription plan. */
+export async function duplicateSubscriptionPlan(planId: string): Promise<ApiSubscriptionPlan> {
+  return request<ApiSubscriptionPlan>(`${VENUES_PREFIX}/subscription-plans/${encodeURIComponent(planId)}/duplicate`, { method: 'POST', auth: true });
+}
+
+/** Owner/staff: toggle a plan between active ↔ disabled. */
+export async function toggleSubscriptionPlan(planId: string): Promise<ApiSubscriptionPlan> {
+  return request<ApiSubscriptionPlan>(`${VENUES_PREFIX}/subscription-plans/${encodeURIComponent(planId)}/toggle`, { method: 'PATCH', auth: true });
+}
+
+/** Public: active subscription plans for a venue (players browsing). */
+export async function listPublicPlans(venueId: string): Promise<ApiSubscriptionPlan[]> {
+  const res = await request<ApiSubscriptionPlan[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/plans`);
+  return res ?? [];
+}
+
+/** Self-service: the signed-in player subscribes to a plan. */
+export async function subscribeToPlan(planId: string): Promise<{ id: string; venueMemberId: string }> {
+  return request<{ id: string; venueMemberId: string }>(`${VENUES_PREFIX}/subscription-plans/${encodeURIComponent(planId)}/subscribe`, { method: 'POST', auth: true });
 }
 
 /* ─── Slot price overrides (manual surge) ─────────────────────── */
@@ -1557,6 +1675,152 @@ export async function searchPlayers(q: string): Promise<ApiPlayer[]> {
   return env.data?.players ?? [];
 }
 
+/**
+ * Owner-scoped player search: returns only players who have booked at or are
+ * members of any venue the current owner manages. Deduplicates by userId and
+ * filters locally by the query string. Falls back to empty if the owner has no
+ * venues or all parallel fetches fail.
+ */
+export async function searchOwnerPlayers(q: string, userId: string): Promise<ApiPlayer[]> {
+  const venues = await listManagedVenues(userId);
+  const venueIds = venues.map((v) => (v as any)._id ?? v.id).filter(Boolean) as string[];
+  if (!venueIds.length) return [];
+
+  // Fetch bookings + members for all managed venues in parallel. Each request
+  // is allowed to fail independently so one broken venue doesn't block the rest.
+  const [bookingSets, memberSets] = await Promise.all([
+    Promise.all(venueIds.map((vid) => getVenueBookings(vid).catch(() => [] as ApiBooking[]))),
+    Promise.all(venueIds.map((vid) => listVenueMembers(vid).catch(() => [] as VenueMember[]))),
+  ]);
+
+  const seen = new Map<string, ApiPlayer>();
+  const add = (id: string, displayName: string, avatarUrl?: string | null) => {
+    if (!id || seen.has(id)) return;
+    seen.set(id, { id, displayName, avatarUrl: avatarUrl ?? null });
+  };
+
+  for (const bookings of bookingSets) {
+    for (const b of bookings) {
+      if (b.userId && b.userName) add(b.userId, b.userName, b.userAvatarUrl);
+    }
+  }
+  for (const members of memberSets) {
+    for (const m of members) {
+      if (m.userId) add(m.userId, m.displayName ?? m.email ?? 'Player', m.avatarUrl);
+    }
+  }
+
+  const lowerQ = q.toLowerCase();
+  return [...seen.values()]
+    .filter((p) => p.displayName.toLowerCase().includes(lowerQ))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+/** A player suggestion for the owner's "New message" list — a player who has
+ *  booked at or is a member of the owner's venue(s), with their latest booking
+ *  context so the owner knows who they're messaging. */
+export interface OwnerPlayerSuggestion {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  /** The most recent booking (by createdAt) — null if member-only, no booking. */
+  latestBooking: {
+    bookingId: string;
+    createdAt: string;
+    date: string;
+    startTime: string;
+    venueName: string;
+    venueId: string;
+  } | null;
+  /** The venue id for conversation context when there's no booking. */
+  memberVenueId: string | null;
+  /** True when this player also has an active membership at one of the venues. */
+  isMember: boolean;
+}
+
+/**
+ * Pre-fetched suggestion list for the owner's "New message" screen — every
+ * player who has booked or is a member across all venues the owner manages,
+ * sorted by recency (most recent booking first, then members). No query filter;
+ * the caller does local filtering when the owner types.
+ */
+export async function getOwnerPlayerSuggestions(userId: string): Promise<OwnerPlayerSuggestion[]> {
+  const venues = await listManagedVenues(userId);
+  const venueIds = venues.map((v) => (v as any)._id ?? v.id).filter(Boolean) as string[];
+  if (!venueIds.length) return [];
+
+  const [bookingSets, memberSets] = await Promise.all([
+    Promise.all(venueIds.map((vid) => getVenueBookings(vid).catch(() => [] as ApiBooking[]))),
+    Promise.all(venueIds.map((vid) => listVenueMembers(vid).catch(() => [] as VenueMember[]))),
+  ]);
+
+  // Build a map: for each player, keep the most-recently-created booking and a
+  // flag for whether they're also a member.
+  const map = new Map<string, OwnerPlayerSuggestion>();
+
+  for (const bookings of bookingSets) {
+    for (const b of bookings) {
+      if (!b.userId || !b.userName) continue;
+      const key = String(b.userId);
+      const cur = map.get(key);
+      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const curCreated = cur?.latestBooking?.createdAt
+        ? new Date(cur.latestBooking.createdAt).getTime()
+        : -1;
+
+      if (bCreated > curCreated || !cur) {
+        map.set(key, {
+          id: key,
+          displayName: b.userName,
+          avatarUrl: b.userAvatarUrl ?? null,
+          latestBooking: {
+            bookingId: b.id,
+            createdAt: b.createdAt ?? '',
+            date: b.date ?? '',
+            startTime: b.startTime ?? '',
+            venueName: b.venueName ?? '',
+            venueId: b.venueId ?? '',
+          },
+          memberVenueId: cur?.memberVenueId ?? null,
+          isMember: cur?.isMember ?? false,
+        });
+      }
+    }
+  }
+
+  // Layer in members (they may already be in the map from a booking). Track the
+  // venue so we can scope the conversation when the player has no booking.
+  for (let i = 0; i < memberSets.length; i++) {
+    const vid = venueIds[i];
+    for (const m of memberSets[i]) {
+      if (!m.userId) continue;
+      const key = String(m.userId);
+      const cur = map.get(key);
+      if (cur) {
+        cur.isMember = true;
+        if (!cur.memberVenueId) cur.memberVenueId = vid;
+      } else {
+        map.set(key, {
+          id: key,
+          displayName: m.displayName ?? m.email ?? 'Player',
+          avatarUrl: m.avatarUrl ?? null,
+          latestBooking: null,
+          memberVenueId: vid,
+          isMember: true,
+        });
+      }
+    }
+  }
+
+  // Sort: players with bookings first (most recent), then member-only.
+  return [...map.values()].sort((a, b) => {
+    const aTs = a.latestBooking?.createdAt ? new Date(a.latestBooking.createdAt).getTime() : 0;
+    const bTs = b.latestBooking?.createdAt ? new Date(b.latestBooking.createdAt).getTime() : 0;
+    if (bTs !== aTs) return bTs - aTs;
+    return a.displayName.localeCompare(b.displayName);
+  });
+}
+
 /* ─── Cross-entity search (global search screen) ─────────────── */
 //
 // One call (`?type=all`) fans out across courts/games/clubs/players and returns
@@ -1683,6 +1947,11 @@ export async function markNotificationRead(id: string): Promise<void> {
 /** Mark every unread notification read. */
 export async function markAllNotificationsRead(): Promise<void> {
   await request(`${NOTIFICATIONS_PREFIX}/mark-all-read`, { method: 'PATCH', body: {}, auth: true });
+}
+
+/** Delete a single notification. */
+export async function deleteNotification(id: string): Promise<void> {
+  await request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
 }
 
 /* ─── Direct messages (1:1 chat) ─────────────────────────────── */
@@ -1854,10 +2123,21 @@ export interface ApiClubMember {
   joinedAt?: string | null;
 }
 
-/** A photo/GIF attached to a club post (url is raw — wrap with apiImageUrl to render). */
+/** A photo, GIF, or rich game share card attached to a club post.
+ *  `url` is raw — wrap with apiImageUrl to render. */
 export interface ClubAttachment {
-  type: 'image' | 'gif';
-  url: string;
+  type: 'image' | 'gif' | 'game_link';
+  url?: string;          // required for image/gif; optional thumbnail for game_link
+  // ── game_link fields ──────────────────────────────────────────
+  gameId?: string;       // the game to navigate to / join
+  title?: string;        // card headline
+  subtitle?: string;     // fallback detail line
+  gameType?: string;     // "Doubles" / "Singles" / "Open Play"
+  skillLabel?: string;   // "3.0–3.5" / "All levels"
+  dateTime?: string;     // "Today · 6:30 PM"
+  venue?: string;        // "The Dink Lab · Makati"
+  spotsLeft?: number;    // remaining spots
+  capacity?: number;     // total spots
 }
 
 export interface ApiClubPost {
@@ -2001,8 +2281,23 @@ export interface ApiClubMessage {
   senderName: string;
   senderAvatarUrl?: string | null;
   body: string;
+  card?: GameLinkCard | null;
   createdAt: string;
   mine: boolean;
+}
+
+/** A rich game share card embedded in a club chat message or post attachment. */
+export interface GameLinkCard {
+  gameId: string;
+  title?: string;
+  subtitle?: string;
+  gameType?: string;
+  skillLabel?: string;
+  dateTime?: string;
+  venue?: string;
+  imageUrl?: string;
+  spotsLeft?: number;
+  capacity?: number;
 }
 
 /** Load a club's member chat (members only). Returns the club name (for the chat
@@ -2012,9 +2307,22 @@ export async function listClubMessages(id: string): Promise<{ title: string | nu
   return { title: env.data?.title ?? null, messages: env.data?.messages ?? [] };
 }
 
-/** Post to a club's member chat — realtime-fans-out to the other members. */
-export async function sendClubMessage(id: string, body: string): Promise<ApiClubMessage> {
-  return request<ApiClubMessage>(`${CLUBS_PREFIX}/${id}/messages`, { method: 'POST', body: { body }, auth: true });
+/** Post to a club's member chat — realtime-fans-out to the other members.
+ *  Pass an optional `card` to embed a rich game share card in the message. */
+export async function sendClubMessage(id: string, body: string, card?: GameLinkCard): Promise<ApiClubMessage> {
+  const payload: Record<string, unknown> = { body };
+  if (card) payload.card = card;
+  return request<ApiClubMessage>(`${CLUBS_PREFIX}/${id}/messages`, { method: 'POST', body: payload, auth: true });
+}
+
+/** Edit your own club chat message (body only; sender-only). */
+export async function editClubMessage(clubId: string, msgId: string, body: string): Promise<ApiClubMessage> {
+  return request<ApiClubMessage>(`${CLUBS_PREFIX}/${clubId}/messages/${msgId}`, { method: 'PATCH', body: { body }, auth: true });
+}
+
+/** Delete your own club chat message (sender-only). */
+export async function deleteClubMessage(clubId: string, msgId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${CLUBS_PREFIX}/${clubId}/messages/${msgId}`, { method: 'DELETE', auth: true });
 }
 
 /** Remove a member from a club (host-only; can't remove the host). */
@@ -2343,6 +2651,12 @@ export interface DemandEventPayload {
  *  browsing the directory are captured too. */
 export async function recordDemandEvent(payload: DemandEventPayload): Promise<void> {
   try {
+    // The API expects startHour as a raw hour number (0–23), but callers pass
+    // time strings like "14:00". Normalize here so every call site benefits.
+    if (typeof payload.startHour === 'string') {
+      const h = parseInt(payload.startHour, 10);
+      if (!Number.isNaN(h)) payload.startHour = h;
+    }
     await rawRequest('/api/v1/demand/events', {
       method: 'POST',
       body: payload as unknown as Record<string, unknown>,
@@ -2378,6 +2692,71 @@ export async function getVenueLeakageReport(venueId: string, days?: number): Pro
   return request<VenueLeakageReport>(
     `/api/v1/demand/venues/${encodeURIComponent(venueId)}/leakage${toQuery(days != null ? { days: String(days) } : {})}`,
     { auth: true },
+  );
+}
+
+/* ─── Demand report (owner-facing demand signals summary) ─────── */
+
+export interface VenueDemandReport {
+  days: number;
+  totals: Record<string, number>;
+  conversionPct: number | null;
+  cancelRate: number;
+  liveBookings: number;
+  demandByHour: number[];
+  supply: { openCourtHours: number; bookedCourtHours: number; emptyCourtHours: number; occupancyPct: number };
+}
+
+/** Aggregate demand signals for a venue over the last N days (owner/manager). */
+export async function getVenueDemand(venueId: string, days?: number): Promise<VenueDemandReport> {
+  return request<VenueDemandReport>(
+    `/api/v1/demand/venues/${encodeURIComponent(venueId)}${toQuery(days != null ? { days: String(days) } : {})}`,
+    { auth: true },
+  );
+}
+
+/* ─── Suggested dynamic pricing ────────────────────────────────── */
+
+export interface PricingSuggestion {
+  dow: number;              // 0=Sun … 6=Sat
+  hour: number;             // 0–23
+  bookings: number;
+  emptySlotEvents: number;
+  waitlistCount: number;
+  occupancyPct: number;
+  currentPrice: number;
+  suggestedPrice: number;
+  adjustmentPct: number;    // e.g. +20 or -15
+  confidence: 'low' | 'medium' | 'high';
+  rationale: string;
+}
+
+export interface SuggestedPricingReport {
+  venueId: string;
+  days: number;
+  baseRate: number;
+  courtCount: number;
+  suggestions: PricingSuggestion[];
+  summary: { total: number; highDemand: number; lowDemand: number };
+}
+
+/** Get suggested price adjustments based on demand patterns (owner/manager). */
+export async function getSuggestedPricing(venueId: string, days?: number): Promise<SuggestedPricingReport> {
+  return request<SuggestedPricingReport>(
+    `/api/v1/demand/venues/${encodeURIComponent(venueId)}/suggested-pricing${toQuery(days != null ? { days: String(days) } : {})}`,
+    { auth: true },
+  );
+}
+
+/** Apply selected pricing suggestions as SlotPriceOverrides for N weeks. */
+export async function applySuggestedPricingOverrides(
+  venueId: string,
+  suggestions: { dow: number; hour: number; price: number }[],
+  weeks?: number,
+): Promise<{ created: number; weeks: number }> {
+  return request(
+    `/api/v1/demand/venues/${encodeURIComponent(venueId)}/suggested-pricing/apply`,
+    { method: 'POST', body: { suggestions, weeks: weeks ?? 4 }, auth: true },
   );
 }
 
@@ -2914,4 +3293,196 @@ export async function submitMatchResult(tid: string, matchId: string, body: { ga
 
 export async function clearMatchResult(tid: string, matchId: string): Promise<unknown> {
   return request(`${tBase(tid)}/matches/${encodeURIComponent(matchId)}/result`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Booking modification ─────────────────────────────────────── */
+
+export interface ModifyBookingPayload {
+  date?: string;       // YYYY-MM-DD
+  startTime?: string;  // HH:MM
+  endTime?: string;    // HH:MM
+  courtId?: string | null;
+}
+
+export interface ModifyBookingResult {
+  id: string;
+  changes: Record<string, [string, string]>;
+  modificationCount: number;
+}
+
+/** Reschedule or change the court of an upcoming booking (max 3 times). */
+export async function modifyBooking(id: string, body: ModifyBookingPayload): Promise<ModifyBookingResult> {
+  return request<ModifyBookingResult>(`${BOOKINGS_PREFIX}/${encodeURIComponent(id)}/modify`, { method: 'PATCH', body, auth: true });
+}
+
+/* ─── Waitlist ─────────────────────────────────────────────────── */
+
+export interface ApiWaitlistEntry {
+  id: string;
+  venueId?: string | null;
+  venueName?: string | null;
+  courtId?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  playerCount?: number | null;
+  status?: string | null;        // 'waiting' | 'promoted' | 'claimed' | 'expired' | 'cancelled'
+  claimExpiresAt?: string | null;
+  createdAt?: string | null;
+}
+
+export interface JoinWaitlistPayload {
+  venueId: string;
+  courtId?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  playerCount?: number;
+}
+
+/** Join the waitlist for a fully-booked slot. */
+export async function joinWaitlist(body: JoinWaitlistPayload): Promise<ApiWaitlistEntry> {
+  return request<ApiWaitlistEntry>('/api/v1/waitlist', { method: 'POST', body, auth: true });
+}
+
+/** List the current user's waitlist entries. */
+export async function listMyWaitlist(): Promise<ApiWaitlistEntry[]> {
+  const env = await rawRequest<ApiWaitlistEntry[]>('/api/v1/waitlist/mine', { auth: true });
+  return env.data ?? [];
+}
+
+/** Leave a waitlist entry (soft-delete). */
+export async function leaveWaitlist(id: string): Promise<void> {
+  await rawRequest(`/api/v1/waitlist/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+/** Claim a promoted waitlist slot (creates a confirmed booking). */
+export async function claimWaitlistSlot(id: string): Promise<{ bookingId: string; status: string }> {
+  return request(`/api/v1/waitlist/${encodeURIComponent(id)}/claim`, { method: 'POST', auth: true });
+}
+
+/* ─── Owner: settlements & payout methods ──────────────────────── */
+
+export interface ApiSettlement {
+  id: string;
+  settlementRef: string;         // SET-{year}-{seq}
+  venueId?: string | null;
+  venueName?: string | null;
+  ownerUserId?: string | null;
+  periodStart: string;
+  periodEnd: string;
+  totalBookings: number;
+  grossRevenue: number;
+  platformFees: number;
+  netPayout: number;
+  status: string;                // draft | pending | processing | paid | disputed
+  payoutMethod?: string | null;
+  payoutRef?: string | null;
+  notes?: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+}
+
+export interface ApiOwnerBalance {
+  venueId?: string | null;
+  venueName?: string | null;
+  unsenttledRevenue: number;
+  unsenttledFees: number;
+  unsenttledNet: number;
+  bookingCount: number;
+}
+
+export interface ApiPayoutMethod {
+  id: string;
+  venueId?: string | null;
+  method: string;                // bank_transfer | gcash | maya | other
+  accountName: string;
+  accountNumber: string;
+  bankName?: string | null;
+  isDefault?: boolean;
+}
+
+export interface CreatePayoutMethodPayload {
+  venueId: string;
+  method: string;
+  accountName: string;
+  accountNumber: string;
+  bankName?: string;
+}
+
+/** List settlements for venues the current user owns. */
+export async function listOwnerSettlements(params?: { venueId?: string }): Promise<ApiSettlement[]> {
+  const env = await rawRequest<ApiSettlement[]>(`/api/v1/payments/owner/settlements${toQuery(params ?? {})}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Get the current owner's unsenttled balance. */
+export async function getOwnerBalance(): Promise<ApiOwnerBalance[]> {
+  const env = await rawRequest<ApiOwnerBalance[]>('/api/v1/payments/owner/settlements/balance', { auth: true });
+  return env.data ?? [];
+}
+
+/** List payout methods for venues the current user owns. */
+export async function listPayoutMethods(): Promise<ApiPayoutMethod[]> {
+  const env = await rawRequest<ApiPayoutMethod[]>('/api/v1/payments/owner/payout-methods', { auth: true });
+  return env.data ?? [];
+}
+
+/** Add a payout method for a venue. */
+export async function createPayoutMethod(body: CreatePayoutMethodPayload): Promise<ApiPayoutMethod> {
+  return request<ApiPayoutMethod>('/api/v1/payments/owner/payout-methods', { method: 'POST', body, auth: true });
+}
+
+/** Remove a payout method. */
+export async function deletePayoutMethod(id: string): Promise<void> {
+  await rawRequest(`/api/v1/payments/owner/payout-methods/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Official receipts (BIR-compliant) ────────────────────────── */
+
+export interface ApiOfficialReceipt {
+  id: string;
+  receiptNumber: string;         // OR-{venueCode}-{year}-{seq}
+  bookingId?: string | null;
+  paymentId?: string | null;
+  userId?: string | null;
+  venueId?: string | null;
+  venueName?: string | null;
+  payorName?: string | null;
+  payorTIN?: string | null;
+  payorAddress?: string | null;
+  amount: number;
+  vatAmount?: number;
+  vatRate?: number;
+  netAmount?: number;
+  description?: string | null;
+  status: string;                // draft | issued | voided
+  issuedAt?: string | null;
+  voidedAt?: string | null;
+  voidReason?: string | null;
+  createdAt?: string | null;
+}
+
+export interface UpdateReceiptPayload {
+  payorName?: string;
+  payorTIN?: string;
+  payorAddress?: string;
+  status?: 'issued' | 'voided';
+  voidReason?: string;
+}
+
+/** List the current user's official receipts. */
+export async function listMyReceipts(): Promise<ApiOfficialReceipt[]> {
+  const env = await rawRequest<ApiOfficialReceipt[]>('/api/v1/payments/receipts/mine', { auth: true });
+  return env.data ?? [];
+}
+
+/** Get a single official receipt. */
+export async function getReceipt(id: string): Promise<ApiOfficialReceipt> {
+  return request<ApiOfficialReceipt>(`/api/v1/payments/receipts/${encodeURIComponent(id)}`, { auth: true });
+}
+
+/** Update a receipt (payor details, issue, or void). */
+export async function updateReceipt(id: string, body: UpdateReceiptPayload): Promise<ApiOfficialReceipt> {
+  return request<ApiOfficialReceipt>(`/api/v1/payments/receipts/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
 }

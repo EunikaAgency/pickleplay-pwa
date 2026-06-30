@@ -14,64 +14,6 @@ interface FaqsEditorTabProps {
   venueId: string;
 }
 
-function FaqRow({ faq, onSaved, onDeleted }: { faq: OwnerFaq; onSaved: (f: OwnerFaq) => void; onDeleted: (id: string) => void }) {
-  const id = entityId(faq);
-  const [question, setQuestion] = useState(faq.question || '');
-  const [answer, setAnswer] = useState(faq.answer || '');
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [busy, setBusy] = useState(false);
-
-  const dirty = question !== (faq.question || '') || answer !== (faq.answer || '');
-
-  const save = async () => {
-    if (!question.trim() || !answer.trim()) return;
-    setStatus('saving');
-    try {
-      const updated = await updateFaq(id, { question, answer });
-      setStatus('saved');
-      onSaved(updated);
-      setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1800);
-    } catch {
-      setStatus('error');
-    }
-  };
-
-  const remove = async () => {
-    setBusy(true);
-    try {
-      await deleteFaq(id);
-      onDeleted(id);
-    } catch {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="rounded-xl border-[0.5px] border-[var(--hairline)] p-4 space-y-3">
-      <div className="field p-0!">
-        <label className="lbl">Question</label>
-        <input className="control" value={question} maxLength={2000} onChange={(e) => { setQuestion(e.target.value); setStatus('idle'); }} />
-      </div>
-      <div className="field p-0!">
-        <label className="lbl">Answer</label>
-        <textarea className="control" rows={3} value={answer} maxLength={10000} onChange={(e) => { setAnswer(e.target.value); setStatus('idle'); }} />
-      </div>
-      <div className="flex items-center gap-2">
-        {dirty && (
-          <button type="button" onClick={save} disabled={status === 'saving'} className="h-10 px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60">
-            {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save'}
-          </button>
-        )}
-        <div className="flex-1" />
-        <button type="button" onClick={remove} disabled={busy} aria-label="Delete FAQ" className="w-10 h-10 rounded-2xl flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] disabled:opacity-50">
-          <Icon name="close" size={18} />
-        </button>
-      </div>
-      {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold">Couldn't save. Try again.</div>}
-    </div>
-  );
-}
-
 export function FaqsEditorTab({ venueId }: FaqsEditorTabProps) {
   const [faqs, setFaqs] = useState<OwnerFaq[]>([]);
   const [loading, setLoading] = useState(true);
@@ -145,9 +87,39 @@ export function FaqsEditorTab({ venueId }: FaqsEditorTabProps) {
         ) : faqs.length === 0 ? (
           <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm">No FAQs yet.</div>
         ) : (
-          <div className="space-y-3">
+          <div className="rounded-2xl border-[0.5px] border-[var(--hairline)] divide-y-[0.5px] divide-[var(--hairline)] overflow-hidden">
             {faqs.map((f) => (
-              <FaqRow key={entityId(f)} faq={f} onSaved={onSaved} onDeleted={onDeleted} />
+              <details key={entityId(f)} className="group">
+                <summary className="flex items-center justify-between gap-3 px-4 py-3 cursor-pointer list-none select-none">
+                  <span className="font-semibold text-[14px] text-[var(--ink)] flex-1">{f.question}</span>
+                  <Icon name="expand_more" size={18} className="text-[var(--muted)] transition-transform group-open:rotate-180 shrink-0" />
+                </summary>
+                <div className="px-4 pb-3">
+                  <p className="text-[14px] text-[var(--ink-2)] leading-relaxed mb-3">{f.answer}</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const q = prompt('Edit question:', f.question);
+                        if (q == null) return;
+                        const a = prompt('Edit answer:', f.answer);
+                        if (a == null) return;
+                        updateFaq(entityId(f), { question: q, answer: a }).then((updated) => onSaved(updated)).catch(() => {});
+                      }}
+                      className="text-[12px] font-bold text-[var(--primary)]"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { if (confirm('Delete this FAQ?')) { deleteFaq(entityId(f)).then(() => onDeleted(entityId(f))).catch(() => {}); } }}
+                      className="text-[12px] font-bold text-[var(--coral)]"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </details>
             ))}
           </div>
         )}

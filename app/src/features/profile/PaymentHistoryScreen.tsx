@@ -6,7 +6,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { BarChart, ChartLegend, type BarDatum } from '../../shared/components/ui/Chart';
-import { listPayments, getBooking, type ApiPayment, type ApiBooking } from '../../shared/lib/api';
+import { listPayments, getBooking, listMyReceipts, type ApiPayment, type ApiBooking, type ApiOfficialReceipt } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface PaymentHistoryScreenProps {
@@ -328,6 +328,23 @@ function ReceiptCard({ payment, fallbackCurrency }: { payment: ApiPayment; fallb
     return () => { alive = false; };
   }, [payment.bookingId]);
 
+  // Pull in the BIR-compliant Official Receipt (best-effort — may not exist
+  // for older payments before the OR system was active).
+  const [orReceipt, setOrReceipt] = useState<ApiOfficialReceipt | null | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    listMyReceipts()
+      .then((receipts) => {
+        if (!alive) return;
+        // Match by bookingId first, then by paymentId.
+        const match = receipts.find((r) => r.bookingId === payment.bookingId)
+          || receipts.find((r) => r.paymentId === payment.id);
+        setOrReceipt(match ?? null);
+      })
+      .catch(() => { if (alive) setOrReceipt(null); });
+    return () => { alive = false; };
+  }, [payment.bookingId, payment.id]);
+
   const courtLabel = booking ? (booking.courtName || (booking.courtNumber ? `Court ${booking.courtNumber}` : '')) : '';
   const sessionWhen = booking
     ? [
@@ -403,16 +420,50 @@ function ReceiptCard({ payment, fallbackCurrency }: { payment: ApiPayment; fallb
 
           <div className="border-t border-dashed border-[var(--hairline)] my-4" />
 
+          {/* BIR Official Receipt header (when available) */}
+          {orReceipt && orReceipt.status !== 'voided' && (
+            <>
+              <div className="text-center mb-3">
+                <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">BIR Official Receipt</div>
+                <div className="font-heading font-extrabold text-[16px] text-[var(--ink)] mt-0.5 tracking-wide">
+                  {orReceipt.receiptNumber}
+                </div>
+                {orReceipt.status === 'issued' && orReceipt.issuedAt && (
+                  <div className="text-[10px] text-[var(--muted)] mt-0.5">
+                    Issued {receiptDateTime(orReceipt.issuedAt)}
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-dashed border-[var(--hairline)] my-3" />
+            </>
+          )}
+
           {/* line items */}
           <div className="flex flex-col gap-2.5">
             <ReceiptRow label="Description" value={payment.bookingId ? 'Court booking' : 'Payment'} />
-            <ReceiptRow label="Date" value={receiptDateTime(payment.createdAt)} />
+            <ReceiptRow label="Payment date" value={receiptDateTime(payment.createdAt)} />
+            {sessionWhen && <ReceiptRow label="Booking date" value={sessionWhen} />}
             <ReceiptRow label="Method" value={methodLabel(payment.method)} />
             {payment.provider && <ReceiptRow label="Provider" value={methodLabel(payment.provider)} />}
+
+            {/* VAT breakdown from BIR OR */}
+            {orReceipt && orReceipt.status !== 'voided' ? (
+              <>
+                <ReceiptRow label="Subtotal" value={money(orReceipt.netAmount || orReceipt.amount * 100 / 112)} />
+                <ReceiptRow label={`VAT (${orReceipt.vatRate || 12}%)`} value={money(orReceipt.vatAmount || orReceipt.amount * 12 / 112)} />
+                {orReceipt.payorName && <ReceiptRow label="Payor" value={orReceipt.payorName} />}
+                {orReceipt.payorTIN && <ReceiptRow label="TIN" value={orReceipt.payorTIN} />}
+              </>
+            ) : null}
+
             <ReceiptRow label="Status" value={chip.label} />
             {payment.bookingId && <ReceiptRow label="Booking ref" value={`#${payment.bookingId.slice(-6).toUpperCase()}`} />}
             {payment.notes && <ReceiptRow label="Note" value={payment.notes} />}
-            <ReceiptRow label="Payment ref" value={`#${payment.id.slice(-8).toUpperCase()}`} />
+            {orReceipt ? (
+              <ReceiptRow label="OR ref" value={orReceipt.receiptNumber} />
+            ) : (
+              <ReceiptRow label="Payment ref" value={`#${payment.id.slice(-8).toUpperCase()}`} />
+            )}
           </div>
 
           <div className="border-t border-dashed border-[var(--hairline)] my-4" />

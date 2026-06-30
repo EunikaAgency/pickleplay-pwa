@@ -49,6 +49,8 @@ export type Screen =
   | { id: 'owner-insights' }
   | { id: 'owner-notifications' }
   | { id: 'owner-staff' }
+  | { id: 'owner-settlements' }
+  | { id: 'owner-subscription-plans'; params: { venueId: string; venueName?: string } }
   | { id: 'organizer-hub' }
   | { id: 'organizer-tournaments' }
   | { id: 'organizer-tournament'; params: { id: string } }
@@ -127,6 +129,8 @@ export function pathFromScreen(screen: Screen): string {
     case 'owner-insights': return '/owner/insights';
     case 'owner-notifications': return '/owner/notifications';
     case 'owner-staff': return '/owner/staff';
+    case 'owner-settlements': return '/owner/settlements';
+    case 'owner-subscription-plans': return `/owner/venues/${screen.params.venueId}/subscription-plans`;
     case 'organizer-hub': return '/organizer';
     case 'organizer-tournaments': return '/organizer/tournaments';
     case 'organizer-tournament-new': return '/organizer/tournaments/new';
@@ -207,6 +211,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
         if (!c) return { id: 'owner-venues' };
         if (c === 'new') return { id: 'owner-new-venue' };
         if (c === 'claim') return { id: 'claim-venue' };
+        if (d === 'subscription-plans') return { id: 'owner-subscription-plans', params: { venueId: c } };
         return { id: 'owner-venue', params: { id: c, tab: opt(sp.get('tab')) } };
       }
       if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : {} };
@@ -214,6 +219,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'insights') return { id: 'owner-insights' };
       if (b === 'notifications') return { id: 'owner-notifications' };
       if (b === 'staff') return { id: 'owner-staff' };
+      if (b === 'settlements') return { id: 'owner-settlements' };
       return { id: 'home' };
     case 'organizer':
       if (!b) return { id: 'organizer-hub' };
@@ -243,6 +249,8 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'booking-refund') return { id: 'my-bookings' };
   if (id === 'claim-venue') return { id: 'owner-venues' };
   if (id === 'owner-staff') return { id: 'profile' };
+  if (id === 'owner-subscription-plans') return { id: 'owner-venues' };
+  if (id === 'owner-settlements') return { id: 'profile' };
   if (id === 'chat') return { id: 'messages' };
   if (id === 'game-chat') return { id: 'games' };
   if (id === 'organizer-tournament' || id === 'organizer-tournament-new') return { id: 'organizer-tournaments' };

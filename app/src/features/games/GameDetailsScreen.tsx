@@ -11,7 +11,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
-import { getGame, joinGame, leaveGame, deleteGame, startConversation, ApiError, type ApiGame } from '../../shared/lib/api';
+import { getGame, joinGame, leaveGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
@@ -75,6 +75,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const spotsLeft = game?.spotsLeft ?? 0;
   const creatorId = game?.creatorId || game?.creator?.id;
   const isHost = !!(game && me && creatorId && me.id === creatorId);
+  const isOrganizer = !!me && userHasPermission(me, 'organizer.access');
   // The host can cancel (delete) their own game from inside the lobby — deleting
   // also releases the linked court reservation (handled server-side).
   const canManageGame = isHost && userHasPermission(me, 'player.games.manage');
@@ -102,7 +103,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   };
 
   const handleJoin = () => {
-    if (!game || isJoined || joining) return;
+    if (!game || isJoined || joining || isOrganizer) return;
     // Browsing the game is free; committing to it requires an account.
     if (onRequireAuth && !onRequireAuth('join this game')) return;
     // Joining within the grace window can lock the spot once the lobby fills, so
@@ -504,6 +505,11 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   Spot locked
                 </button>
               )
+            ) : isOrganizer ? (
+              <button className="btn-join" disabled>
+                <Icon name="shield" size={16} />
+                Organizer account
+              </button>
             ) : (
               <button className="btn-join" onClick={handleJoin} disabled={joining || isFull}>
                 {joining ? (
@@ -590,6 +596,13 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
             gameId={game.id}
             title={gameTitle(game)}
             subtitle={[timeLine(game), gameLocation(game), spotsLabel(game)].filter(Boolean).join(' · ')}
+            image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || ''}
+            gameType={gameTypeLabel(game)}
+            skillLabel={game.skillLabel ?? undefined}
+            dateTime={[dayParts(game).day === 'TODAY' ? 'Today' : dayParts(game).day === 'TOM' ? 'Tomorrow' : dayParts(game).day, timeLine(game)].filter(Boolean).join(' · ') || undefined}
+            venue={gameLocation(game)}
+            spotsLeft={game.spotsLeft ?? undefined}
+            capacity={game.capacity ?? undefined}
             onNavigate={onNavigate}
           />
         </div>

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Avatar } from '../../shared/components/ui/Avatar';
-import { updateBookingStatus, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
+import { startConversation, updateBookingStatus, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
 import { money, prettyDate, to12h, hoursBetween, bookingDuration, statusChip, paymentOptionLabel, bookingSourceLabel } from '../bookings/bookingDisplay';
+import type { Navigate } from '../../shared/lib/navigation';
 
 // Read-friendly label for a payment method code ("gcash" → "GCash", etc.).
 function paymentLabel(method?: string | null): string {
@@ -43,14 +44,16 @@ function Row({ label, value, sub }: { label: string; value: string; sub?: string
 // player who booked, payment + status, and the confirm/decline/cancel actions.
 // Reuses the already-loaded ApiBooking (player + court fields come populated
 // from the owner bookings endpoint), so there's no extra fetch.
-export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged }: {
+export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged, onNavigate }: {
   booking: ApiBooking | null;
   canManage: boolean;
   onClose: () => void;
   onChanged: (b: ApiBooking) => void;
+  onNavigate?: Navigate;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [messaging, setMessaging] = useState(false);
 
   const act = async (status: BookingStatus) => {
     if (!booking) return;
@@ -65,6 +68,19 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
       setError(e instanceof Error && /409|cancel/i.test(e.message) ? "Already cancelled — can't change." : "Couldn't update. Try again.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const messagePlayer = async () => {
+    if (!b?.userId || messaging || !onNavigate) return;
+    setMessaging(true);
+    try {
+      const conv = await startConversation(b.userId, { contextType: 'booking', contextId: b.id });
+      onNavigate('chat', { id: conv.id, name: conv.otherParticipant?.displayName ?? personName });
+    } catch {
+      /* silent */
+    } finally {
+      setMessaging(false);
     }
   };
 
@@ -97,8 +113,13 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
       sheetClassName="obook-sheet"
       title="Booking details"
       subtitle={courtLabel ? `${b?.venueName ?? ''}${b?.venueName && courtLabel ? ' · ' : ''}${courtLabel}` : (b?.venueName ?? undefined)}
-      footer={b && canManage && st !== 'cancelled' ? (
+      footer={(b && canManage && st !== 'cancelled') ? (
         <div className="obook-actions">
+          {!isBlocked && !isManual && b?.userId && (
+            <button type="button" disabled={messaging} onClick={messagePlayer} className="obook-btn obook-btn-message">
+              Message {personName.split(' ')[0]}
+            </button>
+          )}
           {st === 'pending_approval' && (
             <button type="button" disabled={busy} onClick={() => act('awaiting_payment')} className="obook-btn obook-btn-confirm">
               Approve
@@ -107,6 +128,12 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
           <button type="button" disabled={busy} onClick={() => act('cancelled')}
             className={`obook-btn obook-btn-cancel${st === 'pending_approval' ? '' : ' full'}`}>
             {st === 'pending_approval' ? 'Decline' : 'Cancel booking'}
+          </button>
+        </div>
+      ) : (b && !isBlocked && !isManual && b?.userId) ? (
+        <div className="obook-actions">
+          <button type="button" disabled={messaging} onClick={messagePlayer} className="obook-btn obook-btn-message full">
+            Message {personName.split(' ')[0]}
           </button>
         </div>
       ) : undefined}

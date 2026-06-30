@@ -4,6 +4,9 @@ import { Avatar } from './Avatar';
 import { ErrorState } from './ErrorState';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { ScreenHeader } from './ScreenHeader';
+import { GameChatCard } from './GameChatCard';
+import { MessageContextMenu, type MessageContextAction } from './MessageContextMenu';
+import type { Navigate } from '../../lib/navigation';
 
 /* Shared presentational group-chat thread (Messenger-style): grouped runs from
  * the same sender, grey received bubbles + blue sent bubbles, the sender avatar
@@ -17,8 +20,23 @@ export interface ChatThreadMessage {
   senderName: string;
   senderAvatarUrl?: string | null;
   body: string;
+  card?: ChatCardData | null;
   createdAt: string;
   mine: boolean;
+}
+
+/** Shape of a rich game card embedded in a chat message. */
+export interface ChatCardData {
+  gameId: string;
+  title?: string;
+  subtitle?: string;
+  gameType?: string;
+  skillLabel?: string;
+  dateTime?: string;
+  venue?: string;
+  imageUrl?: string;
+  spotsLeft?: number;
+  capacity?: number;
 }
 
 interface ChatThreadBodyProps {
@@ -29,6 +47,12 @@ interface ChatThreadBodyProps {
   emptyText: string;
   /** Persist a message; throwing surfaces the inline send error. */
   onSend: (body: string) => Promise<unknown>;
+  /** Edit your own message (sender-only). */
+  onEditMessage?: (msgId: string, body: string) => Promise<unknown>;
+  /** Delete your own message (sender-only). */
+  onDeleteMessage?: (msgId: string) => Promise<unknown>;
+  /** Optional navigation for tappable cards in chat. */
+  onNavigate?: Navigate;
 }
 
 interface ChatThreadProps extends ChatThreadBodyProps {
@@ -73,10 +97,14 @@ function bubbleRounding(mine: boolean, first: boolean, last: boolean): string {
  * Designed to fill a `flex flex-col` parent, so it works both inside the
  * full-screen `ChatThread` below and embedded in a tab/panel (e.g. the club
  * detail's Chat tab). */
-export function ChatThreadBody({ messages, loading, error, placeholder, emptyText, onSend }: ChatThreadBodyProps) {
+export function ChatThreadBody({ messages, loading, error, placeholder, emptyText, onSend, onEditMessage, onDeleteMessage, onNavigate }: ChatThreadBodyProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [actionMsgId, setActionMsgId] = useState<string | null>(null);
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Keep pinned to the newest message.
@@ -105,6 +133,63 @@ export function ChatThreadBody({ messages, loading, error, placeholder, emptyTex
       e.preventDefault();
       void send();
     }
+  };
+
+  // ── Message actions (copy / edit / delete) ──
+  const copyBody = (body: string) => {
+    navigator.clipboard.writeText(body).catch(() => {});
+    setActionMsgId(null);
+  };
+
+  const startEdit = (m: ChatThreadMessage) => {
+    setEditDraft(m.body);
+    setEditingMsgId(m.id);
+    setActionMsgId(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingMsgId(null);
+    setEditDraft('');
+  };
+
+  const saveEdit = async (msgId: string) => {
+    if (!editDraft.trim() || !onEditMessage || editSaving) return;
+    setEditSaving(true);
+    try {
+      await onEditMessage(msgId, editDraft.trim());
+      setEditingMsgId(null);
+      setEditDraft('');
+    } catch {
+      // keep the draft so the user can retry
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const confirmDelete = (msgId: string) => {
+    if (!onDeleteMessage) return;
+    setActionMsgId(null);
+    onDeleteMessage(msgId).catch(() => {});
+  };
+
+  // Long-press state
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressMsgId = useRef<string | null>(null);
+
+  const startPress = (msgId: string) => {
+    pressMsgId.current = msgId;
+    pressTimer.current = setTimeout(() => {
+      setActionMsgId(msgId);
+      pressMsgId.current = null;
+    }, 500);
+  };
+
+  const cancelPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+    pressMsgId.current = null;
   };
 
   return (
@@ -139,15 +224,75 @@ export function ChatThreadBody({ messages, loading, error, placeholder, emptyTex
                         ? <Avatar src={m.senderAvatarUrl} name={m.senderName} size={26} />
                         : <div className="w-[26px] shrink-0" />
                     )}
-                    <div className={`flex flex-col max-w-[76%] ${m.mine ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex flex-col max-w-[82%] relative ${m.mine ? 'items-end' : 'items-start'}`}>
                       {showName && <div className="text-[12px] text-[var(--muted)] mb-1 ml-1">{m.senderName}</div>}
-                      <div
-                        className={`px-3.5 py-2 text-[15px] leading-snug break-words whitespace-pre-wrap ${bubbleRounding(m.mine, firstOfRun, lastOfRun)} ${
-                          m.mine ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface-2)] text-[var(--ink)]'
-                        }`}
-                      >
-                        {m.body}
-                      </div>
+                      {/* Body bubble — only when there's actual text. Card-only messages skip the bubble entirely. */}
+                      {editingMsgId === m.id ? (
+                        <div className={`flex flex-col gap-1.5 w-full ${m.mine ? 'items-end' : 'items-start'}`}>
+                          <textarea
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            rows={2}
+                            maxLength={4000}
+                            className="w-full px-3 py-2 rounded-xl bg-[var(--surface)] border border-[var(--field-border)] outline-none focus:border-[var(--lime)] text-[var(--ink)] resize-none text-[14px]"
+                          />
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={cancelEdit} disabled={editSaving} className="px-3 py-1 rounded-lg bg-[var(--surface-2)] text-[var(--ink)] font-bold text-[12px] disabled:opacity-50">Cancel</button>
+                            <button type="button" onClick={() => saveEdit(m.id)} disabled={!editDraft.trim() || editSaving} className="px-3 py-1 rounded-lg bg-[var(--lime)] text-[var(--ink)] font-bold text-[12px] disabled:opacity-50">{editSaving ? 'Saving…' : 'Save'}</button>
+                          </div>
+                        </div>
+                      ) : m.body.trim() ? (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onTouchStart={() => startPress(m.id)}
+                          onTouchMove={cancelPress}
+                          onTouchEnd={cancelPress}
+                          onMouseDown={() => startPress(m.id)}
+                          onMouseUp={cancelPress}
+                          onMouseLeave={cancelPress}
+                          onContextMenu={(e) => e.preventDefault()}
+                          className={`text-left px-3.5 py-2 text-[15px] leading-snug break-words whitespace-pre-wrap select-none cursor-pointer ${bubbleRounding(m.mine, firstOfRun, lastOfRun)} ${
+                            m.mine ? 'bg-[var(--primary)] text-white active:bg-[var(--primary)]/80' : 'bg-[var(--surface-2)] text-[var(--ink)] active:bg-[var(--surface-3)]'
+                          }`}
+                          style={{ userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}
+                        >
+                          {m.body}
+                        </div>
+                      ) : null}
+
+                      {/* Floating context menu anchored to the message */}
+                      {actionMsgId === m.id && (
+                        <MessageContextMenu
+                          open
+                          onClose={() => setActionMsgId(null)}
+                          side={m.mine ? 'right' : 'left'}
+                          actions={[
+                            { key: 'copy', label: 'Copy', icon: 'content_copy', onPress: () => copyBody(m.body) },
+                            ...(m.mine && onEditMessage && gapMinutes(m.createdAt, new Date().toISOString()) < 15
+                              ? [{ key: 'edit', label: 'Edit', icon: 'edit', onPress: () => startEdit(m), visible: true } as MessageContextAction]
+                              : []),
+                            ...(m.mine && onDeleteMessage
+                              ? [{ key: 'delete', label: 'Delete', icon: 'delete', danger: true, onPress: () => confirmDelete(m.id), visible: true } as MessageContextAction]
+                              : []),
+                          ]}
+                        />
+                      )}
+
+                      {/* Rich invitation card — OUTSIDE the bubble, reads as a distinct shared item. */}
+                      {m.card && (
+                        <div
+                          className={m.body.trim() ? 'mt-2 w-full' : 'w-full'}
+                          onTouchStart={() => startPress(m.id)}
+                          onTouchMove={cancelPress}
+                          onTouchEnd={cancelPress}
+                          onMouseDown={() => startPress(m.id)}
+                          onMouseUp={cancelPress}
+                          onMouseLeave={cancelPress}
+                        >
+                          <GameChatCard card={m.card} onNavigate={onNavigate} suppress={actionMsgId === m.id} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Toast } from '../../../shared/components/ui/Toast';
-import { recordDemandEvent, type OwnerVenueDetail } from '../../../shared/lib/api';
+import { type OwnerVenueDetail } from '../../../shared/lib/api';
+import { useDemandTracking } from '../../../shared/hooks/useDemandTracking';
 
 /**
  * Build the venue's public booking link: the system slug, or the owner's custom
@@ -27,9 +28,10 @@ export function BookingLinkShare({ venue, withToast = false }: BookingLinkShareP
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState(false);
   const link = bookingLinkFor(venue);
+  const { trackBookingLinkShared } = useDemandTracking();
 
   const signalShare = () => {
-    recordDemandEvent({ type: 'booking_link_shared', venueId: venue.id });
+    trackBookingLinkShared(venue.id);
   };
 
   const copy = async () => {

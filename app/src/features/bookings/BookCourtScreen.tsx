@@ -12,12 +12,13 @@ import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicke
 import type { Navigate } from '../../shared/lib/navigation';
 import {
   listAllVenues, createBooking, checkout, getSettings, listCourts, getVenueAvailabilityRange, getHours,
-  getVenue, listSlotOverrides, recordDemandEvent,
+  getVenue, listSlotOverrides, joinWaitlist,
   type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type OwnerHourEntry, type PaymentOption,
   type SlotPriceOverride,
 } from '../../shared/lib/api';
 import { resolveHourlyRate, perPlayerSurcharge } from '../../shared/lib/pricing';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
+import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
 import { addHours, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
 
@@ -58,6 +59,7 @@ function maskCard(card: CheckoutCard): { brand: string; last4: string } | undefi
 }
 
 export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, intent, onNavigate, onBack }: BookCourtScreenProps) {
+  const { trackBookingAttempt, trackBookingCompleted, trackCheckoutStarted, trackCheckoutAbandoned } = useDemandTracking();
   const [step, setStep] = useState(0);
 
   // Bookable venues (priced only) for the picker.
@@ -104,6 +106,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
 
   // Lifecycle.
   const [error, setError] = useState<string | null>(null);
+  // Waitlist join — shown when a slot is fully booked.
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ confirmed: boolean; bookingId: string | null } | null>(null);
 
@@ -305,14 +310,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
     if (step > 0) {
       // Demand signal: user left checkout without completing.
       if (step === 2 && selected) {
-        recordDemandEvent({ type: 'checkout_abandoned', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+        trackCheckoutAbandoned(selected.id, courtId || undefined, date, startTime);
       }
       setError(null);
       setStep((s) => s - 1);
     } else {
       // Demand signal: user abandoned the booking flow entirely.
       if (selected) {
-        recordDemandEvent({ type: 'checkout_abandoned', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+        trackCheckoutAbandoned(selected.id, courtId || undefined, date, startTime);
       }
       onBack();
     }
@@ -336,7 +341,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
     setSubmitting(true);
     setError(null);
     // Demand signal: a player is attempting to book this venue.
-    recordDemandEvent({ type: 'booking_attempt', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+    trackBookingAttempt(selected.id, courtId || undefined, date, startTime);
     try {
       const booking = await createBooking({
         venueId: selected.id,
@@ -363,14 +368,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       // pays within the venue's window. Land on the "requested" confirmation.
       if (requiresApproval) {
         setDone({ confirmed: false, bookingId: booking.id });
-        recordDemandEvent({ type: 'booking_completed', venueId: selected.id, courtId: courtId || undefined });
+        trackBookingCompleted(selected.id, courtId || undefined);
         return;
       }
       // Pay-at-venue: the booking is already confirmed at creation and nothing is
       // charged online, so skip checkout entirely.
       if (payAtVenue) {
         setDone({ confirmed: true, bookingId: booking.id });
-        recordDemandEvent({ type: 'booking_completed', venueId: selected.id, courtId: courtId || undefined });
+        trackBookingCompleted(selected.id, courtId || undefined);
         return;
       }
       const result = await checkout({
@@ -383,7 +388,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
       const confirmed = result.booking?.status === 'confirmed';
       const bookingId = result.booking?.id ?? booking.id;
       setDone({ confirmed, bookingId });
-      recordDemandEvent({ type: 'booking_completed', venueId: selected.id, courtId: courtId || undefined });
+      trackBookingCompleted(selected.id, courtId || undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not complete your booking. Please try again.');
     } finally {
@@ -406,10 +411,35 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
     if (step < totalSteps - 1) {
       // Demand signal: user reached checkout (step 2 = payment).
       if (step === 1 && selected) {
-        recordDemandEvent({ type: 'checkout_started', venueId: selected.id, courtId: courtId || undefined, date, startHour: startTime });
+        trackCheckoutStarted(selected.id, courtId || undefined, date, startTime);
       }
       setStep((s) => s + 1);
     } else void submit();
+  };
+
+  // Join the waitlist for a fully-booked slot.
+  const joinWaitlistForSlot = async () => {
+    if (!selected || !date || !startTime || !endTime) return;
+    setJoiningWaitlist(true);
+    setError(null);
+    try {
+      await joinWaitlist({
+        venueId: selected.id,
+        courtId: courtId || undefined,
+        date,
+        startTime,
+        endTime,
+        playerCount: 1,
+      });
+      setWaitlistJoined(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not join waitlist.';
+      if (/already|duplicate/i.test(msg)) setError('You\'re already on the waitlist for this slot.');
+      else if (/book it directly/i.test(msg)) setError('A court opened up — you can book it directly now.');
+      else setError(msg);
+    } finally {
+      setJoiningWaitlist(false);
+    }
   };
 
   if (done) {
@@ -633,7 +663,25 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
               </div>
             </div>
             {slotUnavailable && (
-              <div className="mt-2 t-sm text-[var(--coral)] font-bold">That time is fully booked — pick a free slot.</div>
+              <div className="mt-2">
+                <div className="t-sm text-[var(--coral)] font-bold">That time is fully booked — pick a free slot.</div>
+                {waitlistJoined ? (
+                  <div className="mt-2 px-3 py-2 rounded-xl bg-[var(--lime)]/15 text-[var(--lime-ink)] text-[12px] font-semibold flex items-center gap-1.5">
+                    <Icon name="check" size={14} /> You're on the waitlist — we'll notify you if a spot opens up.
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={joinWaitlistForSlot}
+                    disabled={joiningWaitlist || !selected || !date || !startTime || !endTime}
+                    className="mt-2 w-full h-10 rounded-xl border-[1.5px] border-[var(--coral)] text-[var(--coral)] font-heading font-bold text-[13px] flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {joiningWaitlist
+                      ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={14} /></span> Joining waitlist…</>
+                      : <><Icon name="queue" size={14} /> Join waitlist — get notified if a court opens</>}
+                  </button>
+                )}
+              </div>
             )}
             {/* V3: open-play passive note. */}
             {selected?.openPlayPrice != null && Number(selected.openPlayPrice) > 0 && (

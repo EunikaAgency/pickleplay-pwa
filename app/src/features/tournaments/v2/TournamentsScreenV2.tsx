@@ -55,7 +55,8 @@ export function TournamentsScreenV2(chrome: V2ScreenChrome) {
   // Organizers get a shortcut to spin up a tournament straight from the browse
   // tab (skips Profile → Organizer console). Players/coaches never see it.
   const canOrganize = userHasPermission(me, 'organizer.tournaments.manage');
-  const [tab, setTab] = useState<Tab>('open');
+  const isOrganizer = !!me && userHasPermission(me, 'organizer.access');
+  const [tab, setTab] = useState<Tab>(isOrganizer ? 'mine' : 'open');
   const [all, setAll] = useState<ApiTournament[]>([]);
   // The user's own tournaments (organizers only) — drives the Managing tab + the
   // hosted half of Results.
@@ -126,11 +127,19 @@ export function TournamentsScreenV2(chrome: V2ScreenChrome) {
       .sort((a, b) => (a.startDate || '9999').localeCompare(b.startDate || '9999'));
   }, [all, mine, mineIds, joinedIds, tab, canOrganize]);
 
-  const tabs: { value: Tab; label: string }[] = [
-    { value: 'open', label: 'Open' },
-    { value: 'mine', label: canOrganize ? 'Managing' : 'Joined' },
-    { value: 'results', label: 'Results' },
-  ];
+  const tabs: { value: Tab; label: string }[] = useMemo(() => {
+    if (isOrganizer) {
+      return [
+        { value: 'mine', label: 'Managing' },
+        { value: 'results', label: 'Results' },
+      ];
+    }
+    return [
+      { value: 'open', label: 'Open' },
+      { value: 'mine', label: canOrganize ? 'Managing' : 'Joined' },
+      { value: 'results', label: 'Results' },
+    ];
+  }, [isOrganizer, canOrganize]);
 
   const emptyCopy =
     tab === 'open' ? 'No tournaments are open for registration right now. Check back soon!'

@@ -10,6 +10,7 @@ import {
   type SlotPriceOverride, type ApiCourt,
 } from '../../../shared/lib/api';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
+import { PricingSuggestionsCard } from './PricingSuggestionsCard';
 
 interface SlotPricingTabProps {
   venueId: string;
@@ -92,6 +93,9 @@ export function SlotPricingTab({ venueId }: SlotPricingTabProps) {
 
   return (
     <div className="space-y-4">
+      {/* Demand-based pricing suggestions (AI-generated from booking data). */}
+      <PricingSuggestionsCard venueId={venueId} />
+
       <OwnerSection title="Set a slot rate" icon="bolt" description="Raise rates for peak demand (e.g. a tournament weekend) or run a promo by lowering them. Applies to bookings that start inside the window.">
         <div className="grid grid-cols-2 gap-3">
           <div className="field p-0!">

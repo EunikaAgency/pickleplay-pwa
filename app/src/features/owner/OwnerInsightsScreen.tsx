@@ -195,6 +195,7 @@ export function OwnerInsightsScreen({ onBack }: OwnerInsightsScreenProps) {
                 </div>
               )}
             </OwnerSection>
+
           </>
         )}
       </div>

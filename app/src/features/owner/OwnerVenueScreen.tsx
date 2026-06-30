@@ -20,10 +20,8 @@ import { ClosuresEditorTab } from './tabs/ClosuresEditorTab';
 import { CourtsEditorTab } from './tabs/CourtsEditorTab';
 import { SlotPricingTab } from './tabs/SlotPricingTab';
 import { FaqsEditorTab } from './tabs/FaqsEditorTab';
-import { ReviewsInboxTab } from './tabs/ReviewsInboxTab';
 import { PhotosTab } from './tabs/PhotosTab';
 import { StaffEditorTab } from './tabs/StaffEditorTab';
-import { LeakageTab } from './tabs/LeakageTab';
 
 interface OwnerVenueScreenProps {
   venueId: string; // the slug (or _id) passed via navigation params
@@ -32,7 +30,7 @@ interface OwnerVenueScreenProps {
   onBack: () => void;
 }
 
-type TabId = 'overview' | 'insights' | 'bookings' | 'members' | 'listing' | 'location' | 'courts' | 'pricing' | 'closures' | 'faqs' | 'reviews' | 'photos' | 'staff' | 'leakage';
+type TabId = 'overview' | 'insights' | 'bookings' | 'members' | 'listing' | 'location' | 'courts' | 'pricing' | 'closures' | 'faqs' | 'photos' | 'staff';
 
 // `perm` gates a tab behind a permission; tabs without one are always shown.
 // Structural-edit tabs are hidden for front-desk staff (they can only operate,
@@ -46,14 +44,13 @@ const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
   { id: 'members', label: 'Membership', icon: 'group', perm: 'owner.bookings.manage' },
   { id: 'listing', label: 'Listing', icon: 'storefront' },
   { id: 'location', label: 'Location', icon: 'location' },
-  { id: 'courts', label: 'Courts', icon: 'paddle' },
+  { id: 'courts', label: 'Courts', icon: 'sports_tennis' },
   { id: 'pricing', label: 'Slot pricing', icon: 'bolt', perm: 'owner.bookings.manage' },
   { id: 'closures', label: 'Closures', icon: 'calendar' },
   { id: 'faqs', label: 'FAQs', icon: 'help' },
-  { id: 'reviews', label: 'Reviews', icon: 'star' },
+  // Reviews hidden for now
   { id: 'photos', label: 'Photos', icon: 'camera' },
   { id: 'staff', label: 'Staff', icon: 'group', perm: 'owner.staff.manage' },
-  { id: 'leakage', label: 'Leakage', icon: 'leak', perm: 'owner.bookings.manage' },
 ];
 
 const TAB_TITLE: Record<TabId, string> = {
@@ -67,10 +64,8 @@ const TAB_TITLE: Record<TabId, string> = {
   pricing: 'Slot pricing',
   closures: 'Closures',
   faqs: 'FAQs',
-  reviews: 'Reviews',
   photos: 'Photos',
   staff: 'Staff',
-  leakage: 'Leakage',
 };
 
 export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack }: OwnerVenueScreenProps) {
@@ -197,7 +192,7 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
       <div className="px-5 pt-4">
         {tab === 'overview' && <VenueOverviewTab venue={venue} venueId={vid} onOpenTab={(t) => goTab(t as TabId)} />}
         {tab === 'insights' && <InsightsTab venueId={vid} />}
-        {tab === 'bookings' && <BookingsInboxTab venueId={vid} />}
+        {tab === 'bookings' && <BookingsInboxTab venueId={vid} onNavigate={onNavigate} />}
         {tab === 'members' && <MembersTab venueId={vid} venue={venue} onNavigate={onNavigate} />}
         {tab === 'listing' && <ListingEditorTab venue={venue} venueId={vid} reload={reload} onDeleted={() => onNavigate('owner-venues', undefined, { replace: true })} />}
         {tab === 'location' && <LocationEditorTab venue={venue} venueId={vid} reload={reload} />}
@@ -205,10 +200,8 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
         {tab === 'pricing' && <SlotPricingTab venueId={vid} />}
         {tab === 'closures' && <ClosuresEditorTab venueId={vid} />}
         {tab === 'faqs' && <FaqsEditorTab venueId={vid} />}
-        {tab === 'reviews' && <ReviewsInboxTab venueId={vid} />}
         {tab === 'photos' && <PhotosTab venue={venue} venueId={vid} reload={reload} />}
         {tab === 'staff' && <StaffEditorTab venueId={vid} />}
-        {tab === 'leakage' && <LeakageTab venueId={vid} />}
       </div>
     </div>
   );

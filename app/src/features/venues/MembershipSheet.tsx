@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
-import { MEMBERSHIP_PLANS, planById } from './membership';
+import { MEMBERSHIP_PLANS, type MembershipPlan } from './membership';
+import type { ApiSubscriptionPlan } from '../../shared/lib/api';
 
 interface MembershipSheetProps {
   open: boolean;
@@ -18,6 +19,47 @@ interface MembershipSheetProps {
   onJoin: (planId: string) => void;
   /** Cancel the current membership. */
   onCancel: () => void;
+  /** Optional: API subscription plans from the venue owner (takes precedence over hardcoded plans). */
+  apiPlans?: ApiSubscriptionPlan[] | null;
+}
+
+const BILLING_CADENCE: Record<string, string> = {
+  weekly: 'week',
+  monthly: 'month',
+  quarterly: 'quarter',
+  semiAnnual: '6 months',
+  annual: 'year',
+  custom: 'period',
+};
+
+const BILLING_CADENCE_LABEL: Record<string, string> = {
+  weekly: 'billed weekly',
+  monthly: 'billed monthly',
+  quarterly: 'billed every 3 months',
+  semiAnnual: 'billed every 6 months',
+  annual: 'billed yearly',
+  custom: 'billed per period',
+};
+
+/** Convert an API subscription plan to the MembershipPlan shape the sheet renders. */
+function apiPlanToMembershipPlan(p: ApiSubscriptionPlan, _currency: string): MembershipPlan {
+  const v = p.currentVersion;
+  const cycleCadence = v?.billingCycle === 'custom' && v?.customBillingDays
+    ? `${v.customBillingDays}d`
+    : BILLING_CADENCE[v?.billingCycle ?? 'monthly'] ?? 'mo';
+  const cycleLabel = v?.billingCycle === 'custom' && v?.customBillingDays
+    ? `billed every ${v.customBillingDays} days`
+    : BILLING_CADENCE_LABEL[v?.billingCycle ?? 'monthly'] ?? 'billed monthly';
+  return {
+    id: p.id,
+    name: p.name,
+    price: v?.price ?? 0,
+    cadence: cycleCadence,
+    cadenceLabel: cycleLabel,
+    tagline: p.description || v?.benefits?.[0] || '',
+    perks: v?.benefits ?? [],
+    featured: false,
+  };
 }
 
 export function MembershipSheet({
@@ -29,9 +71,22 @@ export function MembershipSheet({
   isRenewal,
   onJoin,
   onCancel,
+  apiPlans,
 }: MembershipSheetProps) {
-  // Default the selection to the current plan (for switching) or the featured one.
-  const initial = currentPlanId ?? MEMBERSHIP_PLANS.find((p) => p.featured)?.id ?? MEMBERSHIP_PLANS[0].id;
+  // Merge API plans with hardcoded fallback. If the owner has active API plans,
+  // those are shown instead of the hardcoded ones (they represent the owner's
+  // actual configured plans). Otherwise fall back to the generic defaults.
+  const plans: MembershipPlan[] = useMemo(() => {
+    if (apiPlans && apiPlans.length > 0) {
+      return apiPlans.map((p) => apiPlanToMembershipPlan(p, currency));
+    }
+    return MEMBERSHIP_PLANS;
+  }, [apiPlans, currency]);
+
+  const planByIdMemo = (id: string | null | undefined) => plans.find((p) => p.id === id);
+
+  // Default the selection to the current plan (for switching) or the first plan.
+  const initial = currentPlanId ?? plans[0]?.id ?? '';
   const [selected, setSelected] = useState(initial);
   const [phase, setPhase] = useState<'choose' | 'success'>('choose');
 
@@ -40,22 +95,23 @@ export function MembershipSheet({
   const [wasOpen, setWasOpen] = useState(false);
   if (open && !wasOpen) {
     setWasOpen(true);
-    setSelected(currentPlanId ?? MEMBERSHIP_PLANS.find((p) => p.featured)?.id ?? MEMBERSHIP_PLANS[0].id);
+    setSelected(currentPlanId ?? plans[0]?.id ?? '');
     setPhase('choose');
   } else if (!open && wasOpen) {
     setWasOpen(false);
   }
 
-  const selectedPlan = planById(selected)!;
+  const selectedPlan = planByIdMemo(selected) ?? plans[0];
   const isCurrent = currentPlanId === selected;
   const price = (n: number) => `${currency}${n.toLocaleString()}`;
 
   const handleJoin = () => {
+    if (!selectedPlan) return;
     onJoin(selected);
     setPhase('success');
   };
 
-  const successPlan = planById(currentPlanId) ?? selectedPlan;
+  const successPlan = planByIdMemo(currentPlanId) ?? selectedPlan ?? plans[0];
 
   return (
     <BottomSheet
@@ -84,7 +140,7 @@ export function MembershipSheet({
         )
       }
     >
-      {phase === 'success' ? (
+      {phase === 'success' && successPlan ? (
         <div className="text-center py-6 px-5">
           <div className="w-[72px] h-[72px] rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center mb-4">
             <Icon name="verified" size={36} />
@@ -113,17 +169,17 @@ export function MembershipSheet({
           {currentPlanId && !isRenewal && (
             <div className="flex items-center gap-2.5 bg-[var(--lime-soft)] text-[var(--lime-ink)] rounded-[14px] px-4 py-3 text-[13px] font-bold">
               <Icon name="verified" size={16} />
-              You're on the {planById(currentPlanId)?.name} plan here — pick another to switch.
+              You're on the {planByIdMemo(currentPlanId)?.name} plan here — pick another to switch.
             </div>
           )}
           {currentPlanId && isRenewal && (
             <div className="flex items-center gap-2.5 bg-[var(--coral-soft)] text-[var(--coral)] rounded-[14px] px-4 py-3 text-[13px] font-bold">
               <Icon name="clock" size={16} />
-              Your {planById(currentPlanId)?.name} plan has expired — pick a plan to renew.
+              Your {planByIdMemo(currentPlanId)?.name} plan has expired — pick a plan to renew.
             </div>
           )}
 
-          {MEMBERSHIP_PLANS.map((plan) => {
+          {plans.map((plan) => {
             const active = selected === plan.id;
             return (
               <button

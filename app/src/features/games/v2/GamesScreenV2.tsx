@@ -4,6 +4,7 @@ import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { apiImageUrl, listGames, listBookings, deleteGame, leaveGame, type ApiGame, type ApiBooking } from '../../../shared/lib/api';
 import { canLeaveLobby } from '../gameDisplay';
 import { useAuthStore } from '../../../shared/lib/authStore';
+import { userHasPermission } from '../../../shared/lib/permissions';
 import { haversineKm, formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
 
 // Prefer the booked court's photo, then the venue's image, as an absolute URL.
@@ -223,8 +224,9 @@ export function GamesScreenV2(chrome: V2ScreenChrome) {
   const { onNavigate, isLoggedIn } = chrome;
   const me = useAuthStore((s) => s.user);
   const myId = me?.id ?? null;
+  const isOrganizer = !!me && userHasPermission(me, 'organizer.access');
 
-  const [tab, setTab] = useState<Tab>('discover');
+  const [tab, setTab] = useState<Tab>(isOrganizer ? 'mine' : 'discover');
   const [published, setPublished] = useState<ApiGame[]>([]);
   const [mineAll, setMineAll] = useState<ApiGame[]>([]);
   // Court bookings — used only to steer Discover away from days the user is
@@ -414,11 +416,19 @@ export function GamesScreenV2(chrome: V2ScreenChrome) {
     : tab === 'mine' ? 'Game lobbies you’re hosting.'
     : 'Games you’ve joined.';
 
-  const TABS: { value: Tab; label: string }[] = [
-    { value: 'discover', label: 'Discover' },
-    { value: 'mine', label: 'My Games' },
-    { value: 'joined', label: 'Joined' },
-  ];
+  const TABS: { value: Tab; label: string }[] = useMemo(() => {
+    if (isOrganizer) {
+      return [
+        { value: 'mine', label: 'My Games' },
+        { value: 'joined', label: 'Joined' },
+      ];
+    }
+    return [
+      { value: 'discover', label: 'Discover' },
+      { value: 'mine', label: 'My Games' },
+      { value: 'joined', label: 'Joined' },
+    ];
+  }, [isOrganizer]);
   const selectTab = (value: Tab) => { setTab(value); setSelectedDate(null); };
 
   const emptyCopy =

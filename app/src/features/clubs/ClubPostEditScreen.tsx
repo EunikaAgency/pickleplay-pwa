@@ -100,7 +100,9 @@ export function ClubPostEditScreen({ clubId, postId, onBack }: ClubPostEditScree
     return <div className="scroll safe-top safe-bottom"><ErrorState title="Couldn't load this post" message="We couldn't fetch the post to edit. Tap to retry." onRetry={() => { setStatus('loading'); setReloadKey((k) => k + 1); }} /></div>;
   }
 
-  const attachments = post.attachments ?? [];
+  const allAttachments = post.attachments ?? [];
+  const gameLinks = allAttachments.filter((a) => a.type === 'game_link');
+  const attachments = allAttachments.filter((a) => a.type !== 'game_link');
 
   return (
     <div className="scroll pb-[100px] pt-[calc(8px+env(safe-area-inset-top))]">
@@ -124,6 +126,12 @@ export function ClubPostEditScreen({ clubId, postId, onBack }: ClubPostEditScree
           placeholder="Share something with the club…"
           className="w-full px-3.5 py-3 rounded-[14px] bg-[var(--surface)] border border-[var(--field-border)] outline-none focus:border-[var(--lime)] text-[var(--ink)] resize-none text-[15px]"
         />
+
+        {gameLinks.length > 0 && (
+          <div className="mt-3 px-1 t-sm text-[var(--muted)]">
+            This post shares a game — the card can't be edited here.
+          </div>
+        )}
 
         {attachments.length > 0 && (
           <div className="mt-3">

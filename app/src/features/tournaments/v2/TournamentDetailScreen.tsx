@@ -36,7 +36,7 @@ function regCopy(status: string): { label: string; tone: string } {
 
 export function TournamentDetailScreen({ tournamentId, onNavigate, onBack, onRequireAuth }: TournamentDetailScreenProps) {
   const me = useAuthStore((s) => s.user);
-  const canJoin = userHasPermission(me, 'player.tournaments.join');
+  const canJoin = userHasPermission(me, 'player.tournaments.join') && !userHasPermission(me, 'organizer.access');
   const canChat = userHasPermission(me, 'player.tournaments.chat');
 
   const [t, setT] = useState<ApiTournament | null>(null);

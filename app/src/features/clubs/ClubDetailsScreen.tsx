@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { Segmented } from '../../shared/components/ui/Segmented';
+import { GameShareCard } from '../../shared/components/ui/GameShareCard';
 import { ClubChatPanel } from './ClubChatPanel';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
@@ -477,7 +478,7 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
         {/* Members get a live group chat as a third tab (separate from the feed). */}
         {activeTab === 'chat' && canChat && (
           <div className="mt-3">
-            <ClubChatPanel clubId={club.id} />
+            <ClubChatPanel clubId={club.id} onNavigate={onNavigate} />
           </div>
         )}
 
@@ -627,23 +628,29 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
                         role="button"
                         onClick={() => onNavigate('club-post', { id: clubId, postId: p.id })}
                       >{p.isDeleted ? <em className="text-[var(--muted)]">deleted</em> : p.body}</p>
-                      {!p.isDeleted && (p.attachments?.length ?? 0) > 0 && (
-                        (p.attachments?.length ?? 0) === 1 ? (
-                          // Single photo: show it whole (no crop), capped so a tall
-                          // image can't dominate; tap to open full-screen.
-                          <button type="button" onClick={() => setLightbox(apiImageUrl(p.attachments?.[0]?.url))} className="block w-full mt-2.5">
-                            <img src={apiImageUrl(p.attachments?.[0]?.url)} alt="Post attachment" loading="lazy" className="w-full h-auto max-h-[75vh] object-contain rounded-xl bg-[var(--surface-2)]" />
+                      {/* Rich game share cards (Facebook-style link previews). */}
+                      {!p.isDeleted && p.attachments?.filter((a): a is ClubAttachment & { type: 'game_link' } => a.type === 'game_link').map((a) => (
+                        <GameShareCard key={a.gameId} attachment={a} onNavigate={onNavigate} />
+                      ))}
+
+                      {/* Photo / GIF attachments (filtered to non-game_link). */}
+                      {!p.isDeleted && (() => {
+                        const photos = p.attachments?.filter((a) => a.type !== 'game_link') ?? [];
+                        if (photos.length === 0) return null;
+                        return photos.length === 1 ? (
+                          <button type="button" onClick={() => setLightbox(apiImageUrl(photos[0].url))} className="block w-full mt-2.5">
+                            <img src={apiImageUrl(photos[0].url)} alt="Post attachment" loading="lazy" className="w-full h-auto max-h-[75vh] object-contain rounded-xl bg-[var(--surface-2)]" />
                           </button>
                         ) : (
                           <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-                            {p.attachments?.map((a, i) => (
+                            {photos.map((a, i) => (
                               <button key={i} type="button" onClick={() => setLightbox(apiImageUrl(a.url))} className="block">
                                 <img src={apiImageUrl(a.url)} alt="Post attachment" loading="lazy" className="w-full aspect-square object-cover rounded-xl" />
                               </button>
                             ))}
                           </div>
-                        )
-                      )}
+                        );
+                      })()}
                       <div className="mt-2.5 flex items-center gap-4 t-sm">
                         <button
                           onClick={() => toggleReact(p)}

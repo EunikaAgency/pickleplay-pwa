@@ -94,7 +94,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
 
   const accountRows: Row[] = [
     { key: 'edit', icon: <UserIco />, label: 'Edit Profile', sub: 'Name, photo & bio', onClick: () => onNavigate('edit-profile') },
-    ...(canNotifs ? [{ key: 'notifs', icon: <Bell size={18} />, label: 'Notifications', sub: 'Booking & venue alerts', onClick: () => onNavigate('owner-notifications'), badge: unread } as Row] : []),
+    ...(canNotifs ? [{ key: 'notifs', icon: <Bell size={18} />, label: 'Notifications', sub: 'Booking & venue alerts', onClick: () => onNavigate('notifications'), badge: unread } as Row] : []),
     ...(isOrganizer ? [{ key: 'organize', icon: <Trophy />, label: 'Organizer console', sub: 'Tournaments & open play', onClick: () => onNavigate('organizer-hub') } as Row] : []),
     ...(canModerate ? [{ key: 'claims', icon: <Shield />, label: 'Venue claims', sub: 'Review ownership claims', onClick: () => onNavigate('admin-claims') } as Row] : []),
     { key: 'settings', icon: <SettingsIco />, label: 'Settings', sub: 'Privacy & preferences', onClick: () => onNavigate('settings') },

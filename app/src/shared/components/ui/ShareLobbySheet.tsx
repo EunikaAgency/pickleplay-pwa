@@ -6,7 +6,7 @@ import { Avatar } from './Avatar';
 import { LoadingSkeleton } from './LoadingSkeleton';
 import { useAuthStore } from '../../lib/authStore';
 import { userHasPermission } from '../../lib/permissions';
-import { listClubs, createClubPost, type ApiClub } from '../../lib/api';
+import { listClubs, createClubPost, type ApiClub, type ClubAttachment } from '../../lib/api';
 import type { Navigate } from '../../lib/navigation';
 
 interface ShareLobbySheetProps {
@@ -14,24 +14,35 @@ interface ShareLobbySheetProps {
   onClose: () => void;
   /** The game/lobby to share — the deep link is `…/games/<gameId>`. */
   gameId: string;
-  /** Headline for the share text + sheet (e.g. the game title). */
+  /** Headline for the share card (e.g. the game title). */
   title: string;
-  /** Optional detail line woven into the post (e.g. "Sat 3:00 PM · The Dink Lab · 2 spots left"). */
+  /** Optional fallback detail line. */
   subtitle?: string;
+  /** Optional court/venue image URL for the card thumbnail. */
+  image?: string;
+  /** Structured fields for the rich card — all game_link fields. */
+  gameType?: string;     // "Doubles" / "Singles" / "Open Play"
+  skillLabel?: string;   // "3.0–3.5" / "All levels"
+  dateTime?: string;     // "Today · 6:30 PM"
+  venue?: string;        // "The Dink Lab · Makati"
+  spotsLeft?: number;
+  capacity?: number;
   /** Lets the empty-state CTA jump to the Clubs tab; optional. */
   onNavigate?: Navigate;
 }
 
 /**
- * A reusable "share this lobby" chooser used by both the home commitment banner
- * and the game-details screen. Two phases:
+ * A reusable "share this lobby" chooser used by both the home commitment banner,
+ * the game-details screen, and the My Games / Games list. Two phases:
  *   1. choose — Copy link (native share / clipboard) OR Share to a club
- *   2. clubs  — pick one of the player's clubs; posts a text feed post with the
- *               game details + the lobby link via createClubPost (no API change).
+ *   2. clubs  — pick one of the player's clubs; posts a rich game_link card
+ *               attachment to the club feed (Facebook-style card with image +
+ *               title + subtitle, clickable to the game) and a plain-text chat
+ *               message as a best-effort side channel.
  * Share-to-club is gated client-side on `player.clubs.post` (server is the real
  * authority); guests/ineligible users still get Copy link.
  */
-export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, onNavigate }: ShareLobbySheetProps) {
+export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, image, gameType, skillLabel, dateTime, venue, spotsLeft, capacity, onNavigate }: ShareLobbySheetProps) {
   const user = useAuthStore((s) => s.user);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const canShareToClub = isLoggedIn && userHasPermission(user, 'player.clubs.post');
@@ -44,7 +55,6 @@ export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, onNavi
   const [toast, setToast] = useState({ show: false, message: '' });
 
   const url = typeof window !== 'undefined' ? `${window.location.origin}/games/${gameId}` : `/games/${gameId}`;
-  const body = [`🎾 ${title}`, subtitle, `Join: ${url}`].filter(Boolean).join('\n');
 
   // Reset to the chooser whenever the sheet (re)opens — adjusted during render on
   // the open→true transition (React's recommended alternative to an effect).
@@ -94,7 +104,22 @@ export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, onNavi
     if (postingId) return;
     setPostingId(club.id);
     try {
-      await createClubPost(club.id, body);
+      // Build a rich game_link card attachment (Facebook-style).
+      const gameAttachment: ClubAttachment = {
+        type: 'game_link',
+        gameId,
+        url: image || undefined,
+        title,
+        subtitle,
+        gameType,
+        skillLabel,
+        dateTime,
+        venue,
+        spotsLeft: spotsLeft ?? undefined,
+        capacity: capacity ?? undefined,
+      };
+      await createClubPost(club.id, '', undefined, [gameAttachment]);
+
       onClose();
       showToast(`Shared to ${club.name}`);
     } catch {
@@ -145,9 +170,20 @@ export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, onNavi
               <Icon name="back" size={16} /> Back
             </button>
 
-            {/* Read-only preview of what gets posted. */}
-            <div className="rounded-2xl bg-[var(--surface-2)] px-3.5 py-3 mb-3 text-[13px] text-[var(--ink)] whitespace-pre-line leading-snug">
-              {body}
+            {/* Card preview of what gets posted. */}
+            <div className="rounded-xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] overflow-hidden flex mb-3">
+              <div className="shrink-0 w-[80px] h-[80px] bg-[var(--surface-2)] flex items-center justify-center overflow-hidden">
+                {image ? (
+                  <img src={image} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <Icon name="stadium" size={28} className="text-[var(--muted)]" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1 px-3 py-2.5 flex flex-col justify-center gap-0.5">
+                <span className="text-[13px] font-heading font-bold text-[var(--ink)] leading-snug truncate">{title}</span>
+                {subtitle && <span className="text-[11px] text-[var(--muted)] leading-snug truncate">{subtitle}</span>}
+                <span className="text-[11px] font-semibold text-[var(--primary)] mt-0.5">View game →</span>
+              </div>
             </div>
 
             {loadingClubs ? (
@@ -155,22 +191,18 @@ export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, onNavi
             ) : clubsError ? (
               <p className="text-[13px] text-[var(--muted)] text-center py-6">Couldn't load your clubs. Try again.</p>
             ) : clubs && clubs.length > 0 ? (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap gap-3">
                 {clubs.map((c) => (
                   <button
                     key={c.id}
                     type="button"
                     disabled={!!postingId}
                     onClick={() => shareToClub(c)}
-                    className="w-full flex items-center gap-3 px-2 py-2.5 rounded-2xl text-left active:bg-[var(--surface-2)] disabled:opacity-50"
+                    className="flex flex-col items-center gap-1.5 w-[72px] active:opacity-70 disabled:opacity-40"
                   >
-                    <Avatar src={c.coverImageUrl} name={c.name} size={40} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[14px] font-bold text-[var(--ink)] truncate">{c.name}</span>
-                      <span className="block text-[12px] text-[var(--muted)]">{c.memberCount} member{c.memberCount === 1 ? '' : 's'}</span>
-                    </span>
-                    <span className="shrink-0 text-[var(--primary)]">
-                      <Icon name={postingId === c.id ? 'spinner' : 'send'} size={18} className={postingId === c.id ? 'animate-spin' : undefined} />
+                    <Avatar src={c.coverImageUrl} name={c.name} size={56} variant="blue" />
+                    <span className="text-[11px] font-semibold text-[var(--ink)] leading-tight text-center line-clamp-2">
+                      {c.name}
                     </span>
                   </button>
                 ))}

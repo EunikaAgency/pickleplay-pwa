@@ -32,8 +32,9 @@ import { GameChatScreen } from './features/games/GameChatScreen';
 import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
 import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
 import { OwnerProfileScreen } from './features/owner/OwnerProfileScreen';
-import { OwnerNotificationsScreen } from './features/owner/OwnerNotificationsScreen';
 import { OwnerStaffScreen } from './features/owner/OwnerStaffScreen';
+import { OwnerSettlementsScreen } from './features/owner/OwnerSettlementsScreen';
+import { SubscriptionPlansScreen } from './features/owner/SubscriptionPlansScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
 import { OwnerFrontDeskScreen } from './features/owner/OwnerFrontDeskScreen';
 import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
@@ -109,8 +110,10 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-bookings': 'owner.bookings.manage',
   'owner-front-desk': 'owner.bookings.manage',
   'owner-insights': 'owner.analytics.view',
-  'owner-notifications': 'owner.notifications.view',
+  'owner-notifications': 'user.notifications.manage',
   'owner-staff': 'owner.staff.manage',
+  'owner-settlements': 'owner.access',
+  'owner-subscription-plans': 'owner.bookings.manage',
   'organizer-hub': 'organizer.access',
   'organizer-tournaments': 'organizer.tournaments.manage',
   'organizer-tournament': 'organizer.tournaments.manage',
@@ -155,6 +158,8 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-front-desk': 'run the front desk',
   'owner-insights': 'see your insights',
   'owner-staff': 'manage your staff',
+  'owner-settlements': 'see your settlements',
+  'owner-subscription-plans': 'manage subscription plans',
   'admin-claims': 'review venue claims',
   'open-play-book': 'join open play',
 };
@@ -231,7 +236,7 @@ function tabForScreen(id: ScreenId): TabId {
   if (id === 'court-details' || id === 'book-court' || id === 'open-play-book') return 'nearby';
   // Owner venue screens live under the "Venues" tab (which itself opens
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
-  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue') return 'nearby';
+  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-settlements' || id === 'owner-subscription-plans') return 'nearby';
   if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
   if (id === 'game-details' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
@@ -513,7 +518,7 @@ function AppInner() {
       case 'club-post-edit':
         return <ClubPostEditScreen key={`${screen.params.id}:${screen.params.postId}:edit`} clubId={screen.params.id} postId={screen.params.postId} onBack={goBack} />;
       case 'club-chat':
-        return <ClubChatScreen key={screen.params.id} clubId={screen.params.id} name={screen.params.name} onBack={goBack} />;
+        return <ClubChatScreen key={screen.params.id} clubId={screen.params.id} name={screen.params.name} onNavigate={navigate} onBack={goBack} />;
       case 'create-game':
         return playerV2 ? <CreateGameV2 {...v2Chrome} bookingId={screen.params?.bookingId} onBack={goBack} /> : <CreateGameScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-game':
@@ -577,9 +582,20 @@ function AppInner() {
       case 'owner-insights':
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-notifications':
-        return <OwnerNotificationsScreen onNavigate={navigate} onBack={goBack} />;
+        return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-staff':
         return <OwnerStaffScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-settlements':
+        return <OwnerSettlementsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-subscription-plans':
+        return (
+          <SubscriptionPlansScreen
+            venueId={screen.params.venueId}
+            venueName={screen.params.venueName ?? ''}
+            onNavigate={navigate}
+            onBack={goBack}
+          />
+        );
       case 'organizer-hub':
         return <OrganizerHubScreen onNavigate={navigate} onBack={goBack} />;
       case 'organizer-tournaments':

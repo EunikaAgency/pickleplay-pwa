@@ -1,54 +1,54 @@
-Topic,Question / Requirement,Priority,Needed before owner demo?,Decision / Working Assumption,Owner,Status
-Pricing,"Per-player surcharge (e.g. Pickleball Junction: ₱800 base + ₱100 per extra player) — pricing model must support add-on-per-head, not just flat court rate",Must have,Target-venue dependent,Pricing engine needs base rate + per-additional-player charge as a configurable rule,Product+Dev,DONE
-Pricing,Base court price (default hourly rate per court),Must have,Yes,Initial owner app,Product,DONE
-Pricing,Time-based pricing (e.g. price changes after 6 PM),Must have,Yes,"Configurable per court, tied to schedule",Product,DONE
-Pricing,Day-based pricing (weekday vs weekend vs holiday),High,No,Near-term,Product,DONE
-Pricing,Member pricing (special rate for venue members),High (if target uses memberships),Target-venue dependent,Member-tier rate override,Product,DONE
-Pricing,Court-specific price overrides,Must have,Yes,"Pricing tied to court level, not venue level",Dev,DONE
-Pricing,Manual surge adjustment (owner raises/lowers specific slots),High,No,Near-term,Product,DONE
-Pricing,Suggested dynamic pricing (demand-based recommendation),Roadmap,No,After enough data; owner stays in control,Product,Deferred
-Pricing,Automated dynamic pricing (opt-in),Later roadmap,No,Opt-in only,Product,Deferred
-Pricing,"Currency, VAT/tax handling, and whether displayed price is inclusive",High,Yes,PH prices usually VAT-inclusive; confirm display convention,Product,DONE
-Pricing,Deposit vs full payment vs pay-at-venue at checkout,Must have,Yes,Decide first-demo payment flow,Product+Dev,DONE
-Pricing,7% player service fee display (one fee shown; PayMongo 2.5% buried inside),Must have,Yes,Player sees single fee; net ~4.3%,Product,DONE
-Pricing,Half-court / split-court pricing (some venues rent half a court),Medium,Target-venue dependent,Court model may need sub-court units,Dev,DONE
-Pricing,Open-play / per-session pricing vs whole-court block,High,Confirm with Emmanuel,Is open-play booking live at launch or Phase 2?,Product,DONE
-Pricing,Equipment/paddle rental add-ons,Medium,No,Add-on line items at checkout,Product,DONE
-Booking,"Manual booking/blocking for phone, Messenger, IG, walk-ins",Must have,Yes,Scheduler must allow staff to block slots from outside channels,Dev,DONE
-Booking,"Auto-generated booking link (system-created, optional custom slug)",Must have,Yes,Platform handles uniqueness/routing,Dev,DONE
-Booking,"Manual vs automatic approval, configurable per venue/court",High,Yes,Support both modes clearly,Dev,DONE
-Booking,"Recurring bookings (weekly regulars, leagues)",High,No,Common in PH open-play culture,Dev,DONE
-Booking,Double-booking collision handling for Group B venues already on software,Must have,Yes,Start Group B at Level 2 (request-to-approve) not Level 3,Product+Dev,DONE
-Booking,"Cancellation & refund rules (window, fees, no-show policy)",High,Yes,Owner-configurable cancellation policy,Product,DONE
-Booking,"Booking modification (reschedule, change court)",Medium,No,Edit existing booking,Dev,DONE
-Booking,Overbooking / waitlist for full slots,Medium,No,Capture demand on full slots,Product,DONE
-Booking,Buffer/turnover time between bookings,Medium,No,Optional gap per court,Dev,DONE
-Venue Setup,Address autocomplete + auto-geocoding (no manual map pin),High,Yes,Google Business Profile-style setup,Dev,DONE
-Venue Setup,Multiple venues per owner,Must have,Yes,Owner > Venue hierarchy,Dev,DONE
-Venue Setup,Multiple courts per venue,Must have,Yes,Venue > Court hierarchy,Dev,DONE
-Venue Setup,"Court details: surface, photos, thumbnail, description",Must have,Yes,Court-level metadata,Dev,DONE
-Venue Setup,Operating hours / availability per court,Must have,Yes,Schedule config per court,Dev,DONE
-Venue Setup,Separate venue website field vs platform booking link,Must have,Yes,Two distinct fields,Dev,DONE
-Venue Setup,Profile completion prompts,Medium,No,Encourage complete listings,Product,DONE
-Venue Setup,"Amenities/facilities (parking, showers, aircon, lighting, indoor/outdoor)",Medium,No,Filterable attributes for player search/SEO,Product,DONE
-Venue Setup,Venue claim flow (claim unclaimed directory listing),High,No,Core to SEO directory strategy,Product+Dev,DONE
-Multi-Sport,Court sport/type field in data model,Strategic,Data model: Yes; UI: TBD,Don't block multi-sport; court has sport field,Dev,DONE
-Multi-Sport,Should multi-sport be visible in first demo or only in data model?,Strategic,Open question,Decide demo scope,Product,DONE
-Dashboard,"Owner view: revenue, occupancy, business performance",Must have,Yes,Owner-focused metrics,Product,DONE
-Dashboard,"Operator/staff view: today's schedule, pending approvals, manual entries, cancellations",High,Yes,Distinguish owner vs operator roles,Product,DONE
-Dashboard,"Who is primary dashboard user: owner, manager, front-desk, or all? Multiple users, different levels of access?",High,Yes,Role-based views,Product,DONE
-Analytics,Busiest hours / underused slots / revenue by court,Roadmap,No,First actionable analytics layer,Product,Deferred
-Analytics,Minimum credible analytics view before owner demo,High,Yes,Define MVP analytics,Product,DONE
-Analytics,"Demand data capture (searches, views, attempts, completions, cancellations, empty slots)",High,No,Foundation for future dynamic pricing,Dev,DONE
-Content,Platform-curated highlights (not owner-invented claims),Medium,No,From PB data or editorial review,Product,DONE
-Access,Multi-user/staff accounts per venue with permissions,High,No,Owner vs staff roles & permissions,Dev,DONE
-Access,Owner identity verification / anti-fraud on venue claim,Medium,No,Prevent false claims,Product,DONE
-Payments,Payout schedule & reconciliation to venue (how/when venues get paid),High,Yes,PayMongo/Xendit split-payment to venue,Product+Dev,DONE
-Payments,BIR-compliant receipts / official receipt generation,High,No,Part of free SaaS offer,Dev,DONE
-Payments,"Cash booking leakage mitigation (slots published, POS routing)",High,No,Accept 30-40% leakage; mitigate via speed + POS,Product,DONE
-Notifications,Push notifications (APNs/FCM) for booking confirmations & rebook loop,High,No,Capacitor wrappers enable native push,Dev,DONE
-Comms,In-app messaging or inquiry handling owner-to-player,Medium,No,Replaces Messenger/IG coordination,Product,DONE
-Process,Create & maintain master requirements sheet,Must have,Yes,This sheet,Product lead,In progress
-Process,Map owner features by priority (must-have vs roadmap),Must have,Yes,Feature-priority matrix,Product+Dev,Open
-Process,"Research first target venues (systems used, membership needs)",Must have,Yes,Know requirements before demo,Business/Dev,Open
-Process,Schedule recurring demo reviews,High,No,Correct product mid-build,Project lead,Open
+Topic,Question / Requirement,Priority,Needed before owner demo?,Decision / Working Assumption,Owner,Status,Progress
+Pricing,"Per-player surcharge (e.g. Pickleball Junction: ₱800 base + ₱100 per extra player) — pricing model must support add-on-per-head, not just flat court rate",Must have,Target-venue dependent,Pricing engine needs base rate + per-additional-player charge as a configurable rule,Product+Dev,Open,
+Pricing,Base court price (default hourly rate per court),Must have,Yes,Initial owner app,Product,Open,DONE
+Pricing,"Time-based pricing (e.g. price changes after 6 PM)",Must have,Yes,"Configurable per court, tied to schedule",Product,Open,DONE
+Pricing,Day-based pricing (weekday vs weekend vs holiday),High,No,Near-term,Product,Open,DONE
+Pricing,Member pricing (special rate for venue members),High (if target uses memberships),Target-venue dependent,Member-tier rate override,Product,Open,DONE
+Pricing,Court-specific price overrides,Must have,Yes,"Pricing tied to court level, not venue level",Dev,Open,DONE
+Pricing,Manual surge adjustment (owner raises/lowers specific slots),High,No,Near-term,Product,Open,
+Pricing,Suggested dynamic pricing (demand-based recommendation),Roadmap,No,After enough data; owner stays in control,Product,Deferred,DONE
+Pricing,Automated dynamic pricing (opt-in),Later roadmap,No,Opt-in only,Product,Deferred,DONE
+Pricing,"Currency, VAT/tax handling, and whether displayed price is inclusive",High,Yes,PH prices usually VAT-inclusive; confirm display convention,Product,Open,DONE
+Pricing,Deposit vs full payment vs pay-at-venue at checkout,Must have,Yes,Decide first-demo payment flow,Product+Dev,Open,
+Pricing,7% player service fee display (one fee shown; PayMongo 2.5% buried inside),Must have,Yes,Player sees single fee; net ~4.3%,Product,Open,
+Pricing,Half-court / split-court pricing (some venues rent half a court),Medium,Target-venue dependent,Court model may need sub-court units,Dev,Open,DONE
+Pricing,Open-play / per-session pricing vs whole-court block,High,Confirm with Emmanuel,Is open-play booking live at launch or Phase 2?,Product,Open,DONE
+Pricing,Equipment/paddle rental add-ons,Medium,No,Add-on line items at checkout,Product,Open,DONE
+Booking,"Manual booking/blocking for phone, Messenger, IG, walk-ins",Must have,Yes,Scheduler must allow staff to block slots from outside channels,Dev,Open,
+Booking,"Auto-generated booking link (system-created, optional custom slug)",Must have,Yes,Platform handles uniqueness/routing,Dev,Open,DONE
+Booking,"Manual vs automatic approval, configurable per venue/court",High,Yes,Support both modes clearly,Dev,Open,DONE
+Booking,"Recurring bookings (weekly regulars, leagues)",High,No,Common in PH open-play culture,Dev,Open,
+Booking,Double-booking collision handling for Group B venues already on software,Must have,Yes,Start Group B at Level 2 (request-to-approve) not Level 3,Product+Dev,Open,DONE
+Booking,"Cancellation & refund rules (window, fees, no-show policy)",High,Yes,Owner-configurable cancellation policy,Product,Open,DONE
+Booking,"Booking modification (reschedule, change court)",Medium,No,Edit existing booking,Dev,Open,DONE
+Booking,Overbooking / waitlist for full slots,Medium,No,Capture demand on full slots,Product,Open,DONE
+Booking,Buffer/turnover time between bookings,Medium,No,Optional gap per court,Dev,Open,DONE
+Venue Setup,Address autocomplete + auto-geocoding (no manual map pin),High,Yes,Google Business Profile-style setup,Dev,Open,DONE
+Venue Setup,Multiple venues per owner,Must have,Yes,Owner > Venue hierarchy,Dev,Open,DONE
+Venue Setup,Multiple courts per venue,Must have,Yes,Venue > Court hierarchy,Dev,Open,DONE
+Venue Setup,"Court details: surface, photos, thumbnail, description",Must have,Yes,Court-level metadata,Dev,Open,DONE
+Venue Setup,Operating hours / availability per court,Must have,Yes,Schedule config per court,Dev,Open,DONE
+Venue Setup,Separate venue website field vs platform booking link,Must have,Yes,Two distinct fields,Dev,Open,DONE
+Venue Setup,Profile completion prompts,Medium,No,Encourage complete listings,Product,Open,DONE
+Venue Setup,"Amenities/facilities (parking, showers, aircon, lighting, indoor/outdoor)",Medium,No,Filterable attributes for player search/SEO,Product,Open,DONE
+Venue Setup,Venue claim flow (claim unclaimed directory listing),High,No,Core to SEO directory strategy,Product+Dev,Open,DONE
+Multi-Sport,Court sport/type field in data model,Strategic,Data model: Yes; UI: TBD,Don't block multi-sport; court has sport field,Dev,Open,DONE
+Multi-Sport,Should multi-sport be visible in first demo or only in data model?,Strategic,Open question,Decide demo scope,Product,Open,DONE
+Dashboard,"Owner view: revenue, occupancy, business performance",Must have,Yes,Owner-focused metrics,Product,Open,DONE
+Dashboard,"Operator/staff view: today's schedule, pending approvals, manual entries, cancellations",High,Yes,Distinguish owner vs operator roles,Product,Open,
+Dashboard,"Who is primary dashboard user: owner, manager, front-desk, or all? Multiple users, different levels of access?",High,Yes,Role-based views,Product,Open,
+Analytics,Busiest hours / underused slots / revenue by court,Roadmap,No,First actionable analytics layer,Product,Deferred,DONE
+Analytics,Minimum credible analytics view before owner demo,High,Yes,Define MVP analytics,Product,Open,DONE
+Analytics,"Demand data capture (searches, views, attempts, completions, cancellations, empty slots)",High,No,Foundation for future dynamic pricing,Dev,Open,DONE
+Content,Platform-curated highlights (not owner-invented claims),Medium,No,From PB data or editorial review,Product,Open,DONE
+Access,Multi-user/staff accounts per venue with permissions,High,No,Owner vs staff roles & permissions,Dev,Open,
+Access,Owner identity verification / anti-fraud on venue claim,Medium,No,Prevent false claims,Product,Open,DONE
+Payments,Payout schedule & reconciliation to venue (how/when venues get paid),High,Yes,PayMongo/Xendit split-payment to venue,Product+Dev,Open,DONE
+Payments,BIR-compliant receipts / official receipt generation,High,No,Part of free SaaS offer,Dev,Open,DONE
+Payments,"Cash booking leakage mitigation (slots published, POS routing)",High,No,Accept 30-40% leakage; mitigate via speed + POS,Product,Open,DONE
+Notifications,Push notifications (APNs/FCM) for booking confirmations & rebook loop,High,No,Capacitor wrappers enable native push,Dev,Open,DONE
+Comms,In-app messaging or inquiry handling owner-to-player,Medium,No,Replaces Messenger/IG coordination,Product,Open,DONE
+Process,Create & maintain master requirements sheet,Must have,Yes,This sheet,Product lead,In progress,
+Process,Map owner features by priority (must-have vs roadmap),Must have,Yes,Feature-priority matrix,Product+Dev,Open,DONE
+Process,"Research first target venues (systems used, membership needs)",Must have,Yes,Know requirements before demo,Business/Dev,Open,DONE
+Process,Schedule recurring demo reviews,High,No,Correct product mid-build,Project lead,Open,DONE

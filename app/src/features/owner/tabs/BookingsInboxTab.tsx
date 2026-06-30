@@ -7,9 +7,11 @@ import { OwnerBookingDetailSheet } from '../OwnerBookingDetailSheet';
 import { getVenueBookings, type ApiBooking } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
+import type { Navigate } from '../../../shared/lib/navigation';
 
 interface BookingsInboxTabProps {
   venueId: string;
+  onNavigate: Navigate;
 }
 
 type Filter = 'all' | 'pending_approval' | 'confirmed' | 'cancelled';
@@ -25,7 +27,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 // venue. Bookings arrive already paid + confirmed (no approval step). Mirrors
 // the CourtsEditorTab mutation pattern (optimistic local update + toast).
 // Server filters by status.
-export function BookingsInboxTab({ venueId }: BookingsInboxTabProps) {
+export function BookingsInboxTab({ venueId, onNavigate }: BookingsInboxTabProps) {
   const user = useAuthStore((s) => s.user);
   const canManage = userHasPermission(user, 'owner.bookings.manage');
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
@@ -74,7 +76,7 @@ export function BookingsInboxTab({ venueId }: BookingsInboxTabProps) {
         ) : (
           <div className="space-y-3">
             {bookings.map((b) => (
-              <OwnerBookingRow key={b.id} booking={b} canManage={canManage} onChanged={onChanged} onOpen={setDetail} />
+              <OwnerBookingRow key={b.id} booking={b} canManage={canManage} onChanged={onChanged} onOpen={setDetail} onNavigate={onNavigate} />
             ))}
           </div>
         )}
@@ -85,6 +87,7 @@ export function BookingsInboxTab({ venueId }: BookingsInboxTabProps) {
         canManage={canManage}
         onClose={() => setDetail(null)}
         onChanged={onChanged}
+        onNavigate={onNavigate}
       />
 
       <Toast message="Booking updated" show={toast} />
