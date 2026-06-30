@@ -80,15 +80,16 @@ export async function sendFcm(token: string, payload: FcmPayload): Promise<boole
     });
     return true;
   } catch (err: any) {
-    // The token is no longer valid — caller should clean it up.
+    // Tokens that FCM will never deliver to — prune them.
     if (
       err?.code === 'messaging/invalid-registration-token' ||
-      err?.code === 'messaging/registration-token-not-registered'
+      err?.code === 'messaging/registration-token-not-registered' ||
+      err?.code === 'messaging/invalid-argument'  // malformed token
     ) {
       return false; // caller prunes
     }
-    // Transient error — token is still valid, just couldn't deliver right now.
-    return true; // don't prune
+    // Transient / unknown error — keep the token for the next attempt.
+    return true;
   }
 }
 
