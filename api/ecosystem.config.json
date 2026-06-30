@@ -1,0 +1,23 @@
+{
+  "name": "pickleballer-api",
+  "cwd": "/var/public/pickleplay/api",
+  "script": "./node_modules/.bin/tsx",
+  "args": "src/index.ts",
+  "watch": false,
+  "instances": 1,
+  "exec_mode": "fork",
+  "env": {
+    "PORT": "9002",
+    "NODE_ENV": "production",
+    "MONGODB_URI": "mongodb://localhost:27017/pickleballers",
+    "JWT_SECRET": "ecbc40474da8eb7ba817f322ee1f144b739789732fac063c425d46cdd3db319e",
+    "CORS_ORIGIN": "https://pickleballer.eunika.xyz,https://pickleballer-pwa.eunika.xyz,http://localhost:9000,http://localhost:9001"
+  },
+  "error_file": "./logs/err.log",
+  "out_file": "./logs/out.log",
+  "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+  "max_restarts": 10,
+  "min_uptime": "10s",
+  "restart_delay": 3000,
+  "autorestart": true
+}

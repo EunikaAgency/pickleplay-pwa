@@ -1,0 +1,52 @@
+{
+  "name": "pickleballers-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pickleballers API — Hono + MongoDB + Mongoose",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "db:seed": "tsx src/shared/db/seed.ts",
+    "db:seed:users": "tsx src/shared/db/seed-dummy-users.ts",
+    "db:seed:dummy": "tsx src/shared/db/seed-dummy-data.ts",
+    "db:import": "tsx src/shared/db/import-real-data.ts",
+    "db:link-owners": "tsx src/shared/db/link-owner-venues.ts",
+    "db:courts": "tsx src/shared/db/generate-courts.ts",
+    "db:download-images": "tsx src/shared/db/download-images.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "lint": "tsc --noEmit && eslint src/",
+    "typecheck": "tsc --noEmit",
+    "pm2": "pm2 start ecosystem.config.json",
+    "pm2:stop": "pm2 stop pickleballers-api",
+    "pm2:restart": "pm2 restart pickleballers-api",
+    "pm2:logs": "pm2 logs pickleballers-api",
+    "pm2:save": "pm2 save",
+    "pm2:startup": "pm2 startup"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.3",
+    "bcryptjs": "^2.4.3",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.2",
+    "firebase-admin": "^13.10.0",
+    "hono": "^4.12.0",
+    "mongoose": "^9.6.2",
+    "web-push": "^3.6.7",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/bcryptjs": "^2.4.0",
+    "@types/node": "^22.0.0",
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9.0.0",
+    "mongodb-memory-server": "^11.1.0",
+    "pm2": "^7.0.1",
+    "react-doctor": "^0.2.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

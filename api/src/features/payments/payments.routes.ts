@@ -1,0 +1,45 @@
+import { Hono } from 'hono';
+import { requireAuth } from '../../shared/middleware/auth.js';
+import {
+  checkout, createPayment, getPayment, listPayments, updatePayment, verifyPayment,
+  listMyReceipts, getReceipt, updateReceipt, listVenueReceipts,
+  generateSettlement, listSettlements, updateSettlement,
+  listOwnerSettlements, getOwnerBalance,
+  listPayoutMethods, createPayoutMethod, deletePayoutMethod,
+} from './payments.controller.js';
+
+const paymentsRoutes = new Hono();
+
+paymentsRoutes.use('/*', requireAuth);
+
+// Static segments MUST come before :id matchers.
+
+// Receipts
+paymentsRoutes.get('/receipts/mine', listMyReceipts);
+paymentsRoutes.get('/receipts/:id', getReceipt);
+paymentsRoutes.patch('/receipts/:id', updateReceipt);
+
+// Owner settlements + payout methods
+paymentsRoutes.get('/owner/settlements/balance', getOwnerBalance);
+paymentsRoutes.get('/owner/settlements', listOwnerSettlements);
+paymentsRoutes.get('/owner/payout-methods', listPayoutMethods);
+paymentsRoutes.post('/owner/payout-methods', createPayoutMethod);
+paymentsRoutes.delete('/owner/payout-methods/:id', deletePayoutMethod);
+
+// Admin settlements
+paymentsRoutes.post('/admin/settlements/generate', generateSettlement);
+paymentsRoutes.get('/admin/settlements', listSettlements);
+paymentsRoutes.patch('/admin/settlements/:id', updateSettlement);
+
+// Venue-scoped receipts
+paymentsRoutes.get('/venues/:id/receipts', listVenueReceipts);
+
+// Payments (with :id matchers last)
+paymentsRoutes.get('/', listPayments);
+paymentsRoutes.post('/', createPayment);
+paymentsRoutes.post('/checkout', checkout);
+paymentsRoutes.get('/:id', getPayment);
+paymentsRoutes.patch('/:id', updatePayment);
+paymentsRoutes.post('/:id/verify', verifyPayment);
+
+export default paymentsRoutes;
