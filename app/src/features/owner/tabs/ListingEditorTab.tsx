@@ -115,20 +115,14 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
     email: str(venue.email),
     website: str(venue.website),
     priceFrom: str(venue.priceFrom),
-    peakPrice: str(venue.peakPrice),
-    offPeakPrice: str(venue.offPeakPrice),
     openPlayPrice: str(venue.openPlayPrice),
     equipmentRentalPrice: str(venue.equipmentRentalPrice),
-    // Day-based pricing — flat weekend/holiday hourly overrides.
     weekendPrice: str(venue.weekendPrice),
     holidayPrice: str(venue.holidayPrice),
-    // Member pricing — % off the resolved rate for venue members.
     memberDiscountPercent: str(venue.memberDiscountPercent || ''),
-    // Per-player surcharge — ₱ per extra player + the included headcount.
     perPlayerFee: str(venue.perPlayerFee || ''),
     perPlayerFeeThreshold: str(venue.perPlayerFeeThreshold ?? 1),
     priceNotes: str(venue.priceNotes),
-    pricingTaxLabel: str(venue.pricingTaxLabel ?? 'VAT inclusive'),
   });
   // Holiday dates (YYYY-MM-DD) for holiday pricing — managed as a small date list.
   const [holidayDates, setHolidayDates] = useState<string[]>(venue.holidayDates ?? []);
@@ -412,33 +406,17 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         )}
       </OwnerSection>
 
-      <OwnerSection title="Pricing" icon="bolt" description="Display pricing in PHP — shown on your public page, not charged.">
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="From" placeholder="200" value={form.priceFrom} onChange={(e) => set('priceFrom')(e.target.value)} />
-          <FormField label="Peak" value={form.peakPrice} onChange={(e) => set('peakPrice')(e.target.value)} />
-          <FormField label="Off-peak" value={form.offPeakPrice} onChange={(e) => set('offPeakPrice')(e.target.value)} />
-          <FormField label="Open play" value={form.openPlayPrice} onChange={(e) => set('openPlayPrice')(e.target.value)} />
-          <FormField label="Equipment rental" value={form.equipmentRentalPrice} onChange={(e) => set('equipmentRentalPrice')(e.target.value)} />
-        </div>
-        <div className="field p-0! mt-3.5">
-          <label className="lbl">Pricing notes</label>
-          <textarea className="control" rows={2} value={form.priceNotes} onChange={(e) => set('priceNotes')(e.target.value)} />
-        </div>
-        <div className="field p-0! mt-3.5">
-          <FormField
-            label="Tax label"
-            hint='Shown next to prices: e.g. "VAT inclusive", "VAT exclusive", or "Tax included".'
-            value={form.pricingTaxLabel}
-            maxLength={40}
-            onChange={(e) => set('pricingTaxLabel')(e.target.value)}
-          />
+      <OwnerSection title="Hourly rate" icon="bolt" description="Your venue's default rate per hour. For per-court rates use the Courts tab. For time-based pricing (peak/off-peak hours) use the Hours tab.">
+        <FormField label="Default rate (₱/hr)" placeholder="400" value={form.priceFrom} inputMode="decimal" onChange={(e) => set('priceFrom')(e.target.value.replace(/[^\d.]/g, ''))} />
+        <div className="t-sm mt-2 text-[var(--muted)]">
+          This is the fallback rate — courts, hours, or weekend/holiday overrides take priority when set.
         </div>
       </OwnerSection>
 
-      <OwnerSection title="Day-based pricing" icon="calendar" description="Charge a different hourly rate on weekends and holidays. Leave blank to use the base rate. (Your per-time hours pricing on the Courts tab, when set, takes priority.)">
+      <OwnerSection title="Weekend & holiday pricing" icon="calendar" description="Optional — charge more (or less) on weekends and specific dates. Leave blank to use the default rate.">
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Weekend rate (₱/hr)" hint="Applied on Saturdays & Sundays." value={form.weekendPrice} inputMode="decimal" onChange={(e) => set('weekendPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
-          <FormField label="Holiday rate (₱/hr)" hint="Applied on the holiday dates below." value={form.holidayPrice} inputMode="decimal" onChange={(e) => set('holidayPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Weekend rate (₱/hr)" hint="Sat & Sun" value={form.weekendPrice} inputMode="decimal" onChange={(e) => set('weekendPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Holiday rate (₱/hr)" hint="The dates below" value={form.holidayPrice} inputMode="decimal" onChange={(e) => set('holidayPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
         </div>
         <div className="field p-0! mt-3.5">
           <label className="lbl">Holiday dates</label>
@@ -466,26 +444,31 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         </div>
       </OwnerSection>
 
-      <OwnerSection title="Member pricing" icon="star" description="Give your venue members a discount. Add members from the Membership tab; the discount applies automatically at checkout for them.">
-        <FormField
-          label="Member discount (%)"
-          hint="Percent off the booking rate for venue members. 0 = no member discount."
-          value={form.memberDiscountPercent}
-          inputMode="numeric"
-          onChange={(e) => set('memberDiscountPercent')(e.target.value.replace(/[^\d]/g, ''))}
-        />
-      </OwnerSection>
-
-      <OwnerSection title="Per-player surcharge" icon="groups" description="Charge a base court rate plus a fee per extra player (e.g. ₱800 base + ₱100 per extra head). Leave the fee blank for flat court pricing.">
+      <OwnerSection title="Extras" icon="add_circle" description="Optional add-ons and surcharges applied at checkout. Leave blank to skip.">
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Fee per extra player (₱)" value={form.perPlayerFee} inputMode="decimal" onChange={(e) => set('perPlayerFee')(e.target.value.replace(/[^\d.]/g, ''))} />
-          <FormField label="Players included" hint="Heads covered by the base rate before the fee applies." value={form.perPlayerFeeThreshold} inputMode="numeric" onChange={(e) => set('perPlayerFeeThreshold')(e.target.value.replace(/[^\d]/g, ''))} />
+          <FormField label="Equipment rental (₱)" placeholder="150" value={form.equipmentRentalPrice} inputMode="decimal" onChange={(e) => set('equipmentRentalPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Open play (₱)" placeholder="200" value={form.openPlayPrice} inputMode="decimal" onChange={(e) => set('openPlayPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Fee per extra player (₱)" hint="₱ per head past threshold" value={form.perPlayerFee} inputMode="decimal" onChange={(e) => set('perPlayerFee')(e.target.value.replace(/[^\d.]/g, ''))} />
+          <FormField label="Players included" hint="Before surcharge applies" value={form.perPlayerFeeThreshold} inputMode="numeric" onChange={(e) => set('perPlayerFeeThreshold')(e.target.value.replace(/[^\d]/g, ''))} />
         </div>
         {(Number(form.perPlayerFee) || 0) > 0 && (
           <p className="t-sm text-[var(--muted)] mt-2">
             Players past <strong className="text-[var(--ink)]">{Number(form.perPlayerFeeThreshold) || 1}</strong> are charged an extra <strong className="text-[var(--ink)]">₱{Number(form.perPlayerFee).toLocaleString()}</strong> each.
           </p>
         )}
+        <div className="grid grid-cols-2 gap-3 mt-3.5">
+          <FormField
+            label="Member discount (%)"
+            hint="Auto-applied for venue members. 0 = none."
+            value={form.memberDiscountPercent}
+            inputMode="numeric"
+            onChange={(e) => set('memberDiscountPercent')(e.target.value.replace(/[^\d]/g, ''))}
+          />
+        </div>
+        <div className="field p-0! mt-3.5">
+          <label className="lbl">Pricing notes</label>
+          <textarea className="control" rows={2} placeholder="e.g. Includes balls. Per-person rate for groups above 4." value={form.priceNotes} onChange={(e) => set('priceNotes')(e.target.value)} />
+        </div>
       </OwnerSection>
 
       <OwnerSection title="Cancellation & refund policy" icon="close" description="Set the rules players see before booking. The platform enforces these automatically.">
