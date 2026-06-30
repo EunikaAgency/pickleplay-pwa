@@ -147,10 +147,16 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const currentTheme = THEMES.find((t) => t.id === theme);
 
+  const [prevStatsKey, setPrevStatsKey] = useState(`${isLoggedIn}|${user?.id ?? ''}|${showPlayerStats}`);
+  const statsKey = `${isLoggedIn}|${user?.id ?? ''}|${showPlayerStats}`;
+  if (statsKey !== prevStatsKey) {
+    setPrevStatsKey(statsKey);
+    setLoading(true);
+  }
+
   useEffect(() => {
     if (!isLoggedIn || !showPlayerStats) return;
     let alive = true;
-    setLoading(true);
     Promise.all([
       listBookings().catch(() => [] as ApiBooking[]),
       listGames({ mine: true }).catch(() => [] as ApiGame[]),

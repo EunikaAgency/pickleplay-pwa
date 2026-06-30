@@ -185,7 +185,7 @@ function MyGameCard({ g, meId, done = false, onOpen, onNavigate, onDeleted }: My
         >
           <div className={`shrink-0 w-14 h-14 rounded-2xl flex flex-col items-center justify-center ${status.box}`}>
             <span className="font-heading font-bold text-[11px] tracking-wide leading-none">{day}</span>
-            {num && <span className="font-heading font-bold text-[22px] leading-none mt-1">{num}</span>}
+            {num != null && num > 0 && <span className="font-heading font-bold text-[22px] leading-none mt-1">{num}</span>}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
@@ -438,7 +438,7 @@ function BookingCalendar({ year, month, bookingsByDate, selected, today, onSelec
             : confirmed ? 'bg-[#1aa052]'
             : 'bg-[var(--muted)]';
           return (
-            <div key={i} className="flex flex-col items-center py-0.5">
+            <div key={key} className="flex flex-col items-center py-0.5">
               <button
                 type="button"
                 onClick={() => onSelect(key)}
@@ -548,8 +548,7 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
   }, [bookings]);
 
   // On first load, open the calendar on the soonest upcoming booking (else the latest one).
-  useEffect(() => {
-    if (calInited.current || bookings.length === 0) return;
+  if (!calInited.current && bookings.length > 0) {
     calInited.current = true;
     const today = todayYMD();
     const dates = [...new Set(bookings.map((b) => b.date).filter((d): d is string => !!d))].sort();
@@ -559,7 +558,7 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
       const [y, m] = pick.split('-').map(Number);
       setCalMonth({ year: y, month: m - 1 });
     }
-  }, [bookings]);
+  }
 
   const selectedBookings = bookingsByDate.get(selectedDate) ?? [];
   const prevMonth = () => setCalMonth(({ year, month }) => (month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }));

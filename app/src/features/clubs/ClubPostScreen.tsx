@@ -244,7 +244,7 @@ export function ClubPostScreen({ clubId, postId, onNavigate, onBack }: ClubPostS
         ) : (
           <div className={`${isComment ? 'mt-1.5' : 'mt-2.5'} grid grid-cols-2 gap-1.5`}>
             {photos.map((a, i) => (
-              <button key={i} type="button" onClick={() => setLightbox(apiImageUrl(a.url))} className="block">
+              <button key={a.url} type="button" onClick={() => setLightbox(apiImageUrl(a.url))} className="block">
                 <img src={apiImageUrl(a.url)} alt="Attachment" loading="lazy" className={`w-full aspect-square object-cover ${isComment ? 'rounded-lg' : 'rounded-xl'}`} />
               </button>
             ))}

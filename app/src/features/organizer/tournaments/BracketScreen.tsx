@@ -28,10 +28,16 @@ export function BracketScreen({ tournamentId, onBack }: BracketScreenProps) {
 
   const reload = () => setReloadKey((k) => k + 1);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${tournamentId}|${reloadKey}`);
+  const fetchKey = `${tournamentId}|${reloadKey}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     Promise.all([getTournament(tournamentId), getEntrants(tournamentId).catch(() => []), getBracket(tournamentId).catch(() => null)])
       .then(([tour, ents, brk]) => {
         if (!alive) return;

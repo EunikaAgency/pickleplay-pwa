@@ -83,10 +83,15 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
   const [suggestions, setSuggestions] = useState<OwnerPlayerSuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevReloadKey, setPrevReloadKey] = useState(reloadKey);
+  if (reloadKey !== prevReloadKey) {
+    setPrevReloadKey(reloadKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     listConversations()
       .then((rows) => { if (alive) setItems(rows); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load messages.'); })

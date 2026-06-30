@@ -560,7 +560,7 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
                   {draftAttachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-1.5">
                       {draftAttachments.map((a, i) => (
-                        <div key={i} className="relative w-16 h-16 rounded-xl overflow-hidden">
+                        <div key={a.url} className="relative w-16 h-16 rounded-xl overflow-hidden">
                           <img src={apiImageUrl(a.url)} alt="" className="w-full h-full object-cover" />
                           <button
                             type="button"
@@ -644,7 +644,7 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
                         ) : (
                           <div className="mt-2.5 grid grid-cols-2 gap-1.5">
                             {photos.map((a, i) => (
-                              <button key={i} type="button" onClick={() => setLightbox(apiImageUrl(a.url))} className="block">
+                              <button key={a.url} type="button" onClick={() => setLightbox(apiImageUrl(a.url))} className="block">
                                 <img src={apiImageUrl(a.url)} alt="Post attachment" loading="lazy" className="w-full aspect-square object-cover rounded-xl" />
                               </button>
                             ))}

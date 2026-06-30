@@ -219,7 +219,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     getCurrentLocation()
       .then((loc) => { setUserLoc(loc); setLocStatus('on'); })
       .catch(() => setLocStatus('denied'));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canLocate]);
 
   // Close the sort menu on an outside click or Escape.
   useEffect(() => {
@@ -236,11 +236,11 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     };
   }, [sortOpen]);
 
-  const distOf = (v: ApiVenue): number | null => {
+  const distOf = useCallback((v: ApiVenue): number | null => {
     if (!userLoc) return null;
     const c = venueCoords(v);
     return c ? haversineKm(userLoc, c) : null;
-  };
+  }, [userLoc]);
 
   // Distance sort needs a location; until we have one, fall back to rating order
   // so the list isn't arbitrary while the permission prompt is pending/denied.
@@ -266,7 +266,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       case 'rating':
       default: return copy.sort((a, b) => (b.googleRating ?? 0) - (a.googleRating ?? 0));
     }
-  }, [all, query, effectiveSort, userLoc]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [all, query, effectiveSort, distOf]);
 
   const visible = sorted.slice(0, VISIBLE);
   const featured = visible[0] ?? null;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Icon } from './Icon';
 
 interface CalendarDatePickerProps {
@@ -37,7 +37,11 @@ export function CalendarDatePicker({ value, onChange, min, max, fullDays, onMont
 
   // Tell the caller which month is in view (mount + every navigation) so it can
   // prefetch that month's availability for the fully-booked markers.
-  useEffect(() => { onMonthChange?.(year, month); }, [year, month, onMonthChange]);
+  const lastNotifiedRef = useRef({ year, month });
+  if (lastNotifiedRef.current.year !== year || lastNotifiedRef.current.month !== month) {
+    lastNotifiedRef.current = { year, month };
+    onMonthChange?.(year, month);
+  }
 
   const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const firstWeekday = new Date(year, month, 1).getDay();
@@ -85,7 +89,7 @@ export function CalendarDatePicker({ value, onChange, min, max, fullDays, onMont
           // can open it to see the "No times available" detail.
           const isFull = !disabled && !isSel && !!fullDays?.has(key);
           return (
-            <div key={i} className="flex items-center justify-center py-0.5">
+            <div key={key} className="flex items-center justify-center py-0.5">
               <button
                 type="button"
                 disabled={disabled}

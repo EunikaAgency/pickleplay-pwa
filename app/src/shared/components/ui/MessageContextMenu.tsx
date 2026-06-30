@@ -26,13 +26,15 @@ interface MessageContextMenuProps {
 export function MessageContextMenu({ open, onClose, side, actions }: MessageContextMenuProps) {
   const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
-      const raf = requestAnimationFrame(() => setVisible(true));
-      return () => cancelAnimationFrame(raf);
+      requestAnimationFrame(() => setVisible(true));
+    } else {
+      setVisible(false);
     }
-    setVisible(false);
-  }, [open]);
+  }
 
   // Dismiss on scroll or outside tap
   useEffect(() => {

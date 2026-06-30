@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
@@ -133,10 +133,15 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
 
   // Load the selected venue's courts; default to the first so a court is always
   // chosen (the booker can switch). Reset to none while a fresh venue loads.
+  const [prevSelectedId_courts, setPrevSelectedId_courts] = useState(selectedId);
+  if (selectedId !== prevSelectedId_courts) {
+    setPrevSelectedId_courts(selectedId);
+    setCourts([]);
+    setCourtId('');
+  }
   useEffect(() => {
-    if (!selectedId) { setCourts([]); setCourtId(''); return; }
+    if (!selectedId) return;
     let alive = true;
-    setCourts([]); setCourtId('');
     listCourts(selectedId)
       .then((rows) => { if (!alive) return; setCourts(rows); setCourtId(rows[0]?.id ?? ''); })
       .catch(() => { if (alive) { setCourts([]); setCourtId(''); } });
@@ -144,11 +149,20 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   }, [selectedId]);
 
   // Reset sub-unit pick when changing courts (default to whole-court).
-  useEffect(() => { setSubUnitIndex(undefined); }, [courtId]);
+  const [prevCourtId, setPrevCourtId] = useState(courtId);
+  if (courtId !== prevCourtId) {
+    setPrevCourtId(courtId);
+    setSubUnitIndex(undefined);
+  }
 
   // Load the venue's hourly pricing blocks so the rate reflects time-based pricing.
+  const [prevSelectedId_hours, setPrevSelectedId_hours] = useState(selectedId);
+  if (selectedId !== prevSelectedId_hours) {
+    setPrevSelectedId_hours(selectedId);
+    setVenueHours([]);
+  }
   useEffect(() => {
-    if (!selectedId) { setVenueHours([]); return; }
+    if (!selectedId) return;
     let alive = true;
     getHours(selectedId)
       .then((rows) => { if (alive) setVenueHours(rows); })
@@ -158,8 +172,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
 
   // Membership status drives member pricing — fetched once per venue (the detail
   // endpoint computes the viewer's membership server-side).
+  const [prevSelectedId_member, setPrevSelectedId_member] = useState(selectedId);
+  if (selectedId !== prevSelectedId_member) {
+    setPrevSelectedId_member(selectedId);
+    setViewerIsMember(false);
+  }
   useEffect(() => {
-    if (!selectedId) { setViewerIsMember(false); return; }
+    if (!selectedId) return;
     let alive = true;
     getVenue(selectedId)
       .then((v) => { if (alive) setViewerIsMember(!!v.viewerIsMember); })
@@ -168,8 +187,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   }, [selectedId]);
 
   // Manual surge / slot price overrides for the chosen date — re-fetched per date.
+  const [prevOverrideKey, setPrevOverrideKey] = useState(`${selectedId}|${date}`);
+  const overrideKey = `${selectedId}|${date}`;
+  if (overrideKey !== prevOverrideKey) {
+    setPrevOverrideKey(overrideKey);
+    setOverrides([]);
+  }
   useEffect(() => {
-    if (!selectedId || !date) { setOverrides([]); return; }
+    if (!selectedId || !date) return;
     let alive = true;
     listSlotOverrides(selectedId, date)
       .then((rows) => { if (alive) setOverrides(rows); })
@@ -233,9 +258,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   }, [selected, requiresApproval]);
   const [paymentOption, setPaymentOption] = useState<PaymentOption>('full');
   // Keep the chosen option valid as the venue/court (and thus options) change.
-  useEffect(() => {
-    setPaymentOption((prev) => (paymentChoices.includes(prev) ? prev : paymentChoices[0]));
-  }, [paymentChoices]);
+  const prevPaymentChoices = useRef(paymentChoices);
+  if (paymentChoices !== prevPaymentChoices.current) {
+    prevPaymentChoices.current = paymentChoices;
+    if (!paymentChoices.includes(paymentOption)) {
+      setPaymentOption(paymentChoices[0]);
+    }
+  }
 
   const depositPercent = Number(selected?.depositPercent) || 50;
   // How much is charged online now vs owed at the venue, by chosen option.
@@ -269,8 +298,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   const handleMonthChange = useCallback((y: number, m: number) => {
     setCalMonth((prev) => (prev && prev.y === y && prev.m === m ? prev : { y, m }));
   }, []);
+  const [prevFullKey, setPrevFullKey] = useState(`${selected?.id ?? ''}|${courtId}|${calMonth?.y ?? ''}|${calMonth?.m ?? ''}`);
+  const fullKey = `${selected?.id ?? ''}|${courtId}|${calMonth?.y ?? ''}|${calMonth?.m ?? ''}`;
+  if (fullKey !== prevFullKey) {
+    setPrevFullKey(fullKey);
+    setFullDays(new Set());
+  }
   useEffect(() => {
-    if (!selected?.id || !calMonth) { setFullDays(new Set()); return; }
+    if (!selected?.id || !calMonth) return;
     const pad = (n: number) => String(n).padStart(2, '0');
     const last = new Date(calMonth.y, calMonth.m + 1, 0).getDate();
     const from = `${calMonth.y}-${pad(calMonth.m + 1)}-01`;
@@ -287,11 +322,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
   // so the end picker isn't entirely blocked. End resets to empty for the user.
   // Keep the start on a valid hour: prefer the first free + future hour when
   // availability is loaded; otherwise just bump off an already-passed hour today.
-  useEffect(() => {
+  const prevAvailabilityRef = useRef(availability);
+  if (availability !== prevAvailabilityRef.current) {
+    prevAvailabilityRef.current = availability;
     const cur = Number(startTime.split(':')[0]);
     const target = firstFreeHour(cur) ?? (cur < minBookableHour && minBookableHour <= 23 ? minBookableHour : null);
     if (target != null && target !== cur) { setStartTime(`${String(target).padStart(2, '0')}:00`); setEndTime(''); }
-  }, [availability, startTime, firstFreeHour, minBookableHour]);
+  }
 
   // Keep a positive duration: if a new start lands at/after the end, push the end out an hour.
   const onStartChange = (v: string) => {
@@ -612,7 +649,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
                   {subUnitIndex == null && <Icon name="check" size={12} />} Full court
                 </Chip>
                 {Array.from({ length: selectedCourt.splitCount ?? 2 }, (_, i) => (
-                  <Chip key={i} selected={subUnitIndex === i} onClick={() => setSubUnitIndex(i)}>
+                  <Chip key={`${selectedCourt.id}-half-${i}`} selected={subUnitIndex === i} onClick={() => setSubUnitIndex(i)}>
                     {subUnitIndex === i && <Icon name="check" size={12} />} Half {i + 1}
                   </Chip>
                 ))}

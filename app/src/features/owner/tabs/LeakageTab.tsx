@@ -23,19 +23,19 @@ export function LeakageTab({ venueId }: LeakageTabProps) {
   const [data, setData] = useState<VenueLeakageReport | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [days, setDays] = useState<number>(30);
+  const [retryCtr, setRetryCtr] = useState(0);
 
-  const load = (d: number) => {
+  useEffect(() => {
     setStatus('loading');
-    setDays(d);
-    getVenueLeakageReport(venueId, d)
-      .then((r) => { setData(r); setStatus('ready'); })
-      .catch(() => setStatus('error'));
-  };
-
-  useEffect(() => { load(days); }, [venueId]); // eslint-disable-line react-hooks/exhaustive-deps
+    let alive = true;
+    getVenueLeakageReport(venueId, days)
+      .then((r) => { if (alive) { setData(r); setStatus('ready'); } })
+      .catch(() => { if (alive) setStatus('error'); });
+    return () => { alive = false; };
+  }, [venueId, days, retryCtr]);
 
   if (status === 'loading') return <LoadingSkeleton variant="card" count={3} />;
-  if (status === 'error') return <ErrorState message="Couldn't load the leakage report." onRetry={() => load(days)} />;
+  if (status === 'error') return <ErrorState message="Couldn't load the leakage report." onRetry={() => setRetryCtr((k) => k + 1)} />;
   if (!data) return null;
 
   const { funnel, leakageRate, checkoutDropoff, daily } = data;
@@ -69,7 +69,7 @@ export function LeakageTab({ venueId }: LeakageTabProps) {
           <button
             key={d}
             className={`chip ${days === d ? 'active' : ''}`}
-            onClick={() => load(d)}
+            onClick={() => setDays(d)}
           >
             {d}d
           </button>

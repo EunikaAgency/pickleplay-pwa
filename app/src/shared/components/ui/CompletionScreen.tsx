@@ -43,9 +43,9 @@ export function CompletionScreen({
         </Button>
       ) : (
         <div className="flex gap-2.5 mt-[22px] w-full max-w-[360px]">
-          {actions.map((a, i) => (
+          {actions.map((a, _i) => (
             <Button
-              key={i}
+              key={a.label}
               variant={a.variant ?? 'primary'}
               fullWidth
               className="flex-1"

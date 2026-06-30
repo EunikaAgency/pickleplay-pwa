@@ -48,10 +48,16 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack, onReq
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${tournamentId}|${reloadKey}|${me?.id ?? ''}`);
+  const fetchKey = `${tournamentId}|${reloadKey}|${me?.id ?? ''}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     getTournament(tournamentId)
       .then(async (tour) => {
         if (!alive) return;

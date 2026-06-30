@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BottomSheet } from '../../../shared/components/ui/BottomSheet';
 import { Button } from '../../../shared/components/ui/Button';
 import { Icon } from '../../../shared/components/ui/Icon';
@@ -51,9 +51,11 @@ export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'ch
   // Land on the requested step each time the sheet opens. The component stays
   // mounted (only `open` toggles), so a prop alone can't drive the step — sync it
   // here. Opening at 'host' lets the booking-load effect below kick in right away.
-  useEffect(() => {
+  const prevOpenRef = useRef(open);
+  if (open !== prevOpenRef.current) {
+    prevOpenRef.current = open;
     if (open) setStep(effectiveInitial);
-  }, [open, effectiveInitial]);
+  }
 
   // Close + reset, so the next open re-fetches bookings (state changes here are in
   // an event handler, not an effect, by design). The open effect above restores

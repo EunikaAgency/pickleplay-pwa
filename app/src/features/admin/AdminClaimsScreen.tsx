@@ -166,7 +166,7 @@ export function AdminClaimsScreen({ onBack }: AdminClaimsScreenProps) {
                     <div className="lbl">Proof documents</div>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {c.proofDocumentUrls.map((url, i) => (
-                        <a key={i} href={docHref(url)} target="_blank" rel="noreferrer noopener" className="chip text-[13px] font-semibold">
+                        <a key={url} href={docHref(url)} target="_blank" rel="noreferrer noopener" className="chip text-[13px] font-semibold">
                           <Icon name="description" size={14} /> Document {i + 1}
                         </a>
                       ))}

@@ -17,10 +17,15 @@ export function useClubChat(clubId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevClubId, setPrevClubId] = useState(clubId);
+  if (clubId !== prevClubId) {
+    setPrevClubId(clubId);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     listClubMessages(clubId)
       .then((res) => { if (!alive) return; setMessages(res.messages); setTitle(res.title); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load this chat.'); })

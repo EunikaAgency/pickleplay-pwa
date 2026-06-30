@@ -75,7 +75,7 @@ export function MatchScoreSheet({ open, onClose, match, matchFormat, onSubmit, o
           <div className="t-eyebrow truncate">{nameB}</div>
         </div>
         {rows.map((row, i) => (
-          <div key={i} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div key={`game-${i}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <input
               type="number" inputMode="numeric" value={row.a} onChange={(e) => setCell(i, 'a', e.target.value)}
               className="h-11 rounded-xl bg-[var(--surface-2)] text-center font-heading font-bold text-[16px] text-[var(--ink)]"

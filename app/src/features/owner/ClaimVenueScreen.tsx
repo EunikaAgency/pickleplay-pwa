@@ -285,7 +285,7 @@ export function ClaimVenueScreen({ onBack }: ClaimVenueScreenProps) {
                 <Icon name="add_a_photo" size={16} /> {uploading ? 'Uploading...' : 'Add photo'}
               </button>
               {uploadedFiles.map((f, i) => (
-                <div key={i} className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-[var(--ink)]">
+                <div key={`${f.name}-${i}`} className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-[var(--ink)]">
                   <Icon name="check_circle" size={14} className="text-[var(--lime-ink)] shrink-0" />
                   <span className="truncate">{f.name}</span>
                   <button type="button" className="text-[var(--coral)] ml-auto shrink-0" onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))}>

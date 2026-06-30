@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { Chip } from '../../shared/components/ui/Chip';
@@ -97,11 +97,11 @@ export function OwnerFrontDeskScreen({ venueId, onNavigate, onBack }: OwnerFront
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 1800); };
 
   // Recurring series (weekly regulars / leagues) for the active venue.
-  const loadRecurring = useCallback(() => {
+  const loadRecurring = () => {
     if (!vref) { setRecurring([]); return; }
     listRecurringBookings(vref).then(setRecurring).catch(() => setRecurring([]));
-  }, [vref]);
-  useEffect(() => { loadRecurring(); }, [loadRecurring]);
+  };
+  useEffect(() => { loadRecurring(); }, [vref]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cancelSeries = async (recurringId: string) => {
     try {
@@ -115,23 +115,28 @@ export function OwnerFrontDeskScreen({ venueId, onNavigate, onBack }: OwnerFront
   };
 
   // Load the active venue's courts + full bookings whenever it changes.
-  const loadBookings = useCallback(() => {
+  const loadBookings = () => {
     if (!vref) return;
     setBkStatus('loading');
     getVenueBookings(vref)
       .then((rows) => { setBookings(rows); setBkStatus('ready'); })
       .catch(() => setBkStatus('error'));
-  }, [vref]);
+  };
+
+  const prevVrefRef = useRef(vref);
+  if (vref !== prevVrefRef.current) {
+    prevVrefRef.current = vref;
+    setCourts([]);
+  }
 
   useEffect(() => {
     if (!vref) return;
     let alive = true;
-    setCourts([]);
     listCourts(vref).then((rows) => { if (alive) setCourts(rows); }).catch(() => { if (alive) setCourts([]); });
     return () => { alive = false; };
   }, [vref]);
 
-  useEffect(() => { loadBookings(); }, [loadBookings]);
+  useEffect(() => { loadBookings(); }, [vref]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = todayYMD();
   const pending = useMemo(
@@ -359,7 +364,13 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   const [error, setError] = useState<string | null>(null);
 
   // Default a court once they load.
-  useEffect(() => { setCourtId((cur) => cur || courts[0]?.id || ''); }, [courts]);
+  const prevCourtsForDefault = useRef(courts);
+  if (courts !== prevCourtsForDefault.current) {
+    prevCourtsForDefault.current = courts;
+    if (!courtId && courts.length > 0) {
+      setCourtId(courts[0]?.id || '');
+    }
+  }
 
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
   const rate = selectedCourt?.hourlyRate != null ? selectedCourt.hourlyRate : (venue.priceFrom ?? 0);
@@ -367,9 +378,16 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   const suggested = Math.round(rate * hours * 100) / 100;
 
   // Auto-fill the manual amount from the court rate × hours until the operator edits it.
-  useEffect(() => {
-    if (!amountTouched && !isBlock) setAmount(suggested ? String(suggested) : '');
-  }, [suggested, amountTouched, isBlock]);
+  const prevAutoFillRef = useRef({ suggested, amountTouched, isBlock });
+  if (suggested !== prevAutoFillRef.current.suggested ||
+      amountTouched !== prevAutoFillRef.current.amountTouched ||
+      isBlock !== prevAutoFillRef.current.isBlock) {
+    prevAutoFillRef.current = { suggested, amountTouched, isBlock };
+    if (!amountTouched && !isBlock) {
+      const next = suggested ? String(suggested) : '';
+      if (next !== amount) setAmount(next);
+    }
+  }
 
   const onStartChange = (v: string) => {
     setStartTime(v);

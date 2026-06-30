@@ -530,7 +530,7 @@ function SlotRow({ name, scores, win, dim }: { name: string; scores: number[]; w
       </span>
       {scores.length > 0 && (
         <span className="flex shrink-0 gap-1 font-mono text-[11px] text-[var(--muted)]">
-          {scores.map((s, i) => <span key={i}>{s}</span>)}
+          {scores.map((s, i) => <span key={`s-${i}`}>{s}</span>)}
         </span>
       )}
       {win && <span className="text-[10px] font-bold text-[var(--lime-ink)] bg-[var(--lime)] px-1.5 py-0.5 rounded-full shrink-0">W</span>}

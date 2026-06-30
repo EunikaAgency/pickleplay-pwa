@@ -39,11 +39,19 @@ export function PricingSuggestionsCard({ venueId }: PricingSuggestionsCardProps)
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
 
+  const [prevFetchKey, setPrevFetchKey] = useState(`${venueId}|${expanded}`);
+  const fetchKey = `${venueId}|${expanded}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
+    if (expanded) {
+      setLoading(true);
+      setError(null);
+    }
+  }
+
   useEffect(() => {
     if (!expanded) return;
     let alive = true;
-    setLoading(true);
-    setError(null);
     getSuggestedPricing(venueId)
       .then((r) => {
         if (alive) { setSuggestions(r.suggestions); setSummary(r.summary); }
@@ -54,7 +62,12 @@ export function PricingSuggestionsCard({ venueId }: PricingSuggestionsCardProps)
   }, [venueId, expanded]);
 
   // Reset selection when suggestions change.
-  useEffect(() => { setSelected(new Set()); setApplied(false); }, [suggestions]);
+  const [prevSuggestions, setPrevSuggestions] = useState(suggestions);
+  if (suggestions !== prevSuggestions) {
+    setPrevSuggestions(suggestions);
+    setSelected(new Set());
+    setApplied(false);
+  }
 
   const toggle = (key: string) => {
     setSelected((prev) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { apiImageUrl, listGames, listBookings, deleteGame, leaveGame, type ApiGame, type ApiBooking } from '../../../shared/lib/api';
@@ -327,11 +327,11 @@ export function GamesScreenV2(chrome: V2ScreenChrome) {
       .catch(() => setLocStatus('denied'));
   };
 
-  const distOf = (g: ApiGame): number | null => {
+  const distOf = useCallback((g: ApiGame): number | null => {
     if (!userLoc) return null;
     const c = gameCoords(g);
     return c ? haversineKm(userLoc, c) : null;
-  };
+  }, [userLoc]);
 
   // Split "mine" into lobbies I created vs ones I only joined.
   const created = useMemo(
@@ -392,8 +392,7 @@ export function GamesScreenV2(chrome: V2ScreenChrome) {
       })
       .sort((a, b) => b.score - a.score)
       .map((x) => x.g);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discover, userLoc, me, busyDates, discoverSort]);
+  }, [discover, me, busyDates, discoverSort, distOf]);
 
   // The current tab's full list (pre date-filter) — drives the date strip dots.
   const baseList = tab === 'discover' ? discover : tab === 'mine' ? created : joined;

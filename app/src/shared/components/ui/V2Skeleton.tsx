@@ -141,7 +141,7 @@ export function V2Skeleton({ variant, count = 4 }: { variant: Variant; count?: n
   if (variant === 'home-discover') {
     return (
       <div className="scroll-row" aria-busy="true" aria-live="polite">
-        {range(count).map((i) => <DiscoverCard key={i} />)}
+        {range(count).map((i) => <DiscoverCard key={`disc-${i}`} />)}
       </div>
     );
   }
@@ -159,7 +159,7 @@ export function V2Skeleton({ variant, count = 4 }: { variant: Variant; count?: n
         </div>
         <div style={{ height: 12 }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {range(Math.max(1, count - 1)).map((i) => <CourtRow key={i} />)}
+          {range(Math.max(1, count - 1)).map((i) => <CourtRow key={`court-${i}`} />)}
         </div>
       </div>
     );
@@ -173,7 +173,7 @@ export function V2Skeleton({ variant, count = 4 }: { variant: Variant; count?: n
 
   return (
     <div aria-busy="true" aria-live="polite">
-      {range(count).map((i) => <Row key={i} />)}
+      {range(count).map((i) => <Row key={`skel-${i}`} />)}
     </div>
   );
 }

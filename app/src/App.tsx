@@ -366,13 +366,14 @@ function AppInner() {
   // permissioned path, so once restore settles, bounce a user who lacks the
   // required permission — guests to the login screen (so they can sign in),
   // signed-in-but-unauthorized users back to home.
+  const screenId = screen.id;
   useEffect(() => {
     if (!restored) return;
-    const perm = SCREEN_PERMISSIONS[screen.id];
+    const perm = SCREEN_PERMISSIONS[screenId];
     if (perm && !userHasPermission(currentUser, perm)) {
       routerNavigate(isLoggedIn ? '/' : pathFromScreen({ id: 'login' }), { replace: true });
     }
-  }, [restored, screen.id, currentUser, isLoggedIn]);
+  }, [restored, screenId, currentUser, isLoggedIn]);
 
   // Called by LoginScreen after the store's `login` action has set the user.
   // Only first-time users (who haven't onboarded on this account yet) see the

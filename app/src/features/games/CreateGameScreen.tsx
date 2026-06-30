@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { CompletionScreen } from '../../shared/components/ui/CompletionScreen';
@@ -165,11 +165,13 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   // empty for the host to pick.
   // Keep the start on a valid hour: prefer the first free + future hour when
   // availability is loaded; otherwise just bump off an already-passed hour today.
-  useEffect(() => {
+  const prevAvailRef = useRef(availability);
+  if (availability !== prevAvailRef.current) {
+    prevAvailRef.current = availability;
     const cur = Number(startTime.split(':')[0]);
     const target = firstFreeHour(cur) ?? (cur < minBookableHour && minBookableHour <= 23 ? minBookableHour : null);
     if (target != null && target !== cur) { setStartTime(`${String(target).padStart(2, '0')}:00`); setEndTime(''); }
-  }, [availability, startTime, firstFreeHour, minBookableHour]);
+  }
 
   const onStartChange = (v: string) => {
     setStartTime(v);
@@ -558,10 +560,15 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
   const [saved, setSaved] = useState(false);
   const [kicking, setKicking] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevGameId, setPrevGameId] = useState(gameId);
+  if (gameId !== prevGameId) {
+    setPrevGameId(gameId);
     setLoading(true);
     setLoadError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     getGame(gameId)
       .then((g) => {
         if (!alive) return;

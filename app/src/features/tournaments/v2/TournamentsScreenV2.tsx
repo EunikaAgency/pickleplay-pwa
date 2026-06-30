@@ -68,10 +68,16 @@ export function TournamentsScreenV2(chrome: V2ScreenChrome) {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${reloadKey}|${canOrganize}|${isLoggedIn}`);
+  const fetchKey = `${reloadKey}|${canOrganize}|${isLoggedIn}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     Promise.all([
       listPublicTournaments(),
       // Hosted events come from the organizer's own tournaments; skip the call

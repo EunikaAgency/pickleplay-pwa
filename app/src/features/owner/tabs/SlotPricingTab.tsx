@@ -41,13 +41,19 @@ export function SlotPricingTab({ venueId }: SlotPricingTabProps) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const load = () => {
-    setLoading(true);
-    setError(false);
     Promise.all([listSlotOverrides(venueId), listCourts(venueId)])
       .then(([o, c]) => { setOverrides(o); setCourts(c); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
+
+  const [prevVenueId, setPrevVenueId] = useState(venueId);
+  if (venueId !== prevVenueId) {
+    setPrevVenueId(venueId);
+    setLoading(true);
+    setError(false);
+  }
+
   useEffect(load, [venueId]);
 
   const courtName = (id: string | null) => {

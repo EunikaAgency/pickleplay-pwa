@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { getInitials } from '../../lib/initials';
 import { apiImageUrl } from '../../lib/api';
 
@@ -16,8 +16,9 @@ interface AvatarProps {
 export function Avatar({ src, name, size = 40, variant = 'blue', className = '', style }: AvatarProps) {
   // Seed data carries avatar URLs that 404 / fail to load; without this the
   // browser paints its broken-image icon. On error we fall back to the initials.
+  // The <img> is keyed by the resolved URL so it remounts (and clears the error
+  // state) whenever the src prop changes — no useState/useEffect reset needed.
   const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [src]);
 
   // Other users' avatars arrive as raw API values — often a relative
   // '/uploads/<file>' path that would 404 against the PWA's own origin. Resolve
@@ -34,7 +35,7 @@ export function Avatar({ src, name, size = 40, variant = 'blue', className = '',
 
   return (
     <span className={`avatar ${variant} ${className}`} style={merged}>
-      {resolved && !failed ? <img src={resolved} alt="" onError={() => setFailed(true)} /> : getInitials(name)}
+      {resolved && !failed ? <img key={resolved} src={resolved} alt="" onError={() => setFailed(true)} /> : getInitials(name)}
     </span>
   );
 }

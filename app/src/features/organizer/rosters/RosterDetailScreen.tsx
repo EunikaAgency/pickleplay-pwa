@@ -26,10 +26,16 @@ export function RosterDetailScreen({ rosterId, onBack }: RosterDetailScreenProps
   const [memberEmail, setMemberEmail] = useState('');
   const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${rosterId}|${reloadKey}`);
+  const fetchKey = `${rosterId}|${reloadKey}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     // No single-roster GET endpoint; the list carries members, so find ours.
     listRosters()
       .then((all) => {

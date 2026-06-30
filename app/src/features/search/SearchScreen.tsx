@@ -93,15 +93,24 @@ export function SearchScreen({ onNavigate, onBack }: SearchScreenProps) {
     }
   }, [trackSearch]);
 
-  useEffect(() => {
+  const [prevSearchKey, setPrevSearchKey] = useState(`${trimmed}|${hasQuery}|${canSearch}`);
+  const searchKey = `${trimmed}|${hasQuery}|${canSearch}`;
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     if (!hasQuery || !canSearch) {
-      reqId.current++; // cancel any in-flight result
       setResults(EMPTY_RESULTS);
       setLoading(false);
       setError(false);
+    } else {
+      setLoading(true);
+    }
+  }
+
+  useEffect(() => {
+    if (!hasQuery || !canSearch) {
+      reqId.current++; // cancel any in-flight result
       return;
     }
-    setLoading(true);
     const t = setTimeout(() => runSearch(trimmed), 300);
     return () => clearTimeout(t);
   }, [trimmed, hasQuery, canSearch, runSearch]);

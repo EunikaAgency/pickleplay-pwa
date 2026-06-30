@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { modifyBooking, type ApiBooking, type ModifyBookingPayload } from '../../shared/lib/api';
@@ -17,24 +17,13 @@ function toDateValue(ymd: string | null | undefined): string {
 }
 
 export function ModifyBookingSheet({ booking, onClose, onModified }: ModifyBookingSheetProps) {
-  const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  // Component is keyed by booking.id, so state is always fresh from this prop.
+  const [date, setDate] = useState(() => toDateValue(booking?.date));
+  const [startTime, setStartTime] = useState(() => booking?.startTime || '');
+  const [endTime, setEndTime] = useState(() => booking?.endTime || '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-
-  // Reset form when the sheet opens for a different booking.
-  useEffect(() => {
-    if (booking) {
-      setDate(toDateValue(booking.date));
-      setStartTime(booking.startTime || '');
-      setEndTime(booking.endTime || '');
-      setError(null);
-      setSuccess(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [booking?.id]);
 
   // Which fields actually changed vs the current booking.
   const changes = useMemo(() => {

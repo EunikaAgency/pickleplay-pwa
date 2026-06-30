@@ -135,10 +135,15 @@ export function PaymentHistoryScreen({ onNavigate, onBack }: PaymentHistoryScree
   // The receipt shown in the popup (by id), or null when closed.
   const [receiptId, setReceiptId] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevReloadKey, setPrevReloadKey] = useState(reloadKey);
+  if (reloadKey !== prevReloadKey) {
+    setPrevReloadKey(reloadKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     listPayments()
       .then((items) => { if (alive) setPayments(items); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Could not load your payments.'); })

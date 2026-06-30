@@ -21,10 +21,15 @@ export function TournamentChatScreen({ tournamentId, name, onBack }: TournamentC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevTournamentId, setPrevTournamentId] = useState(tournamentId);
+  if (tournamentId !== prevTournamentId) {
+    setPrevTournamentId(tournamentId);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     listTournamentMessages(tournamentId)
       .then((res) => {
         if (!alive) return;
@@ -34,7 +39,7 @@ export function TournamentChatScreen({ tournamentId, name, onBack }: TournamentC
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load this chat.'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [tournamentId]);
+  }, [tournamentId, name]);
 
   // Realtime: append an incoming message for THIS tournament (deduped by id).
   useEffect(() => {
@@ -42,7 +47,7 @@ export function TournamentChatScreen({ tournamentId, name, onBack }: TournamentC
       if (!p || p.tournamentId !== tournamentId || !p.message) return;
       setMessages((prev) => (prev.some((m) => m.id === p.message.id) ? prev : [...prev, p.message]));
     });
-  }, [tournamentId]);
+  }, [tournamentId, name]);
 
   const onSend = async (body: string) => {
     const msg = await sendTournamentMessage(tournamentId, body);

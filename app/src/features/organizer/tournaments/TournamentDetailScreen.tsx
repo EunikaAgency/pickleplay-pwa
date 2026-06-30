@@ -37,10 +37,16 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack }: Tou
   const [bannerBusy, setBannerBusy] = useState(false);
   const [bannerError, setBannerError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${tournamentId}|${reloadKey}`);
+  const fetchKey = `${tournamentId}|${reloadKey}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     getTournament(tournamentId)
       .then(async (tour) => {
         if (!alive) return;

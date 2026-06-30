@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { BottomSheet } from './BottomSheet';
 import { Toast } from './Toast';
 import { Icon } from './Icon';
@@ -58,9 +58,9 @@ export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, image,
 
   // Reset to the chooser whenever the sheet (re)opens — adjusted during render on
   // the open→true transition (React's recommended alternative to an effect).
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
+  const prevOpenRef = useRef(open);
+  if (open !== prevOpenRef.current) {
+    prevOpenRef.current = open;
     if (open) setMode('choose');
   }
 

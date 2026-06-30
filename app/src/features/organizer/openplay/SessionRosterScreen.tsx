@@ -20,10 +20,16 @@ export function SessionRosterScreen({ sessionId, onBack }: SessionRosterScreenPr
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${sessionId}|${reloadKey}`);
+  const fetchKey = `${sessionId}|${reloadKey}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     getOpenPlayRegistrations(sessionId)
       .then((r) => { if (alive) setRoster(r); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Could not load the roster.'); })

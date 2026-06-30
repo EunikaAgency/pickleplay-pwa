@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
@@ -57,16 +57,16 @@ export function SubscriptionPlansScreen({ venueId, venueName, onBack }: Subscrip
   const [editingPlan, setEditingPlan] = useState<ApiSubscriptionPlan | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
-  const loadPlans = useCallback(() => {
+  const loadPlans = () => {
     setLoading(true);
     setError(false);
     listSubscriptionPlans(venueId)
       .then((rows) => { setPlans(rows); setError(false); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [venueId]);
+  };
 
-  useEffect(() => { loadPlans(); }, [loadPlans]);
+  useEffect(() => { loadPlans(); }, [venueId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openCreate = () => { setEditingPlan(null); setSheetOpen(true); };
   const openEdit = (plan: ApiSubscriptionPlan) => { setEditingPlan(plan); setSheetOpen(true); };

@@ -21,9 +21,14 @@ export function useOrganizerHub(reloadKey = 0) {
   });
   const [loading, setLoading] = useState(true);
 
+  const [prevKey, setPrevKey] = useState(reloadKey);
+  if (reloadKey !== prevKey) {
+    setPrevKey(reloadKey);
+    setLoading(true);
+  }
+
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     Promise.allSettled([listMyTournaments(), getMyOpenPlay(), listRosters(), getMyVenueRequests()])
       .then(([t, op, r, vr]) => {
         if (!alive) return;

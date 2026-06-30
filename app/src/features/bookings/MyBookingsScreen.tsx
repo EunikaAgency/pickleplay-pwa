@@ -86,10 +86,15 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
   // Modify booking sheet.
   const [modifyTarget, setModifyTarget] = useState<ApiBooking | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevReloadKey, setPrevReloadKey] = useState(reloadKey);
+  if (reloadKey !== prevReloadKey) {
+    setPrevReloadKey(reloadKey);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     listBookings()
       .then((items) => { if (alive) setBookings(items); })
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Could not load your bookings.'); })
@@ -412,6 +417,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
 
       {/* Modify booking sheet */}
       <ModifyBookingSheet
+        key={modifyTarget?.id ?? 'none'}
         booking={modifyTarget}
         onClose={() => setModifyTarget(null)}
         onModified={() => setReloadKey((k) => k + 1)}

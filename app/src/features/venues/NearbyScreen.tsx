@@ -346,12 +346,13 @@ export function NearbyScreen({ onNavigate }: NearbyScreenProps) {
   // surfaces `locError` as before. Re-fires only if `canLocate` flips true later
   // (e.g. after the session restores).
   const didAutoLocate = useRef(false);
+  const handleLocateRef = useRef(handleLocate);
+  useEffect(() => { handleLocateRef.current = handleLocate; });
   useEffect(() => {
     if (didAutoLocate.current || !canLocate || userLoc) return;
     didAutoLocate.current = true;
-    handleLocate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canLocate]);
+    handleLocateRef.current();
+  }, [canLocate, userLoc]);
 
   // Quick-chip toggles — each flips one corner of the same filter state the
   // sheet edits, so chips and sheet stay in sync.

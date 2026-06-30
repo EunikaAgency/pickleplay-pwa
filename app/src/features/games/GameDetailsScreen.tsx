@@ -54,11 +54,17 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [confirmJoinOpen, setConfirmJoinOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevFetchKey, setPrevFetchKey] = useState(`${gameId}|${reloadKey}`);
+  const fetchKey = `${gameId}|${reloadKey}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
     setLoading(true);
     setError(null);
     setNotFound(false);
+  }
+
+  useEffect(() => {
+    let alive = true;
     getGame(gameId)
       .then((g) => { if (alive) setGame(g); })
       .catch((e) => {

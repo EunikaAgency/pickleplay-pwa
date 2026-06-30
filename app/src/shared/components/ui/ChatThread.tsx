@@ -106,6 +106,7 @@ export function ChatThreadBody({ messages, loading, error, placeholder, emptyTex
   const [editDraft, setEditDraft] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const nowISO = new Date().toISOString();
 
   // Keep pinned to the newest message.
   useEffect(() => {
@@ -269,7 +270,7 @@ export function ChatThreadBody({ messages, loading, error, placeholder, emptyTex
                           side={m.mine ? 'right' : 'left'}
                           actions={[
                             { key: 'copy', label: 'Copy', icon: 'content_copy', onPress: () => copyBody(m.body) },
-                            ...(m.mine && onEditMessage && gapMinutes(m.createdAt, new Date().toISOString()) < 15
+                            ...(m.mine && onEditMessage && gapMinutes(m.createdAt, nowISO) < 15
                               ? [{ key: 'edit', label: 'Edit', icon: 'edit', onPress: () => startEdit(m), visible: true } as MessageContextAction]
                               : []),
                             ...(m.mine && onDeleteMessage

@@ -32,9 +32,15 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const [prevFetchKey, setPrevFetchKey] = useState(`${bookingId}|${reloadKey}`);
+  const fetchKey = `${bookingId}|${reloadKey}`;
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
+    setStatus('loading');
+  }
+
   useEffect(() => {
     let alive = true;
-    setStatus('loading');
     getBooking(bookingId)
       .then((b) => { if (alive) { setBooking(b); setStatus('ready'); } })
       .catch((e) => {

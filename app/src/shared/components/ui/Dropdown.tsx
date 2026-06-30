@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 
@@ -76,7 +76,7 @@ export function Dropdown({
   // Measure the trigger and decide placement/height/anchor. The menu renders in a
   // body portal with fixed positioning (so no ancestor's overflow can clip it),
   // so we feed it viewport coords. Recomputed on open and on scroll/resize.
-  const reposition = () => {
+  const reposition = useCallback(() => {
     const rect = wrapRef.current?.getBoundingClientRect();
     if (!rect) return;
     const margin = 12;
@@ -90,7 +90,7 @@ export function Dropdown({
       left: align === 'right' ? rect.right : rect.left,
       width: rect.width,
     });
-  };
+  }, [align]);
 
   const openMenu = () => { reposition(); setOpen(true); };
 
@@ -116,8 +116,7 @@ export function Dropdown({
       window.removeEventListener('scroll', onReflow, true);
       window.removeEventListener('resize', onReflow);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, reposition]);
 
   const choose = (opt: DropdownOption) => {
     if (opt.disabled) return;

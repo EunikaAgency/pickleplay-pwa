@@ -247,7 +247,7 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
                       const closeMin = p.openTime || openMin;
                       const issue = pricingIssue(row, i);
                       return (
-                        <div key={i}>
+                        <div key={`${dow}-${i}`}>
                           {/* One window on a single no-wrap row: the times flex to fill,
                               the rate + ✕ stay pinned at the end so the ✕ never wraps. */}
                           <div className="flex items-center gap-2">

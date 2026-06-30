@@ -54,19 +54,19 @@ export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
   const [data, setData] = useState<VenueDemandReport | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [days, setDays] = useState<number>(30);
+  const [retryCtr, setRetryCtr] = useState(0);
 
-  const load = (d: number) => {
+  useEffect(() => {
     setStatus('loading');
-    setDays(d);
-    getVenueDemand(venueId, d)
-      .then((r) => { setData(r); setStatus('ready'); })
-      .catch(() => setStatus('error'));
-  };
-
-  useEffect(() => { load(days); }, [venueId]); // eslint-disable-line react-hooks/exhaustive-deps
+    let alive = true;
+    getVenueDemand(venueId, days)
+      .then((r) => { if (alive) { setData(r); setStatus('ready'); } })
+      .catch(() => { if (alive) setStatus('error'); });
+    return () => { alive = false; };
+  }, [venueId, days, retryCtr]);
 
   if (status === 'loading') return <LoadingSkeleton variant="card" count={4} />;
-  if (status === 'error') return <ErrorState message="Couldn't load the demand report." onRetry={() => load(days)} />;
+  if (status === 'error') return <ErrorState message="Couldn't load the demand report." onRetry={() => setRetryCtr((k) => k + 1)} />;
   if (!data) return null;
 
   const { totals, conversionPct, cancelRate, liveBookings, demandByHour, supply } = data;
@@ -79,7 +79,7 @@ export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
       {/* Day-range selector */}
       <div className="flex gap-2">
         {DAY_PRESETS.map((d) => (
-          <Chip key={d} className="chip-tab" selected={days === d} onClick={() => load(d)}>
+          <Chip key={d} className="chip-tab" selected={days === d} onClick={() => setDays(d)}>
             {d}d
           </Chip>
         ))}

@@ -41,10 +41,15 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const refreshBadge = useNotificationStore((s) => s.refresh);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevConvId, setPrevConvId] = useState(conversationId);
+  if (conversationId !== prevConvId) {
+    setPrevConvId(conversationId);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     getConversation(conversationId)
       .then((conv) => {
         if (!alive) return;

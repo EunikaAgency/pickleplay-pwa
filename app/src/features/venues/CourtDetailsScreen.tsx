@@ -155,7 +155,7 @@ export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: Cour
     return () => {
       cancelled = true;
     };
-  }, [courtId]);
+  }, [courtId, trackVenueView]);
 
   const retry = () => {
     setStatus('loading');
@@ -353,8 +353,7 @@ function CourtDetail({
       .then((me) => { if (alive) setDistanceKm(haversineKm(me, coords)); })
       .catch(() => { /* no location — just omit the distance */ });
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue.id]);
+  }, [venue.id, coords]);
 
   const toggleSave = () => {
     const cur = readSavedVenues();
@@ -399,9 +398,14 @@ function CourtDetail({
   const [games, setGames] = useState<ApiGame[]>([]);
   const [gamesStatus, setGamesStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
+  const [prevVenueId, setPrevVenueId] = useState(venue.id);
+  if (venue.id !== prevVenueId) {
+    setPrevVenueId(venue.id);
+    setGamesStatus('loading');
+  }
+
   useEffect(() => {
     let cancelled = false;
-    setGamesStatus('loading');
     listGames({ venueId: venue.id })
       .then((list) => {
         if (cancelled) return;

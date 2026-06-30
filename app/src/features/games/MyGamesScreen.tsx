@@ -31,8 +31,6 @@ export function MyGamesScreen({ onNavigate, onBack }: MyGamesScreenProps) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const all = await listGames({ mine: true });
       // `mine` returns created + joined; keep only the ones this user created.
@@ -44,6 +42,13 @@ export function MyGamesScreen({ onNavigate, onBack }: MyGamesScreenProps) {
       setLoading(false);
     }
   }, [me?.id]);
+
+  const [prevReloadKey, setPrevReloadKey] = useState(reloadKey);
+  if (reloadKey !== prevReloadKey) {
+    setPrevReloadKey(reloadKey);
+    setLoading(true);
+    setError(null);
+  }
 
   useEffect(() => { void load(); }, [load, reloadKey]);
 

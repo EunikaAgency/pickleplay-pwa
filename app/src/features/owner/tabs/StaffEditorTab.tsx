@@ -46,8 +46,9 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
   // Remove-a-member state (per-row confirm)
   const [removing, setRemoving] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState('');
+  const [retryCtr, setRetryCtr] = useState(0);
 
-  const load = () => {
+  useEffect(() => {
     if (!venueId) return;
     setLoading(true);
     setError(false);
@@ -55,9 +56,7 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
       .then((d) => { setStaff(d); setError(false); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, [venueId]);
+  }, [venueId, retryCtr]);
 
   // Debounced user search fired from the add form.
   const onSearch = (q: string) => {
@@ -170,7 +169,7 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
         {loading ? (
           <div className="t-sm">Loading…</div>
         ) : error ? (
-          <div className="t-sm text-[var(--coral)]">Couldn't load the team. <button type="button" className="underline font-bold" onClick={load}>Retry</button></div>
+          <div className="t-sm text-[var(--coral)]">Couldn't load the team. <button type="button" className="underline font-bold" onClick={() => setRetryCtr((k) => k + 1)}>Retry</button></div>
         ) : staff.length === 0 ? (
           <div className="t-sm text-[var(--muted)]">No team members yet. Add your first one below.</div>
         ) : (

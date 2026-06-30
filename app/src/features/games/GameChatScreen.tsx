@@ -20,10 +20,15 @@ export function GameChatScreen({ gameId, name, onBack }: GameChatScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const [prevGameId, setPrevGameId] = useState(gameId);
+  if (gameId !== prevGameId) {
+    setPrevGameId(gameId);
     setLoading(true);
     setError(null);
+  }
+
+  useEffect(() => {
+    let alive = true;
     listGameMessages(gameId)
       .then((res) => {
         if (!alive) return;
@@ -33,7 +38,7 @@ export function GameChatScreen({ gameId, name, onBack }: GameChatScreenProps) {
       .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Failed to load this chat.'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [gameId]);
+  }, [gameId, name]);
 
   // Realtime: append an incoming message for THIS game (deduped by id).
   useEffect(() => {
@@ -41,7 +46,7 @@ export function GameChatScreen({ gameId, name, onBack }: GameChatScreenProps) {
       if (!p || p.gameId !== gameId || !p.message) return;
       setMessages((prev) => (prev.some((m) => m.id === p.message.id) ? prev : [...prev, p.message]));
     });
-  }, [gameId]);
+  }, [gameId, name]);
 
   const onSend = async (body: string) => {
     const msg = await sendGameMessage(gameId, body);
