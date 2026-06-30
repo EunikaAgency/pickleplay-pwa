@@ -16,7 +16,7 @@ const SORT_OPTIONS: { id: SortBy; label: string }[] = [
 ];
 const STATUS_OPTIONS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'All' },
-  { id: 'pending_approval', label: 'Pending' },
+  { id: 'pending_approval', label: 'Needs action' },
   { id: 'confirmed', label: 'Complete' },
   { id: 'cancelled', label: 'Cancelled' },
 ];

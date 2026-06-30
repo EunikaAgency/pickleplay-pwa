@@ -7,7 +7,8 @@ import { FormSelect } from '../../../shared/components/forms/FormSelect';
 import { OwnerSection } from '../components/OwnerSection';
 import {
   listSlotOverrides, createSlotOverride, deleteSlotOverride, listCourts,
-  type SlotPriceOverride, type ApiCourt,
+  getVenue, updateVenue,
+  type SlotPriceOverride, type ApiCourt, type ApiVenue,
 } from '../../../shared/lib/api';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
 import { PricingSuggestionsCard } from './PricingSuggestionsCard';
@@ -102,6 +103,9 @@ export function SlotPricingTab({ venueId }: SlotPricingTabProps) {
       {/* Demand-based pricing suggestions (AI-generated from booking data). */}
       <PricingSuggestionsCard venueId={venueId} />
 
+      {/* Auto dynamic pricing — owner opt-in for hands-off demand-based adjustments. */}
+      <AutoPricingToggle venueId={venueId} />
+
       <OwnerSection title="Set a slot rate" icon="bolt" description="Raise rates for peak demand (e.g. a tournament weekend) or run a promo by lowering them. Applies to bookings that start inside the window.">
         <div className="grid grid-cols-2 gap-3">
           <div className="field p-0!">
@@ -160,5 +164,94 @@ export function SlotPricingTab({ venueId }: SlotPricingTabProps) {
 
       <Toast message="Slot rate added" show={status === 'saved'} />
     </div>
+  );
+}
+
+/* ─── Auto Dynamic Pricing toggle ────────────────────────────────────
+   Owner opt-in: the system periodically runs the demand-based suggestion
+   engine and auto-applies high-confidence price adjustments. ─────── */
+
+function AutoPricingToggle({ venueId }: { venueId: string }) {
+  const [venue, setVenue] = useState<ApiVenue | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [minConf, setMinConf] = useState<'low' | 'medium' | 'high'>('high');
+  const [maxAdj, setMaxAdj] = useState(20);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    getVenue(venueId).then((v) => {
+      setVenue(v);
+      setEnabled(v.autoDynamicPricing ?? false);
+      setMinConf(v.autoDynamicPricingMinConfidence ?? 'high');
+      setMaxAdj(v.autoDynamicPricingMaxAdjustment ?? 20);
+    }).catch(() => {});
+  }, [venueId]);
+
+  const save = async (patch: Record<string, any>) => {
+    setSaving(true); setErr('');
+    try {
+      await updateVenue(venueId, patch);
+    } catch (e: any) { setErr(e?.message || 'Save failed'); }
+    setSaving(false);
+  };
+
+  if (!venue) return null;
+
+  return (
+    <OwnerSection title="Auto pricing" icon="auto_awesome" description="Let the system automatically adjust slot prices daily based on demand data — occupancy, waitlists, and empty slots. Only suggestions with sufficient confidence are applied.">
+      {/* Master toggle */}
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          className="ios-toggle" // rendered via CSS
+          checked={enabled}
+          disabled={saving}
+          onChange={(e) => {
+            setEnabled(e.target.checked);
+            void save({ autoDynamicPricing: e.target.checked });
+          }}
+        />
+        <span className="font-heading font-semibold text-[15px]">Enable automatic adjustments</span>
+      </label>
+
+      {enabled && (
+        <div className="mt-3 pt-3 border-t border-[var(--border-soft)] space-y-3">
+          <FormSelect
+            label="Minimum confidence"
+            options={[
+              { value: 'high', label: 'High — only very confident suggestions' },
+              { value: 'medium', label: 'Medium — include moderate suggestions' },
+              { value: 'low', label: 'Low — apply any suggestion' },
+            ]}
+            value={minConf}
+            onChange={(e) => {
+              const v = e.target.value as 'low' | 'medium' | 'high';
+              setMinConf(v);
+              void save({ autoDynamicPricingMinConfidence: v });
+            }}
+          />
+          <FormField
+            label="Max adjustment per change (5–50%)"
+            value={String(maxAdj)}
+            type="number"
+            inputProps={{ min: 5, max: 50 }}
+            onChange={(e) => {
+              const v = Math.min(50, Math.max(5, Number(e.target.value) || 5));
+              setMaxAdj(v);
+              void save({ autoDynamicPricingMaxAdjustment: v });
+            }}
+          />
+          <div className="t-sm text-[var(--muted)]">
+            The engine runs daily. Prices never move more than {maxAdj}% in one
+            adjustment. Only suggestions at <strong>{minConf}</strong> confidence or
+            above are applied. You can always override any slot manually.
+          </div>
+        </div>
+      )}
+
+      {err && <div className="t-sm text-[var(--coral)] font-bold mt-2">{err}</div>}
+      {saving && <div className="t-sm text-[var(--muted)] mt-1">Saving…</div>}
+    </OwnerSection>
   );
 }

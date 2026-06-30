@@ -5,6 +5,7 @@ import type { ApiGame, GameLinkCard } from './api';
  *
  * Matches:
  *   - Full URLs:  https://pickleballers.app/games/<id>
+ *   - Bare domain:  pickleballers.app/games/<id>
  *   - Path-only:  /games/<id>  (same-origin shorthand)
  *   - With trailing noise:  /games/<id>?foo=bar  /games/<id>/
  *
@@ -13,34 +14,48 @@ import type { ApiGame, GameLinkCard } from './api';
 
 export interface GameUrlMatch {
   gameId: string;
-  /** The full matched URL substring — used to strip it from the body. */
+  /** The full matched substring (origin + path) — used to strip it from the body. */
   url: string;
 }
 
-const GAME_PATH_RE = /\/games\/([a-zA-Z0-9_-]{10,36})\b/;
+/** Matches an optional protocol+origin prefix followed by /games/<id> + trailing path/query. */
+const GAME_URL_RE = /(?:https?:\/\/\S+?)?\/games\/([a-zA-Z0-9_-]{10,36})(?:[\/?#]\S*)?/;
 
 export function extractGameUrl(body: string): GameUrlMatch | null {
-  // Match a path segment /games/<id> — works for both full URLs and bare paths
-  // because the path is the same regardless of the origin.
-  const m = body.match(GAME_PATH_RE);
+  const m = body.match(GAME_URL_RE);
   if (!m) return null;
 
   const gameId = m[1];
-  const url = m[0];
-
   // Require at least one hex character to avoid matching /games/create, /games/search etc.
-  // ObjectIds are 24 hex chars; slugs could be shorter, but they'll have at least one hex digit.
   if (!/[0-9a-f]/i.test(gameId)) return null;
+
+  let url = m[0];
+  const matchStart = m.index!;
+
+  // When no protocol was captured (the URL started with /games/…), check for a
+  // bare domain immediately before the path — e.g. "pickleballers.app/games/abc".
+  if (url.startsWith('/games/')) {
+    const before = body.slice(0, matchStart);
+    const bareDomain = before.match(/([\w.-]+\.[a-z]{2,}(?::\d+)?)$/);
+    if (bareDomain) {
+      url = bareDomain[0] + url;
+    }
+  }
 
   return { gameId, url };
 }
 
 /**
- * Strip a matched URL from the body text, cleaning up extra whitespace.
+ * Strip a matched URL from the body text, cleaning up extra whitespace
+ * and orphaned trailing punctuation (e.g. "text /link. more" → "text more").
  * Returns the trimmed remainder — or empty string if the body was just the URL.
  */
 export function stripUrl(body: string, url: string): string {
-  return body.replace(url, '').replace(/\s{2,}/g, ' ').trim();
+  return body
+    .replace(url, '')
+    .replace(/\s+[.,;:!](?=\s|$)/g, '') // orphaned punctuation after URL removal
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 /** Map an ApiGame to a GameLinkCard for embedding in a club chat message. */

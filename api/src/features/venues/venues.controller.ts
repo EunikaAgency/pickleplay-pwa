@@ -107,6 +107,10 @@ export const updateVenueSchema = z.object({
   depositPercent: z.coerce.number().int().min(1).max(100).optional(),
   // Pricing display — "VAT inclusive", "VAT exclusive", or custom label.
   pricingTaxLabel: z.string().max(40).optional(),
+  // Automated dynamic pricing — owner opt-in, off by default.
+  autoDynamicPricing: z.boolean().optional(),
+  autoDynamicPricingMinConfidence: z.enum(['low', 'medium', 'high']).optional(),
+  autoDynamicPricingMaxAdjustment: z.coerce.number().int().min(5).max(50).optional(),
   // Cancellation & refund policy — configurable per venue.
   cancellationWindowHours: z.coerce.number().int().min(0).max(720).optional(),
   refundPercent: z.coerce.number().int().min(0).max(100).optional(),

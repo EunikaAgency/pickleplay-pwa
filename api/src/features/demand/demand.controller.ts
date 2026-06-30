@@ -505,3 +505,141 @@ export async function applySuggestedPricing(c: any) {
 
   return c.json({ data: { created: created.length, weeks } }, 201);
 }
+
+/* ─── Automated dynamic pricing cron ─────────────────────────────────
+   Iterates every venue that opted into autoDynamicPricing, runs the
+   suggestion engine, and applies any suggestions whose confidence meets
+   or exceeds the venue's configured threshold. Designed to be called by
+   a cron trigger (PM2 cron, external scheduler) — e.g. once daily.
+   ─────────────────────────────────────────────────────────────────── */
+
+export async function runAutoDynamicPricing(_c: any) {
+  const results: { venueId: string; name: string; applied: number; skipped: number }[] = [];
+
+  const venues = await Venue.find({
+    autoDynamicPricing: true,
+    state: 'claimed',
+  }).select('displayName autoDynamicPricingMinConfidence autoDynamicPricingMaxAdjustment priceFrom').lean();
+
+  if (!venues.length) return { results, summary: 'No venues opted into auto dynamic pricing.' };
+
+  const confRank: Record<string, number> = { low: 1, medium: 2, high: 3 };
+  const today = new Date();
+
+  for (const venue of venues) {
+    const venueId = venue._id;
+    const minConf: string = (venue as any).autoDynamicPricingMinConfidence || 'high';
+    const maxAdj: number = (venue as any).autoDynamicPricingMaxAdjustment || 20;
+
+    try {
+      // Same data as the manual suggestion engine.
+      const days = 30;
+      const since = new Date(); since.setDate(since.getDate() - days);
+
+      const [courts, venueHours, bookings, emptySlotEvents, waitlistEntries] = await Promise.all([
+        Court.find({ venueId, isActive: true }).select('hourlyRate').lean<{ hourlyRate?: number }[]>(),
+        VenueHour.find({ venueId, courtId: null, isClosed: { $ne: true } })
+          .select('dayOfWeek openTime closeTime price')
+          .lean<{ dayOfWeek: number; openTime?: string; closeTime?: string; price?: number }[]>(),
+        Booking.find({
+          venueId,
+          status: { $nin: ['cancelled', 'pending_approval'] },
+          bookingType: { $nin: ['blocked', 'manual'] },
+          createdAt: { $gte: since },
+        }).select('date startTime endTime amount').lean(),
+        DemandEvent.find({ venueId, type: 'empty_slot', createdAt: { $gte: since } })
+          .select('startHour').lean<{ startHour?: number }[]>(),
+        WaitlistEntry.find({ venueId, status: 'waiting', createdAt: { $gte: since } })
+          .select('date startHour').lean<{ date?: string; startHour?: number }[]>(),
+      ]);
+
+      const baseRate = courts.reduce((sum, c) => sum + (c.hourlyRate ?? 0), 0) / Math.max(1, courts.length);
+      const currentPrice = baseRate || (venue as any).priceFrom || 400;
+      const weeks = 4;
+
+      const applied: unknown[] = [];
+
+      for (const hour of venueHours) {
+        const dow = hour.dayOfWeek;
+        for (let h = 0; h < 24; h++) {
+          // Only suggest for hours the venue is open.
+          const openH = (hour as any).openTime ? parseInt((hour as any).openTime.split(':')[0], 10) : 0;
+          const closeH = (hour as any).closeTime ? parseInt((hour as any).closeTime.split(':')[0], 10) : 24;
+          if (h < openH || h >= closeH) continue;
+
+          // Simple demand scoring mirroring getSuggestedPricing.
+          const slotBookings = bookings.filter((b: any) => {
+            if (!b.date || !b.startTime) return false;
+            const bDow = new Date(b.date).getDay();
+            const bH = parseInt(b.startTime.split(':')[0], 10);
+            return bDow === dow && bH === h;
+          });
+          const occupancyPct = Math.min(100, (slotBookings.length / Math.max(1, weeks)) * 100);
+          const emptyCount = emptySlotEvents.filter((e) => e.startHour === h).length;
+          const waitlistCount = waitlistEntries.filter((e) => {
+            if (!e.date) return false;
+            return new Date(e.date).getDay() === dow && e.startHour === h;
+          }).length;
+
+          let adjustmentPct = 0;
+          let confidence: 'low' | 'medium' | 'high' = 'low';
+          let rationale = '';
+
+          if (occupancyPct >= 95) {
+            adjustmentPct = Math.min(maxAdj, 30); confidence = 'high';
+            rationale = 'Near-full occupancy with unmet demand';
+          } else if (occupancyPct >= 85) {
+            adjustmentPct = Math.min(maxAdj, 20); confidence = 'medium';
+            rationale = 'High occupancy — room to raise rates';
+          } else if (waitlistCount >= weeks) {
+            adjustmentPct = Math.min(maxAdj, 15); confidence = 'medium';
+            rationale = `~${Math.round(waitlistCount / Math.max(1, weeks))} waitlisted/week — excess demand`;
+          } else if (emptyCount > 0) {
+            adjustmentPct = 10; confidence = 'low';
+            rationale = 'Some unmet demand detected';
+          }
+
+          if (occupancyPct <= 10 && slotBookings.length <= 1) {
+            adjustmentPct = Math.max(-maxAdj, -20); confidence = 'medium';
+            rationale = 'Very low utilisation — discount to attract players';
+          }
+
+          const cScore = confRank[confidence] ?? 0;
+          const minScore = confRank[minConf as string] ?? 0;
+          if (cScore < minScore) continue; // below threshold
+          if (adjustmentPct === 0) continue;
+
+          const suggestedPrice = Math.round(currentPrice * (1 + adjustmentPct / 100));
+
+          // Auto-apply for the next N weeks.
+          for (let w = 0; w < weeks; w++) {
+            const d = new Date(today);
+            d.setDate(d.getDate() + w * 7);
+            const currentDow = d.getDay();
+            let offset = dow - currentDow;
+            if (offset < 0) offset += 7;
+            d.setDate(d.getDate() + offset);
+
+            const dateStr = d.toISOString().slice(0, 10);
+            const startTime = `${String(h).padStart(2, '0')}:00`;
+            const endTime = `${String(h + 1).padStart(2, '0')}:00`;
+
+            await SlotPriceOverride.findOneAndUpdate(
+              { venueId, date: dateStr, startTime, endTime, courtId: null },
+              { price: suggestedPrice, note: `Auto dynamic pricing — ${rationale} (${confidence})`, createdByUserId: undefined },
+              { upsert: true, new: true },
+            );
+            applied.push({ dow, hour: h, price: suggestedPrice, confidence });
+          }
+        }
+      }
+
+      results.push({ venueId: String(venueId), name: (venue as any).displayName || 'Unnamed', applied: applied.length, skipped: 0 });
+    } catch (err: any) {
+      results.push({ venueId: String(venueId), name: (venue as any).displayName || 'Unnamed', applied: 0, skipped: 1 });
+    }
+  }
+
+  console.log('[auto-dynamic-pricing] run complete:', results.map((r) => `${r.name}: ${r.applied} applied`).join(', ') || 'none');
+  return { results, summary: `${results.reduce((s, r) => s + r.applied, 0)} overrides created across ${results.length} venues.` };
+}

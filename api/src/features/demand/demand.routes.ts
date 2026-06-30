@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { requireAuth, optionalAuth } from '../../shared/middleware/auth.js';
-import { recordDemandEvent, getVenueDemand, getVenueLeakageReport, getSuggestedPricing, applySuggestedPricing } from './demand.controller.js';
+import { recordDemandEvent, getVenueDemand, getVenueLeakageReport, getSuggestedPricing, applySuggestedPricing, runAutoDynamicPricing } from './demand.controller.js';
 
 const demandRoutes = new Hono();
 
@@ -14,5 +14,15 @@ demandRoutes.get('/venues/:id/leakage', requireAuth, getVenueLeakageReport);
 demandRoutes.get('/venues/:id/suggested-pricing', requireAuth, getSuggestedPricing);
 // Apply selected pricing suggestions as SlotPriceOverrides for the next N weeks.
 demandRoutes.post('/venues/:id/suggested-pricing/apply', requireAuth, applySuggestedPricing);
+// Automated dynamic pricing cron — runs suggestion engine + auto-applies for all
+// opted-in venues. Admin-only (designed to be called by a cron scheduler).
+demandRoutes.post('/auto-dynamic-pricing', requireAuth, async (c: any) => {
+  const user = c.get('user');
+  if (!user?.roles?.includes('admin')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin only' } }, 403);
+  }
+  const result = await runAutoDynamicPricing(c);
+  return c.json({ data: result });
+});
 
 export default demandRoutes;

@@ -67,7 +67,7 @@ export type Screen =
 
 export type ScreenId = Screen['id'];
 
-export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'profile'] as const;
+export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'messages', 'profile'] as const;
 export type TabId = (typeof tabScreens)[number];
 
 /**

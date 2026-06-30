@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Booking } from './bookings.model.js';
 import { Venue, Court } from '../venues/venues.model.js';
 import { recordDemand } from '../demand/demand.controller.js';
+import { notifyUser } from '../../shared/lib/notify.js';
 
 /* ─── Slot availability — shared by the conflict guard + /availability ─────── */
 //
@@ -345,7 +346,7 @@ export async function createBooking(c: any) {
   // book venues (the default) confirm the moment the player books. A chosen court
   // can override the venue policy: 'manual' forces request-to-book, 'auto' forces
   // instant-book; 'inherit' (or no court) falls back to the venue's setting.
-  const venue = await Venue.findById(body.venueId).select('requireBookingApproval').lean<{ requireBookingApproval?: boolean }>();
+  const venue = await Venue.findById(body.venueId).select('requireBookingApproval ownerUserId displayName').lean<{ requireBookingApproval?: boolean; ownerUserId?: any; displayName?: string }>();
   const requiresApproval = court?.approvalMode === 'manual' ? true
     : court?.approvalMode === 'auto' ? false
     : !!venue?.requireBookingApproval;
@@ -372,6 +373,19 @@ export async function createBooking(c: any) {
     amountPaid: num(body.amountPaid),
     balanceDue: num(body.balanceDue),
   });
+
+  // Notify the venue owner when a booking requires their approval.
+  if (requiresApproval && venue?.ownerUserId) {
+    const bookerName = (user as any).name || (user as any).email || 'A player';
+    void notifyUser(venue.ownerUserId, {
+      type: 'booking_pending_approval',
+      title: 'New booking request',
+      body: `${bookerName} requested to book at ${venue.displayName || 'your venue'}.`,
+      icon: 'calendar',
+      linkUrl: '/owner/bookings?status=pending_approval',
+    });
+  }
+
   // Demand: a realised court-booking intent (drives the owner demand report).
   void recordDemand({ type: 'booking_completed', venueId: body.venueId, courtId: body.courtId, userId: user.sub, date: body.date, startHour: body.startTime ? Number(body.startTime.split(':')[0]) : null });
   return c.json({ data: { ...result.toObject(), id: result._id } }, 201);

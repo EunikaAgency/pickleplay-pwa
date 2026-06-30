@@ -785,6 +785,10 @@ export interface OwnerVenueDetail extends ApiVenueDetail {
   priceNotes?: string | null;
   // Pricing display convention — "VAT inclusive" / "VAT exclusive" / custom.
   pricingTaxLabel?: string | null;
+  // Automated dynamic pricing — owner opt-in, off by default.
+  autoDynamicPricing?: boolean | null;
+  autoDynamicPricingMinConfidence?: 'low' | 'medium' | 'high' | null;
+  autoDynamicPricingMaxAdjustment?: number | null;
   // Cancellation & refund policy — owner-configurable per venue.
   cancellationWindowHours?: number | null;
   refundPercent?: number | null;

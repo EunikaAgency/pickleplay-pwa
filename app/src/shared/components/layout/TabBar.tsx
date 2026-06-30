@@ -23,6 +23,7 @@ const tabs: Tab[] = [
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'clubs',   label: 'Clubs',  icon: 'groups',   iconFill: 'groups_fill' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
+  { id: 'messages', label: 'Messages', icon: 'chat' },
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
@@ -34,6 +35,7 @@ const ownerTabs: Tab[] = [
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
   { id: 'nearby',  label: 'Venues',   icon: 'map_pin' },
+  { id: 'messages', label: 'Messages', icon: 'chat' },
   { id: 'profile', label: 'Profile',  icon: 'user' },
 ];
 
@@ -43,8 +45,8 @@ export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, sho
     <nav className={`tabbar${isOwner ? ' tabbar--owner' : ''}`} aria-label="Primary navigation">
       {items.map((t) => {
         const isActive = activeTab === t.id;
-        // Guests see the "You" tab as "Login" — tapping it sends them to sign in.
-        const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
+        // Guests see the "You" and "Messages" tabs as "Login" — tapping sends them to sign in.
+        const label = (t.id === 'profile' || t.id === 'messages') && !isLoggedIn ? 'Login' : t.label;
         // Owner bar follows the v2.1 design: outline icons + colour/dot for the
         // active tab (no filled-icon swap).
         const iconName = !isOwner && isActive ? (t.iconFill ?? t.icon) : t.icon;

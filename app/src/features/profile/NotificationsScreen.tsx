@@ -28,6 +28,8 @@ function bgForType(type?: string | null): IconBg {
     case 'game_full':                 return 'lime';
     case 'venue_membership_invite':   return 'lime';
     case 'venue_membership_removed':  return 'coral';
+    case 'booking_pending_approval':  return 'coral';
+    case 'booking_approved':          return 'lime';
     case 'message':                   return 'blue';
     case 'alert':                     return 'coral';
     default:                          return 'blue';
@@ -76,6 +78,13 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   if (clubPost) { onNavigate('club-post', { id: clubPost[1], postId: clubPost[2] }); return true; }
   const club = linkUrl.match(/^\/clubs\/([a-z0-9-]+)$/);
   if (club) { onNavigate('club-details', { id: club[1] }); return true; }
+  // Owner bookings inbox (e.g. /owner/bookings?status=pending_approval).
+  const ownerBookings = linkUrl.match(/^\/owner\/bookings(\?.*)?$/);
+  if (ownerBookings) {
+    const sp = new URLSearchParams(linkUrl.includes('?') ? linkUrl.slice(linkUrl.indexOf('?')) : '');
+    onNavigate('owner-bookings', sp.get('status') ? { status: sp.get('status')! } : {});
+    return true;
+  }
   return false;
 }
 

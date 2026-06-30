@@ -18,7 +18,7 @@ type Filter = 'all' | 'pending_approval' | 'confirmed' | 'cancelled';
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
-  { id: 'pending_approval', label: 'Pending' },
+  { id: 'pending_approval', label: 'Needs action' },
   { id: 'confirmed', label: 'Complete' },
   { id: 'cancelled', label: 'Cancelled' },
 ];

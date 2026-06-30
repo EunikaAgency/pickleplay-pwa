@@ -240,6 +240,7 @@ function tabForScreen(id: ScreenId): TabId {
   if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
   if (id === 'game-details' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
+  if (id === 'chat') return 'messages';
   return 'profile';
 }
 
@@ -327,7 +328,7 @@ function AppInner() {
   const handleTabPress = (tab: TabId) => {
     // The "You" tab is personal — for guests it reads "Login" and goes straight
     // to the sign-in / join flow instead of opening the profile.
-    if (tab === 'profile' && !isLoggedIn) {
+    if ((tab === 'profile' || tab === 'messages') && !isLoggedIn) {
       goToLogin();
       return;
     }
@@ -457,7 +458,7 @@ function AppInner() {
     activeTab, onNavigate: navigate, onTabPress: handleTabPress,
     onCreate: handleCreate, onHost: handleHost, isLoggedIn, requireAuth,
     onBack: goBack, canGoBack,
-    tabIds: canSeeTournaments ? [...tabScreens] : tabScreens.filter((t) => t !== 'tournaments'),
+    tabIds: (canSeeTournaments ? [...tabScreens] : tabScreens.filter((t) => t !== 'tournaments')).filter((t) => t !== 'messages'),
   };
 
   const renderScreen = () => {

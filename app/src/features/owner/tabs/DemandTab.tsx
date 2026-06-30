@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../../shared/components/ui/ErrorState';
-import { Heatmap } from '../../../shared/components/ui/Chart';
 import { Chip } from '../../../shared/components/ui/Chip';
 import { OwnerStat } from '../components/OwnerStat';
 import { OwnerSection } from '../components/OwnerSection';
@@ -71,8 +70,7 @@ export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
 
   const { totals, conversionPct, cancelRate, liveBookings, demandByHour, supply } = data;
 
-  // Heatmap: 1 row ("Demand") × 24 cols (hours 0–23).
-  const heatmapCells = demandByHour.map((v, h) => ({ row: 0, col: h, value: v }));
+  const maxByHour = Math.max(1, ...demandByHour);
 
   return (
     <div className="flex flex-col gap-5">
@@ -105,16 +103,38 @@ export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
         <OwnerStat label="Cancellation rate" value={`${cancelRate}%`} tone="coral" icon="cancel" />
       </div>
 
-      {/* Demand-by-hour heatmap */}
+      {/* Demand-by-hour — responsive bar chart (24 bars, horizontally scrollable). */}
       <OwnerSection title="Demand by hour" icon="schedule" description="Booking attempts + empty-slot hits per hour">
-        <Heatmap
-          cells={heatmapCells}
-          rows={1}
-          cols={24}
-          rowLabel={(r) => r === 0 ? 'Demand' : ''}
-          colLabel={(c) => `${c}:00`}
-          emptyLabel="No demand data yet"
-        />
+        {demandByHour.every((v) => v === 0) ? (
+          <p className="text-[13px] text-[var(--ink-2)] py-4 text-center">No demand data yet</p>
+        ) : (
+          <div className="overflow-x-auto -mx-5 px-5">
+            <div className="flex gap-[3px] items-end min-w-[672px] h-[72px]">
+              {demandByHour.map((v, h) => {
+                const heightPct = (v / maxByHour) * 100;
+                const height = v === 0 ? 4 : 4 + (heightPct / 100) * 68;
+                const opacity = v === 0 ? 0 : 0.15 + (v / maxByHour) * 0.85;
+                return (
+                  <div key={h} className="flex-1 flex flex-col items-center justify-end min-w-0">
+                    <div
+                      className="w-full rounded-[3px] transition-[height] duration-300"
+                      style={{
+                        height: `${height}px`,
+                        background: v === 0
+                          ? 'var(--surface-2)'
+                          : `color-mix(in srgb, var(--primary) ${Math.round(opacity * 100)}%, transparent)`,
+                      }}
+                      title={`${h}:00 – ${v} event${v === 1 ? '' : 's'}`}
+                    />
+                    {h % 3 === 0 && (
+                      <span className="text-[10px] text-[var(--muted)] mt-1 leading-none">{h}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </OwnerSection>
 
       {/* Supply summary */}

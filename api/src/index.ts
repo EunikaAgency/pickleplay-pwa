@@ -147,6 +147,32 @@ if (process.env.NODE_ENV !== 'test') {
       console.log(`⚡ Pickleballers API listening on :${port}`);
       console.log(`   Health check: http://localhost:${port}/health`);
       serve({ fetch: app.fetch, port });
+
+      // ── Automated dynamic pricing cron ──
+      // Runs once every 24h at ~3am local time. Scans all opted-in venues,
+      // computes demand-based suggestions, and auto-applies high-confidence
+      // adjustments without owner intervention.
+      const scheduleAutoPricing = () => {
+        const now = new Date();
+        const msUntil3am = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 3, 0, 0).getTime() - now.getTime();
+        const oneDay = 24 * 60 * 60 * 1000;
+        setTimeout(() => {
+          console.log('[auto-pricing] Starting daily run...');
+          import('./features/demand/demand.controller.js')
+            .then(({ runAutoDynamicPricing }) => runAutoDynamicPricing(null as any))
+            .then((result) => console.log('[auto-pricing]', result.summary))
+            .catch((err) => console.warn('[auto-pricing] run failed:', (err as Error).message));
+          setInterval(() => {
+            console.log('[auto-pricing] Starting daily run...');
+            import('./features/demand/demand.controller.js')
+              .then(({ runAutoDynamicPricing }) => runAutoDynamicPricing(null as any))
+              .then((result) => console.log('[auto-pricing]', result.summary))
+              .catch((err) => console.warn('[auto-pricing] run failed:', (err as Error).message));
+          }, oneDay);
+        }, msUntil3am);
+        console.log(`[auto-pricing] Scheduled. First run in ${Math.round(msUntil3am / 3600000)}h.`);
+      };
+      scheduleAutoPricing();
     })
     .catch((err) => {
       console.error('Failed to connect to MongoDB:', err);

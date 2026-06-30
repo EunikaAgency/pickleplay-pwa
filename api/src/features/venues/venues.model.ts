@@ -88,6 +88,15 @@ export interface IVenue {
   bookingSlotMinutes?: number;
   bookingAdvanceWindowDays?: number;
   pricingTaxLabel?: string;
+  // ── Automated dynamic pricing ── opt-in: the system auto-adjusts slot prices
+  // based on demand signals (occupancy, waitlists, empty slots). When off (default),
+  // the owner manually reviews and applies suggestions from the Pricing tab.
+  autoDynamicPricing?: boolean;
+  // Minimum confidence level required before a suggestion is auto-applied.
+  // 'high' = only very confident suggestions; 'medium' includes moderate ones.
+  autoDynamicPricingMinConfidence?: 'low' | 'medium' | 'high';
+  // Cap on how much the price can move in one adjustment (% of current price).
+  autoDynamicPricingMaxAdjustment?: number;
   cancellationWindowHours?: number;
   refundPercent?: number;
   noShowFee?: number;
@@ -233,6 +242,10 @@ const venueSchema = new Schema({
   // Pricing display convention — shown at checkout and on the public page so
   // players know whether the listed rate is tax-inclusive or exclusive.
   pricingTaxLabel:    { type: String, maxlength: 40, default: 'VAT inclusive' },
+  // Automated dynamic pricing — owner opt-in. Off by default.
+  autoDynamicPricing:              { type: Boolean, default: false },
+  autoDynamicPricingMinConfidence: { type: String, enum: ['low', 'medium', 'high'], default: 'high' },
+  autoDynamicPricingMaxAdjustment: { type: Number, default: 20, min: 5, max: 50 },
   // Cancellation & refund policy — owner-configurable per venue. A player who
   // cancels at least `cancellationWindowHours` before the booking start gets
   // `refundPercent`% back. `noShowFee` is a flat charge on top of forfeited
