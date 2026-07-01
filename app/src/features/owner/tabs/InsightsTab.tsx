@@ -73,19 +73,22 @@ export function InsightsTab({ venueId }: InsightsTabProps) {
   const { kpis } = data;
 
   return (
-    <div className="space-y-4">
-      <Segmented
-        value={section}
-        onChange={setSection}
-        options={[
-          { value: 'revenue', label: 'Revenue' },
-          { value: 'bookings', label: 'Bookings' },
-          { value: 'utilization', label: 'Usage' },
-          { value: 'courts', label: 'Courts' },
-          { value: 'demand', label: 'Demand' },
-          { value: 'leakage', label: 'Leakage' },
-        ]}
-      />
+    <div className="space-y-5">
+      <div className="scroll-x">
+        <Segmented
+          className="min-w-[560px]"
+          value={section}
+          onChange={setSection}
+          options={[
+            { value: 'revenue', label: 'Revenue' },
+            { value: 'bookings', label: 'Bookings' },
+            { value: 'utilization', label: 'Usage' },
+            { value: 'courts', label: 'Courts' },
+            { value: 'demand', label: 'Demand' },
+            { value: 'leakage', label: 'Leakage' },
+          ]}
+        />
+      </div>
 
       {/* ── Revenue ── */}
       {section === 'revenue' && (

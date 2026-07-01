@@ -37,6 +37,11 @@ export function useRealtimeStream(enabled: boolean) {
       try { data = JSON.parse(ev.data); } catch { /* ignore */ }
       if (data) emitRealtime('message.deleted', data);
     };
+    const onMessageRead = (ev: MessageEvent) => {
+      let data: any = null;
+      try { data = JSON.parse(ev.data); } catch { /* ignore */ }
+      if (data) emitRealtime('message.read', data);
+    };
     const onGameMessage = (ev: MessageEvent) => {
       let data: any = null;
       try { data = JSON.parse(ev.data); } catch { /* ignore */ }
@@ -51,6 +56,11 @@ export function useRealtimeStream(enabled: boolean) {
       let data: any = null;
       try { data = JSON.parse(ev.data); } catch { /* ignore */ }
       if (data) emitRealtime('club.message', data);
+    };
+    const onTyping = (ev: MessageEvent) => {
+      let data: any = null;
+      try { data = JSON.parse(ev.data); } catch { /* ignore */ }
+      if (data) emitRealtime('typing', data);
     };
     const onNotification = (ev: MessageEvent) => {
       let data: any = null;
@@ -71,9 +81,11 @@ export function useRealtimeStream(enabled: boolean) {
       }
       es.addEventListener('message.created', onMessage);
       es.addEventListener('message.deleted', onMessageDeleted);
+      es.addEventListener('message.read', onMessageRead);
       es.addEventListener('game.message.created', onGameMessage);
       es.addEventListener('tournament.message.created', onTournamentMessage);
       es.addEventListener('club.message.created', onClubMessage);
+      es.addEventListener('message.typing', onTyping);
       es.addEventListener('notification.created', onNotification);
       es.onerror = () => {
         // EventSource won't recover from an HTTP error (e.g. expired token), so

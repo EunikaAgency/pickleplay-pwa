@@ -27,17 +27,17 @@ export function OwnerStat({ label, value, icon, tone = 'primary', onClick }: Own
         <Icon name={icon} size={18} />
       </span>
       <div>
-        <div className="font-heading font-semibold text-[22px] leading-none text-[var(--ink)] tabular-nums">{value}</div>
-        <div className="t-eyebrow mt-1">{label}</div>
+        <div className="font-heading font-bold text-2xl leading-none text-[var(--ink)] tabular-nums">{value}</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 mt-1">{label}</div>
       </div>
     </>
   );
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="card p-3.5 flex flex-col gap-2.5 text-left w-full active:scale-[0.97] transition-transform">
+      <button type="button" onClick={onClick} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-2.5 text-left w-full active:scale-[0.97] transition-transform">
         {body}
       </button>
     );
   }
-  return <div className="card p-3.5 flex flex-col gap-2.5">{body}</div>;
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-2.5">{body}</div>;
 }

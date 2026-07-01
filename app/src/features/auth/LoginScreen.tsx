@@ -26,9 +26,9 @@ const ROLE_OPTIONS: { value: RegisterRole; label: string; icon: string; iconColo
 // fast. Seeded emails (password123) except admin; re-running the user seed
 // regenerates the random ones — refresh these from web/TEST_CREDENTIALS.txt.
 const TEST_ACCOUNTS: { label: string; email: string; password: string }[] = [
-  { label: 'Player',    email: '84a3be4a.hernandez@example.com',  password: 'password123' },
-  { label: 'Owner',     email: 'test@example.com',                password: 'password123' },
-  { label: 'Organizer', email: '556b9e79.matthews@example.com',   password: 'password123' },
+  { label: 'Player',    email: '05fd2f8f.wang@example.com',       password: 'password123' },
+  { label: 'Owner',     email: '037de3f0.gardner@example.com',     password: 'password123' },
+  { label: 'Organizer', email: '1a8a7872.martin@example.com',      password: 'password123' },
   { label: 'Coach',     email: 'christianian.i.alcazar@gmail.com', password: 'password123' },
   { label: 'Admin',     email: 'info@eunika.agency',              password: 'justinianthegreat!' },
 ];

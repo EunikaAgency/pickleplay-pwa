@@ -1,3 +1,12 @@
+const btnBase: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0 6px',
+};
+
 interface SegmentedOption<T extends string> {
   value: T;
   label: string;
@@ -11,24 +20,25 @@ interface SegmentedProps<T extends string> {
 }
 
 export function Segmented<T extends string>({ options, value, onChange, className = '' }: SegmentedProps<T>) {
-  const idx = Math.max(0, options.findIndex((o) => o.value === value));
-  const w = `calc((100% - 6px) / ${options.length})`;
   return (
-    <div className={`seg ${className}`}>
-      <div
-        className="indicator"
-        style={{ width: w, transform: `translateX(calc(${idx} * 100%))` }}
-      />
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          className={value === o.value ? 'active' : ''}
-          onClick={() => onChange(o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className={`seg ${className}`} style={{ gap: 6 }}>
+      {options.map((o) => {
+        const active = value === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            className={active ? 'active' : ''}
+            style={{
+              ...btnBase,
+              ...(active ? { background: 'var(--surface)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } : {}),
+            }}
+            onClick={() => onChange(o.value)}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
+import { Chip } from '../../../shared/components/ui/Chip';
 import { BarChart } from '../../../shared/components/ui/Chart';
 import { OwnerStat } from '../components/OwnerStat';
 import { OwnerSection } from '../components/OwnerSection';
@@ -40,11 +41,11 @@ export function LeakageTab({ venueId }: LeakageTabProps) {
 
   const { funnel, leakageRate, checkoutDropoff, daily } = data;
 
-  // Funnel bar chart: each stage as a single-segment bar.
+  // Funnel bar chart: each stage as a single-segment bar, softer gradient.
   const funnelData: BarDatum[] = [
     { label: 'Views', segments: [{ value: funnel.views, color: 'var(--primary)' }] },
-    { label: 'Starts', segments: [{ value: funnel.bookingStarts, color: 'var(--lime)' }] },
-    { label: 'Checkouts', segments: [{ value: funnel.checkoutStarts, color: 'var(--coral)' }] },
+    { label: 'Starts', segments: [{ value: funnel.bookingStarts, color: '#6366f1' }] },
+    { label: 'Checkouts', segments: [{ value: funnel.checkoutStarts, color: '#f59e0b' }] },
     { label: 'Online', segments: [{ value: funnel.onlineBookings, color: 'var(--lime-ink)' }] },
   ];
 
@@ -66,13 +67,9 @@ export function LeakageTab({ venueId }: LeakageTabProps) {
       {/* Day-range picker */}
       <div className="flex gap-2">
         {DAY_PRESETS.map((d) => (
-          <button
-            key={d}
-            className={`chip ${days === d ? 'active' : ''}`}
-            onClick={() => setDays(d)}
-          >
+          <Chip key={d} className="chip-tab" selected={days === d} onClick={() => setDays(d)}>
             {d}d
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -85,8 +82,8 @@ export function LeakageTab({ venueId }: LeakageTabProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <OwnerStat label="Leakage rate" icon="leak" value={pct(leakageRate)} />
-        <OwnerStat label="Checkout drop-off" icon="shopping_cart" value={pct(checkoutDropoff)} />
+        <OwnerStat label="Leakage rate" icon="trending_down" tone="coral" value={pct(leakageRate)} />
+        <OwnerStat label="Checkout drop-off" icon="shopping_cart" tone="neutral" value={pct(checkoutDropoff)} />
       </div>
 
       {funnel.linksShared > 0 && (
@@ -104,15 +101,23 @@ export function LeakageTab({ venueId }: LeakageTabProps) {
           <EmptyState icon="insights" title="No data yet" description="Activity will appear here as players interact with your venue." />
         ) : (
           <div className="overflow-x-auto">
-            <BarChart data={dailyData} height={200} />
-            <div className="flex flex-col gap-1 mt-3 max-h-[300px] overflow-y-auto">
-              {[...daily].reverse().map((d) => (
-                <div key={d.date} className="flex items-center gap-3 text-[13px] py-1 border-b border-[var(--hairline)] last:border-0">
-                  <span className="font-bold w-[60px] shrink-0">{d.date.slice(5)}</span>
-                  <span className="w-[60px] text-right shrink-0">{d.views} views</span>
-                  <span className="w-[40px] text-right shrink-0 text-[var(--lime-ink)]">{d.starts}</span>
-                  <span className="w-[40px] text-right shrink-0 text-[var(--coral)]">{d.checkouts}</span>
-                  <span className="w-[40px] text-right shrink-0 font-bold text-[var(--primary)]">{d.online}</span>
+            <BarChart data={dailyData} height={180} />
+            {/* Column headers */}
+            <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400 mt-4 mb-1 px-0.5">
+              <span className="w-[60px] shrink-0">Date</span>
+              <span className="w-[55px] text-right shrink-0">Views</span>
+              <span className="w-[45px] text-right shrink-0">Start</span>
+              <span className="w-[55px] text-right shrink-0">Checkout</span>
+              <span className="w-[45px] text-right shrink-0">Online</span>
+            </div>
+            <div className="flex flex-col max-h-[280px] overflow-y-auto">
+              {[...daily].reverse().map((d, idx) => (
+                <div key={d.date} className={`flex items-center gap-3 text-[13px] py-2 ${idx > 0 ? 'border-t border-slate-100' : ''}`}>
+                  <span className="font-semibold w-[60px] shrink-0 text-[var(--ink)]">{d.date.slice(5)}</span>
+                  <span className="w-[55px] text-right shrink-0 tabular-nums text-[var(--ink-2)]">{d.views}</span>
+                  <span className="w-[45px] text-right shrink-0 tabular-nums text-[var(--ink-2)]">{d.starts}</span>
+                  <span className="w-[55px] text-right shrink-0 tabular-nums text-[var(--ink-2)]">{d.checkouts}</span>
+                  <span className="w-[45px] text-right shrink-0 font-semibold tabular-nums text-[var(--primary)]">{d.online}</span>
                 </div>
               ))}
             </div>

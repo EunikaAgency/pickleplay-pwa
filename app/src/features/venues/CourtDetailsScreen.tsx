@@ -116,12 +116,6 @@ function parseDayRange(s?: string): { open: number; lastStart: number } | null {
   return { open, lastStart };
 }
 
-/** "24 hours" → "1 day"; otherwise "N hours" (matches the API's wording). */
-function payWindowLabel(hours?: number | null): string {
-  const h = hours ?? 24;
-  return h % 24 === 0 ? `${h / 24} day${h / 24 === 1 ? '' : 's'}` : `${h} hour${h === 1 ? '' : 's'}`;
-}
-
 function readSavedVenues(): string[] {
   try {
     const v = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
@@ -287,7 +281,11 @@ function CourtDetail({
 
   const joinMembership = (planId: string) => {
     const prev = membershipPlanId;
-    setMembershipPlanId(planId); // optimistic — the sheet shows success right away
+    // Optimistic: use the plan *name* so it matches viewerMembershipTier
+    // (the API stores plan.name as the VenueMember tier).  After a page
+    // reload the sheet's planByRef() can match either id or name.
+    const planName = apiPlans?.find((p) => p.id === planId)?.name ?? planId;
+    setMembershipPlanId(planName); // optimistic — the sheet shows success right away
     // When the venue has API plans, use subscribeToPlan so the VenueMember tier
     // is the plan name (e.g. "Monthly") instead of the plan ObjectId. Falls back
     // to joinVenueMembership for venues without API plans.
@@ -344,6 +342,12 @@ function CourtDetail({
       .catch(() => { /* keep fallback plans */ });
     return () => { cancelled = true; };
   }, [venue.id]);
+
+  // Match a membership tier ref (plan name or ObjectId) to an API plan so the
+  // membership badge can show the human-readable plan name. Falls back to the
+  // raw ref when apiPlans hasn't loaded yet.
+  const planByRef = (ref: string | null | undefined) =>
+    apiPlans?.find((p) => p.id === ref || p.name === ref);
 
   // Best-effort distance: if the device already granted location (or grants it
   // now), show how far the venue is. Silent on denial — it's a nicety.
@@ -520,6 +524,32 @@ function CourtDetail({
             <div className={`val ${todayHours && todayHours !== 'Closed' ? 'lime' : ''}`}>{todayHours || '—'}</div>
           </div>
         </div>
+
+        {/* ── Active membership badge ──────────────────────────── */}
+        {isMember && !isExpired && (
+          <div className="mt-4 flex items-center gap-3 bg-[var(--lime-soft)] text-[var(--lime-ink)] rounded-[16px] px-4 py-3.5">
+            <div className="w-10 h-10 rounded-full bg-[var(--lime-ink)] text-white inline-flex items-center justify-center shrink-0">
+              <Icon name="card_membership" size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-[14px]">
+                You're subscribed{membershipPlanId ? ` to ${planByRef(membershipPlanId)?.name ?? membershipPlanId}` : ''}
+              </p>
+              <p className="text-[12px] font-semibold opacity-80">
+                {membershipExpiresAt
+                  ? `Renews ${new Date(membershipExpiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                  : 'Active — member pricing applied at checkout'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openMembership()}
+              className="shrink-0 px-3 h-8 rounded-full text-[11px] font-bold bg-[var(--ink)] text-white"
+            >
+              Manage
+            </button>
+          </div>
+        )}
 
         {/* Photos — the rest of the venue's gallery beyond the hero. */}
         {showGallery && (
@@ -954,22 +984,7 @@ function CourtDetail({
       </div>
 
       <div className="app-action-bar app-action-bar--bare">
-        {price && (
-          <>
-            {requireApproval && intent !== 'lobby' && (
-              <div className="flex items-start gap-2 mb-2 text-[12px] font-semibold text-[var(--ink-2)]">
-                <Icon name="shield" size={14} className="mt-0.5 shrink-0 text-[var(--primary)]" />
-                <span>The owner approves first — once approved, pay within {payWindowLabel(venue.bookingPayWindowHours)} to confirm.</span>
-              </div>
-            )}
-            {((venue as any).cancellationWindowHours != null || (venue as any).refundPercent != null) && (
-              <div className="flex items-start gap-2 mb-2 text-[12px] text-[var(--ink-2)]">
-                <Icon name="info" size={14} className="mt-0.5 shrink-0 text-[var(--muted)]" />
-                <span>Free cancellation up to <strong>{(venue as any).cancellationWindowHours ?? 24}h</strong> before — <strong>{(venue as any).refundPercent ?? 100}%</strong> refund.{((venue as any).noShowFee || 0) > 0 ? ` ₱${(venue as any).noShowFee} no-show fee.` : ''}</span>
-              </div>
-            )}
-          </>
-        )}
+        {/* policy notes removed */}
 
         {/* ── Pending invite banner ──────────────────────────────── */}
         {hasPendingInvite && (

@@ -47,6 +47,16 @@ function iconFor(n: ApiNotification): string {
   return n.icon || 'bell';
 }
 
+/** Strip the server-prepended notification-type prefix from titles so
+ *  "chat Kenneth Hernandez" → "Kenneth Hernandez". */
+const TITLE_PREFIXES = ['chat', 'forum', 'message', 'alert'];
+function cleanTitle(title: string): string {
+  for (const p of TITLE_PREFIXES) {
+    if (title.startsWith(p + ' ')) return title.slice(p.length + 1);
+  }
+  return title;
+}
+
 /** "Just now" / "5m ago" / "3h ago" / "Yesterday" / "Jun 7" from an ISO date. */
 function relativeTime(iso?: string): string {
   if (!iso) return '';
@@ -364,7 +374,7 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                     </div>
                     <div className="body">
                       <div className="head">
-                        <strong>{n.title}</strong>
+                        <strong>{cleanTitle(n.title)}</strong>
                         {n.body ? <> — {n.body}</> : null}
                       </div>
                       <div className="time">{relativeTime(n.createdAt)}</div>
@@ -410,13 +420,13 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                   className={`w-full text-left bg-transparent flex-1 min-w-0 ${hasTarget ? 'cursor-pointer' : 'cursor-default'}`}
                   onClick={() => open(n)}
                 >
-                  <div className="flex items-start">
+                  <div className="flex items-start" style={{ gap: '12px' }}>
                     <div className={`ic ${bgForType(n.type)}`}>
                       <Icon name={iconFor(n)} size={18} />
                     </div>
                     <div className="body">
                       <div className="head">
-                        <strong>{n.title}</strong>
+                        <strong>{cleanTitle(n.title)}</strong>
                         {n.body ? <> — {n.body}</> : null}
                       </div>
                       <div className="time">{relativeTime(n.createdAt)}</div>

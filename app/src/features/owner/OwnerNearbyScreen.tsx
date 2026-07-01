@@ -38,14 +38,24 @@ function statusOf(glance: Glance | null): OpsStatus {
   return 'quiet';
 }
 
-// A colored map pin showing today's booking count (blank when no analytics).
-function pinIcon(status: OpsStatus, count: string): L.DivIcon {
+// The label inside a map pin — never "0".
+// pending → pending count, active → today's bookings, quiet/unknown → empty (just a dot).
+function pinLabel(status: OpsStatus, g: Glance | null): string {
+  if (!g) return '';
+  if (status === 'pending' && g.pendingCount > 0) return String(g.pendingCount);
+  if (status === 'active' && g.todayCount > 0) return String(g.todayCount);
+  return '';
+}
+
+// A colored map pin — number when there's activity, otherwise a clean coloured dot.
+function pinIcon(status: OpsStatus, label: string): L.DivIcon {
   const { color } = STATUS_META[status];
+  const hasLabel = label.length > 0;
   return L.divIcon({
     className: 'owner-ops-pin',
-    html: `<div style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${color};color:#fff;font-weight:800;font-size:13px;border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,64,224,.28)">${count}</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    html: `<div style="display:flex;align-items:center;justify-content:center;width:${hasLabel ? '32' : '18'}px;height:${hasLabel ? '32' : '18'}px;border-radius:50%;background:${color};color:#fff;font-weight:800;font-size:13px;border:2.5px solid #fff;box-shadow:0 2px 7px rgba(0,64,224,.28)">${label}</div>`,
+    iconSize: hasLabel ? [32, 32] : [18, 18],
+    iconAnchor: hasLabel ? [16, 16] : [9, 9],
     popupAnchor: [0, -16],
   });
 }
@@ -201,7 +211,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
                 <Marker
                   key={r.venue.id}
                   position={r.coords as LatLng}
-                  icon={pinIcon(r.status, r.glance ? String(r.glance.todayCount) : '')}
+                  icon={pinIcon(r.status, pinLabel(r.status, r.glance))}
                 >
                   <Popup className="venue-popup" minWidth={232} maxWidth={232}>
                     <div className="venue-popup-card !cursor-default">

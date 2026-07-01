@@ -74,7 +74,7 @@ export function BookingsInboxTab({ venueId, onNavigate }: BookingsInboxTabProps)
             {filter === 'all' ? 'No bookings yet. When players book a court here, they show up for you to confirm.' : 'No bookings with this status.'}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3 mt-1">
             {bookings.map((b) => (
               <OwnerBookingRow key={b.id} booking={b} canManage={canManage} onChanged={onChanged} onOpen={setDetail} onNavigate={onNavigate} />
             ))}

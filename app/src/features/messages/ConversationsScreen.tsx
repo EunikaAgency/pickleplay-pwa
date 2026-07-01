@@ -25,6 +25,28 @@ interface ConversationsScreenProps {
   onBack: () => void;
 }
 
+/** Strip notification-metadata prefixes that leak into lastBody so the
+ *  conversation preview shows the actual message, not "chat Sender — msg".
+ *  Only strips " — " when a notification prefix was removed, so normal
+ *  messages like "Got it — see you there" are left intact. */
+const NOTIF_TYPE_PREFIXES = [
+  'chat', 'forum', 'message', 'alert', 'game_full', 'game_open',
+  'venue_membership_invite', 'venue_membership_removed',
+  'booking_pending_approval', 'booking_approved',
+];
+function cleanPreview(body: string): string {
+  let s = body;
+  let stripped = false;
+  for (const p of NOTIF_TYPE_PREFIXES) {
+    if (s.startsWith(p + ' ')) { s = s.slice(p.length + 1); stripped = true; break; }
+  }
+  if (stripped) {
+    const dash = s.indexOf(' — ');
+    if (dash !== -1) s = s.slice(dash + 3);
+  }
+  return s || body;
+}
+
 /** Short relative time for a conversation's last activity, or a booking's age. */
 function timeAgo(iso?: string | null): string {
   if (!iso) return '';
@@ -59,6 +81,16 @@ function to12h(t?: string | null): string {
   const ampm = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/** Consider a user "active" if their last activity was within this many minutes. */
+const ACTIVE_WINDOW_MIN = 5;
+
+function isActive(iso?: string | null): boolean {
+  if (!iso) return false;
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return false;
+  return (Date.now() - ts) < ACTIVE_WINDOW_MIN * 60_000;
 }
 
 export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenProps) {
@@ -242,6 +274,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
               <div className="flex flex-col gap-2.5">
                 {suggestions.map((s) => {
                   const bk = s.latestBooking;
+                  const active = isActive(s.lastActiveAt);
                   return (
                     <button
                       key={s.id}
@@ -249,7 +282,12 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                       disabled={starting}
                       onClick={() => startWithSuggestion(s)}
                     >
-                      <Avatar src={s.avatarUrl} name={s.displayName} size={44} />
+                      <div className="relative shrink-0">
+                        <Avatar src={s.avatarUrl} name={s.displayName} size={44} />
+                        {s.lastActiveAt != null && (
+                          <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
+                        )}
+                      </div>
                       <div className="meta min-w-0">
                         <div className="name truncate">{s.displayName}</div>
                         <div className="t-sm truncate">
@@ -287,6 +325,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
               <div className="flex flex-col gap-2.5">
                 {visibleSuggestions.map((s) => {
                   const bk = s.latestBooking;
+                  const active = isActive(s.lastActiveAt);
                   return (
                     <button
                       key={s.id}
@@ -294,7 +333,12 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                       disabled={starting}
                       onClick={() => startWithSuggestion(s)}
                     >
-                      <Avatar src={s.avatarUrl} name={s.displayName} size={44} />
+                      <div className="relative shrink-0">
+                        <Avatar src={s.avatarUrl} name={s.displayName} size={44} />
+                        {s.lastActiveAt != null && (
+                          <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
+                        )}
+                      </div>
                       <div className="meta min-w-0">
                         <div className="name truncate">{s.displayName}</div>
                         <div className="t-sm truncate">
@@ -332,14 +376,21 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
               <EmptyState icon="search" title="No players found" description="Try a different name." />
             ) : (
               <div className="flex flex-col gap-2.5">
-                {results.map((p) => (
+                {results.map((p) => {
+                  const active = isActive(p.lastActiveAt);
+                  return (
                   <button
                     key={p.id}
                     className="organizer m-0! disabled:opacity-50"
                     disabled={starting}
                     onClick={() => startWith(p)}
                   >
-                    <Avatar src={p.avatarUrl} name={p.displayName} size={44} />
+                    <div className="relative shrink-0">
+                      <Avatar src={p.avatarUrl} name={p.displayName} size={44} />
+                      {p.lastActiveAt != null && (
+                        <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
+                      )}
+                    </div>
                     <div className="meta min-w-0">
                       <div className="name truncate">{p.displayName}</div>
                       <div className="t-sm truncate">
@@ -348,7 +399,8 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                     </div>
                     <Icon name="message" size={18} />
                   </button>
-                ))}
+                );
+                })}
               </div>
             )
           )}
@@ -390,6 +442,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
           <div className="flex flex-col gap-2.5">
             {items.map((c) => {
               const name = c.otherParticipant?.displayName ?? 'Player';
+              const active = isActive(c.otherParticipant?.lastActiveAt);
               return (
                 <div
                   key={c.id}
@@ -399,7 +452,12 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                   onClick={() => onNavigate('chat', { id: c.id, name })}
                   onKeyDown={(e) => { if (e.key === 'Enter') onNavigate('chat', { id: c.id, name }); }}
                 >
-                  <Avatar src={c.otherParticipant?.avatarUrl} name={name} size={44} />
+                  <div className="relative shrink-0">
+                    <Avatar src={c.otherParticipant?.avatarUrl} name={name} size={44} />
+                    {c.otherParticipant?.lastActiveAt != null && (
+                      <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
+                    )}
+                  </div>
                   <div className="meta min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="name truncate">{name}</div>
@@ -408,12 +466,12 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                     <div className="flex items-center justify-between gap-2">
                       <div className={`t-sm truncate ${c.unread > 0 ? 'font-bold text-[var(--ink)]' : ''}`}>
                         {c.contextType === 'venue' ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Icon name="tennis" size={12} />
-                            {c.lastBody || 'Venue inquiry'}
+                          <span className="inline-flex items-center" style={{ gap: 6 }}>
+                            <Icon name="sports_tennis" size={12} />
+                            {c.lastBody ? cleanPreview(c.lastBody) : 'Venue inquiry'}
                           </span>
                         ) : (
-                          c.lastBody || 'No messages yet'
+                          c.lastBody ? cleanPreview(c.lastBody) : 'No messages yet'
                         )}
                       </div>
                       {c.unread > 0 && (

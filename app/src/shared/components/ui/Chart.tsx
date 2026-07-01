@@ -56,12 +56,12 @@ export function BarChart({
 
   return (
     <div>
-      <div className="flex items-end gap-1" style={{ height }}>
+      <div className="flex items-end gap-[3px]" style={{ height }}>
         {data.map((d, i) => {
           const total = totals[i];
           return (
             <div key={`${d.label}-${i}`} className="flex-1 flex flex-col justify-end h-full min-w-0" title={`${d.label}: ${formatValue(total)}`}>
-              <div className="flex flex-col-reverse w-full rounded-t-[4px] overflow-hidden" style={{ height: `${(total / max) * 100}%`, minHeight: total > 0 ? 2 : 0 }}>
+              <div className="flex flex-col-reverse w-full rounded-t-[6px] overflow-hidden" style={{ height: `${(total / max) * 100}%`, minHeight: total > 0 ? 2 : 0 }}>
                 {d.segments.map((s, j) => (
                   s.value > 0 ? (
                     <div key={j} style={{ height: `${(s.value / total) * 100}%`, background: s.color }} />
@@ -72,7 +72,7 @@ export function BarChart({
           );
         })}
       </div>
-      <div className="flex gap-1 mt-1.5">
+      <div className="flex gap-[3px] mt-2">
         {data.map((d, i) => (
           <div key={`l-${i}`} className="flex-1 text-center text-[10px] text-[var(--muted)] truncate">
             {i % labelStep === 0 ? d.label : ''}

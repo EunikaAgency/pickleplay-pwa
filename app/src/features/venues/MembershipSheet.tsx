@@ -89,7 +89,11 @@ export function MembershipSheet({
     return MEMBERSHIP_PLANS;
   }, [apiPlans, currency]);
 
-  const planByIdMemo = (id: string | null | undefined) => plans.find((p) => p.id === id);
+  // Match by plan ID or plan name — viewerMembershipTier stores the name
+  // (e.g. "Monthly") after subscribeToPlan, while the sheet's plan.id is
+  // the ObjectId.  Also match the legacy plan ids ("monthly") from joinVenueMembership.
+  const planByRef = (ref: string | null | undefined) =>
+    plans.find((p) => p.id === ref || p.name === ref);
 
   // Default the selection to the current plan (for switching) or the first plan.
   const initial = currentPlanId ?? plans[0]?.id ?? '';
@@ -107,8 +111,8 @@ export function MembershipSheet({
     setWasOpen(false);
   }
 
-  const selectedPlan = planByIdMemo(selected) ?? plans[0];
-  const isCurrent = currentPlanId === selected;
+  const selectedPlan = planByRef(selected) ?? plans[0];
+  const isCurrent = planByRef(currentPlanId)?.id === selected;
   const price = (n: number) => `${currency}${n.toLocaleString()}`;
 
   const handleJoin = () => {
@@ -117,7 +121,7 @@ export function MembershipSheet({
     setPhase('success');
   };
 
-  const successPlan = planByIdMemo(currentPlanId) ?? selectedPlan ?? plans[0];
+  const successPlan = planByRef(currentPlanId) ?? selectedPlan ?? plans[0];
 
   return (
     <BottomSheet
@@ -189,13 +193,13 @@ export function MembershipSheet({
           {currentPlanId && !isRenewal && (
             <div className="flex items-center gap-2.5 bg-[var(--lime-soft)] text-[var(--lime-ink)] rounded-[14px] px-4 py-3 text-[13px] font-bold">
               <Icon name="verified" size={16} />
-              You're on the {planByIdMemo(currentPlanId)?.name} plan here — pick another to switch.
+              You're on the {planByRef(currentPlanId)?.name} plan here — pick another to switch.
             </div>
           )}
           {currentPlanId && isRenewal && (
             <div className="flex items-center gap-2.5 bg-[var(--coral-soft)] text-[var(--coral)] rounded-[14px] px-4 py-3 text-[13px] font-bold">
               <Icon name="clock" size={16} />
-              Your {planByIdMemo(currentPlanId)?.name} plan has expired — pick a plan to renew.
+              Your {planByRef(currentPlanId)?.name} plan has expired — pick a plan to renew.
             </div>
           )}
 
@@ -224,7 +228,7 @@ export function MembershipSheet({
                           <Icon name="bolt" size={10} /> Popular
                         </span>
                       )}
-                      {currentPlanId === plan.id && (
+                      {planByRef(currentPlanId)?.id === plan.id && (
                         <span className="rounded-full bg-[var(--ink)] text-white px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide">
                           Current
                         </span>
@@ -268,7 +272,7 @@ export function MembershipSheet({
             <button
               type="button"
               onClick={onCancel}
-              className="text-[13px] font-bold text-[var(--coral)] py-2 mx-auto"
+              className="text-[13px] font-bold text-[var(--coral)] bg-[var(--coral-soft)] rounded-full px-5 py-2.5 mx-auto"
             >
               Cancel my membership
             </button>

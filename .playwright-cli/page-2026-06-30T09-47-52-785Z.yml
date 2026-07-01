@@ -1,0 +1,82 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - button "Back" [ref=e7] [cursor=pointer]:
+        - img [ref=e9]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Owner console
+        - generic [ref=e13]: Front desk
+  - dialog [ref=e40]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading [level=2] [ref=e44]: Create your free account
+        - generic [ref=e45]: You'll need an account to continue. Browsing stays free — sign up takes a few seconds.
+      - button [ref=e46] [cursor=pointer]:
+        - img [ref=e48]
+    - generic [ref=e51]:
+      - list [ref=e52]:
+        - listitem [ref=e53]:
+          - img [ref=e56]
+          - text: Join games and lock in your spot
+        - listitem [ref=e58]:
+          - img [ref=e61]
+          - text: Create matches and start clubs
+        - listitem [ref=e63]:
+          - img [ref=e66]
+          - text: Track your matches and streaks
+      - button [ref=e68] [cursor=pointer]: Create free account
+      - button [ref=e69] [cursor=pointer]: I already have an account
+  - dialog [ref=e70]:
+    - generic [ref=e72]:
+      - generic [ref=e73]:
+        - heading [level=2] [ref=e74]: Game on!
+        - generic [ref=e75]: Jump into an open game, or host your own on a court you’ve booked.
+      - button [ref=e76] [cursor=pointer]:
+        - img [ref=e78]
+    - generic [ref=e82]:
+      - button [ref=e83] [cursor=pointer]:
+        - img [ref=e86]
+        - generic [ref=e91]:
+          - generic [ref=e92]: Join a game
+          - generic [ref=e93]: Browse open games near you and grab a spot.
+        - img [ref=e95]
+      - button [ref=e97] [cursor=pointer]:
+        - img [ref=e100]
+        - generic [ref=e102]:
+          - generic [ref=e103]: Host a lobby
+          - generic [ref=e104]: Open a game on a court you’ve booked.
+        - img [ref=e106]
+  - img [ref=e110]
+  - img [ref=e113]
+  - img [ref=e116]
+  - img [ref=e119]
+  - generic [ref=e122]: 12 Games Today
+  - generic [ref=e124]: 2 Spots Left
+  - generic [ref=e126]: 4 Courts Nearby
+  - generic [ref=e128]:
+    - generic [ref=e129]:
+      - img [ref=e130]
+      - img [ref=e138]
+    - generic [ref=e170]:
+      - img [ref=e171]
+      - heading "P i c k l e B a l l e r s" [level=1] [ref=e178]:
+        - generic [ref=e179]:
+          - generic [ref=e180]: P
+          - generic [ref=e181]: i
+          - generic [ref=e182]: c
+          - generic [ref=e183]: k
+          - generic [ref=e184]: l
+          - generic [ref=e185]: e
+        - generic [ref=e186]:
+          - generic [ref=e187]: B
+          - generic [ref=e188]: a
+          - generic [ref=e189]: l
+          - generic [ref=e190]: l
+          - generic [ref=e191]: e
+          - generic [ref=e192]: r
+          - generic [ref=e193]: s
+  - generic [ref=e194]:
+    - paragraph [ref=e195]: Find games. Meet players. Play more.
+    - button "Let's Play" [ref=e196] [cursor=pointer]
+  - generic:
+    - heading "You're in 🎾" [level=2]

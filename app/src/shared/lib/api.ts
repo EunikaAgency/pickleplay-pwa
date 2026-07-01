@@ -633,7 +633,10 @@ export async function listAllVenues(params: ListVenuesParams = {}): Promise<ApiV
 
 /** Fetch a single venue by `_id` or `slug`, with hours/courts/gallery/image. */
 export async function getVenue(idOrSlug: string): Promise<ApiVenueDetail> {
-  return request<ApiVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`);
+  // `auth: true` so the server can identify the viewer and populate
+  // viewerIsMember / viewerMembershipTier — without it the "Join Membership"
+  // button never hides for logged-in members because the server sees a guest.
+  return request<ApiVenueDetail>(`${VENUES_PREFIX}/${encodeURIComponent(idOrSlug)}`, { auth: true });
 }
 
 export interface VenueAvailability {
@@ -1561,6 +1564,7 @@ export interface ApiPlayer {
   avatarUrl?: string | null;
   skillLevel?: number | null;
   skillLevelLabel?: string | null;
+  lastActiveAt?: string | null;
 }
 
 export interface ListGamesParams {
@@ -1740,6 +1744,7 @@ export interface OwnerPlayerSuggestion {
   memberVenueId: string | null;
   /** True when this player also has an active membership at one of the venues. */
   isMember: boolean;
+  lastActiveAt?: string | null;
 }
 
 /**
@@ -1970,6 +1975,8 @@ export interface ApiChatParticipant {
   id: string;
   displayName: string;
   avatarUrl?: string | null;
+  /** ISO timestamp of the user's last activity (used for presence dot). */
+  lastActiveAt?: string | null;
 }
 
 export interface ApiConversationSummary {
@@ -1987,9 +1994,14 @@ export interface ApiConversationSummary {
 export interface ApiChatMessage {
   id: string;
   senderId: string;
+  senderName?: string;
   body: string;
   createdAt?: string;
   mine: boolean;
+  replyToMessageId?: string | null;
+  replyTo?: ApiChatMessage | null;
+  readByOther?: boolean;
+  readAtByOther?: string | null;
 }
 
 export interface ApiConversation {
@@ -2038,9 +2050,19 @@ export async function getConversation(id: string): Promise<ApiConversation> {
   return request<ApiConversation>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}`, { auth: true });
 }
 
-/** Send a message in a thread — notifies the recipient. */
-export async function sendMessage(id: string, body: string): Promise<ApiChatMessage> {
-  return request<ApiChatMessage>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/messages`, { method: 'POST', body: { body }, auth: true });
+/** Send a message in a thread — notifies the recipient. Pass replyToMessageId to thread a reply. */
+export async function sendMessage(id: string, body: string, replyToMessageId?: string | null): Promise<ApiChatMessage> {
+  return request<ApiChatMessage>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/messages`, { method: 'POST', body: { body, replyToMessageId: replyToMessageId ?? null }, auth: true });
+}
+
+/** Mark an open thread read without reloading the whole conversation. */
+export async function markConversationRead(id: string): Promise<{ readAt?: string }> {
+  return request<{ readAt?: string }>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/read`, { method: 'POST', auth: true });
+}
+
+/** Broadcast a typing indicator to the other participant (debounced by the caller). */
+export async function sendTyping(id: string): Promise<void> {
+  await request(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/typing`, { method: 'POST', auth: true });
 }
 
 /** Total unread messages across the user's threads. */

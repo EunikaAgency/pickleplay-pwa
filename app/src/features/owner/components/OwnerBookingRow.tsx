@@ -72,13 +72,13 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
   const openable = !!onOpen;
   return (
     <div
-      className={`rounded-xl border-[0.5px] border-[var(--hairline)] p-3 ${openable ? 'cursor-pointer active:bg-[var(--surface-2)] transition-colors' : ''}`}
+      className={`rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ${openable ? 'cursor-pointer active:bg-[var(--surface-2)] transition-colors' : ''}`}
       onClick={openable ? () => onOpen!(booking) : undefined}
       onKeyDown={openable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen!(booking); } } : undefined}
       role={openable ? 'button' : undefined}
       tabIndex={openable ? 0 : undefined}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div className="flex items-start gap-2.5 min-w-0">
           <Avatar src={isManual || isBlocked ? undefined : booking.userAvatarUrl} name={personName} size={38} className="shrink-0" />
           <div className="min-w-0">
@@ -103,19 +103,18 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
             </div>
           </div>
         </div>
-        <div className="text-right shrink-0">
+        <div className="flex sm:flex-col sm:items-end justify-between items-center gap-2 sm:gap-1 shrink-0">
           <div className="font-semibold text-[15px] text-[var(--ink)] tabular-nums">{isBlocked ? '—' : money(booking.amount)}</div>
-          <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.className}`}>{chip.label}</span>
+          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.className}`}>{chip.label}</span>
         </div>
       </div>
 
       {canManage && st !== 'cancelled' && (
-        <div className="flex flex-wrap items-center gap-2 mt-3">
+        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
           {st === 'pending_approval' && <ActionButton label="Approve" tone="primary" busy={busy} onClick={() => act('awaiting_payment')} />}
           {!isManual && !isBlocked && booking.userId && (
             <ActionButton label="Message" tone="lime" busy={messaging} onClick={messagePlayer} />
           )}
-          <div className="flex-1" />
           <ActionButton label={st === 'pending_approval' ? 'Decline' : 'Cancel'} tone="ghost" busy={busy} onClick={() => act('cancelled')} />
         </div>
       )}

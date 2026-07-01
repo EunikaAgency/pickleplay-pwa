@@ -8,6 +8,7 @@ import { useAuthStore } from '../../shared/lib/authStore';
 import { useNotificationStore } from '../../shared/lib/notificationStore';
 import { firstNameOf, userHasPermission } from '../../shared/lib/permissions';
 import { updateBookingStatus } from '../../shared/lib/api';
+import { OwnerBookingDetailSheet } from './OwnerBookingDetailSheet';
 import { money, prettyDate, to12h } from '../bookings/bookingDisplay';
 import { pctChange } from './utils/ownerMetrics';
 import { getInitials } from '../../shared/lib/initials';
@@ -57,9 +58,11 @@ const QA_ICONS: Record<string, ReactNode> = { storefront: <Storefront />, calend
 const QA_TONES = ['ohome-qa-lime', 'ohome-qa-blue', 'ohome-qa-neutral', 'ohome-qa-neutral'];
 
 // Inline pending-booking row with Confirm / Decline (owner home only).
-function PendingRow({ row, onDone, notify }: { row: OwnerBookingRow; onDone: (id: string) => void; notify: () => void }) {
+// Tapping the card body opens the full detail sheet.
+function PendingRow({ row, onDone, notify, onOpen }: { row: OwnerBookingRow; onDone: (id: string) => void; notify: () => void; onOpen: (b: OwnerBookingRow) => void }) {
   const [busy, setBusy] = useState(false);
-  const act = async (status: 'confirmed' | 'cancelled') => {
+  const act = async (e: React.MouseEvent, status: 'confirmed' | 'cancelled') => {
+    e.stopPropagation(); // don't open the detail sheet on button taps
     setBusy(true);
     try {
       await updateBookingStatus(row.venueId || '', row.id, { status, cancellationReason: status === 'cancelled' ? 'Declined by venue' : undefined });
@@ -70,7 +73,7 @@ function PendingRow({ row, onDone, notify }: { row: OwnerBookingRow; onDone: (id
     }
   };
   return (
-    <div className="ohome-row">
+    <div className="ohome-row ohome-row-tappable" onClick={() => onOpen(row)}>
       <div className="ohome-row-top">
         <div className="min-w-0">
           <div className="ohome-row-name truncate">{row.userName || 'Player'}</div>
@@ -79,8 +82,8 @@ function PendingRow({ row, onDone, notify }: { row: OwnerBookingRow; onDone: (id
         <div className="ohome-row-amount tabular-nums">{money(row.amount)}</div>
       </div>
       <div className="ohome-row-actions">
-        <button type="button" disabled={busy} onClick={() => act('confirmed')} className="ohome-btn-confirm">Confirm</button>
-        <button type="button" disabled={busy} onClick={() => act('cancelled')} className="ohome-btn-decline">Decline</button>
+        <button type="button" disabled={busy} onClick={(e) => act(e, 'confirmed')} className="ohome-btn-confirm">Confirm</button>
+        <button type="button" disabled={busy} onClick={(e) => act(e, 'cancelled')} className="ohome-btn-decline">Decline</button>
       </div>
     </div>
   );
@@ -138,6 +141,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
     monthBookings, structural, statsReady, glanceFor, pending, upcoming, removeBooking,
   } = useOwnerDashboard({ withBookings: canBookings });
   const [toast, setToast] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<OwnerBookingRow | null>(null);
 
   const notify = () => { setToast(true); setTimeout(() => setToast(false), 1800); };
   const mom = pctChange(combined.month, combined.prevMonth);
@@ -147,8 +151,8 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
     { icon: 'storefront', label: 'My venues', onPress: () => onNavigate('owner-venues') },
     ...(canBookings ? [{ icon: 'frontdesk', label: 'Front desk', onPress: () => onNavigate('owner-front-desk', {}) }] : []),
     ...(canBookings ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
-    { icon: 'settlements', label: 'Settlements', onPress: () => onNavigate('owner-settlements') },
-    ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
+    // { icon: 'settlements', label: 'Settlements', onPress: () => onNavigate('owner-settlements') },
+    // ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];
 
   const topnav = (
@@ -312,7 +316,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {pending.slice(0, 5).map((b) => (
-                  <PendingRow key={b.id} row={b} onDone={removeBooking} notify={notify} />
+                  <PendingRow key={b.id} row={b} onDone={removeBooking} notify={notify} onOpen={setSelectedBooking} />
                 ))}
               </div>
             </section>
@@ -360,6 +364,20 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
       )}
 
       <Toast message="Booking updated" show={toast} />
+      <OwnerBookingDetailSheet
+        booking={selectedBooking}
+        canManage
+        onClose={() => setSelectedBooking(null)}
+        onChanged={(updated) => {
+          if (updated.status === 'cancelled') {
+            removeBooking(updated.id);
+          } else {
+            // Replace the booking in local state so the row reflects the new status
+            setSelectedBooking(updated);
+          }
+        }}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

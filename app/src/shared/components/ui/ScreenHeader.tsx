@@ -21,7 +21,7 @@ export function ScreenHeader({
   className = '',
 }: ScreenHeaderProps) {
   return (
-    <div className={`px-5 pt-1 pb-4 flex items-center gap-3.5 ${className}`}>
+    <div className={`px-5 pt-3 pb-4 flex items-center gap-3.5 ${className}`}>
       <button
         type="button"
         onClick={onBack}

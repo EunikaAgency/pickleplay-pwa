@@ -3,6 +3,7 @@
 
 import type { MiddlewareHandler } from 'hono';
 import { verifyToken, type TokenPayload } from '../lib/jwt.js';
+import { User } from '../../features/auth/auth.model.js';
 
 // Extend Hono's context variables
 declare module 'hono' {
@@ -49,6 +50,11 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   if (!user) return unauthorized(c, 'Invalid or expired token');
 
   c.set('user', user);
+
+  // Fire-and-forget: bump lastActiveAt for presence indicators (chat, etc.).
+  // Not awaited — we don't block the response on this write.
+  User.updateOne({ _id: user.sub }, { $set: { lastActiveAt: new Date() } }).catch(() => {});
+
   await next();
 };
 

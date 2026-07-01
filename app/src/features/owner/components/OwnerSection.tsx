@@ -15,7 +15,7 @@ interface OwnerSectionProps {
 export function OwnerSection({ title, icon, description, action, children }: OwnerSectionProps) {
   return (
     <section className="card p-4">
-      <div className="flex items-center gap-2.5 mb-3.5">
+      <div className="lg:flex flex-nowrap items-center gap-2.5 mb-3.5">
         <span className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
           <Icon name={icon} size={16} />
         </span>

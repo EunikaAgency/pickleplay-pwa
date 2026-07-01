@@ -172,11 +172,22 @@ export interface AppUser {
   permissions: Permission[];
 }
 
-/** First name for greetings; falls back to the first word of displayName. */
+/** First name for greetings; falls back to the first word of displayName.
+ *  Guards against corrupted seed data where firstName is set but unrelated to
+ *  displayName (e.g. displayName "Oscar Walker" but firstName "Craig"). */
 export function firstNameOf(user: AppUser | null | undefined): string | null {
   if (!user) return null;
-  const first = user.firstName?.trim() || user.displayName?.trim().split(/\s+/)[0];
-  return first || null;
+  const displayFirst = user.displayName?.trim().split(/\s+/)[0];
+  const first = user.firstName?.trim();
+  // When firstName is set and looks like it genuinely belongs to the displayName
+  // (case-insensitive substring), trust it. Otherwise fall back to the first word
+  // of displayName — this catches seed-data mix-ups where the two fields drifted.
+  if (first && displayFirst && first.length > 0) {
+    const displayLower = user.displayName!.toLowerCase();
+    if (displayLower.includes(first.toLowerCase())) return first;
+    return displayFirst;
+  }
+  return first || displayFirst || null;
 }
 
 export function normalizeRole(role?: string | null): Role {

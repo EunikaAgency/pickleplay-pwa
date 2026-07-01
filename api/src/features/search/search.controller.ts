@@ -65,7 +65,7 @@ async function searchPlayers(q: string, excludeUserId?: string) {
   };
   if (excludeUserId) filter._id = { $ne: excludeUserId };
   const rows = await User.find(filter)
-    .select('displayName avatarUrl skillLevel skillLevelLabel')
+    .select('displayName avatarUrl skillLevel skillLevelLabel lastActiveAt')
     .limit(10)
     .lean();
   return rows.map((r: any) => ({
@@ -74,6 +74,7 @@ async function searchPlayers(q: string, excludeUserId?: string) {
     avatarUrl: r.avatarUrl ?? null,
     skillLevel: r.skillLevel ?? null,
     skillLevelLabel: r.skillLevelLabel ?? null,
+    lastActiveAt: r.lastActiveAt ?? null,
   }));
 }
 

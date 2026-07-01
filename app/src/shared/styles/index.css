@@ -36,7 +36,7 @@
   --ink-2:          #2b3340;
   --muted:          #6b7280;
   --hairline:       rgba(15, 23, 42, 0.08);
-  --field-border:   #cbd2dc; /* clearly-visible input outline (vs the faint hairline) */
+  --field-border:   #cbd2dc; /* card & field border (slate) */
 
   /* Type scale */
   --font-heading: 'Fredoka', system-ui, sans-serif;
@@ -191,7 +191,7 @@
 .hd-2       { font-family: var(--font-heading); font-weight: 600; font-size: 20px; line-height: 1.2;  letter-spacing: -0.01em; color: var(--ink); }
 .hd-3       { font-family: var(--font-heading); font-weight: 600; font-size: 17px; line-height: 1.25; color: var(--ink); }
 .t-body    { font-size: 15px; color: var(--ink-2); }
-.t-sm      { font-size: 13px; color: var(--muted); }
+.t-sm      { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
 .t-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 
 /* ─── App shell ─── */
@@ -571,46 +571,34 @@
 /* ─── Segmented control ─── */
 .seg {
   display: flex;
+  gap: 6px;
   background: var(--surface-2);
-  /* A defined edge so the whole control reads as a tappable segmented tab strip,
-     not just a stray pill floating on the page background. */
   border: 0.5px solid var(--hairline);
   border-radius: 12px;
   padding: 3px;
-  position: relative;
   height: 38px;
 }
 .seg button {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
   border-radius: 9px;
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 13px;
-  /* Inactive segments use --ink-2 (not --muted): legible enough to read as a
-     selectable tab rather than disabled/placeholder text. */
   color: var(--ink-2);
-  /* `position` makes z-index actually apply (static elements ignore it), so the
-     button hit-area/text sits above the absolutely-positioned indicator. */
-  position: relative;
-  z-index: 1;
   cursor: pointer;
-  transition: color .2s;
+  transition: background .2s, color .2s, box-shadow .2s;
 }
 .seg button:hover { color: var(--ink); }
-/* Selected tab = brand blue + heavier weight, so the active segment clearly
-   reads as "on" against the inactive --ink-2 labels. */
-.seg button.active { color: var(--primary); font-weight: 700; }
-.seg .indicator {
-  position: absolute;
-  top: 3px; left: 3px;
-  /* Never intercept taps — otherwise the sliding pill swallows clicks on the
-     active segment, making the control feel unresponsive. */
-  pointer-events: none;
-  height: calc(100% - 6px);
+.seg button.active {
+  color: var(--primary);
+  font-weight: 700;
   background: var(--surface);
-  border-radius: 9px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  transition: transform .25s cubic-bezier(0.4, 0.0, 0.2, 1), width .25s;
 }
 
 /* ─── Tab bar ─── */
@@ -708,7 +696,7 @@
   position: fixed;
   left: 0; right: 0;
   bottom: 0;
-  z-index: 40;
+  z-index: 410;
   padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
   background: var(--bg);
   border-top: 0.5px solid var(--hairline);
@@ -1358,6 +1346,159 @@
 }
 .field .control:focus { border-color: var(--primary); }
 .field textarea.control { min-height: 100px; resize: vertical; }
+
+/* Front-desk booking sheet: this form sits directly in a BottomSheet rather
+   than using `.field`, so it needs its own visible controls and tighter rhythm. */
+.frontdesk-booking-sheet {
+  background: var(--surface);
+  max-width: 520px;
+}
+.frontdesk-booking-sheet .sheet-head {
+  padding: 10px 20px 14px;
+}
+.frontdesk-booking-sheet .sheet-body {
+  padding: 18px 0 14px;
+  background: var(--surface);
+}
+.frontdesk-booking-sheet .shrink-0 {
+  background: var(--surface);
+}
+.frontdesk-booking-form {
+  padding: 0 20px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.frontdesk-field {
+  min-width: 0;
+}
+.frontdesk-field .lbl {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.frontdesk-booking-sheet .control {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid var(--field-border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 13px 14px;
+  font-size: 16px;
+  font-weight: 700;
+  outline: none;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+}
+.frontdesk-booking-sheet .control::placeholder {
+  color: color-mix(in srgb, var(--muted) 72%, transparent);
+  font-weight: 650;
+}
+.frontdesk-booking-sheet .control:focus,
+.frontdesk-booking-sheet .control:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+.frontdesk-date-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+.frontdesk-date-control strong {
+  display: block;
+  font-size: 16px;
+  line-height: 1.15;
+  color: var(--ink);
+}
+.frontdesk-date-control small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.15;
+  color: var(--muted);
+  font-weight: 800;
+}
+.frontdesk-date-control svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+.frontdesk-calendar-wrap {
+  margin-top: 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 18px;
+  background: var(--surface);
+  padding: 10px;
+  box-shadow: var(--shadow-card);
+}
+.frontdesk-repeat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--field-border);
+  cursor: pointer;
+}
+.frontdesk-booking-sheet .time-pick {
+  border: 1px solid var(--field-border);
+  background: var(--surface);
+}
+.frontdesk-booking-sheet .chip {
+  border-color: var(--field-border);
+  background: var(--surface);
+}
+
+.frontdesk-venue-select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 13px 0 14px;
+  border: 1px solid var(--field-border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
+  font-weight: 800;
+}
+.frontdesk-venue-select:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--field-border));
+  background: color-mix(in srgb, var(--primary-tint) 28%, var(--surface));
+}
+.frontdesk-venue-select:focus-visible,
+.frontdesk-venue-select[aria-expanded="true"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+.frontdesk-venue-select > span:first-child::before {
+  content: 'Venue';
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: var(--primary-tint);
+  color: var(--primary);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.frontdesk-venue-select > span:last-child {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+}
+
 /* The court editor has a long list of fields (rate/surface/profile/space/turnover),
    so its inputs use a more compact height than the default .control — vertical
    padding trimmed (font stays 16px to keep iOS from auto-zooming on focus). */
@@ -1400,9 +1541,9 @@
 .notif .ic.blue  { background: var(--primary-soft); color: var(--primary-deep); }
 .notif .ic.coral { background: var(--coral-soft); color: var(--coral); }
 .notif .body { flex: 1; min-width: 0; }
-.notif .body .head { font-size: 14px; line-height: 1.35; color: var(--ink); }
+.notif .body .head { font-family: var(--font-body); font-size: 14px; line-height: 1.45; color: var(--ink); }
 .notif .body .head strong { font-weight: 700; }
-.notif .body .time { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.notif .body .time { font-family: var(--font-body); font-size: 11px; color: var(--muted); margin-top: 4px; }
 .notif.unread .ic::after {
   content: '';
   position: absolute; top: 0; right: 0;

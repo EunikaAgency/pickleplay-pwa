@@ -9,33 +9,60 @@ import { getVenueDemand, type VenueDemandReport } from '../../../shared/lib/api'
 
 interface DemandTabProps {
   venueId: string;
-  onOpenTab: (tab: string) => void;
 }
 
 const DAY_PRESETS = [30, 90, 365] as const;
 
-const SIGNAL_LABELS: Record<string, string> = {
-  search: 'Searches',
-  venue_view: 'Views',
-  booking_attempt: 'Attempts',
-  booking_completed: 'Completed',
-  booking_cancelled: 'Cancelled',
-  empty_slot: 'Empty slots',
-  checkout_started: 'Checkouts',
-  checkout_abandoned: 'Abandoned',
-  booking_link_shared: 'Links shared',
-};
+// ── Signal metadata ───────────────────────────────────────────────
 
-const SIGNAL_ICONS: Record<string, string> = {
-  search: 'search',
-  venue_view: 'visibility',
-  booking_attempt: 'play_arrow',
-  booking_completed: 'check_circle',
-  booking_cancelled: 'cancel',
-  empty_slot: 'block',
-  checkout_started: 'shopping_cart',
-  checkout_abandoned: 'undo',
-  booking_link_shared: 'share',
+interface SignalMeta { label: string; icon: string; description: string }
+
+const SIGNAL_INFO: Record<string, SignalMeta> = {
+  search: {
+    label: 'Searches',
+    icon: 'search',
+    description: 'Players who searched for your venue by name or area',
+  },
+  venue_view: {
+    label: 'Views',
+    icon: 'visibility',
+    description: 'Players who opened your venue page to check pricing, courts, or availability',
+  },
+  booking_attempt: {
+    label: 'Attempts',
+    icon: 'play_arrow',
+    description: 'Players who hit "Book" — they picked a court, date, and time and tried to reserve it',
+  },
+  booking_completed: {
+    label: 'Completed',
+    icon: 'check_circle',
+    description: 'Bookings that were successfully created (paid, pay-at-venue, or awaiting your approval)',
+  },
+  booking_cancelled: {
+    label: 'Cancelled',
+    icon: 'cancel',
+    description: 'Bookings that were cancelled by the player or declined by you',
+  },
+  empty_slot: {
+    label: 'Full slots',
+    icon: 'block',
+    description: 'Times a player wanted to book but the slot was already taken — unmet demand',
+  },
+  checkout_started: {
+    label: 'Checkouts',
+    icon: 'shopping_cart',
+    description: 'Players who reached the payment screen — they saw the price and were about to pay',
+  },
+  checkout_abandoned: {
+    label: 'Abandoned',
+    icon: 'undo',
+    description: 'Players who left the payment screen without completing — maybe the price or timing didn\'t work',
+  },
+  booking_link_shared: {
+    label: 'Links shared',
+    icon: 'share',
+    description: 'Times your booking link was copied or shared — word-of-mouth reach',
+  },
 };
 
 const SIGNAL_ORDER = [
@@ -49,7 +76,7 @@ function pct(n: number | null): string {
   return n != null ? `${n}%` : '—';
 }
 
-export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
+export function DemandTab({ venueId }: DemandTabProps) {
   const [data, setData] = useState<VenueDemandReport | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
   const [days, setDays] = useState<number>(30);
@@ -83,30 +110,131 @@ export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
         ))}
       </div>
 
-      {/* Signal summary grid */}
-      <OwnerSection title="Demand signals" icon="signal_cellular_alt" description={`Last ${days} days`}>
-        <div className="grid grid-cols-3 gap-3">
-          {SIGNAL_ORDER.map((key) => (
+      {/* HIDDEN-DESC: flip false→true to show the intro */}
+      {false && (
+        <p className="text-[13px] text-[var(--ink-2)] leading-relaxed">
+          Every time a player searches for your venue, views your page, starts a
+          booking, reaches checkout, or hits a full slot — we record it here. Think
+          of this as your venue's <strong>demand heartbeat</strong>: it shows how much
+          interest you're getting, where players drop off, and which hours are
+          hottest. Use it to spot underpriced peak times, overpriced dead hours, or
+          capacity you could add.
+        </p>
+      )}
+
+      {/* ── Awareness signals ── */}
+      <OwnerSection
+        title="Discovery"
+        icon="visibility"
+        description="How players find you — the top of your demand funnel."
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {['search', 'venue_view', 'booking_link_shared'].map((key) => (
             <OwnerStat
               key={key}
-              label={SIGNAL_LABELS[key] ?? key}
+              label={SIGNAL_INFO[key].label}
               value={String(totals[key] ?? 0)}
-              icon={SIGNAL_ICONS[key] ?? 'bar_chart'}
+              icon={SIGNAL_INFO[key].icon}
             />
           ))}
         </div>
+        {/* HIDDEN-DESC: flip false→true */}
+        {false && (
+          <p className="mt-2 text-[12px] text-[var(--ink-2)]">
+            <strong>Searches</strong> — players typed your venue name or area into the search bar.
+            <strong> Views</strong> — they opened your page.
+            <strong> Links shared</strong> — your booking link was copied or sent to someone.
+          </p>
+        )}
       </OwnerSection>
 
-      {/* Conversion & cancellation */}
+      {/* ── Booking-intent signals ── */}
+      <OwnerSection
+        title="Booking intent"
+        icon="shopping_cart"
+        description="Players who tried to book — and what happened next."
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {['booking_attempt', 'checkout_started', 'checkout_abandoned', 'booking_completed'].map((key) => (
+            <OwnerStat
+              key={key}
+              label={SIGNAL_INFO[key].label}
+              value={String(totals[key] ?? 0)}
+              icon={SIGNAL_INFO[key].icon}
+            />
+          ))}
+        </div>
+        {/* HIDDEN-DESC: flip false→true */}
+        {false && (
+          <p className="mt-2 text-[12px] text-[var(--ink-2)]">
+            <strong>Attempts</strong> — they picked a court + time and tapped "Book."
+            <strong> Checkouts</strong> — they reached the payment screen (saw the price).
+            <strong> Abandoned</strong> — they left without paying.
+            <strong> Completed</strong> — booking created successfully.
+          </p>
+        )}
+      </OwnerSection>
+
+      {/* ── Friction signals ── */}
+      <OwnerSection
+        title="Friction"
+        icon="warning"
+        description="Signals that something isn't working — cancellations and missed opportunities."
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {['booking_cancelled', 'empty_slot'].map((key) => (
+            <OwnerStat
+              key={key}
+              label={SIGNAL_INFO[key].label}
+              value={String(totals[key] ?? 0)}
+              icon={SIGNAL_INFO[key].icon}
+            />
+          ))}
+        </div>
+        {/* HIDDEN-DESC: flip false→true */}
+        {false && (
+          <p className="mt-2 text-[12px] text-[var(--ink-2)]">
+            <strong>Full slots</strong> — a player wanted a time that was already
+            booked (unmet demand — you might need more courts or higher prices for
+            those peak hours).
+            <strong> Cancelled</strong> — bookings that fell through
+            (player-cancelled or declined).
+          </p>
+        )}
+      </OwnerSection>
+
+      {/* ── Conversion & cancellation ── */}
       <div className="grid grid-cols-2 gap-3">
-        <OwnerStat label="Conversion" value={pct(conversionPct)} tone="lime" icon="trending_up" />
-        <OwnerStat label="Cancellation rate" value={`${cancelRate}%`} tone="coral" icon="cancel" />
+        <div>
+          <OwnerStat label="Conversion rate" value={pct(conversionPct)} tone="lime" icon="trending_up" />
+          {/* HIDDEN-DESC: flip false→true */}
+          {false && (
+            <p className="mt-1 text-[11px] text-[var(--ink-2)] px-1">
+              Of the players who attempted to book, how many completed. Low? Check
+              your pricing or approval flow.
+            </p>
+          )}
+        </div>
+        <div>
+          <OwnerStat label="Cancellation rate" value={`${cancelRate}%`} tone="coral" icon="cancel" />
+          {/* HIDDEN-DESC: flip false→true */}
+          {false && (
+            <p className="mt-1 text-[11px] text-[var(--ink-2)] px-1">
+              Completed bookings that later got cancelled. High? Your pay window or
+              cancellation policy may be too loose.
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Demand-by-hour — responsive bar chart (24 bars, horizontally scrollable). */}
-      <OwnerSection title="Demand by hour" icon="schedule" description="Booking attempts + empty-slot hits per hour">
+      {/* ── Demand by hour ── */}
+      <OwnerSection
+        title="Demand by hour"
+        icon="schedule"
+        description="When players try to book. Each bar = how many booking attempts + full-slot hits happened during that hour. Tall bars = peak demand — raise prices. Short bars = dead hours — discount them or promote those slots."
+      >
         {demandByHour.every((v) => v === 0) ? (
-          <p className="text-[13px] text-[var(--ink-2)] py-4 text-center">No demand data yet</p>
+          <p className="text-[13px] text-[var(--ink-2)] py-4 text-center">No demand data yet — start getting bookings and this chart will fill in.</p>
         ) : (
           <div className="overflow-x-auto -mx-5 px-5">
             <div className="flex gap-[3px] items-end min-w-[672px] h-[72px]">
@@ -135,33 +263,44 @@ export function DemandTab({ venueId, onOpenTab }: DemandTabProps) {
             </div>
           </div>
         )}
+        {/* HIDDEN-DESC: flip false→true */}
+        {false && (
+          <p className="mt-2 text-[12px] text-[var(--ink-2)]">
+            <strong>How to read this:</strong> each bar is an hour of the day
+            (scroll sideways to see all 24). Darker &amp; taller = more demand.
+            Hover any bar for the exact count. Hours with zero demand show as thin
+            grey lines.
+          </p>
+        )}
       </OwnerSection>
 
-      {/* Supply summary */}
-      <OwnerSection title="Supply" icon="paddle" description="Court-hour capacity vs utilisation">
+      {/* ── Supply ── */}
+      <OwnerSection
+        title="Supply & occupancy"
+        icon="paddle"
+        description="How much court time you have vs how much actually got booked. Think of it like a hotel: open = rooms you listed, booked = rooms sold, empty = rooms that sat vacant."
+      >
         <div className="grid grid-cols-2 gap-3">
           <OwnerStat label="Open court‑hours" value={String(supply.openCourtHours)} icon="schedule" />
           <OwnerStat label="Booked court‑hours" value={String(supply.bookedCourtHours)} icon="check_circle" />
           <OwnerStat label="Empty court‑hours" value={String(supply.emptyCourtHours)} icon="block" />
           <OwnerStat label="Occupancy" value={`${supply.occupancyPct}%`} tone={supply.occupancyPct >= 50 ? 'lime' : 'coral'} icon="bar_chart" />
         </div>
-        <p className="mt-2 text-[13px] text-[var(--ink-2)]">
-          {liveBookings} live booking{liveBookings !== 1 ? 's' : ''} · {pct(conversionPct)} conversion · {cancelRate}% cancelled
-        </p>
+        {/* HIDDEN-DESC: flip false→true */}
+        {false && (
+          <p className="mt-2 text-[12px] text-[var(--ink-2)]">
+            <strong>Open court‑hours</strong> — total hours your courts were
+            available (courts × open hours/day × days).
+            <strong> Booked</strong> — hours actually reserved.
+            <strong> Empty</strong> — hours that went unused.
+            <strong> Occupancy</strong> — booked ÷ open. {supply.occupancyPct < 50
+              ? "Below 50% — you're leaving money on the table. Try lowering prices for dead hours or promoting your venue more."
+              : supply.occupancyPct >= 80
+                ? "Above 80% — your courts are in high demand. Consider raising prices or adding capacity."
+                : 'Decent utilisation, but there\'s room to grow.'}
+          </p>
+        )}
       </OwnerSection>
-
-      {/* Quick link to the full leakage funnel */}
-      <button
-        type="button"
-        onClick={() => onOpenTab('leakage')}
-        className="w-full text-left rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] p-4 flex items-center justify-between"
-      >
-        <div>
-          <div className="font-semibold text-[var(--ink)] text-[15px]">Booking funnel</div>
-          <div className="text-[13px] text-[var(--ink-2)]">See where players drop off →</div>
-        </div>
-        <Chip>Leakage</Chip>
-      </button>
 
       {/* Inline pricing suggestions (already built) */}
       <PricingSuggestionsCard venueId={venueId} />

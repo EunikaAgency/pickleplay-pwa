@@ -32,6 +32,8 @@ export interface IUser {
   /** Self-service account preferences (notification toggles + display units). */
   preferences?: IUserPreferences;
   lastLoginAt?: Date;
+  /** Updated on every authenticated request for presence indicators. */
+  lastActiveAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +88,7 @@ const userSchema = new Schema({
   hasOnboarded:    { type: Boolean, default: false },
   preferences:     { type: userPreferencesSchema, default: () => ({}) },
   lastLoginAt:     Date,
+  lastActiveAt:    Date,
 }, { timestamps: true });
 
 userSchema.index({ email: 1 }, { unique: true });

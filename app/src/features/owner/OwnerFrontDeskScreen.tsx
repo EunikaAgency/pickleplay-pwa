@@ -196,6 +196,7 @@ export function OwnerFrontDeskScreen({ venueId, onNavigate, onBack }: OwnerFront
             value={activeVenue?.id || ''}
             onChange={(v) => setActiveKey(v)}
             options={venues.map((v) => ({ value: v.id, label: v.displayName }))}
+            triggerClassName="frontdesk-venue-select"
             aria-label="Choose venue"
           />
         )}
@@ -459,6 +460,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
       onClose={onClose}
       title={isBlock ? 'Block a slot' : 'Add a booking'}
       subtitle={isBlock ? 'Make a court unavailable' : 'Phone / Messenger / IG / walk-in'}
+      sheetClassName="frontdesk-booking-sheet"
       footer={
         <div>
           {error && <div className="text-[12px] text-[var(--coral)] font-semibold mb-2 text-center">{error}</div>}
@@ -487,41 +489,44 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
           </div>
         </div>
       ) : (
-      <div className="px-5 pb-2 space-y-4">
+      <div className="frontdesk-booking-form">
         {courts.length > 0 && (
-          <div>
+          <div className="frontdesk-field">
             <div className="lbl">Court</div>
             <CourtPicker courts={courts} value={courtId} onChange={setCourtId} priceFor={(c) => money(c.hourlyRate != null ? c.hourlyRate : (venue.priceFrom ?? 0), currency) + '/hr'} />
           </div>
         )}
 
-        <div>
+        <div className="frontdesk-field">
           <div className="lbl">Date</div>
-          <button type="button" onClick={() => setShowCal((s) => !s)} className="control flex items-center justify-between text-left">
-            <span className="font-semibold">{prettyDate(date)}</span>
-            <Icon name="calendar" size={16} />
+          <button type="button" onClick={() => setShowCal((s) => !s)} className="control frontdesk-date-control">
+            <span>
+              <strong>{prettyDate(date)}</strong>
+              <small>{date}</small>
+            </span>
+            <Icon name="calendar" size={18} />
           </button>
           {showCal && (
-            <div className="mt-2">
+            <div className="frontdesk-calendar-wrap">
               <CalendarDatePicker value={date} min={todayYMD()} onChange={(d) => { setDate(d); setShowCal(false); }} />
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div className="frontdesk-field">
             <div className="lbl">Start time</div>
             <HourSelect aria-label="Start time" value={startTime} onChange={(v) => onStartChange(snapToHour(v))} />
           </div>
-          <div>
+          <div className="frontdesk-field">
             <div className="lbl">End time</div>
             <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} />
           </div>
         </div>
 
         {/* Recurring — repeat this slot weekly (regulars / leagues). */}
-        <div>
-          <label className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] cursor-pointer">
+        <div className="frontdesk-field">
+          <label className="frontdesk-repeat">
             <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} className="w-4 h-4 accent-[var(--primary)]" />
             <div className="flex-1">
               <div className="text-[14px] font-semibold text-[var(--ink)]">Repeat weekly</div>
@@ -538,21 +543,21 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
         </div>
 
         {isBlock ? (
-          <div>
+          <div className="frontdesk-field">
             <div className="lbl">Reason (optional)</div>
             <input className="control" placeholder="Maintenance, private event…" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
           </div>
         ) : (
           <>
-            <div>
+            <div className="frontdesk-field">
               <div className="lbl">Customer name</div>
               <input className="control" placeholder="Who's booking?" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
             </div>
-            <div>
+            <div className="frontdesk-field">
               <div className="lbl">Phone (optional)</div>
               <input className="control" inputMode="tel" placeholder="0917 …" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} />
             </div>
-            <div>
+            <div className="frontdesk-field">
               <div className="lbl">How did they book?</div>
               <div className="flex gap-1.5 flex-wrap">
                 {SOURCES.map((s) => (
@@ -560,7 +565,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
                 ))}
               </div>
             </div>
-            <div>
+            <div className="frontdesk-field">
               <div className="lbl">Payment</div>
               <div className="flex gap-1.5 flex-wrap">
                 {PAY_METHODS.map((m) => (
@@ -568,7 +573,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
                 ))}
               </div>
             </div>
-            <div>
+            <div className="frontdesk-field">
               <div className="lbl">Amount ({currency})</div>
               <input
                 className="control"

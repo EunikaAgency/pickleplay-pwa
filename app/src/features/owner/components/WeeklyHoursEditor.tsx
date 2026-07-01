@@ -99,11 +99,16 @@ function pricingIssue(row: Row, i: number): { message: string | null; openBad: b
 }
 
 const timeInputClass =
-  'h-9 rounded-lg border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-2.5 text-[15px] text-[var(--ink)] focus:border-[var(--primary)] outline-none';
+  'h-9 rounded-lg border border-slate-300 bg-[var(--surface)] px-2.5 text-[15px] text-[var(--ink)] focus:border-[var(--primary)] outline-none cursor-pointer';
 
 // Same time input, but a red border when its value is out of the allowed range.
 const tInput = (bad: boolean) =>
-  `h-9 rounded-lg border-[0.5px] ${bad ? 'border-[var(--coral)]' : 'border-[var(--hairline)]'} bg-[var(--surface)] px-2.5 text-[15px] text-[var(--ink)] focus:border-[var(--primary)] outline-none`;
+  `h-9 rounded-lg border ${bad ? 'border-[var(--coral)]' : 'border-slate-300'} bg-[var(--surface)] px-2.5 text-[15px] text-[var(--ink)] focus:border-[var(--primary)] outline-none cursor-pointer`;
+
+/** Open the native time picker when any part of the field is clicked. */
+function openPicker(e: React.MouseEvent<HTMLInputElement>) {
+  (e.currentTarget as any).showPicker?.();
+}
 
 export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
   const [rows, setRows] = useState<Record<number, Row>>({});
@@ -228,57 +233,104 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
                 </label>
                 {!row.isClosed && (
                   <div className="flex items-center gap-2">
-                    <input type="time" aria-label={`${label} open time`} value={row.openTime} onChange={(e) => updatePrimaryTime(dow, { openTime: e.target.value })} className={timeInputClass} />
+                    <input type="time" aria-label={`${label} open time`} value={row.openTime} onChange={(e) => updatePrimaryTime(dow, { openTime: e.target.value })} onClick={openPicker} className={timeInputClass} />
                     <span className="text-[var(--muted)]">to</span>
-                    <input type="time" aria-label={`${label} close time`} value={row.closeTime} onChange={(e) => updatePrimaryTime(dow, { closeTime: e.target.value })} className={timeInputClass} />
+                    <input type="time" aria-label={`${label} close time`} value={row.closeTime} onChange={(e) => updatePrimaryTime(dow, { closeTime: e.target.value })} onClick={openPicker} className={timeInputClass} />
                   </div>
                 )}
               </div>
-              {!row.isClosed && (
+              {!row.isClosed && (() => {
+                const hasMultiPricing = row.pricing.length > 1;
+                const p = row.pricing[0];
+                const issue = hasMultiPricing ? pricingIssue(row, 0) : { message: null, openBad: false, closeBad: false };
+
+                return (
                 <div className="card p-2 mt-1.5">
                   <div className="t-eyebrow mb-1.5">Hours pricing</div>
-                  <div className="space-y-1.5">
-                    {row.pricing.map((p, i) => {
-                      // Open can't start before the operating open (first row) or
-                      // before the previous window ends + 1 min; close can't pass the
-                      // operating close. Keeps the priced windows in order, no overlap.
-                      const prevClose = i > 0 ? row.pricing[i - 1].closeTime : '';
-                      const openMin = i === 0 ? row.openTime : (prevClose ? addMinute(prevClose) : row.openTime);
-                      const closeMin = p.openTime || openMin;
-                      const issue = pricingIssue(row, i);
-                      return (
-                        <div key={`${dow}-${i}`}>
-                          {/* One window on a single no-wrap row: the times flex to fill,
-                              the rate + ✕ stay pinned at the end so the ✕ never wraps. */}
-                          <div className="flex items-center gap-2">
-                            <input type="time" aria-label={`${label} pricing ${i + 1} open time`} value={p.openTime} min={openMin || undefined} max={row.closeTime || undefined} onChange={(e) => updatePricing(dow, i, { openTime: clampTime(e.target.value, openMin, row.closeTime) })} className={`${tInput(issue.openBad)} flex-1 min-w-0`} />
-                            <span className="text-[var(--muted)] shrink-0">to</span>
-                            <input type="time" aria-label={`${label} pricing ${i + 1} close time`} value={p.closeTime} min={closeMin || undefined} max={row.closeTime || undefined} onChange={(e) => updatePricing(dow, i, { closeTime: clampTime(e.target.value, closeMin, row.closeTime) })} className={`${tInput(issue.closeBad)} flex-1 min-w-0`} />
-                            <div className="flex items-center gap-1 h-9 rounded-lg border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-2 focus-within:border-[var(--primary)] shrink-0">
-                              <span className="text-[var(--muted)] text-[14px]">₱</span>
-                              <input inputMode="decimal" aria-label={`${label} pricing ${i + 1} rate`} value={p.price} maxLength={7} onChange={(e) => updatePricing(dow, i, { price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Rate" className="w-12 bg-transparent text-[15px] text-[var(--ink)] outline-none" />
-                            </div>
-                            {/* Row 0 is the base window (mirrors the day's hours) — not
-                                removable; a spacer keeps its columns aligned with the rest. */}
-                            {i === 0 ? (
-                              <span className="w-7 shrink-0" aria-hidden="true" />
-                            ) : (
-                              <button type="button" onClick={() => removePricing(dow, i)} aria-label={`Remove ${label} pricing ${i + 1}`} className="w-7 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] shrink-0">
-                                <Icon name="close" size={16} />
-                              </button>
-                            )}
-                          </div>
-                          {issue.message && <div className="t-xs text-[var(--coral)] font-bold mt-1">{issue.message}</div>}
-                        </div>
-                      );
-                    })}
+
+                  {/* Default: single full-day row — times read-only, rate editable.
+                      When multi-pricing is active, the first row becomes editable too. */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      aria-label={`${label} pricing open time`}
+                      value={p?.openTime ?? ''}
+                      disabled={!hasMultiPricing}
+                      min={hasMultiPricing ? row.openTime || undefined : undefined}
+                      max={hasMultiPricing ? row.closeTime || undefined : undefined}
+                      onChange={hasMultiPricing ? (e) => updatePricing(dow, 0, { openTime: clampTime(e.target.value, row.openTime, row.closeTime) }) : undefined}
+                      onClick={hasMultiPricing ? openPicker : undefined}
+                      className={`${tInput(issue.openBad)} flex-1 min-w-0 disabled:opacity-60 disabled:cursor-default`}
+                    />
+                    <span className="text-[var(--muted)] shrink-0">to</span>
+                    <input
+                      type="time"
+                      aria-label={`${label} pricing close time`}
+                      value={p?.closeTime ?? ''}
+                      disabled={!hasMultiPricing}
+                      min={hasMultiPricing ? (p?.openTime || row.openTime || undefined) : undefined}
+                      max={hasMultiPricing ? row.closeTime || undefined : undefined}
+                      onChange={hasMultiPricing ? (e) => updatePricing(dow, 0, { closeTime: clampTime(e.target.value, p?.openTime || row.openTime, row.closeTime) }) : undefined}
+                      onClick={hasMultiPricing ? openPicker : undefined}
+                      className={`${tInput(issue.closeBad)} flex-1 min-w-0 disabled:opacity-60 disabled:cursor-default`}
+                    />
+                    <div className="flex items-center gap-1 h-9 rounded-lg border border-slate-300 bg-[var(--surface)] px-2 focus-within:border-[var(--primary)] flex-1 min-w-0">
+                      <span className="text-[var(--muted)] text-[14px]">₱</span>
+                      <input inputMode="decimal" aria-label={`${label} pricing rate`} value={p?.price ?? ''} maxLength={7} onChange={(e) => updatePricing(dow, 0, { price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Rate" className="flex-1 min-w-0 bg-transparent text-[15px] text-[var(--ink)] outline-none" />
+                    </div>
+                    {hasMultiPricing ? (
+                      <span className="w-7 shrink-0" aria-hidden="true" />
+                    ) : (
+                      <span className="w-7 shrink-0" aria-hidden="true" />
+                    )}
                   </div>
-                  {/* Add a new priced window — anchored at the bottom of the card. */}
-                  <button type="button" onClick={() => addPricing(dow)} className="mt-1.5 w-full h-9 rounded-lg bg-[var(--surface-2)] text-[var(--primary)] font-bold text-[13px] inline-flex items-center justify-center gap-1">
-                    <Icon name="plus" size={14} /> Add hour pricing
-                  </button>
+
+                  {/* Additional pricing rows (only when multi-pricing mode is active). */}
+                  {hasMultiPricing && row.pricing.slice(1).map((p2, idx) => {
+                    const i = idx + 1;
+                    const prevClose = row.pricing[i - 1].closeTime;
+                    const openMin = prevClose ? addMinute(prevClose) : row.openTime;
+                    const closeMin = p2.openTime || openMin;
+                    const pi = pricingIssue(row, i);
+                    return (
+                      <div key={`${dow}-${i}`} className="mt-1.5">
+                        <div className="flex items-center gap-2">
+                          <input type="time" aria-label={`${label} pricing ${i + 1} open time`} value={p2.openTime} min={openMin || undefined} max={row.closeTime || undefined} onChange={(e) => updatePricing(dow, i, { openTime: clampTime(e.target.value, openMin, row.closeTime) })} onClick={openPicker} className={`${tInput(pi.openBad)} flex-1 min-w-0`} />
+                          <span className="text-[var(--muted)] shrink-0">to</span>
+                          <input type="time" aria-label={`${label} pricing ${i + 1} close time`} value={p2.closeTime} min={closeMin || undefined} max={row.closeTime || undefined} onChange={(e) => updatePricing(dow, i, { closeTime: clampTime(e.target.value, closeMin, row.closeTime) })} onClick={openPicker} className={`${tInput(pi.closeBad)} flex-1 min-w-0`} />
+                          <div className="flex items-center gap-1 h-9 rounded-lg border border-slate-300 bg-[var(--surface)] px-2 focus-within:border-[var(--primary)] flex-1 min-w-0">
+                            <span className="text-[var(--muted)] text-[14px]">₱</span>
+                            <input inputMode="decimal" aria-label={`${label} pricing ${i + 1} rate`} value={p2.price} maxLength={7} onChange={(e) => updatePricing(dow, i, { price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="Rate" className="flex-1 min-w-0 bg-transparent text-[15px] text-[var(--ink)] outline-none" />
+                          </div>
+                          <button type="button" onClick={() => removePricing(dow, i)} aria-label={`Remove ${label} pricing ${i + 1}`} className="w-7 h-9 rounded-lg flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] shrink-0">
+                            <Icon name="close" size={16} />
+                          </button>
+                        </div>
+                        {pi.message && <div className="t-xs text-[var(--coral)] font-bold mt-1">{pi.message}</div>}
+                      </div>
+                    );
+                  })}
+
+                  {/* Helper / CTA */}
+                  {hasMultiPricing ? (
+                    <div className="flex justify-end">
+                      <button type="button" onClick={() => addPricing(dow)} className="mt-1.5 h-9 px-4 rounded-full bg-white border border-slate-300 text-[var(--primary)] font-bold text-[13px] inline-flex items-center justify-center gap-1 shadow-sm">
+                        <Icon name="plus" size={14} /> Add hour pricing
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mt-1.5 gap-2">
+                      <p className="text-[11px] text-[var(--muted)] leading-relaxed">
+                        Need different rates for different times? Click <span className="font-semibold">'Add hour pricing'</span> to split the operating hours.
+                      </p>
+                      <button type="button" onClick={() => addPricing(dow)} className="h-9 px-4 rounded-full bg-white border border-slate-300 text-[var(--primary)] font-bold text-[13px] inline-flex items-center justify-center gap-1 shadow-sm shrink-0">
+                        <Icon name="plus" size={14} /> Add hour pricing
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           );
         })}
