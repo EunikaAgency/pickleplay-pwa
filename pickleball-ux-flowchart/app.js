@@ -5,8 +5,8 @@
   const VIEWPORT_STORAGE_KEY = 'pickleball-ux-flowchart-viewport';
   const NODE_W = 230;
   const NODE_MIN_H = 62;
-  const CANVAS_W_MIN = 2900;
-  const CANVAS_H = 2600;
+  const CANVAS_W_MIN = 3100;
+  const CANVAS_H = 2800;
   const VIEWPORT_PADDING = 32;
   const ZOOM_MIN = 0.25;
   const ZOOM_MAX = 3.0;
@@ -47,94 +47,102 @@
     { id:'forgot-pw',     type:'screen',  label:'Forgot Password',         subtitle:'Enter email → reset link',                                 x:720,  y:250 },
     { id:'reset-pw',      type:'screen',  label:'Reset Password',          subtitle:'Deep-link from email;\ntoken param in URL',                x:720,  y:360 },
     { id:'onboarding',    type:'screen',  label:'Onboarding',              subtitle:'First-time only: pick\nskill tier + preferences',          x:940,  y:370 },
-    { id:'guest-browse',  type:'decision',label:'Guest Browsing',          subtitle:'Browse all tabs freely;\ncommit actions gated by\nauth prompt sheet', x:1160, y:180 },
-    { id:'role-split',    type:'decision',label:'Role Split',              subtitle:'Determines which Home +\ntab screens render per user',     x:940,  y:500 },
+    { id:'guest-browse',  type:'decision',label:'Guest Browsing',          subtitle:'Browse all tabs freely;\nauth-prompt gates commit actions', x:1160, y:180 },
+    { id:'role-split',    type:'decision',label:'Role Gate',               subtitle:'isOwner → Owner Dashboard\nelse → Player Home v2.1',       x:940,  y:500 },
 
     // ── PLAYER v2.1 HOME ───────────────────────────────────────────────────
-    { id:'player-home',   type:'screen',  label:'Player Home v2.1',        subtitle:'Commitment hero, open games,\ncourts to book, check-in',    x:300, y:620 },
-    { id:'game-on',       type:'decision',label:'"Game On" Chooser',       subtitle:'BottomSheet:\nJoin a game or Host a lobby',                x:300, y:750 },
-    { id:'search',        type:'screen',  label:'Global Search',           subtitle:'Courts, games, clubs,\nplayers; debounced + history',      x:40,  y:880 },
+    { id:'player-home',   type:'screen',  label:'Player Home v2.1',        subtitle:'Commitment hero (game/booking),\nopen games, courts to book', x:200, y:620 },
+    { id:'game-on',       type:'decision',label:'"Game On" Chooser',       subtitle:'BottomSheet:\nJoin a game → Browse\nHost a lobby → pick booking', x:200, y:750 },
+    { id:'search',        type:'screen',  label:'Global Search',           subtitle:'Courts, games, clubs, players;\ndebounced + recent history',   x:40,  y:880 },
 
     // ── PLAYER — NEARBY / VENUES ───────────────────────────────────────────
-    { id:'nearby',        type:'screen',  label:'Nearby / Map Tab',        subtitle:'Venue list + Leaflet map;\nfilters, Near Me, distance',     x:300, y:750 },
-    { id:'court-details', type:'screen',  label:'Court Details',           subtitle:'Photos, hours, pricing,\n"Games here", Book CTA',          x:300, y:880 },
-    { id:'book-court',    type:'action',  label:'Book a Court',            subtitle:'Pick venue → court →\ndate/time → review → checkout',      x:160, y:1010 },
-    { id:'checkout',      type:'screen',  label:'Payment / Checkout',      subtitle:'Card form, test-mode banner,\n7% service fee',              x:160, y:1140 },
-    { id:'bk-confirmed',  type:'success', label:'Booking Confirmed',       subtitle:'Or "Awaiting Approval" if\nrequireBookingApproval set',     x:160, y:1270 },
-    { id:'my-bookings',   type:'screen',  label:'My Bookings',             subtitle:'List + cancel; pay pending\napprovals from here',           x:300, y:1140 },
-    { id:'booking-refund',type:'screen',  label:'Refund / Cancel Booking', subtitle:'After host deletes lobby\nbut keeps court reserved',       x:440, y:1140 },
-    { id:'open-play-book',type:'action',  label:'Book Open Play',          subtitle:'Courtless drop-in session;\ndate+time+party → checkout',   x:440, y:1010 },
-    { id:'membership',    type:'action',  label:'Join Membership',         subtitle:'Subscription plan picker;\njoin / switch / renew',          x:440, y:880 },
+    { id:'nearby',        type:'screen',  label:'Nearby / Map Tab (v2.1)', subtitle:'Venue list + Leaflet map;\nfilters, Near Me, distance',      x:40,  y:750 },
+    { id:'court-details', type:'screen',  label:'Court Details',           subtitle:'Photos, hours, pricing,\n"Games here", Book CTA',           x:40,  y:880 },
+    { id:'book-court',    type:'action',  label:'Book a Court',            subtitle:'Pick venue → court →\ndate/time → review → checkout',       x:40,  y:1010 },
+    { id:'checkout',      type:'screen',  label:'Payment / Checkout',      subtitle:'Card form; test-mode banner;\n7% service fee',                x:-120, y:1140 },
+    { id:'bk-confirmed',  type:'success', label:'Booking Confirmed',       subtitle:'Or "Awaiting Approval" if\nrequireBookingApproval is on',     x:-120, y:1270 },
+    { id:'my-bookings',   type:'screen',  label:'My Bookings',             subtitle:'List + cancel; pay pending\napprovals from here',             x:200, y:1140 },
+    { id:'booking-refund',type:'screen',  label:'Refund / Cancel Booking', subtitle:'After host deletes lobby\nbut keeps court reserved',          x:360, y:1140 },
+    { id:'open-play-book',type:'action',  label:'Book Open Play (V3)',     subtitle:'Courtless drop-in session;\ndate+time+party → checkout',      x:360, y:1010 },
+    { id:'membership',    type:'action',  label:'Join Membership',         subtitle:'Subscription plan picker\n(via MembershipSheet)',             x:200, y:880 },
 
     // ── PLAYER — GAMES ─────────────────────────────────────────────────────
-    { id:'games-browse',  type:'screen',  label:'Games — Browse',          subtitle:'Published games, date-grouped;\nfilters: when/skill/type',   x:580, y:880 },
-    { id:'game-details',  type:'screen',  label:'Game Details',            subtitle:'Roster, spots, skill, venue;\nJoin / Leave / Share / Chat', x:580, y:1010 },
-    { id:'game-chat',     type:'screen',  label:'Game Chat',               subtitle:'Per-game group chat;\nrealtime via SSE',                    x:440, y:1270 },
-    { id:'invite-players',type:'screen',  label:'Invite Players',          subtitle:'Share deep link or\nsearch + invite to game',               x:720, y:1270 },
-    { id:'create-game-v2',type:'action',  label:'Host a Lobby (v2)',       subtitle:'Locks venue/date/time from\nbooking; set type/skill/spots', x:720, y:1010 },
-    { id:'my-games',      type:'screen',  label:'My Games',                subtitle:'Games you created or joined;\nHosting / Going status',      x:580, y:1270 },
-    { id:'edit-game',     type:'screen',  label:'Manage Game (Edit)',      subtitle:'Edit details, kick players;\nvenue + schedule read-only',   x:720, y:1140 },
+    { id:'games-browse',  type:'screen',  label:'Games — Browse (v2.1)',   subtitle:'Published games, date-grouped;\nfilters: when/skill/type',      x:420, y:750 },
+    { id:'game-details',  type:'screen',  label:'Game Details',            subtitle:'Roster, spots, skill, venue;\nJoin / Leave / Share / Chat',    x:420, y:880 },
+    { id:'game-chat',     type:'screen',  label:'Game Chat',               subtitle:'Per-game group chat;\nrealtime via SSE',                      x:280, y:1270 },
+    { id:'invite-players',type:'screen',  label:'Invite Players',          subtitle:'Share deep link or\nsearch + invite to game',                  x:560, y:1270 },
+    { id:'create-game-v2',type:'action',  label:'Host a Lobby (v2)',       subtitle:'Pick a booking → locks\nvenue/date/time; set type/spots',     x:560, y:1010 },
+    { id:'my-games',      type:'screen',  label:'My Games',                subtitle:'Games created or joined;\nHosting / Going status',             x:420, y:1140 },
+    { id:'edit-game',     type:'screen',  label:'Manage Game (Edit)',      subtitle:'Edit details, kick players;\nvenue + schedule read-only',      x:560, y:1140 },
 
     // ── PLAYER — TOURNAMENTS ───────────────────────────────────────────────
-    { id:'tournaments',   type:'screen',  label:'Tournaments Tab',         subtitle:'Role-aware tabs:\nOpen · Joined/Managing · Results',        x:860, y:750 },
-    { id:'tourn-detail',  type:'screen',  label:'Tournament Detail',       subtitle:'Overview, register/withdraw,\nannouncements, chat entry',    x:860, y:880 },
-    { id:'tourn-chat',    type:'screen',  label:'Tournament Chat',         subtitle:'Participant group chat;\norganizer + registrants',          x:860, y:1010 },
+    { id:'tournaments',   type:'screen',  label:'Tournaments Tab (v2.1)',  subtitle:'Role-aware tabs:\nOpen · Joined/Managing · Results',           x:620, y:750 },
+    { id:'tourn-detail',  type:'screen',  label:'Tournament Detail',       subtitle:'Overview, register/withdraw,\nannouncements, chat entry',       x:620, y:880 },
+    { id:'tourn-chat',    type:'screen',  label:'Tournament Chat',         subtitle:'Participant group chat;\norganizer + registrants',             x:620, y:1010 },
 
     // ── PLAYER — CLUBS ─────────────────────────────────────────────────────
-    { id:'clubs',         type:'screen',  label:'Clubs Tab',               subtitle:'My Clubs + Discover;\nserver-search, paginated',            x:1140, y:750 },
-    { id:'club-details',  type:'screen',  label:'Club Details',            subtitle:'Feed (posts/likes/comments),\nMembers, About; SSE live',    x:1140, y:880 },
-    { id:'club-post',     type:'screen',  label:'Club Post (permalink)',   subtitle:'Single post + all comments\n+ composer',                    x:1000, y:1010 },
-    { id:'club-post-edit',type:'screen',  label:'Edit Club Post',          subtitle:'Author-only dedicated\nedit page',                          x:1000, y:1140 },
-    { id:'club-chat',     type:'screen',  label:'Club Chat',               subtitle:'Member group chat;\nrealtime via SSE',                      x:1280, y:1010 },
-    { id:'create-club',   type:'action',  label:'Create Club',             subtitle:'Name, description, visibility,\ncover photo, member limit', x:1280, y:880 },
-    { id:'edit-club',     type:'screen',  label:'Edit Club',               subtitle:'Host-only: name, description,\nvisibility, cover photo',    x:1280, y:1140 },
+    { id:'clubs',         type:'screen',  label:'Clubs Tab (v2.1)',        subtitle:'My Clubs + Discover;\nserver-search, paginated',              x:820, y:750 },
+    { id:'club-details',  type:'screen',  label:'Club Details',            subtitle:'Feed (posts/likes/comments),\nMembers, About; SSE live',       x:820, y:880 },
+    { id:'club-post',     type:'screen',  label:'Club Post (permalink)',   subtitle:'Single post + all comments\n+ composer',                       x:680, y:1010 },
+    { id:'club-post-edit',type:'screen',  label:'Edit Club Post',          subtitle:'Author-only dedicated\nedit page',                             x:680, y:1140 },
+    { id:'club-chat',     type:'screen',  label:'Club Chat',               subtitle:'Member group chat;\nrealtime via SSE',                         x:960, y:1010 },
+    { id:'create-club',   type:'action',  label:'Create Club (v2.1)',      subtitle:'Name, description, visibility,\ncover photo, member limit',    x:960, y:880 },
+    { id:'edit-club',     type:'screen',  label:'Edit Club',               subtitle:'Host-only: name, description,\nvisibility, cover photo',       x:960, y:1140 },
 
     // ── PLAYER — PROFILE + SOCIAL ──────────────────────────────────────────
-    { id:'profile',       type:'screen',  label:'Profile / You Tab',       subtitle:'Stats, recent games, account\nlinks; owner/org/admin rows', x:1420, y:750 },
-    { id:'edit-profile',  type:'screen',  label:'Edit Profile',            subtitle:'Name, avatar, bio, skill tier;\npersists to PATCH /me',     x:1420, y:880 },
-    { id:'settings',      type:'screen',  label:'Settings',                subtitle:'Notification toggles, units,\nsearch radius, privacy, theme',x:1420,y:1010 },
-    { id:'notifications', type:'screen',  label:'Notifications',           subtitle:'Real inbox; tap → deep-link;\nweb-push opt-in',             x:1420, y:1140 },
-    { id:'messages',      type:'screen',  label:'Messages (DM list)',      subtitle:'1:1 conversation threads;\n"New message" player search',    x:1600, y:880 },
-    { id:'chat',          type:'screen',  label:'Direct Message Chat',     subtitle:'Thread + composer;\nrealtime via SSE',                      x:1600, y:1010 },
-    { id:'payment-hist',  type:'screen',  label:'Payment History',         subtitle:'KPIs, 6-month bar chart,\nreceipts list',                    x:1600, y:1140 },
-    { id:'test-email',    type:'screen',  label:'Test Email (admin tool)', subtitle:'Send sample transactional\nemails for template preview',     x:1600, y:1270 },
+    { id:'profile',       type:'screen',  label:'Profile / You Tab (v2.1)',subtitle:'Stats, recent games, links;\nowner/org/admin rows if role',     x:1040, y:750 },
+    { id:'edit-profile',  type:'screen',  label:'Edit Profile',            subtitle:'Name, avatar, bio, skill tier;\npersists to PATCH /me',        x:1040, y:880 },
+    { id:'settings',      type:'screen',  label:'Settings (v2.1)',         subtitle:'Notification toggles, units,\nradius, privacy, theme',         x:1040, y:1010 },
+    { id:'notifications', type:'screen',  label:'Notifications',           subtitle:'Real inbox; tap → deep-link;\nweb-push opt-in banner',         x:1040, y:1140 },
+    { id:'messages',      type:'screen',  label:'Messages (DM list)',      subtitle:'1:1 conversation threads;\n"New message" player search',       x:1240, y:880 },
+    { id:'chat',          type:'screen',  label:'Direct Message Chat',     subtitle:'Thread + composer;\nrealtime via SSE',                         x:1240, y:1010 },
+    { id:'payment-hist',  type:'screen',  label:'Payment History',         subtitle:'KPIs, 6-month bar chart,\nreceipts list',                       x:1240, y:1140 },
+    { id:'test-email',    type:'screen',  label:'Test Email (admin tool)', subtitle:'Send sample transactional\nemails for template preview',        x:1240, y:1270 },
 
     // ── OWNER DASHBOARD ────────────────────────────────────────────────────
-    { id:'owner-home',    type:'screen',  label:'Owner Dashboard',         subtitle:'Revenue hero, KPIs, cross-venue\npending/upcoming, Front Desk',x:1720,y:620 },
-    { id:'owner-venues',  type:'screen',  label:'Owner — My Venues',       subtitle:'Venue cards + glance stats;\nCreate / Claim buttons',       x:1720, y:750 },
-    { id:'owner-venue',   type:'screen',  label:'Venue Editor',            subtitle:'Tabbed: Overview, Insights,\nDemand, Bookings, Membership,\nListing, Location, Courts,\nClosures, FAQs, Reviews, Photos', x:1720, y:880 },
-    { id:'owner-new-venue',type:'action', label:'Create Venue',            subtitle:'Name + address autocomplete\n+ map pin + contact',           x:1580, y:1010 },
-    { id:'claim-venue',   type:'action',  label:'Claim Venue',             subtitle:'Search unclaimed directory\nlisting → submit proof',         x:1860, y:1010 },
-    { id:'sub-plans',     type:'screen',  label:'Subscription Plans',      subtitle:'CRUD membership tiers;\nversioned: edit → new version',     x:1720, y:1010 },
-    { id:'owner-bookings',type:'screen',  label:'Bookings Inbox',          subtitle:'Upcoming / Ongoing / Past tabs;\nApprove request → await pay',x:2020,y:750 },
-    { id:'owner-frontdesk',type:'screen', label:'Front Desk',              subtitle:'Today\'s schedule, pending\napprovals, +Add / Block slot',  x:2020, y:880 },
-    { id:'owner-insights',type:'screen',  label:'Insights / Analytics',    subtitle:'Combined trends +\nper-venue compare',                       x:2020, y:1010 },
-    { id:'owner-games',   type:'screen',  label:'Owner — Your Courts',     subtitle:'Schedule: bookings + games\nper day; Games at venues',       x:2020, y:1140 },
-    { id:'owner-nearby',  type:'screen',  label:'Owner — Nearby Map',      subtitle:'Your venues as live-status\npins; attention-sorted list',    x:2020, y:1270 },
-    { id:'owner-staff',   type:'screen',  label:'Staff Management',        subtitle:'Create staff logins that\nmanage ALL owner venues',          x:1860, y:1270 },
-    { id:'owner-settlements',type:'screen',label:'Settlements',            subtitle:'Payout reports +\nreconciliation',                           x:1720, y:1270 },
+    { id:'owner-home',    type:'screen',  label:'Owner Dashboard',         subtitle:'Revenue hero, KPIs, cross-venue\npending/upcoming, quick actions',x:1520,y:620 },
+    { id:'owner-profile', type:'screen',  label:'Owner Profile',           subtitle:'Venue owner identity;\nrole badge, venue list, links',        x:1520, y:880 },
+
+    // ── OWNER — VENUES ─────────────────────────────────────────────────────
+    { id:'owner-venues',  type:'screen',  label:'Owner — My Venues',       subtitle:'Venue cards + glance stats;\nCreate / Claim buttons',          x:1720, y:750 },
+    { id:'owner-venue',   type:'screen',  label:'Venue Editor',            subtitle:'Tabs: Overview · Insights ·\nBookings · Membership · Listing ·\nLocation · Courts · FAQs · Photos · Staff', x:1720, y:880 },
+    { id:'owner-new-venue',type:'action', label:'Create Venue',            subtitle:'Name + address autocomplete\n+ map pin + contact',              x:1560, y:1010 },
+    { id:'claim-venue',   type:'action',  label:'Claim Venue',             subtitle:'Search unclaimed directory\nlisting → submit proof',            x:1880, y:1010 },
+    { id:'sub-plans',     type:'screen',  label:'Subscription Plans',      subtitle:'CRUD membership tiers;\nversioned: edit → new version',        x:1720, y:1010 },
+
+    // ── OWNER — OPERATIONS ─────────────────────────────────────────────────
+    { id:'owner-bookings',type:'screen',  label:'Bookings Inbox',          subtitle:'Upcoming/Ongoing/Past tabs;\nApprove→await pay, Decline, Cancel',x:1960,y:750 },
+    { id:'owner-frontdesk',type:'screen', label:'Front Desk',              subtitle:'Today\'s schedule, pending\napprovals, +Add booking, Block slot',x:1960,y:880 },
+    { id:'owner-insights',type:'screen',  label:'Insights / Analytics',    subtitle:'Combined trends +\nper-venue compare',                          x:1960, y:1010 },
+    { id:'owner-games',   type:'screen',  label:'Owner — Your Courts',     subtitle:'Schedule: bookings + games\nper day; Games at venues',          x:1960, y:1140 },
+    { id:'owner-nearby',  type:'screen',  label:'Owner — Nearby Map',      subtitle:'Your venues as live-status\npins; attention-sorted list',       x:1960, y:1270 },
+    { id:'owner-pricing', type:'screen',  label:'Owner Pricing',           subtitle:'Cross-venue pricing overview;\nreached from Sidebar + Nearby',  x:1720, y:1140 },
+
+    // ── OWNER — ADMIN ──────────────────────────────────────────────────────
+    { id:'owner-staff',   type:'screen',  label:'Staff Management',        subtitle:'Create staff logins;\nmanage ALL owner venues',                 x:2160, y:1010 },
+    { id:'owner-settlements',type:'screen',label:'Settlements',            subtitle:'Payout reports +\nreconciliation',                              x:2160, y:1140 },
 
     // ── ORGANIZER ──────────────────────────────────────────────────────────
-    { id:'org-hub',       type:'screen',  label:'Organizer Hub',           subtitle:'Tool cards: Tournaments,\nOpen Play, Rosters, Venue Reqs',  x:2320, y:620 },
-    { id:'org-tournaments',type:'screen', label:'Organizer — Tournaments', subtitle:'List of own tournaments;\ncreate, manage, brackets',        x:2320, y:750 },
-    { id:'org-tourn-new', type:'action',  label:'Create Tournament',       subtitle:'Draft form: name, format,\nvenue request, banner image',    x:2180, y:880 },
-    { id:'org-tourn-detail',type:'screen',label:'Tournament Detail (Org)', subtitle:'Overview, participants,\nannouncements, payments',           x:2320, y:880 },
-    { id:'org-bracket',   type:'screen',  label:'Bracket Manager',         subtitle:'Build/seed → generate →\nround-by-round match cards',       x:2460, y:880 },
-    { id:'org-openplay',  type:'screen',  label:'Open Play Series',        subtitle:'Recurring sessions;\ncreate + per-session roster',          x:2180, y:1010 },
-    { id:'org-session',   type:'screen',  label:'Session Roster',          subtitle:'Manage attendance +\npayments per session',                  x:2180, y:1140 },
-    { id:'org-rosters',   type:'screen',  label:'Player Lists (Rosters)',  subtitle:'Reusable named rosters;\ncreate + member CRUD',              x:2460, y:1010 },
-    { id:'org-roster',    type:'screen',  label:'Roster Detail',           subtitle:'Add/remove members;\nimport from past events',               x:2460, y:1140 },
-    { id:'org-venue-req', type:'screen',  label:'Venue Requests',          subtitle:'Submit + track tournament\nvenue requests',                   x:2320, y:1010 },
+    { id:'org-hub',       type:'screen',  label:'Organizer Hub',           subtitle:'Tool cards: Tournaments,\nOpen Play, Rosters, Venue Reqs',      x:2380, y:620 },
+    { id:'org-tournaments',type:'screen', label:'Organizer — Tournaments', subtitle:'List of own tournaments;\ncreate, manage, brackets',            x:2380, y:750 },
+    { id:'org-tourn-new', type:'action',  label:'Create Tournament',       subtitle:'Draft form: name, format,\nvenue request, banner image',         x:2220, y:880 },
+    { id:'org-tourn-detail',type:'screen',label:'Tournament Detail (Org)', subtitle:'Overview, participants,\nannouncements, payments',               x:2380, y:880 },
+    { id:'org-bracket',   type:'screen',  label:'Bracket Manager',         subtitle:'Build/seed → generate →\nround-by-round match cards',           x:2540, y:880 },
+    { id:'org-openplay',  type:'screen',  label:'Open Play Series',        subtitle:'Recurring sessions;\ncreate + per-session roster',              x:2220, y:1010 },
+    { id:'org-session',   type:'screen',  label:'Session Roster',          subtitle:'Manage attendance +\npayments per session',                     x:2220, y:1140 },
+    { id:'org-rosters',   type:'screen',  label:'Player Lists (Rosters)',  subtitle:'Reusable named rosters;\ncreate + member CRUD',                  x:2540, y:1010 },
+    { id:'org-roster',    type:'screen',  label:'Roster Detail',           subtitle:'Add/remove members;\nimport from past events',                   x:2540, y:1140 },
+    { id:'org-venue-req', type:'screen',  label:'Venue Requests',          subtitle:'Submit + track tournament\nvenue requests',                       x:2380, y:1010 },
 
     // ── ADMIN ──────────────────────────────────────────────────────────────
-    { id:'admin-claims',  type:'screen',  label:'Admin — Venue Claims',    subtitle:'Review ownership claims:\nApprove / Reject / Needs Info',    x:2640, y:750 },
+    { id:'admin-claims',  type:'screen',  label:'Admin — Venue Claims',    subtitle:'Review ownership claims:\nApprove / Reject / Needs Info',        x:2700, y:750 },
   ];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CONNECTIONS — Directed edges (from → to)
   // ═══════════════════════════════════════════════════════════════════════════
   const DEFAULT_CONNECTIONS = [
-    // Auth flow
+    // ── Auth flow ─────────────────────────────────────────────────────────
     { from:'splash',         to:'landing' },
     { from:'landing',        to:'login' },
     { from:'landing',        to:'guest-browse' },
@@ -145,11 +153,11 @@
     { from:'onboarding',     to:'role-split' },
     { from:'guest-browse',   to:'role-split' },
 
-    // Role split → dashboards
-    { from:'role-split',     to:'player-home' },
-    { from:'role-split',     to:'owner-home' },
+    // ── Role split → dashboards ───────────────────────────────────────────
+    { from:'role-split',     to:'player-home' },       // !owner → player home
+    { from:'role-split',     to:'owner-home' },        // owner.access → owner dashboard
 
-    // Player Home → tabs + actions
+    // ── Player Home → tabs + actions ──────────────────────────────────────
     { from:'player-home',    to:'game-on' },
     { from:'player-home',    to:'nearby' },
     { from:'player-home',    to:'games-browse' },
@@ -158,12 +166,12 @@
     { from:'player-home',    to:'profile' },
     { from:'player-home',    to:'search' },
 
-    // Game On chooser
-    { from:'game-on',        to:'games-browse' },     // "Join a game"
-    { from:'game-on',        to:'create-game-v2' },   // "Host a lobby" (has booking)
-    { from:'game-on',        to:'nearby' },           // "Host" (no booking → book first)
+    // ── Game On chooser ───────────────────────────────────────────────────
+    { from:'game-on',        to:'games-browse' },        // "Join a game"
+    { from:'game-on',        to:'create-game-v2' },      // "Host a lobby" (has booking)
+    { from:'game-on',        to:'nearby' },              // "Host" but no booking → book court first
 
-    // Nearby / Venues
+    // ── Nearby / Venues ───────────────────────────────────────────────────
     { from:'nearby',         to:'court-details' },
     { from:'court-details',  to:'book-court' },
     { from:'court-details',  to:'open-play-book' },
@@ -173,24 +181,25 @@
     { from:'checkout',       to:'bk-confirmed' },
     { from:'profile',        to:'my-bookings' },
     { from:'my-bookings',    to:'booking-refund' },
-    { from:'my-bookings',    to:'checkout' },
+    { from:'my-bookings',    to:'checkout' },             // pay an approved booking
 
-    // Games
+    // ── Games ─────────────────────────────────────────────────────────────
     { from:'games-browse',   to:'game-details' },
     { from:'game-details',   to:'game-chat' },
     { from:'game-details',   to:'invite-players' },
-    { from:'create-game-v2', to:'game-details' },
+    { from:'game-details',   to:'edit-game' },            // host can manage
+    { from:'create-game-v2', to:'game-details' },         // lobby created → open it
     { from:'profile',        to:'my-games' },
     { from:'my-games',       to:'game-details' },
     { from:'my-games',       to:'edit-game' },
-    { from:'game-details',   to:'edit-game' },
 
-    // Tournaments
+    // ── Tournaments ───────────────────────────────────────────────────────
     { from:'tournaments',    to:'tourn-detail' },
     { from:'tourn-detail',   to:'tourn-chat' },
+    // Organizers: "Create tournament" shortcut from player tournaments tab
     { from:'tournaments',    to:'org-tourn-new' },
 
-    // Clubs
+    // ── Clubs ─────────────────────────────────────────────────────────────
     { from:'clubs',          to:'club-details' },
     { from:'clubs',          to:'create-club' },
     { from:'create-club',    to:'club-details' },
@@ -199,7 +208,7 @@
     { from:'club-details',   to:'edit-club' },
     { from:'club-post',      to:'club-post-edit' },
 
-    // Profile + Social
+    // ── Profile + Social ──────────────────────────────────────────────────
     { from:'profile',        to:'edit-profile' },
     { from:'profile',        to:'settings' },
     { from:'profile',        to:'notifications' },
@@ -208,28 +217,50 @@
     { from:'messages',       to:'chat' },
     { from:'settings',       to:'test-email' },
 
-    // Owner Home → sub-screens
-    { from:'owner-home',     to:'owner-venues' },
-    { from:'owner-home',     to:'owner-bookings' },
-    { from:'owner-home',     to:'owner-frontdesk' },
-    { from:'owner-home',     to:'owner-insights' },
-    { from:'owner-home',     to:'owner-games' },
-    { from:'owner-home',     to:'owner-nearby' },
+    // ── Player Profile → role-gated consoles ──────────────────────────────
+    { from:'profile',        to:'org-hub' },             // organizer.access
+    { from:'profile',        to:'admin-claims' },        // admin.moderation.manage
+    // Owners get a separate Owner Profile (below); but staff/admins who also
+    // see the player profile can reach these same links from there.
 
-    // Owner Venues
+    // ── Owner Home → quick actions + profile ──────────────────────────────
+    { from:'owner-home',     to:'owner-venues' },        // "My venues"
+    { from:'owner-home',     to:'owner-frontdesk' },     // "Front desk"
+    { from:'owner-home',     to:'owner-bookings' },      // "Bookings"
+    { from:'owner-home',     to:'owner-insights' },      // KPIs → insights
+    { from:'owner-home',     to:'owner-games' },         // "Your Courts" tab
+    { from:'owner-home',     to:'owner-nearby' },        // Nearby tab (owner version)
+    { from:'owner-home',     to:'owner-pricing' },       // Sidebar pricing link
+    { from:'owner-home',     to:'owner-profile' },       // mascot / profile icon
+
+    // ── Owner Profile → sub-screens ───────────────────────────────────────
+    { from:'owner-profile',  to:'owner-venues' },        // "My venues" row
+    { from:'owner-profile',  to:'owner-bookings' },      // "Bookings" row
+    { from:'owner-profile',  to:'owner-insights' },      // "Insights" row
+    { from:'owner-profile',  to:'owner-staff' },         // "Staff" row
+    { from:'owner-profile',  to:'owner-new-venue' },     // "New venue" row
+    { from:'owner-profile',  to:'edit-profile' },        // "Edit Profile" row
+    { from:'owner-profile',  to:'settings' },            // "Settings" row
+    { from:'owner-profile',  to:'notifications' },       // "Notifications" row
+    { from:'owner-profile',  to:'org-hub' },             // "Organizer console" (if organizer.access)
+    { from:'owner-profile',  to:'admin-claims' },        // "Venue claims" (if admin.moderation.manage)
+    { from:'owner-profile',  to:'owner-settlements' },   // "Settlements" row
+
+    // ── Owner Venues ──────────────────────────────────────────────────────
     { from:'owner-venues',   to:'owner-venue' },
     { from:'owner-venues',   to:'owner-new-venue' },
     { from:'owner-venues',   to:'claim-venue' },
-    { from:'owner-new-venue',to:'owner-venue' },
-    { from:'owner-venue',    to:'sub-plans' },
+    { from:'owner-new-venue',to:'owner-venue' },         // created → edit it
+    { from:'owner-venue',    to:'sub-plans' },           // Membership tab → manage plans
 
-    // Owner links from Profile
-    { from:'profile',        to:'owner-staff' },
-    { from:'profile',        to:'owner-settlements' },
-    { from:'profile',        to:'owner-venues' },
+    // ── Owner Nearby → venue actions ──────────────────────────────────────
+    { from:'owner-nearby',   to:'owner-venue' },         // tap pin/glance → venue editor
+    { from:'owner-nearby',   to:'claim-venue' },         // empty-state "Claim"
+    { from:'owner-nearby',   to:'owner-new-venue' },     // empty-state "Create"
+    { from:'owner-nearby',   to:'owner-pricing' },       // sidebar / pricing link
+    { from:'owner-nearby',   to:'owner-bookings' },      // glance action
 
-    // Organizer
-    { from:'profile',        to:'org-hub' },
+    // ── Organizer ─────────────────────────────────────────────────────────
     { from:'org-hub',        to:'org-tournaments' },
     { from:'org-hub',        to:'org-openplay' },
     { from:'org-hub',        to:'org-rosters' },
@@ -240,8 +271,8 @@
     { from:'org-openplay',   to:'org-session' },
     { from:'org-rosters',    to:'org-roster' },
 
-    // Admin
-    { from:'profile',        to:'admin-claims' },
+    // ── Owner profile also reaches admin claims ───────────────────────────
+    // (already declared above via owner-profile → admin-claims)
   ];
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -567,8 +598,10 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // PINCH ZOOM
+  // PINCH ZOOM + TOUCH PAN
   // ═══════════════════════════════════════════════════════════════════════════
+  var touchPanState = null; // { startX, startY, scrollLeft, scrollTop } for 1-finger pan
+
   function getTouchDistance(t) { var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY; return Math.hypot(dx,dy); }
   function getTouchCenter(t) { return { x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2 }; }
 
@@ -579,24 +612,57 @@
   }
 
   function onCanvasTouchStart(e) {
-    if (e.touches.length !== 2) { pinchState = null; return; }
-    if (dragNode) onDragEnd();
-    e.preventDefault();
-    var c = getTouchCenter(e.touches);
-    pinchState = { distance:getTouchDistance(e.touches), zoom:zoomLevel, centerX:c.x, centerY:c.y };
+    // 2-finger → pinch zoom
+    if (e.touches.length === 2) {
+      if (dragNode) onDragEnd();
+      if (touchPanState) { touchPanState = null; canvasContainer.classList.remove('grabbing'); }
+      e.preventDefault();
+      var c = getTouchCenter(e.touches);
+      pinchState = { distance:getTouchDistance(e.touches), zoom:zoomLevel, centerX:c.x, centerY:c.y };
+      return;
+    }
+    pinchState = null;
+    // 1-finger on empty canvas → touch-pan (on a node, the node's own touchstart handles drag)
+    if (e.touches.length === 1 && !e.target.closest('.node')) {
+      e.preventDefault();
+      var t = e.touches[0];
+      touchPanState = { startX: t.clientX, startY: t.clientY, scrollLeft: canvasContainer.scrollLeft, scrollTop: canvasContainer.scrollTop };
+      canvasContainer.classList.add('grabbing');
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+    }
   }
 
   function onCanvasTouchMove(e) {
-    if (e.touches.length !== 2 || !pinchState) return;
-    e.preventDefault();
-    var c = getTouchCenter(e.touches);
-    setZoom(pinchState.zoom * getTouchDistance(e.touches) / pinchState.distance, c.x, c.y);
+    // 2-finger pinch
+    if (e.touches.length === 2 && pinchState) {
+      e.preventDefault();
+      var c = getTouchCenter(e.touches);
+      setZoom(pinchState.zoom * getTouchDistance(e.touches) / pinchState.distance, c.x, c.y);
+      return;
+    }
+    // 1-finger pan
+    if (e.touches.length === 1 && touchPanState) {
+      e.preventDefault();
+      var t = e.touches[0];
+      canvasContainer.scrollLeft = touchPanState.scrollLeft + (touchPanState.startX - t.clientX);
+      canvasContainer.scrollTop = touchPanState.scrollTop + (touchPanState.startY - t.clientY);
+    }
   }
 
-  function onCanvasTouchEnd() { pinchState = null; }
+  function onCanvasTouchEnd(e) {
+    pinchState = null;
+    if (touchPanState) {
+      touchPanState = null;
+      canvasContainer.classList.remove('grabbing');
+      document.body.style.userSelect = '';
+      document.body.style.webkitUserSelect = '';
+      saveViewportState();
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // CANVAS PANNING (space+drag, middle-mouse)
+  // CANVAS PANNING (mouse: left-drag empty, middle-mouse, space+drag)
   // ═══════════════════════════════════════════════════════════════════════════
   function onSpaceKeyDown(e) {
     if (e.code === 'Space' && !spaceHeld && document.activeElement === document.body) {

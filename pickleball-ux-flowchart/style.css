@@ -11,9 +11,8 @@
 
 :root {
   --toolbar-h: 56px;
-  --canvas-w-min: 1300px;
-  --canvas-h: 1400px;
-  --node-w: 220px;
+  --canvas-w-min: 3100px;
+  --canvas-h: 2800px;
   --node-min-h: 62px;
 
   --color-screen:      #3B82F6;
