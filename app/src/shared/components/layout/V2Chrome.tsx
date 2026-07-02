@@ -103,10 +103,9 @@ export function V2TabBar({ activeTab, onTabPress, tabIds = DEFAULT_TAB_ORDER }: 
   );
 }
 
-// The floating green FAB is the "Game On" action — it opens the join-or-host
-// chooser (CreateChoiceSheet; gated by player.games.create). Booking a venue is
-// still reachable from the Nearby tab.
-export function V2Fab({ onClick, label = 'Game on — join or host' }: { onClick: () => void; label?: string }) {
+// The floating green FAB is the "Game On" action. It opens the Games section
+// directly. Booking a venue is still reachable from the Nearby tab.
+export function V2Fab({ onClick, label = 'Game On' }: { onClick: () => void; label?: string }) {
   return (
     <button className="v2c-fab" aria-label={label} onClick={onClick}>
       <span className="v2c-fab-label">Game<br />On</span>
@@ -120,8 +119,7 @@ export interface V2ScreenChrome {
   onNavigate: Navigate;
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
-  /** Opens the create flow straight at "host a lobby", skipping the join-vs-host
-   *  chooser — for explicit "Create a game" CTAs where hosting is the intent. */
+  /** Opens the booking-first Open Play flow for explicit host/create CTAs. */
   onHost: () => void;
   isLoggedIn: boolean;
   /** Soft auth gate for inline commit actions (join game/club); returns true if allowed. */

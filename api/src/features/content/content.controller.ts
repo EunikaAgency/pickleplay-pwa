@@ -24,14 +24,42 @@ export async function listOpenPlay(c: any) {
   const filters = listQuery.parse(c.req.query());
   const filter: Record<string, any> = { status: 'published' };
   if (filters.venueId) filter.venueId = filters.venueId;
+  if (filters.date) filter.date = filters.date;
+  else filter.date = { $gte: new Date().toISOString().slice(0, 10) };
   const rows = await OpenPlaySession.find(filter).populate('venueId', 'displayName slug').sort({ date: 1 }).limit(filters.pageSize).lean();
-  return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id, venueName: r.venueId?.displayName, venueSlug: r.venueId?.slug })) });
+  return c.json({ data: rows.map(sessionView) });
+}
+
+// GET /api/v1/open-play/registrations/mine - every open-play session the current
+// player has joined. Used by the player Games tab to fill Open Play > Joined and
+// exclude already-joined sessions from Discover.
+export async function getMyOpenPlayRegistrations(c: any) {
+  const user = c.get('user');
+  const regs = await OpenPlayRegistration.find({ userId: user.sub }).select('sessionId status').lean();
+  return c.json({
+    data: regs.map((r: any) => ({ sessionId: r.sessionId?.toString(), status: r.status })),
+  });
+}
+
+// GET /api/v1/open-play/:id - public session detail. The user's registration is
+// included when authenticated so the app can render Join/Leave correctly.
+export async function getOpenPlaySession(c: any) {
+  const id = c.req.param('id');
+  const sess = await OpenPlaySession.findById(id).populate('venueId', 'displayName slug').lean();
+  if (!sess) return c.json({ error: { code: 'NOT_FOUND', message: 'Open Play session not found' } }, 404);
+  const user = c.get('user');
+  const reg = user
+    ? await OpenPlayRegistration.findOne({ sessionId: (sess as any)._id, userId: user.sub }).select('status').lean()
+    : null;
+  return c.json({ data: { ...sessionView(sess), myRegistrationStatus: (reg as any)?.status ?? null } });
 }
 
 export async function listTournaments(c: any) {
   const filters = listQuery.parse(c.req.query());
-  const filter: Record<string, any> = {};
-  if (filters.status) filter.status = filters.status;
+  const filter: Record<string, any> = {
+    status: filters.status || { $in: PUBLIC_TOURNAMENT_STATUSES },
+    $or: [{ visibility: "public" }, { visibility: { $exists: false } }],
+  };
   // Scope to one venue (used by the venue detail page). Accepts a slug or _id;
   // an unknown venue yields an empty list rather than a cast error. When
   // filtering by venue we only surface publicly-visible, non-draft tournaments.

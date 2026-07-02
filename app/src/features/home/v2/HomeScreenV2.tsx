@@ -163,7 +163,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
           <div className="hero-inner">
             <div className="hero-text">
               <h1>{greeting}</h1>
-              <p>Find a game, book a court, or start a club.</p>
+              <p>Discover games, open play, and court bookings.</p>
               <div className="live-chip">
                 <span className="live-dot" />
                 {loading ? 'Loading games…' : `${games.length} open game${games.length === 1 ? '' : 's'} near you`}
@@ -197,7 +197,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
             <span className="qa-icon">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
             </span>
-            <span className="qa-label">Book</span>
+            <span className="qa-label">Book Court</span>
           </button>
         </section>
 

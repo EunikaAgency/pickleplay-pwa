@@ -8,7 +8,7 @@ import {
   createTournamentAnnouncement, listTournamentAnnouncements,
   listTournamentMessages, sendTournamentMessage,
   manageTournamentRegistration,
-  createOpenPlaySeries, getMyOpenPlay, cancelOpenPlaySeries, cancelOpenPlaySession,
+  createOpenPlaySeries, getMyOpenPlay, getMyOpenPlayRegistrations, getOpenPlaySession, cancelOpenPlaySeries, cancelOpenPlaySession,
   joinOpenPlay, leaveOpenPlay, getOpenPlayRegistrations, manageOpenPlayRegistration,
 } from './content.controller.js';
 
@@ -18,6 +18,8 @@ contentRoutes.get('/open-play', listOpenPlay);
 // Organizer-managed recurring open play. Static segments before `:id` matchers.
 contentRoutes.post('/open-play', requireAuth, createOpenPlaySeries);
 contentRoutes.get('/open-play/mine', requireAuth, getMyOpenPlay);
+contentRoutes.get('/open-play/registrations/mine', requireAuth, getMyOpenPlayRegistrations);
+contentRoutes.get('/open-play/:id', optionalAuth, getOpenPlaySession);
 contentRoutes.patch('/open-play/series/:id/cancel', requireAuth, cancelOpenPlaySeries);
 contentRoutes.patch('/open-play/:id/cancel', requireAuth, cancelOpenPlaySession);
 contentRoutes.get('/open-play/:id/registrations', requireAuth, getOpenPlayRegistrations);

@@ -12,16 +12,14 @@ const SKILLS = ['All levels', 'Beginner (2.0–3.0)', 'Intermediate (3.0–4.0)'
 
 interface Props extends V2ScreenChrome {
   onBack: () => void;
-  /** The court reservation this lobby is hosted on (chosen in the Game On sheet). */
+  /** The court reservation this lobby is hosted on (chosen in the booking flow). */
   bookingId?: string;
 }
 
 /**
- * Host a lobby on a court the player has already booked. Booking + payment now
- * happen up-front in the Book flow (reached via the "Game On" chooser), so this
- * screen no longer books or charges — it loads the reservation, locks the
- * venue/date/time to it, and only collects the game-specific details (name,
- * format, players, skill, visibility) before calling `createGame({ bookingId })`.
+ * Publish Open Play on a court the player has already booked. Booking and payment
+ * happen up front in the Book flow; this screen only collects the Open Play
+ * details before calling `createGame({ bookingId })`.
  */
 export function CreateGameV2(props: Props) {
   const { onNavigate, onBack, bookingId } = props;
@@ -34,7 +32,6 @@ export function CreateGameV2(props: Props) {
   const [type, setType] = useState<GameType>('open');
   const [spots, setSpots] = useState(8);
   const [skill, setSkill] = useState(SKILLS[0]);
-  const [vis, setVis] = useState<'public' | 'invite'>('public');
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,12 +74,12 @@ export function CreateGameV2(props: Props) {
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
         date: booking.date ?? undefined,
         capacity: spots,
-        visibility: vis,
+        visibility: 'public',
         bookingId: booking.id,
       });
       setDoneId(game.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create your lobby. Please try again.');
+      setError(e instanceof Error ? e.message : 'Could not publish Open Play. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -92,10 +89,10 @@ export function CreateGameV2(props: Props) {
     return (
       <CompletionScreen
         icon="check"
-        title="Lobby created!"
-        description="Your game is live on your booked court. Invite players or view the details."
+        title="Open Play published!"
+        description="Your Open Play is live on your booked court. Players can now discover and join it."
         actions={[
-          { label: 'View game', variant: 'dark', onClick: () => onNavigate('game-details', { id: doneId }, { replace: true }) },
+          { label: 'View Open Play', variant: 'dark', onClick: () => onNavigate('open-play-detail', { source: 'game', id: doneId }, { replace: true }) },
           { label: 'Done', variant: 'outline', onClick: onBack },
         ]}
       />
@@ -110,8 +107,8 @@ export function CreateGameV2(props: Props) {
         <div className="page">
           <div className="page-hero" role="banner">
             <div className="page-hero-eyebrow">Games</div>
-            <h1>Host a lobby</h1>
-            <p className="page-hero-sub">Open a game on a court you’ve booked.</p>
+            <h1>Make Open Play</h1>
+            <p className="page-hero-sub">Publish a public Open Play session from a court you booked.</p>
           </div>
           <div className="form-card" style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>🎾</div>
@@ -119,7 +116,7 @@ export function CreateGameV2(props: Props) {
               {loadError ? 'We couldn’t load that booking' : 'Book a court first'}
             </div>
             <p className="page-hero-sub" style={{ color: 'var(--text-secondary)', margin: '4px 0 16px' }}>
-              Hosting a lobby needs a reserved court. Book one and we’ll bring you right back to set up your game.
+              Open Play needs a reserved court. Book one first, then publish it for others to join.
             </p>
             <button className="submit-btn" onClick={() => onNavigate('nearby', { intent: 'lobby' })}>
               Find a court to book
@@ -135,8 +132,8 @@ export function CreateGameV2(props: Props) {
       <div className="page">
         <div className="page-hero" role="banner">
           <div className="page-hero-eyebrow">Games</div>
-          <h1>Set up your lobby</h1>
-          <p className="page-hero-sub">Your court’s booked — just set up the game.</p>
+          <h1>Set up Open Play</h1>
+          <p className="page-hero-sub">Your court is booked - now publish it as Open Play.</p>
         </div>
 
         <div className="form-card">
@@ -161,7 +158,7 @@ export function CreateGameV2(props: Props) {
           <div className="form-section-label">Basic Info</div>
 
           <div className="field-group">
-            <div className="field-label"><span className="field-label-text">Game Name</span></div>
+            <div className="field-label"><span className="field-label-text">Open Play Name</span></div>
             <div className="input-wrap">
               <input className="field-input" type="text" maxLength={60} placeholder="e.g. Saturday Morning Mix-In" value={name} onChange={(e) => setName(e.target.value)} aria-label="Game name" />
             </div>
@@ -194,7 +191,7 @@ export function CreateGameV2(props: Props) {
           </div>
 
           <hr className="form-divider" />
-          <div className="form-section-label">Game Format</div>
+          <div className="form-section-label">Play Format</div>
 
           <div className="field-group">
             <div className="field-label"><span className="field-label-text">Type</span></div>
@@ -208,21 +205,13 @@ export function CreateGameV2(props: Props) {
             </div>
           </div>
 
-          <div className="field-group">
-            <div className="field-label"><span className="field-label-text">Visibility</span></div>
-            <div className="vis-toggle" role="group" aria-label="Game visibility">
-              <button className={`vis-btn${vis === 'public' ? ' active' : ''}`} aria-pressed={vis === 'public'} onClick={() => setVis('public')}>Public</button>
-              <button className={`vis-btn${vis === 'invite' ? ' active' : ''}`} aria-pressed={vis === 'invite'} onClick={() => setVis('invite')}>Invite only</button>
-            </div>
-            <div className="vis-help">{vis === 'public' ? 'Anyone nearby can discover and join this game.' : 'Only people you invite can join.'}</div>
-          </div>
 
           {error && <div className="vis-help" style={{ color: 'var(--warning)' }} role="alert">{error}</div>}
         </div>
 
         <div className="submit-wrap">
           <button className="submit-btn" onClick={submit} disabled={submitting || loading || !booking}>
-            {submitting ? 'Creating…' : 'Create lobby'}
+            {submitting ? 'Creating…' : 'Publish Open Play'}
           </button>
           <div className="submit-help">
             {booking ? `Hosting at ${booking.venueName || 'your booked court'}${booking.startTime ? ` · ${to12h(booking.startTime)}` : ''}` : 'Your court is already booked — no extra charge.'}

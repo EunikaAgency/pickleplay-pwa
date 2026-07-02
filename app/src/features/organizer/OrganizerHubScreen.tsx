@@ -33,6 +33,12 @@ export function OrganizerHubScreen({ onNavigate, onBack }: OrganizerHubScreenPro
   const { counts, loading } = useOrganizerHub();
 
   const tools: Tool[] = [
+    {
+      key: 'games', icon: 'trophy', color: 'var(--primary)',
+      label: 'Games', description: 'Create and manage tournaments, brackets, and structured games.',
+      onPress: () => onNavigate('organizer-tournaments'), perm: 'organizer.tournaments.manage',
+      stat: loading ? undefined : counts.tournaments + ' total - ' + counts.activeTournaments + ' active',
+    },
     // HIDDEN: tournaments temporarily disabled for all roles
     // {
     //   key: 'tournaments', icon: 'trophy', color: 'var(--primary)',

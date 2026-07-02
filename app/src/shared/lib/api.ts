@@ -3184,6 +3184,7 @@ export interface ApiOpenPlaySession {
   id: string;
   seriesId: string | null;
   title: string;
+  venueId?: string | null;
   venueName?: string;
   venueSlug?: string;
   date?: string;
@@ -3194,6 +3195,9 @@ export interface ApiOpenPlaySession {
   price?: number;
   levelLabel?: string;
   status?: string;
+  organizerName?: string;
+  description?: string;
+  myRegistrationStatus?: string | null;
 }
 
 export interface ApiOpenPlayMine {
@@ -3201,12 +3205,45 @@ export interface ApiOpenPlayMine {
   sessions: ApiOpenPlaySession[];
 }
 
+function normalizeOpenPlaySession(s: Record<string, unknown>): ApiOpenPlaySession {
+  const venueIdRaw = s.venueId as { _id?: string } | string | null | undefined;
+  return {
+    ...(s as object),
+    id: String(s.id ?? s._id ?? ''),
+    seriesId: s.seriesId ? String(s.seriesId) : null,
+    venueId: (typeof venueIdRaw === 'object' ? venueIdRaw?._id : venueIdRaw) ?? null,
+  } as ApiOpenPlaySession;
+}
+
+/** Public Open Play sessions, soonest first. */
+export async function listOpenPlaySessions(params: { venueId?: string; date?: string } = {}): Promise<ApiOpenPlaySession[]> {
+  const env = await rawRequest<Record<string, unknown>[]>(`${OPEN_PLAY_PREFIX}${toQuery({ pageSize: 100, ...params })}`, { auth: true });
+  return (env.data ?? []).map(normalizeOpenPlaySession);
+}
+
+export async function getOpenPlaySession(id: string): Promise<ApiOpenPlaySession> {
+  return normalizeOpenPlaySession(await request<Record<string, unknown>>(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}`, { auth: true }));
+}
+
+export async function listMyOpenPlayRegistrations(): Promise<{ sessionId: string; status: string }[]> {
+  const env = await rawRequest<{ sessionId: string; status: string }[]>(`${OPEN_PLAY_PREFIX}/registrations/mine`, { auth: true });
+  return env.data ?? [];
+}
+
+export async function joinOpenPlaySession(id: string): Promise<{ id: string; status: string }> {
+  return request<{ id: string; status: string }>(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/join`, { method: 'POST', body: {}, auth: true });
+}
+
+export async function leaveOpenPlaySession(id: string): Promise<unknown> {
+  return request(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/leave`, { method: 'POST', body: {}, auth: true });
+}
+
 /** The organizer's open-play series + every generated session instance. */
 export async function getMyOpenPlay(): Promise<ApiOpenPlayMine> {
   const d = await request<{ series?: ApiOpenPlaySeries[]; sessions?: Record<string, unknown>[] }>(`${OPEN_PLAY_PREFIX}/mine`, { auth: true });
   return {
     series: (d?.series ?? []).map((s) => { const r = s as unknown as Record<string, unknown>; return { ...s, id: String(r.id ?? r._id ?? '') }; }),
-    sessions: (d?.sessions ?? []).map((s) => ({ ...s, id: String(s.id ?? s._id ?? ''), seriesId: s.seriesId ? String(s.seriesId) : null })) as ApiOpenPlaySession[],
+    sessions: (d?.sessions ?? []).map((s) => normalizeOpenPlaySession(s as Record<string, unknown>)),
   };
 }
 

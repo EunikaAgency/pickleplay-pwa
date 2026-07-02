@@ -84,7 +84,7 @@ import { TournamentChatScreen } from './features/tournaments/v2/TournamentChatSc
 import { ProfileScreenV2 } from './features/profile/v2/ProfileScreenV2';
 import { SettingsScreenV2 } from './features/profile/v2/SettingsScreenV2';
 import { CreateGameV2 } from './features/games/v2/CreateGameV2';
-import { CreateChoiceSheet } from './features/games/v2/CreateChoiceSheet';
+import { OpenPlayDetailScreen } from './features/games/v2/OpenPlayDetailScreen';
 import { CreateClubV2 } from './features/clubs/v2/CreateClubV2';
 import type { V2ScreenChrome } from './shared/components/layout/V2Chrome';
 
@@ -246,7 +246,7 @@ function tabForScreen(id: ScreenId): TabId {
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
   if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans') return 'nearby';
   if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
-  if (id === 'game-details' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
+  if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
   if (id === 'chat') return 'messages';
   return 'profile';
@@ -281,13 +281,6 @@ function AppInner() {
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
-  // The v2.1 "Game On" chooser (join a game vs host a lobby) — an app-level sheet
-  // so every create entry point (FAB, home quick action, empty states) opens it.
-  const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
-  // Which step the create sheet opens on: the FAB opens the join-vs-host choice;
-  // explicit "Create a game" CTAs jump straight to host-a-lobby (see handleHost).
-  const [createChoiceStep, setCreateChoiceStep] = useState<'choice' | 'host'>('choice');
-
   // Animated launch splash — shown once per browser session on cold start, then
   // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
   // restore etc. run during the intro); the splash just sits on top.
@@ -428,33 +421,22 @@ function AppInner() {
   // organizers, who are players too. Owners and admins don't get the player
   // Tournament tab (organizers still manage tournaments from the organizer hub).
   const isAdmin = userHasPermission(currentUser, 'admin.access');
-  // HIDDEN: tournaments temporarily disabled for all roles
-  const canSeeTournaments = false; // was: !isOwner && !isAdmin
+  // The standalone Tournament tab stays hidden, but tournament detail routes are
+  // allowed because Games > Discover now uses tournaments as structured games.
+  const canOpenTournaments = !isOwner && !isAdmin;
+  const canSeeTournaments = false;
   // Desktop sidebar layout for admin/owner: the frame cap is lifted so the
   // app can grow past 1024 px, activating the existing @container queries
   // that swap the bottom tab bars for a fixed sidebar.
   const roleAttr = isAdmin ? 'admin' : isOwner ? 'owner' : undefined;
 
-  const canCreateGame = userHasPermission(currentUser, 'player.games.create');
   const handleCreate = () => {
-    if (!requireAuth('create a game')) return;
-    if (!canCreateGame) return;
-    // v2.1: ask "join a game or host a lobby?" first. Hosting requires a booked
-    // court (see CreateChoiceSheet). Owners keep the direct create-game form.
-    if (playerV2) { setCreateChoiceStep('choice'); setCreateChoiceOpen(true); return; }
-    navigate('create-game');
+    navigate('games', { section: 'games', view: 'discover' });
   };
-  // "Create a game" CTAs (e.g. the My Games empty state) mean "host my own" — so
-  // they skip the join/host chooser and open the sheet straight at host-a-lobby.
   const handleHost = () => {
-    if (!requireAuth('create a game')) return;
-    if (!canCreateGame) return;
-    if (playerV2) { setCreateChoiceStep('host'); setCreateChoiceOpen(true); return; }
-    navigate('create-game');
+    navigate('nearby');
   };
-  // Guests see an enabled create button (it opens the auth prompt); logged-in
-  // users see it enabled only when their role can actually create games.
-  const canShowCreate = !isLoggedIn || canCreateGame;
+  const canShowCreate = true;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
   const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password'].includes(screen.id);
@@ -509,14 +491,14 @@ function AppInner() {
         // Owners get "Your courts" (games + bookings at their venues); players
         // get the normal browse/join games view.
         if (userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
-        return playerV2 ? <GamesScreenV2 {...v2Chrome} /> : <GamesScreen onNavigate={navigate} />;
+        return playerV2 ? <GamesScreenV2 {...v2Chrome} initialSection={screen.params?.section} initialView={screen.params?.view} /> : <GamesScreen onNavigate={navigate} />;
       case 'tournaments':
         // Player-only surface; owners/admins don't get it (deep-link safety —
         // the tab is already hidden from their nav).
-        if (!canSeeTournaments) return isOwner ? <OwnerHomeScreen onNavigate={navigate} /> : <HomeScreenV2 {...v2Chrome} />;
+        if (!canOpenTournaments) return isOwner ? <OwnerHomeScreen onNavigate={navigate} /> : <HomeScreenV2 {...v2Chrome} />;
         return <TournamentsScreenV2 {...v2Chrome} />;
       case 'tournament':
-        if (!canSeeTournaments) return isOwner ? <OwnerHomeScreen onNavigate={navigate} /> : <HomeScreenV2 {...v2Chrome} />;
+        if (!canOpenTournaments) return isOwner ? <OwnerHomeScreen onNavigate={navigate} /> : <HomeScreenV2 {...v2Chrome} />;
         return <PlayerTournamentDetailScreen key={screen.params.id} tournamentId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'tournament-chat':
         return <TournamentChatScreen key={screen.params.id} tournamentId={screen.params.id} name={screen.params.name} onBack={goBack} />;
@@ -528,6 +510,8 @@ function AppInner() {
         return playerV2 ? <ProfileScreenV2 {...v2Chrome} onLogout={handleLogout} /> : <ProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
       case 'game-details':
         return <GameDetailsScreen key={screen.params.id} gameId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
+      case 'open-play-detail':
+        return <OpenPlayDetailScreen key={`${screen.params.source}:${screen.params.id}`} source={screen.params.source} id={screen.params.id} chrome={v2Chrome} onBack={goBack} />;
       case 'court-details':
         return <CourtDetailsScreen key={screen.params.id} courtId={screen.params.id} intent={screen.params.intent} onNavigate={navigate} onBack={goBack} />;
       case 'club-details':
@@ -679,16 +663,6 @@ function AppInner() {
         onClose={() => setAuthIntent(null)}
         onContinue={goToLogin}
       />
-
-      {/* v2.1 "Game On" chooser — join a game vs host a lobby on a booked court. */}
-      {playerV2 && (
-        <CreateChoiceSheet
-          open={createChoiceOpen}
-          initialStep={createChoiceStep}
-          onClose={() => setCreateChoiceOpen(false)}
-          onNavigate={navigate}
-        />
-      )}
 
       <DemoStateControl />
 

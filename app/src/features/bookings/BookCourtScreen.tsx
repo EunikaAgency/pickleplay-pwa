@@ -29,7 +29,7 @@ interface BookCourtScreenProps {
   time?: string;            // 12h label like "6:30 PM"
   hours?: number;
   /** 'lobby' = the booking is a step toward hosting a lobby; the confirmation
-   *  offers "Create your lobby" instead of just "View my bookings". */
+   *  offers "Make Open Play" instead of just "View my bookings". */
   intent?: 'lobby';
   onNavigate: Navigate;
   onBack: () => void;
@@ -58,7 +58,7 @@ function maskCard(card: CheckoutCard): { brand: string; last4: string } | undefi
   return { brand: cardBrand(n), last4: n.slice(-4) };
 }
 
-export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, intent, onNavigate, onBack }: BookCourtScreenProps) {
+export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNavigate, onBack }: BookCourtScreenProps) {
   const { trackBookingAttempt, trackBookingCompleted, trackCheckoutStarted, trackCheckoutAbandoned } = useDemandTracking();
   const [step, setStep] = useState(0);
 
@@ -483,10 +483,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
     // When the booking was a step toward hosting a lobby, lead with "Create your
     // lobby" (only once the court is actually confirmed) so the flow hands
     // straight back to the create form, pre-locked to this reservation.
-    const lobbyHandoff = intent === 'lobby' && done.confirmed && done.bookingId;
+    const lobbyHandoff = done.confirmed && done.bookingId;
     const lobbyAction = lobbyHandoff
       ? [{
-          label: 'Create your lobby',
+          label: 'Make Open Play',
           variant: 'dark' as const,
           onClick: () => onNavigate('create-game', { bookingId: done.bookingId! }, { replace: true }),
         }]
@@ -498,7 +498,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, inten
         description={
           done.confirmed
             ? lobbyHandoff
-              ? 'Your court is booked — now set up the game you want to host.'
+              ? 'Your court is booked. Keep it private or make it Open Play so others can join.'
               : 'Your court is booked. You can see it under My bookings.'
             : 'Your request was sent and is awaiting venue approval.'
         }
