@@ -3,6 +3,12 @@ import { Payment, OfficialReceipt, ReceiptCounter, Settlement, SettlementLineIte
 import { Booking } from '../bookings/bookings.model.js';
 import { Venue } from '../venues/venues.model.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
+import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
+import { paymentReceipt } from '../../shared/lib/email-templates.js';
+
+const canEmail = () => isGmailConfigured() && hasValidTokens();
+const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const fmtTime2 = (t?: string | null) => { if (!t) return ''; const [h, m] = t!.split(':'); const hr = +h; const a = hr < 12 ? 'AM' : 'PM'; const h12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr; return `${h12}:${m} ${a}`; };
 import { isPaymentTestMode } from '../settings/settings.controller.js';
 
 const createSchema = z.object({
@@ -121,6 +127,35 @@ export async function checkout(c: any) {
           { new: true },
         ).lean()
       : await Booking.findOne({ _id: body.bookingId, userId: user.sub }).lean();
+  }
+
+  // Send payment receipt email (best-effort, non-blocking).
+  if (testMode && canEmail() && booking) {
+    void (async () => {
+      try {
+        const v = await Venue.findById(booking.venueId).select('displayName').lean<{ displayName?: string }>();
+        const userEmail = (c.get('user') as any)?.email;
+        if (userEmail) {
+          const amt = Number(booking.amount || payment.amount);
+          const fee = Number(booking.serviceFeeAmount || 0);
+          const vatAmt = Math.round(amt * 0.12 * 100) / 100;
+          const t = paymentReceipt({
+            receipt: `OR-${String(payment._id).slice(-8).toUpperCase()}`,
+            bookingRef: String(booking._id).slice(-8).toUpperCase(),
+            venue: v?.displayName || 'the venue',
+            date: fmtDate(booking.date),
+            time: `${fmtTime2(booking.startTime)} – ${fmtTime2(booking.endTime)}`,
+            subtotal: `₱${(amt - fee).toFixed(2)}`,
+            fee: `₱${fee.toFixed(2)}`,
+            vat: `₱${vatAmt.toFixed(2)}`,
+            total: `₱${amt.toFixed(2)}`,
+            method: payment.method || 'Card',
+            paidAt: new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+          });
+          await sendEmail({ to: userEmail, subject: `Payment receipt — ${v?.displayName || 'your booking'}`, body: t.text, html: t.html });
+        }
+      } catch { /* best-effort */ }
+    })();
   }
 
   return c.json({

@@ -7,10 +7,12 @@ import { useForm } from '../../shared/hooks/useForm';
 import { ApiError, type RegisterRole } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { ROLE_META } from '../../shared/lib/roleDisplay';
+import type { Navigate } from '../../shared/lib/navigation';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
   onBack?: () => void;
+  onNavigate: Navigate;
 }
 
 // Roles a new account can pick at sign-up. Mirrors the API's REGISTERABLE_ROLES
@@ -33,7 +35,7 @@ const TEST_ACCOUNTS: { label: string; email: string; password: string }[] = [
   { label: 'Admin',     email: 'info@eunika.agency',              password: 'justinianthegreat!' },
 ];
 
-export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
+export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenProps) {
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
@@ -204,9 +206,13 @@ export function LoginScreen({ onLoginSuccess, onBack }: LoginScreenProps) {
 
           {mode === 'signin' && (
             <div className="flex justify-end px-5">
-              <a href="#" className="text-[12px] font-bold text-[var(--primary)]">
+              <button
+                type="button"
+                onClick={() => onNavigate('forgot-password')}
+                className="text-[12px] font-bold text-[var(--primary)]"
+              >
                 Forgot password?
-              </a>
+              </button>
             </div>
           )}
 

@@ -6,6 +6,7 @@ import {
   listRequests, approveRequest, denyRequest,
   listFeed, getPost, listReplies, createPost, editPost, deletePost, reactPost, unreactPost,
   streamClub, listClubMessages, sendClubMessage, editClubMessage, deleteClubMessage,
+  getClubStaff, addClubStaff, removeClubStaff,
 } from './clubs.controller.js';
 
 const clubsRoutes = new Hono();
@@ -41,6 +42,12 @@ clubsRoutes.get('/:id/messages', requireAuth, listClubMessages);
 clubsRoutes.post('/:id/messages', requireAuth, sendClubMessage);
 clubsRoutes.patch('/:id/messages/:msgId', requireAuth, editClubMessage);
 clubsRoutes.delete('/:id/messages/:msgId', requireAuth, deleteClubMessage);
+
+// Per-club staff — host assigns moderators. DELETE is on a global path so it
+// doesn't collide with /:id/staff.
+clubsRoutes.get('/:id/staff', requireAuth, getClubStaff);
+clubsRoutes.post('/:id/staff', requireAuth, addClubStaff);
+clubsRoutes.delete('/staff/:id', requireAuth, removeClubStaff);
 
 // Bare /:id last so it never shadows the literal sub-routes above.
 clubsRoutes.get('/:id', optionalAuth, getClub);

@@ -201,7 +201,7 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
         {tab === 'closures' && <ClosuresEditorTab venueId={vid} />}
         {tab === 'faqs' && <FaqsEditorTab venueId={vid} />}
         {tab === 'photos' && <PhotosTab venue={venue} venueId={vid} reload={reload} />}
-        {tab === 'staff' && <StaffEditorTab venueId={vid} />}
+        {tab === 'staff' && <StaffEditorTab venueId={vid} onNavigate={onNavigate} />}
       </div>
     </div>
   );

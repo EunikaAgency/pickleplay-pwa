@@ -58,7 +58,7 @@ const normalizeSlug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+/g, '').slice(0, 60);
 
 // A chip list you can add to / remove from — the app analog of the web TagInput.
-function TagField({ label, value, onChange }: { label: string; value: string[]; onChange: (v: string[]) => void }) {
+function TagField({ label, value, onChange, placeholder = 'Add and press Enter' }: { label: string; value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [draft, setDraft] = useState('');
   const add = () => {
     const t = draft.trim();
@@ -90,7 +90,7 @@ function TagField({ label, value, onChange }: { label: string; value: string[]; 
               add();
             }
           }}
-          placeholder="Add and press Enter"
+          placeholder={placeholder}
         />
         <button
           type="button"
@@ -136,6 +136,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
   );
   const [chips, setChips] = useState({
     amenityChips: venue.amenityChips ?? [],
+    customAmenities: venue.customAmenities ?? [],
     thingsToKnow: venue.thingsToKnow ?? [],
   });
   // "Best for" / "What players like" are platform-curated from real venue data +
@@ -503,7 +504,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         </div>
       </OwnerSection>
 
-      <OwnerSection title="Amenities" icon="check" description="Tap what your venue offers.">
+      <OwnerSection title="Amenities" icon="check" description="Tap what your venue offers. Add custom ones below.">
         <div className="flex flex-wrap gap-2">
           {AMENITIES.map((a) => {
             const on = amenities[a.key as string];
@@ -521,6 +522,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
               </Chip>
             );
           })}
+        </div>
+        <div className="mt-3">
+          <TagField label="Custom amenities" placeholder="e.g. Ball machine, Locker room, etc." value={chips.customAmenities} onChange={(v) => { setChips((c) => ({ ...c, customAmenities: v })); setStatus('idle'); }} />
         </div>
       </OwnerSection>
 

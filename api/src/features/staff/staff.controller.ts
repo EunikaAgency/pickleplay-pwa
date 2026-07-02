@@ -3,14 +3,12 @@ import bcrypt from 'bcryptjs';
 import { User } from '../auth/auth.model.js';
 import { hasPermission, resolveRolePermissions, effectiveOwnerId } from '../../shared/lib/permissions.js';
 
-// Org-level staff accounts. A staff member is a real `User` with
-// roleDefault:'staff' and a `parentOwnerUserId` pointing at the owner who
-// created it. They run the owner console for ALL of that owner's venues,
-// bookings, and clubs — scoped everywhere by effectiveOwnerId() (which resolves
-// to parentOwnerUserId for a staff member). This is distinct from the per-venue
-// `VenueStaff` model in the venues slice, which attaches an existing user to a
-// single venue. Only owners and admins (holders of owner.staff.manage) reach
-// these endpoints.
+// Staff accounts. A staff member is a `User` with roleDefault:'staff' and a
+// `parentOwnerUserId` pointing at the owner who created it. The account itself
+// grants NO automatic venue access — staff must be explicitly added to individual
+// venues through the per-venue Staff tab, which creates VenueStaff rows.
+// parentOwnerUserId is kept only so listStaff can find the owner's staff.
+// Only owners and admins (holders of owner.staff.manage) reach these endpoints.
 
 const createStaffSchema = z.object({
   email: z.string().email(),

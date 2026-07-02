@@ -1,8 +1,16 @@
 import { z } from 'zod';
 import { Booking } from './bookings.model.js';
 import { Venue, Court } from '../venues/venues.model.js';
+import { Payment } from '../payments/payments.model.js';
 import { recordDemand } from '../demand/demand.controller.js';
 import { notifyUser } from '../../shared/lib/notify.js';
+import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
+import { bookingConfirmedReceipt, bookingRequestedReceipt, cancellationReceipt } from '../../shared/lib/email-templates.js';
+
+function canEmail() { return isGmailConfigured() && hasValidTokens(); }
+
+function fmtDate(d: string) { return new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
+function fmtTime(t?: string | null) { if (!t) return ''; const [h, m] = t.split(':'); const hr = Number(h); const am = hr < 12 ? 'AM' : 'PM'; const h12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr; return `${h12}:${m} ${am}`; }
 
 /* ─── Slot availability — shared by the conflict guard + /availability ─────── */
 //
@@ -388,6 +396,41 @@ export async function createBooking(c: any) {
 
   // Demand: a realised court-booking intent (drives the owner demand report).
   void recordDemand({ type: 'booking_completed', venueId: body.venueId, courtId: body.courtId, userId: user.sub, date: body.date, startHour: body.startTime ? Number(body.startTime.split(':')[0]) : null });
+
+  // Send booking email (best-effort, non-blocking).
+  if (canEmail()) {
+    const userEmail = (c.get('user') as any)?.email;
+    if (userEmail) {
+      const vn = venue?.displayName || 'the venue';
+      const cn = court ? `Court ${(court as any).courtNumber || ''}` : undefined;
+      const hrs = body.startTime && body.endTime
+        ? Math.max(1, Math.round(((toMinutes(body.endTime)! - toMinutes(body.startTime)!) / 60) * 10) / 10)
+        : 1;
+      const rate = `₱${Number(result.amount || 0) / hrs || 0}`;
+      const subtotal = `₱${Number(result.amount || 0).toFixed(2)}`;
+
+      if (requiresApproval) {
+        const t = bookingRequestedReceipt({
+          receipt: String(result._id).slice(-8).toUpperCase(),
+          venue: vn, court: cn,
+          date: fmtDate(body.date), start: fmtTime(body.startTime), end: fmtTime(body.endTime), hours: hrs,
+          rate, estimatedTotal: subtotal,
+        });
+        void sendEmail({ to: userEmail, subject: `Booking request sent — ${vn}`, body: t.text, html: t.html }).catch(() => {});
+      } else {
+        const t = bookingConfirmedReceipt({
+          receipt: `OR-${String(result._id).slice(-8).toUpperCase()}`,
+          venue: vn, court: cn,
+          date: fmtDate(body.date), start: fmtTime(body.startTime), end: fmtTime(body.endTime), hours: hrs,
+          rate, subtotal, fee: `₱${Number(result.serviceFeeAmount || 0).toFixed(2)}`,
+          total: `₱${Number(result.amount || 0).toFixed(2)}`,
+          method: body.paymentMethod || undefined,
+        });
+        void sendEmail({ to: userEmail, subject: `Booking confirmed — ${vn}`, body: t.text, html: t.html }).catch(() => {});
+      }
+    }
+  }
+
   return c.json({ data: { ...result.toObject(), id: result._id } }, 201);
 }
 
@@ -435,6 +478,51 @@ export async function cancelBooking(c: any) {
       await promoteWaitlistForSlot(String((result as any).venueId), (result as any).date, (result as any).startTime);
     } catch { /* promotion is best-effort */ }
   })();
+
+  // Auto-process refund in test mode — find the associated payment and mark it refunded.
+  let refundStatus = 'No payment to refund';
+  void (async () => {
+    try {
+      const payment = await Payment.findOne({ bookingId: id, status: 'completed' });
+      if (payment) {
+        const { isPaymentTestMode } = await import('../settings/settings.controller.js');
+        const testMode = await isPaymentTestMode();
+        if (testMode) {
+          payment.status = 'refunded';
+          payment.notes = `Auto-refunded on cancellation (test mode) — ${new Date().toISOString()}`;
+          await payment.save();
+          refundStatus = 'Refunded (test mode)';
+        } else {
+          refundStatus = 'Processing — 5–10 business days';
+        }
+      }
+    } catch { /* best-effort */ }
+  })();
+
+  // Send cancellation email (best-effort).
+  if (canEmail()) {
+    const ue = (c.get('user') as any)?.email;
+    if (ue) {
+      void (async () => {
+        try {
+          // Wait a tick for refund to process
+          await new Promise(r => setTimeout(r, 500));
+          const v = await Venue.findById((result as any).venueId).select('displayName').lean<{ displayName?: string }>();
+          const t = cancellationReceipt({
+            receipt: String((result as any)._id).slice(-8).toUpperCase(),
+            venue: v?.displayName || 'the venue',
+            date: fmtDate((result as any).date),
+            time: `${fmtTime((result as any).startTime)} – ${fmtTime((result as any).endTime)}`,
+            refund: `₱${Number((result as any).amount || 0).toFixed(2)}`,
+            refundStatus,
+            cancelledAt: new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+          });
+          await sendEmail({ to: ue, subject: `Booking cancelled — ${v?.displayName || 'your booking'}`, body: t.text, html: t.html });
+        } catch { /* best-effort */ }
+      })();
+    }
+  }
+
   return c.json({ data: { ...result, id: result._id } });
 }
 
@@ -450,8 +538,9 @@ const modifySchema = z.object({
 const MAX_MODIFICATIONS = 3;
 
 // PATCH /bookings/:id/modify — reschedule a booking (date, time, court).
-// Player-scoped: only the booking owner. Owner/staff use the venue-level
-// modify endpoint (owner scope, TBD). Re-checks slot availability.
+// Player-scoped: only the booking owner can modify their own booking.
+// Owner/staff can modify via the existing PATCH /venues/:id/bookings/:bookingId.
+// Re-checks slot availability on the new slot.
 export async function modifyBooking(c: any) {
   const user = c.get('user');
   const id = c.req.param('id');

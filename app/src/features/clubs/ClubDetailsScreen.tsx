@@ -16,8 +16,10 @@ import { userHasPermission } from '../../shared/lib/permissions';
 import {
   getClub, listClubMembers, listClubFeed, joinClub, leaveClub, deleteClub, createClubPost, reactClubPost, unreactClubPost,
   deleteClubPost, removeClubMember, listClubRequests, approveClubRequest, denyClubRequest, uploadClubMedia,
+  listClubStaff, addClubStaff, removeClubStaff, searchOwnerStaff,
   apiUrl, apiImageUrl, getAccessToken,
   type ApiClub, type ApiClubMember, type ApiClubPost, type ApiClubRequest, type ClubAttachment,
+  type ApiClubStaff,
 } from '../../shared/lib/api';
 
 /** A top-level feed post (the post-actions / edit / delete target). */
@@ -31,7 +33,7 @@ interface ClubDetailsScreenProps {
   onBack: () => void;
 }
 
-type ClubTab = 'about' | 'feed' | 'chat';
+type ClubTab = 'about' | 'feed' | 'chat' | 'staff';
 
 // Remember the active tab per club so returning from a pushed screen (e.g. a
 // single post) lands back on Feed instead of resetting to About on remount.
@@ -58,10 +60,18 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
 
   const [club, setClub] = useState<ApiClub | null>(null);
   const [members, setMembers] = useState<ApiClubMember[]>([]);
+  const [staff, setStaff] = useState<ApiClubStaff[]>([]);
   const [feed, setFeed] = useState<ApiClubPost[]>([]);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
   const [tab, setTab] = useState<ClubTab>(() => clubTabMemory[clubId] ?? 'about');
   const changeTab = (t: ClubTab) => { clubTabMemory[clubId] = t; setTab(t); };
+
+  // Staff search state
+  const [staffQuery, setStaffQuery] = useState('');
+  const [staffResults, setStaffResults] = useState<{ id: string; displayName: string; avatarUrl?: string | null }[]>([]);
+  const [staffSearching, setStaffSearching] = useState(false);
+  const [addingStaffId, setAddingStaffId] = useState<string | null>(null);
+  const staffSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [joinBusy, setJoinBusy] = useState(false);
   const [draft, setDraft] = useState('');
@@ -103,15 +113,17 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
         if (!alive) return;
         setClub(c);
         setStatus('ready');
-        const [m, f, r] = await Promise.all([
+        const [m, f, r, s] = await Promise.all([
           listClubMembers(clubId).catch(() => [] as ApiClubMember[]),
           listClubFeed(clubId).catch(() => [] as ApiClubPost[]),
           c.isHost && c.visibility === 'private' ? listClubRequests(clubId).catch(() => [] as ApiClubRequest[]) : Promise.resolve([] as ApiClubRequest[]),
+          c.isHost ? listClubStaff(clubId).catch(() => [] as ApiClubStaff[]) : Promise.resolve([] as ApiClubStaff[]),
         ]);
         if (!alive) return;
         setMembers(m);
         setFeed(f);
         setRequests(r);
+        setStaff(s);
       })
       .catch((e) => {
         if (!alive) return;
@@ -195,6 +207,52 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
     } finally {
       setJoinBusy(false);
     }
+  };
+
+  // ── Staff management (host-only) ──
+  const onStaffSearch = (q: string) => {
+    setStaffQuery(q);
+    if (staffSearchTimer.current) clearTimeout(staffSearchTimer.current);
+    if (!q.trim() || !currentUser) { setStaffResults([]); setStaffSearching(false); return; }
+    setStaffSearching(true);
+    staffSearchTimer.current = setTimeout(async () => {
+      try {
+        const hits = await searchOwnerStaff(currentUser.id, q.trim());
+        const existingIds = new Set(staff.map((s) => s.userId));
+        setStaffResults(hits.filter((h: any) => !existingIds.has(h.id)));
+      } catch { setStaffResults([]); }
+      finally { setStaffSearching(false); }
+    }, 350);
+  };
+
+  const onStaffFocus = () => {
+    if (!staffQuery.trim() && staffResults.length === 0 && !staffSearching && currentUser) {
+      setStaffSearching(true);
+      searchOwnerStaff(currentUser.id).then((hits: any) => {
+        const existingIds = new Set(staff.map((s) => s.userId));
+        setStaffResults(hits.filter((h: any) => !existingIds.has(h.id)));
+      }).catch(() => setStaffResults([]))
+        .finally(() => setStaffSearching(false));
+    }
+  };
+
+  const onAddStaff = async (userId: string) => {
+    if (!club || addingStaffId) return;
+    setAddingStaffId(userId);
+    try {
+      const created = await addClubStaff(club.id, userId);
+      setStaff((s) => [...s, created]);
+      setStaffQuery('');
+      setStaffResults([]);
+    } catch { /* ignore */ }
+    finally { setAddingStaffId(null); }
+  };
+
+  const onRemoveStaff = async (staffId: string) => {
+    try {
+      await removeClubStaff(staffId);
+      setStaff((s) => s.filter((m) => m.id !== staffId));
+    } catch { /* ignore */ }
   };
 
   // Share an invite link to the club. The URL (`/clubs/<slug>`) deep-links the PWA
@@ -372,8 +430,9 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
     { value: 'about', label: 'About' },
     { value: 'feed', label: 'Feed' },
     ...(canChat ? [{ value: 'chat' as ClubTab, label: 'Chat' }] : []),
+    ...(club.isHost ? [{ value: 'staff' as ClubTab, label: 'Staff' }] : []),
   ];
-  const activeTab: ClubTab = tab === 'chat' && !canChat ? 'about' : tab;
+  const activeTab: ClubTab = (tab === 'chat' && !canChat) || (tab === 'staff' && !club.isHost) ? 'about' : tab;
 
   return (
     <div className={`scroll ${!club.isHost && !club.isMember ? 'pb-[110px]' : 'pb-[30px]'}`}>
@@ -537,6 +596,79 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'staff' && (
+            <div className="flex flex-col gap-4">
+              {/* Staff list */}
+              <div>
+                <div className="t-eyebrow mb-2">
+                  Staff · {staff.length}
+                </div>
+                {staff.length > 0 ? (
+                  <div className="flex flex-col gap-2 mb-3">
+                    {staff.map((s) => (
+                      <div key={s.id} className="organizer m-0!">
+                        <Avatar src={s.avatarUrl} name={s.displayName ?? 'Staff'} size={40} variant="blue" />
+                        <div className="meta">
+                          <div className="role capitalize">{s.staffRole || 'moderator'}</div>
+                          <div className="name">{s.displayName ?? s.email ?? 'Staff'}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onRemoveStaff(s.id)}
+                          className="ml-auto shrink-0 text-[13px] font-bold text-[var(--coral)] px-2.5 py-1.5 rounded-lg active:bg-[var(--surface-2)]"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm mb-3">No staff assigned yet. Use the search below to add someone.</div>
+                )}
+              </div>
+
+              {/* Search + add */}
+              <div>
+                <div className="t-eyebrow mb-2">Add a staff member</div>
+                <div className="relative mb-1.5">
+                  <input
+                    className="control"
+                    value={staffQuery}
+                    onChange={(e) => onStaffSearch(e.target.value)}
+                    onFocus={onStaffFocus}
+                    placeholder="Search your staff accounts…"
+                    autoComplete="off"
+                  />
+                  {staffSearching && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex animate-spin text-[var(--muted)]">
+                      <Icon name="spinner" size={14} />
+                    </span>
+                  )}
+                </div>
+                {staffResults.length > 0 && (
+                  <div className="rounded-xl border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] overflow-hidden mb-3">
+                    {staffResults.map((p: any) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => onAddStaff(p.id)}
+                        disabled={addingStaffId === p.id}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[var(--surface-2)] text-left disabled:opacity-50"
+                      >
+                        <Avatar name={p.displayName} src={p.avatarUrl} size={28} />
+                        <span className="font-semibold text-[14px] text-[var(--ink)] truncate flex-1">{p.displayName}</span>
+                        <Icon name="add" size={16} className="text-[var(--primary)]" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!staffSearching && staffResults.length === 0 && staffQuery.trim() && (
+                  <div className="t-sm text-[var(--muted)] mb-3">No staff accounts found. Create one in Owner → Staff first.</div>
                 )}
               </div>
             </div>

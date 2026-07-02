@@ -12,7 +12,7 @@ import {
   createRecurringBooking, getRecurringBookings, cancelRecurringBooking,
   listSubscriptionPlans, createSubscriptionPlan, getSubscriptionPlan, updateSubscriptionPlan,
   deleteSubscriptionPlan, duplicateSubscriptionPlan, toggleSubscriptionPlan,
-  listPublicPlans, subscribeToPlan,
+  listPublicPlans, subscribeToPlan, listVenuePricing,
 } from './venues.controller.js';
 
 const venuesRoutes = new Hono();
@@ -97,6 +97,10 @@ venuesRoutes.post('/subscription-plans/:planId/subscribe', requireAuth, subscrib
 venuesRoutes.get('/:id/slot-overrides', optionalAuth, getSlotOverrides);
 venuesRoutes.post('/:id/slot-overrides', requireAuth, createSlotOverride);
 venuesRoutes.delete('/slot-overrides/:id', requireAuth, deleteSlotOverride);
+
+/* ─── Venue Pricing (imported data — read-only) ──────────────────── */
+
+venuesRoutes.get('/:id/pricing', listVenuePricing);
 
 /* ─── FAQs ────────────────────────────────────────────────────────── */
 

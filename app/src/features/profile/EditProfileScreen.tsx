@@ -185,6 +185,16 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
 
         <div className="field">
           <FormField
+            label="Email"
+            value={currentUser?.email ?? ''}
+            disabled
+            hint="Contact support to change your email."
+            trailingSlot={<span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] bg-[var(--surface)] border border-[var(--hairline)] rounded-full px-2 py-0.5 select-none">Read-only</span>}
+          />
+        </div>
+
+        <div className="field">
+          <FormField
             label="Location"
             value={form.values.location}
             onChange={(e) => form.setField('location', e.target.value)}

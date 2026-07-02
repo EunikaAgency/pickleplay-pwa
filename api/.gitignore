@@ -5,3 +5,4 @@ dist/
 uploads/
 src/db/migrations/
 api/tsconfig.tsbuildinfo
+.gmail-tokens.json

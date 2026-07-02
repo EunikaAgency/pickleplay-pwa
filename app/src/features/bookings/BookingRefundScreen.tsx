@@ -6,7 +6,7 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
-import { getBooking, cancelBooking, ApiError, type ApiBooking } from '../../shared/lib/api';
+import { getBooking, cancelBooking, getSettings, ApiError, type ApiBooking } from '../../shared/lib/api';
 import { money, prettyDate, timeRange } from './bookingDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -26,6 +26,7 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
   const [booking, setBooking] = useState<ApiBooking | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
   const [reloadKey, setReloadKey] = useState(0);
+  const [testMode, setTestMode] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -41,11 +42,16 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
 
   useEffect(() => {
     let alive = true;
-    getBooking(bookingId)
-      .then((b) => { if (alive) { setBooking(b); setStatus('ready'); } })
-      .catch((e) => {
-        if (!alive) return;
-        setStatus(e instanceof ApiError && e.status === 404 ? 'notfound' : 'error');
+    Promise.all([
+      getBooking(bookingId),
+      getSettings().catch(() => null),
+    ]).then(([b, s]) => {
+      if (!alive) return;
+      setBooking(b); setStatus('ready');
+      setTestMode(s?.paymentTestMode ?? false);
+    }).catch((e) => {
+      if (!alive) return;
+      setStatus(e instanceof ApiError && e.status === 404 ? 'notfound' : 'error');
       });
     return () => { alive = false; };
   }, [bookingId, reloadKey]);
@@ -110,11 +116,15 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
         <div className="w-16 h-16 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] flex items-center justify-center mb-4">
           <Icon name="check" size={30} />
         </div>
-        <h2 className="font-heading font-bold text-[20px] text-[var(--ink)]">Cancellation requested</h2>
+        <h2 className="font-heading font-bold text-[20px] text-[var(--ink)]">
+          {testMode ? 'Booking cancelled & refunded' : 'Cancellation requested'}
+        </h2>
         <p className="text-[14px] text-[var(--ink-2)] font-semibold mt-2 max-w-[300px]">
-          Your court at {booking.venueName || 'the venue'} has been released. Any eligible refund of{' '}
-          {money(booking.amount)} will be reviewed and returned to your original payment method — you'll
-          get a confirmation once it's processed.
+          Your court at {booking.venueName || 'the venue'} has been released.{' '}
+          {testMode
+            ? `Your payment of ${money(booking.amount)} has been automatically refunded to your original payment method.`
+            : `Any eligible refund of ${money(booking.amount)} will be reviewed and returned to your original payment method — you'll get a confirmation once it's processed.`
+          }
         </p>
         <div className="w-full max-w-[320px] mt-6 flex flex-col gap-2.5">
           <Button fullWidth onClick={() => onNavigate('my-bookings', undefined, { replace: true })}>
@@ -161,20 +171,21 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
           </div>
         ) : (
           <>
-            {/* Refund policy — honest about the current (manual) process. */}
+            {/* Refund policy notice */}
             <div className="mt-5 rounded-2xl bg-[var(--primary-tint)] border-[0.5px] border-[var(--primary)]/20 px-4 py-3.5 flex items-start gap-3">
               <Icon name="help" size={18} className="mt-0.5 shrink-0 text-[var(--primary)]" />
               <div className="text-[13px] font-semibold text-[var(--ink-2)] leading-snug">
-                <span className="font-bold text-[var(--ink)]">How refunds work.</span> Automatic refunds
-                aren't available yet. Cancelling below releases your court immediately and flags the
-                booking for our team — any eligible refund is returned to your original payment method,
-                and we'll confirm once it's done.
+                <span className="font-bold text-[var(--ink)]">How refunds work.</span>{' '}
+                {testMode
+                  ? 'In test mode, refunds are processed automatically. Your payment will be returned immediately.'
+                  : "Cancelling releases your court immediately. Any eligible refund is returned to your original payment method, and we'll confirm once it's done."
+                }
               </div>
             </div>
 
             <div className="mt-5">
               <Button fullWidth variant="destructive" onClick={() => { setCancelError(null); setConfirmOpen(true); }}>
-                <Icon name="logout" size={16} /> Cancel booking & request refund
+                <Icon name="logout" size={16} /> {testMode ? 'Cancel booking & auto-refund' : 'Cancel booking & request refund'}
               </Button>
               <button
                 className="w-full mt-2.5 h-11 text-[14px] font-bold text-[var(--muted)]"

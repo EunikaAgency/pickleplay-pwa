@@ -141,3 +141,19 @@ const clubMessageSchema = new Schema({
 clubMessageSchema.index({ clubId: 1, createdAt: 1 });
 
 export const ClubMessage = model('ClubMessage', clubMessageSchema);
+
+// ── Per-club staff assignments ── like VenueStaff but for clubs. The club host
+// (or someone with owner.staff.manage) can add a staff member to a specific club.
+// Once added, the staff member can moderate that club (manage posts, members) but
+// cannot delete the club or manage other staff.
+const clubStaffSchema = new Schema({
+  clubId:    { type: Schema.Types.ObjectId, ref: 'Club', required: true },
+  userId:    { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  staffRole: { type: String, maxlength: 30, default: 'moderator' },
+  status:    { type: String, default: 'active', enum: ['active', 'inactive'] },
+}, { timestamps: true });
+
+clubStaffSchema.index({ clubId: 1, userId: 1 }, { unique: true });
+clubStaffSchema.index({ userId: 1, status: 1 });
+
+export const ClubStaff = model('ClubStaff', clubStaffSchema);

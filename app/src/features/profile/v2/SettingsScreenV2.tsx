@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { useTheme, type ThemePreference } from '../../../shared/hooks/useTheme';
 import { useNotificationStore } from '../../../shared/lib/notificationStore';
 import { useAuthStore } from '../../../shared/lib/authStore';
-import { DEFAULT_PREFERENCES, type PrivacySetting, type UserPreferences } from '../../../shared/lib/permissions';
-import type { ProfileUpdate } from '../../../shared/lib/api';
+import { userHasPermission, DEFAULT_PREFERENCES, type PrivacySetting, type UserPreferences } from '../../../shared/lib/permissions';
+import { getSettings, updateSettings, type ProfileUpdate } from '../../../shared/lib/api';
 
 /**
  * v2.1 Settings shell. Reuses the `v2-profile` style scope (the mockup kept the
@@ -134,6 +134,30 @@ export function SettingsScreenV2(props: SettingsV2Props) {
   const [prefs, setPrefs] = useState<UserPreferences>(user?.preferences ?? DEFAULT_PREFERENCES);
   const [privacy, setPrivacy] = useState<PrivacySetting>(user?.privacySetting ?? 'public');
   const [saveError, setSaveError] = useState(false);
+
+  // Admin-only: email monitoring settings
+  const isAdmin = user != null && (user.roleDefault === 'admin' || user.roles?.includes('admin') || userHasPermission(user, 'admin.access'));
+  const [bccEnabled, setBccEnabled] = useState(false);
+  const [bccAddress, setBccAddress] = useState('info@eunika.agency');
+  const [bccSaving, setBccSaving] = useState(false);
+  const [bccDirty, setBccDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    getSettings().then((s) => {
+      setBccEnabled(s.emailBccEnabled ?? false);
+      setBccAddress(s.emailBccAddress ?? 'info@eunika.agency');
+    }).catch(() => {});
+  }, [isAdmin]);
+
+  const saveBcc = async () => {
+    setBccSaving(true);
+    try {
+      await updateSettings({ emailBccEnabled: bccEnabled, emailBccAddress: bccAddress });
+      setBccDirty(false);
+    } catch { /* keep dirty state */ }
+    setBccSaving(false);
+  };
 
   // Persist a preferences patch optimistically: apply `next` locally, send only
   // the changed slice to the server, and roll back to `prev` on failure.
@@ -266,6 +290,73 @@ export function SettingsScreenV2(props: SettingsV2Props) {
       {saveError && (
         <div className="content-section" role="alert" style={{ color: 'var(--error)', fontSize: 13, fontWeight: 600 }}>
           Couldn’t save your preferences. Check your connection and try again.
+        </div>
+      )}
+
+      {/* ADMIN: Email monitoring */}
+      {isAdmin && (
+        <div className="content-section">
+          <h2 className="section-title">Email monitoring</h2>
+          <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+            Send a copy of every transactional email to a monitoring inbox.
+          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <div>
+              <strong style={{ fontSize: 14, color: "var(--ink)" }}>Email monitoring</strong>
+              <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                {bccEnabled ? `Monitoring copies sent to ${bccAddress}` : "Off"}
+              </p>
+            </div>
+            <Toggle checked={bccEnabled} onChange={() => { setBccEnabled(!bccEnabled); setBccDirty(true); }} label="Email monitoring" />
+          </div>
+          {bccEnabled && (
+            <div style={{ padding: "8px 0" }}>
+              <input
+                type="email"
+                value={bccAddress}
+                onChange={(e) => { setBccAddress(e.target.value); setBccDirty(true); }}
+                placeholder="info@eunika.agency"
+                style={{
+                  width: "100%", padding: "10px 14px", borderRadius: 12,
+                  border: "2px solid var(--muted)", background: "var(--surface)",
+                  fontSize: 14, fontWeight: 600, color: "var(--ink)",
+                  outline: "none",
+                }}
+              />
+            </div>
+          )}
+          {bccDirty && (
+            <button
+              onClick={saveBcc}
+              disabled={bccSaving}
+              style={{
+                marginTop: 8, padding: "10px 20px", borderRadius: 999,
+                background: "var(--lime)", color: "var(--on-accent)",
+                fontWeight: 700, fontSize: 14, border: "none",
+              }}
+            >
+              {bccSaving ? "Saving..." : "Save"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ADMIN: Test email tool */}
+      {isAdmin && (
+        <div className="content-section">
+          <h2 className="section-title">Admin tools</h2>
+          <ul className="settings-list">
+            <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('test-email')}>
+              <div className="settings-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+              </div>
+              <div className="settings-label">
+                <strong>Test email tool</strong>
+                <span>Send sample emails to preview templates</span>
+              </div>
+              <Chevron />
+            </li>
+          </ul>
         </div>
       )}
 

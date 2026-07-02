@@ -20,9 +20,10 @@ interface OwnerStaffScreenProps {
   onBack: () => void;
 }
 
-// Org-level staff: an owner creates login accounts that manage ALL of their
-// venues, bookings, and clubs. Distinct from the per-venue "Team" tab inside a
-// single venue editor. Gated by owner.staff.manage (owners + admins).
+// Staff accounts: an owner creates login accounts for their team. A staff
+// account starts with NO venue access — the owner must then add them to specific
+// venues via each venue's Staff tab. That's where their access is scoped.
+// Gated by owner.staff.manage (owners + admins).
 export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
   const user = useAuthStore((s) => s.user);
   const canManage = userHasPermission(user, 'owner.staff.manage');
@@ -122,7 +123,7 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
       onBack={onBack}
       eyebrow="Owner console"
       title="Staff"
-      subtitle="Accounts that help you run your venues, bookings and clubs."
+      subtitle="Create staff accounts. Add them to venues in each venue's Staff tab."
     />
   );
 
@@ -145,7 +146,7 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
       {/* What staff can do */}
       <div className="card p-4 mb-4 t-sm text-[var(--muted)]">
         <Icon name="info" size={13} className="inline mr-1" />
-        A staff account can manage <span className="font-semibold text-[var(--ink)]">all of your venues, bookings, and clubs</span>. They can't create other staff or list new venues.
+        Create a login for your team member here. Then go to a venue's <span className="font-semibold text-[var(--ink)]">Staff tab</span> to add them — that's where you choose which venues they can access and what role they have (Manager or Front desk).
       </div>
 
       {/* Add a staff account */}

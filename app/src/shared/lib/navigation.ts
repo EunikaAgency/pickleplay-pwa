@@ -1,6 +1,8 @@
 export type Screen =
   | { id: 'landing' }
   | { id: 'login' }
+  | { id: 'forgot-password' }
+  | { id: 'reset-password'; params: { token: string } }
   | { id: 'onboarding' }
   | { id: 'home' }
   // `intent: 'lobby'` = the user came here to book a court so they can then host a
@@ -34,6 +36,7 @@ export type Screen =
   | { id: 'edit-club'; params: { id: string } }
   | { id: 'edit-profile' }
   | { id: 'settings' }
+  | { id: 'test-email' }
   | { id: 'search' }
   | { id: 'invite-players'; params: { id: string } }
   | { id: 'notifications' }
@@ -89,6 +92,8 @@ export function pathFromScreen(screen: Screen): string {
     case 'home': return '/';
     case 'landing': return '/welcome';
     case 'login': return '/login';
+    case 'forgot-password': return '/forgot-password';
+    case 'reset-password': return `/reset-password?token=${encodeURIComponent(screen.params.token)}`;
     case 'onboarding': return '/onboarding';
     case 'nearby': return `/nearby${q({ intent: screen.params?.intent })}`;
     case 'games': return '/games';
@@ -114,6 +119,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'edit-club': return `/clubs/${screen.params.id}/edit`;
     case 'edit-profile': return '/profile/edit';
     case 'settings': return '/settings';
+    case 'test-email': return '/settings/test-email';
     case 'search': return '/search';
     case 'invite-players': return `/games/${screen.params.id}/invite`;
     case 'notifications': return '/notifications';
@@ -165,6 +171,8 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'home': return { id: 'home' };
     case 'welcome': return { id: 'landing' };
     case 'login': return { id: 'login' };
+    case 'forgot-password': return { id: 'forgot-password' };
+    case 'reset-password': return { id: 'reset-password', params: { token: sp.get('token') || '' } };
     case 'onboarding': return { id: 'onboarding' };
     case 'nearby':
       if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
@@ -202,7 +210,9 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'my-bookings' };
     case 'payments': return { id: 'payment-history' };
     case 'profile': return b === 'edit' ? { id: 'edit-profile' } : { id: 'profile' };
-    case 'settings': return { id: 'settings' };
+    case 'settings':
+      if (b === 'test-email') return { id: 'test-email' };
+      return { id: 'settings' };
     case 'search': return { id: 'search' };
     case 'notifications': return { id: 'notifications' };
     case 'messages': return b ? { id: 'chat', params: { id: b, name: opt(sp.get('name')) } } : { id: 'messages' };
@@ -257,6 +267,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'organizer-bracket') return { id: 'organizer-tournaments' };
   if (id === 'organizer-session') return { id: 'organizer-open-play' };
   if (id === 'organizer-roster') return { id: 'organizer-rosters' };
+  if (id === 'test-email') return { id: 'settings' };
   if (id.startsWith('organizer-')) return { id: 'organizer-hub' };
   if (id === 'admin-claims') return { id: 'profile' };
   if (id === 'open-play-book') return { id: 'nearby' };

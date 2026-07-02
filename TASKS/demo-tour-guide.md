@@ -734,4 +734,69 @@ Owner Home → Venues → pick venue → Pricing tab → toggle "Auto Dynamic Pr
 
 ---
 
-*Generated 2026-06-30 for client demo. Based on TASKS CSV (53 feature rows) + current app state (12 venue editor tabs, per-court approval, multi-layer pricing).*
+## 28. Staff — Per-Venue Access (2026-07-01)
+
+**CSV Row(s):** #44 (Multi-user/staff accounts) — updated
+
+**Tour Path — Create staff account:**
+```
+Owner Home → Owner → Staff → fill name/email/password → Create account
+```
+
+**Tour Path — Assign staff to venue:**
+```
+Owner Home → Venues → pick venue → Staff tab → click "Find a person" → staff suggestions appear → pick staff → select role (Manager/Front desk) → Add to team
+```
+
+**Ano ipapakita:**
+- Staff accounts start with **NO venue access** — blank console until assigned
+- Owner creates staff at `/owner/staff` (account only, no permissions)
+- Owner assigns staff per-venue in the Staff tab
+- Staff search only shows the owner's own staff accounts (not random players)
+- On-focus: auto-suggests all staff accounts of the owner
+- **Manager** — full venue access (bookings, analytics, listing)
+- **Front desk** — today's schedule, check-ins, manual entries only
+- Staff only see venues they're explicitly assigned to
+
+**Sasabihin sa client:**
+> "Staff accounts are venue-scoped. You create their login once, then assign them to specific venues. A staff member only sees venues you've explicitly added them to — they can't browse your entire portfolio."
+
+---
+
+## 29. Club Staff — Per-Club Moderators (2026-07-01)
+
+**Tour Path — Assign staff to a club:**
+```
+Clubs tab → open your club → About tab → scroll to Staff section → search your staff → add as moderator
+```
+
+**Ano ipapakita:**
+- Host-only section in the Club About tab
+- Search + add staff (same staff pool as venues)
+- Staff list with role badge + Remove button
+- Club staff can moderate posts and members but cannot delete the club or manage other staff
+- Staff see assigned clubs in "My Clubs" with `isStaff: true`
+
+**Sasabihin sa client:**
+> "Just like venues, you can assign staff to specific clubs. They can moderate posts, manage members, and handle join requests — but they can't delete the club or add other staff. You stay in control."
+
+---
+
+## 30. Custom Amenities (2026-07-01)
+
+**Tour Path:**
+```
+Owner Home → Venues → pick venue → Listing tab → Amenities section → tap preset chips → type custom amenity in "Custom amenities" field → press Enter → Save
+```
+
+**Ano ipapakita:**
+- 13 preset amenity toggles (Parking, Showers, Aircon, etc.)
+- New "Custom amenities" TagField below presets — type anything (e.g. "Ball machine", "Locker room")
+- Custom amenities appear alongside presets on the player-facing Court Details screen
+
+**Sasabihin sa client:**
+> "We have common amenities as one-tap toggles. But if your venue has something unique — a ball machine, a recovery room, whatever — just type it in the custom field and it shows up for players."
+
+---
+
+*Generated 2026-06-30, updated 2026-07-01. Based on TASKS CSV (53 feature rows) + current app state (12 venue editor tabs, per-court approval, multi-layer pricing, per-venue staff, club staff, custom amenities).*

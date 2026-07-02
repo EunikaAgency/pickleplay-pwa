@@ -154,6 +154,7 @@ export type PrivacySetting = 'public' | 'friends' | 'private';
 
 export interface AppUser {
   id: string;
+  email: string;
   displayName: string;
   /** Optional profile display fields, populated from the API user payload. */
   firstName?: string;

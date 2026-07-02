@@ -9,7 +9,7 @@ import {
   listVenueStaff,
   addVenueStaff,
   removeVenueStaff,
-  searchPlayers,
+  searchOwnerStaff,
   ApiError,
   type VenueStaffMember,
   type ApiPlayer,
@@ -17,6 +17,7 @@ import {
 
 interface StaffEditorTabProps {
   venueId: string;
+  onNavigate: (screen: string, params?: any, opts?: { replace?: boolean }) => void;
 }
 
 const STAFF_ROLES = [
@@ -24,7 +25,7 @@ const STAFF_ROLES = [
   { value: 'front_desk', label: 'Front desk — today\'s schedule, check-ins, manual entries' },
 ];
 
-export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
+export function StaffEditorTab({ venueId, onNavigate }: StaffEditorTabProps) {
   const user = useAuthStore((s) => s.user);
   const canManage = userHasPermission(user, 'owner.staff.manage');
 
@@ -58,23 +59,21 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
       .finally(() => setLoading(false));
   }, [venueId, retryCtr]);
 
-  // Debounced user search fired from the add form.
-  const onSearch = (q: string) => {
+  // Debounced staff-only search fired from the add form.
+  const doSearch = (q: string) => {
     setQuery(q);
     setSelectedUser(null);
     setAddError('');
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const trimmed = q.trim();
-    if (trimmed.length < 2) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
     setSearching(true);
     const reqId = ++searchReq.current;
+    const ownerId = user?.id;
+    if (!ownerId) { setSearching(false); return; }
     searchTimer.current = setTimeout(async () => {
       try {
-        const hits = await searchPlayers(trimmed);
+        // searchOwnerStaff scopes to staff created by this owner.
+        const hits = await searchOwnerStaff(ownerId, trimmed || undefined);
         if (reqId === searchReq.current) {
           // Filter out people already on the team.
           const staffIds = new Set(staff.map((s) => s.userId));
@@ -86,6 +85,15 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
         if (reqId === searchReq.current) setSearching(false);
       }
     }, 350);
+  };
+
+  const onSearch = (q: string) => doSearch(q);
+
+  // On focus with an empty field, show all staff of this owner as suggestions.
+  const onFocus = () => {
+    if (!query.trim() && results.length === 0 && !searching) {
+      doSearch('');
+    }
   };
 
   const onAdd = async () => {
@@ -204,7 +212,7 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
       </OwnerSection>
 
       {/* Add a team member */}
-      <OwnerSection title="Add a team member" icon="person_add" description="Search by name — the person must already have a PickleBallers account.">
+      <OwnerSection title="Add a team member" icon="person_add" description="Search your staff accounts. Create them first in Owner → Staff if you haven't yet.">
         {/* Search field */}
         <div className="field p-0! mb-3">
           <label className="lbl">Find a person</label>
@@ -213,7 +221,8 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
               className="control"
               value={query}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="Type a name (min 2 characters)"
+              onFocus={onFocus}
+              placeholder="Search your staff accounts…"
               autoComplete="off"
             />
             {searching && (
@@ -286,14 +295,21 @@ export function StaffEditorTab({ venueId }: StaffEditorTabProps) {
         )}
 
         {/* Empty search state */}
-        {query.trim().length >= 2 && !searching && results.length === 0 && !selectedUser && (
-          <div className="t-sm text-[var(--muted)] mb-3">No matching players found.</div>
+        {!searching && results.length === 0 && !selectedUser && query.trim().length > 0 && (
+          <div className="t-sm text-[var(--muted)] mb-3">No matching staff found. Create staff accounts in Owner → Staff first.</div>
         )}
 
         <div className="t-sm text-[var(--muted)]">
           <Icon name="info" size={13} className="inline mr-1" />
           The person you add will see this venue in their console with the role you pick below. You can remove them anytime.
         </div>
+        <button
+          type="button"
+          onClick={() => onNavigate('owner-staff')}
+          className="mt-3 t-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          No staff yet? Create one in Owner → Staff
+        </button>
       </OwnerSection>
     </div>
   );

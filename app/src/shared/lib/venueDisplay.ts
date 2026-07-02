@@ -79,10 +79,12 @@ const AMENITY_FLAGS: { key: keyof ApiVenue; label: string }[] = [
   { key: 'hasProShop', label: 'Pro shop' },
 ];
 
-/** Curated amenity chips if present, else derived from the boolean flags. */
+/** Curated amenity chips if present, else derived from the boolean flags + custom amenities. */
 export function venueAmenities(v: ApiVenue): string[] {
   if (v.amenityChips && v.amenityChips.length) return v.amenityChips;
-  return AMENITY_FLAGS.filter((a) => v[a.key] === true).map((a) => a.label);
+  const fromFlags = AMENITY_FLAGS.filter((a) => v[a.key] === true).map((a) => a.label);
+  const custom = (v.customAmenities && v.customAmenities.length) ? v.customAmenities : [];
+  return [...fromFlags, ...custom];
 }
 
 /** Up to 3 short tags for a list card: indoor/outdoor, beginner, open play, amenities. */

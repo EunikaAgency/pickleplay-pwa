@@ -105,7 +105,9 @@ src/
                        #   CreateClub + EditClub (live: POST/PATCH
                        #   /clubs — name/description/visibility + cover-photo upload
                        #   + member limit). All via the clubs client in api.ts.
-    profile/           # Profile, EditProfile, Settings, Notifications, PaymentHistory
+    profile/           # Profile, EditProfile, Settings, Notifications, PaymentHistory,
+                       #   TestEmail (admin tool: send sample transactional emails to preview
+                       #   templates in an inbox; gated by admin.access, reachable from Settings)
                        #   (player spend report: KPIs + 6-month BarChart + receipts,
                        #    from listPayments; gated by player.payments.view)
     messages/          # direct 1:1 chat: ConversationsScreen (thread list, from Profile → Messages or

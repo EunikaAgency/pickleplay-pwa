@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { Types } from 'mongoose';
 import { Venue, VenueHour, Faq, HolidayClosure, VenueStaff, VenueMember, SlotPriceOverride, Court, SubscriptionPlan, SubscriptionPlanVersion, VenueSubscription } from './venues.model.js';
+import { VenuePricing } from '../payments/payments.model.js';
 import { VenueClaim } from './venue-management.model.js';
+import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
+import { bookingApprovedReceipt, membershipReceipt } from '../../shared/lib/email-templates.js';
+
+const canEmail = () => isGmailConfigured() && hasValidTokens();
+const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const fmtTime = (t?: string | null) => { if (!t) return ''; const [h, m] = t!.split(':'); const hr = +h; const a = hr < 12 ? 'AM' : 'PM'; const h12 = hr === 0 ? 12 : hr > 12 ? hr - 12 : hr; return `${h12}:${m} ${a}`; };
 import { Media } from '../media/media.model.js';
 import { Review } from '../interactions/interactions.model.js';
 import { OpenPlaySession } from '../content/content.model.js';
@@ -85,6 +92,7 @@ export const updateVenueSchema = z.object({
   hasPaddleRental: z.boolean().optional(),
   hasProShop: z.boolean().optional(),
   amenityChips: z.array(z.string()).optional(),
+  customAmenities: z.array(z.string()).max(20).optional(),
   bestFor: z.array(z.string()).optional(),
   whatPlayersLike: z.array(z.string()).optional(),
   thingsToKnow: z.array(z.string()).optional(),
@@ -1336,10 +1344,37 @@ export async function joinVenueMembership(c: any) {
   if (existing) {
     existing.set({ status: 'active', tier, expiresAt });
     await existing.save();
+    void sendMembershipEmail(existing, userId);
     return c.json({ data: { ...existing.toObject(), id: existing._id } });
   }
   const result = await VenueMember.create({ venueId, userId, tier, status: 'active', expiresAt, addedByUserId: userId });
+  void sendMembershipEmail(result, userId);
   return c.json({ data: { ...result.toObject(), id: result._id } }, 201);
+}
+
+async function sendMembershipEmail(member: any, userId: string) {
+  if (!canEmail()) return;
+  try {
+    const [u, v] = await Promise.all([
+      import('../auth/auth.model.js').then(m => m.User.findById(userId).select('email displayName').lean<{ email?: string; displayName?: string }>()),
+      Venue.findById(member.venueId).select('displayName').lean<{ displayName?: string }>(),
+    ]);
+    if (!u?.email) return;
+    const tier = (member.tier || 'member') as string;
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+    const cycleLabel = tier === 'monthly' ? 'Monthly' : tier === 'quarterly' ? 'Quarterly' : tier === 'annual' ? 'Annual' : 'Membership';
+    const expires = member.expiresAt ? new Date(member.expiresAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No expiry';
+    const t = membershipReceipt({
+      receipt: `MEM-${String(member._id).slice(-8).toUpperCase()}`,
+      venue: v?.displayName || 'the venue',
+      plan: tierLabel,
+      cycle: cycleLabel,
+      amount: 'Free',
+      nextBilling: expires,
+      benefits: ['Member pricing on court bookings', 'Priority access'],
+    });
+    await sendEmail({ to: u.email, subject: `Membership confirmed — ${v?.displayName || 'your venue'}`, body: t.text, html: t.html });
+  } catch { /* best-effort */ }
 }
 
 /** Compute when a membership plan expires from now (UTC), or null if the tier
@@ -1930,6 +1965,28 @@ export async function updateBookingStatus(c: any) {
       icon: 'calendar',
       linkUrl: '/my-bookings',
     });
+
+    // Send approval email (best-effort).
+    if (canEmail()) {
+      void (async () => {
+        try {
+          const u = await import('../auth/auth.model.js').then(m => m.User.findById((result as any).userId).select('email').lean<{ email?: string }>());
+          if (u?.email) {
+            const deadline = new Date((result as any).paymentDueAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+            const t = bookingApprovedReceipt({
+              receipt: String((result as any)._id).slice(-8).toUpperCase(),
+              venue: venue?.displayName || 'the venue',
+              date: fmtDate((result as any).date),
+              start: fmtTime((result as any).startTime), end: fmtTime((result as any).endTime),
+              total: `₱${Number((result as any).amount || 0).toFixed(2)}`,
+              deadline,
+              payUrl: 'https://pickleballer-pwa.eunika.xyz/my-bookings',
+            });
+            await sendEmail({ to: u.email, subject: `Booking approved — ${venue?.displayName || 'your booking'}`, body: t.text, html: t.html });
+          }
+        } catch { /* best-effort */ }
+      })();
+    }
   }
   return c.json({ data: { ...result, id: result!._id } });
 }
@@ -2369,6 +2426,7 @@ export async function subscribeToPlan(c: any) {
       venueMemberId,
     });
     await existingSub.save();
+    if (existingMember) void sendMembershipEmail(existingMember, userId);
     return c.json({ data: { ...existingSub.toObject(), id: existingSub._id, venueMemberId } });
   }
   const sub = await VenueSubscription.create({
@@ -2376,5 +2434,21 @@ export async function subscribeToPlan(c: any) {
     status: 'active', startedAt: new Date(), renewalDate,
     venueMemberId,
   });
+  // Send membership email for newly created member.
+  if (venueMemberId) {
+    const member = await VenueMember.findById(venueMemberId);
+    if (member) void sendMembershipEmail(member, userId);
+  }
   return c.json({ data: { ...sub.toObject(), id: sub._id, venueMemberId } }, 201);
+}
+
+/* ─── Venue Pricing (imported data — read-only) ──────────────────── */
+
+/** GET /venues/:id/pricing — list the imported rich pricing rows for a venue
+ *  (per-audience, per-day, per-time-window). Public, read-only. */
+export async function listVenuePricing(c: any) {
+  const venue = await resolveVenue(c.req.param('id'));
+  if (!venue) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found.' } }, 404);
+  const rows = await VenuePricing.find({ venueId: venue._id }).sort({ label: 1 }).lean();
+  return c.json({ data: rows });
 }

@@ -6,12 +6,16 @@ import { Game } from '../games/games.model.js';
 import { Club } from '../clubs/clubs.model.js';
 
 const searchQuery = z.object({
-  q: z.string().min(1),
+  q: z.string().min(1).optional(),
   // A single type narrows the result to that entity; `all` returns the full
   // cross-entity set (courts/games/players/clubs/coaches) for the app's global
   // search screen. With no type we keep the legacy venues+coaches default so
   // existing web consumers are unaffected.
   type: z.enum(['venues', 'coaches', 'players', 'games', 'clubs', 'all']).optional(),
+  // When set with type=players, scopes results to staff accounts created by
+  // this owner (roleDefault:'staff' + parentOwnerUserId match). Also used
+  // without a query to return all staff of this owner (on-focus suggestions).
+  ownerUserId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
 });
 
 async function searchVenues(q: string) {
@@ -57,16 +61,23 @@ async function searchCoaches(q: string) {
 }
 
 /** Find players by display name, for invites and people search. Returns a lean
- *  public shape (no email/auth fields). The caller may exclude themselves. */
-async function searchPlayers(q: string, excludeUserId?: string) {
-  const regex = new RegExp(q, 'i');
-  const filter: Record<string, any> = {
-    $or: [{ displayName: regex }, { firstName: regex }, { lastName: regex }],
-  };
-  if (excludeUserId) filter._id = { $ne: excludeUserId };
+ *  public shape (no email/auth fields). The caller may exclude themselves.
+ *  When ownerUserId is passed, scopes to staff accounts created by that owner
+ *  (roleDefault:'staff' + parentOwnerUserId match). */
+async function searchPlayers(q: string, opts?: { excludeUserId?: string; ownerUserId?: string }) {
+  const filter: Record<string, any> = {};
+  if (q) {
+    const regex = new RegExp(q, 'i');
+    filter.$or = [{ displayName: regex }, { firstName: regex }, { lastName: regex }];
+  }
+  if (opts?.excludeUserId) filter._id = { $ne: opts.excludeUserId };
+  if (opts?.ownerUserId) {
+    filter.roleDefault = 'staff';
+    filter.parentOwnerUserId = opts.ownerUserId;
+  }
   const rows = await User.find(filter)
-    .select('displayName avatarUrl skillLevel skillLevelLabel lastActiveAt')
-    .limit(10)
+    .select('displayName avatarUrl skillLevel skillLevelLabel lastActiveAt roleDefault')
+    .limit(opts?.ownerUserId ? 30 : 10)
     .lean();
   return rows.map((r: any) => ({
     id: String(r._id),
@@ -75,6 +86,8 @@ async function searchPlayers(q: string, excludeUserId?: string) {
     skillLevel: r.skillLevel ?? null,
     skillLevelLabel: r.skillLevelLabel ?? null,
     lastActiveAt: r.lastActiveAt ?? null,
+    // Include so the UI can distinguish staff from regular players
+    isStaff: r.roleDefault === 'staff',
   }));
 }
 
@@ -131,18 +144,22 @@ async function searchClubs(q: string) {
 }
 
 export async function search(c: any) {
-  const { q, type } = searchQuery.parse(c.req.query());
+  const { q, type, ownerUserId } = searchQuery.parse(c.req.query());
   const user = c.get('user');
   const all = type === 'all';
   const results: Record<string, unknown[]> = {};
-  if (all || !type || type === 'venues') results.venues = await searchVenues(q);
-  if (all || !type || type === 'coaches') results.coaches = await searchCoaches(q);
-  if (all || type === 'games') results.games = await searchGames(q);
-  if (all || type === 'clubs') results.clubs = await searchClubs(q);
+  if (all || !type || type === 'venues') results.venues = await searchVenues(q || '');
+  if (all || !type || type === 'coaches') results.coaches = await searchCoaches(q || '');
+  if (all || type === 'games') results.games = await searchGames(q || '');
+  if (all || type === 'clubs') results.clubs = await searchClubs(q || '');
   // Players are only returned when explicitly requested (type=players) or as
   // part of the full cross-entity set (type=all), so the legacy no-type search
   // keeps its venues+coaches shape for existing consumers. The current user is
   // excluded from their own people search.
-  if (all || type === 'players') results.players = await searchPlayers(q, user?.sub);
+  // When ownerUserId is provided, results are scoped to staff accounts created
+  // by that owner (used by the per-venue Staff tab).
+  if (all || type === 'players') {
+    results.players = await searchPlayers(q || '', { excludeUserId: user?.sub, ownerUserId });
+  }
   return c.json({ data: results });
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Types } from 'mongoose';
 import { streamSSE } from 'hono/streaming';
-import { Club, ClubMembership, ClubPost, ClubPostReaction, ClubJoinRequest, ClubMessage } from './clubs.model.js';
+import { Club, ClubMembership, ClubPost, ClubPostReaction, ClubJoinRequest, ClubMessage, ClubStaff } from './clubs.model.js';
 import { User } from '../auth/auth.model.js';
 import { notifyUsers } from '../../shared/lib/notify.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
@@ -145,7 +145,7 @@ function refPerson(p: any) {
     : { id: String(p), displayName: null, avatarUrl: null };
 }
 
-function serializeClub(c: any, viewer: { isMember?: boolean; isHost?: boolean; joinRequestStatus?: string | null } = {}) {
+function serializeClub(c: any, viewer: { isMember?: boolean; isHost?: boolean; isStaff?: boolean; joinRequestStatus?: string | null } = {}) {
   const host = c.hostId ? refPerson(c.hostId) : null;
   return {
     id: String(c._id),
@@ -161,6 +161,7 @@ function serializeClub(c: any, viewer: { isMember?: boolean; isHost?: boolean; j
     host,
     isMember: !!viewer.isMember,
     isHost: !!viewer.isHost,
+    isStaff: !!viewer.isStaff,
     joinRequestStatus: viewer.joinRequestStatus ?? null,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
@@ -215,8 +216,14 @@ export async function listClubs(c: any) {
   const conds: Record<string, any>[] = [];
   if (q.mine) {
     if (!user) return c.json({ data: [], meta: { cursor: undefined } });
-    const memberships = await ClubMembership.find({ userId: user.sub }).select('clubId').lean();
-    const clubIds = memberships.map((m: any) => m.clubId);
+    const [memberships, staffRows] = await Promise.all([
+      ClubMembership.find({ userId: user.sub }).select('clubId').lean(),
+      ClubStaff.find({ userId: user.sub, status: 'active' }).select('clubId').lean(),
+    ]);
+    const clubIds = [...new Set([
+      ...memberships.map((m: any) => String(m.clubId)),
+      ...staffRows.map((s: any) => String(s.clubId)),
+    ])];
     if (!clubIds.length) return c.json({ data: [], meta: { cursor: undefined } });
     conds.push({ _id: { $in: clubIds }, isDeleted: false });
   } else {
@@ -241,17 +248,20 @@ export async function listClubs(c: any) {
   const hasMore = rows.length > q.pageSize;
   if (hasMore) rows.pop();
 
-  // Batch the viewer's membership + pending-request state for the whole page.
+  // Batch the viewer's membership + pending-request + staff state for the whole page.
   let memberClubIds = new Set<string>();
   let pendingClubIds = new Set<string>();
+  let staffClubIds = new Set<string>();
   if (user && rows.length) {
     const ids = rows.map((r: any) => r._id);
-    const [mems, reqs] = await Promise.all([
+    const [mems, reqs, staff] = await Promise.all([
       ClubMembership.find({ clubId: { $in: ids }, userId: user.sub }).select('clubId').lean(),
       ClubJoinRequest.find({ clubId: { $in: ids }, userId: user.sub, status: 'pending' }).select('clubId').lean(),
+      ClubStaff.find({ clubId: { $in: ids }, userId: user.sub, status: 'active' }).select('clubId').lean(),
     ]);
     memberClubIds = new Set(mems.map((m: any) => String(m.clubId)));
     pendingClubIds = new Set(reqs.map((r: any) => String(r.clubId)));
+    staffClubIds = new Set(staff.map((s: any) => String(s.clubId)));
   }
 
   const data = rows.map((r: any) => {
@@ -260,6 +270,7 @@ export async function listClubs(c: any) {
     return serializeClub(r, {
       isMember: memberClubIds.has(cid) || isHost,
       isHost,
+      isStaff: staffClubIds.has(cid),
       joinRequestStatus: pendingClubIds.has(cid) ? 'pending' : null,
     });
   });
@@ -314,8 +325,8 @@ export async function updateClub(c: any) {
   const user = c.get('user');
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
-  if (!isHostOf(club, user) && !hasPermission(user, 'player.clubs.moderate')) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can edit this club' } }, 403);
+  if (!(await canModerateClub(club, user)) && !hasPermission(user, 'player.clubs.moderate')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host or club staff can edit this club' } }, 403);
   }
   const body = updateSchema.parse(await c.req.json());
   const patch: Record<string, any> = {};
@@ -436,8 +447,8 @@ export async function removeMember(c: any) {
   const user = c.get('user');
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
-  if (!isHostOf(club, user) && !hasPermission(user, 'player.clubs.moderate')) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can remove members' } }, 403);
+  if (!(await canModerateClub(club, user)) && !hasPermission(user, 'player.clubs.moderate')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host or club staff can remove members' } }, 403);
   }
   const targetId = c.req.param('userId');
   if (String(targetId) === String(club.hostId?._id ?? club.hostId)) {
@@ -457,7 +468,7 @@ export async function listRequests(c: any) {
   const user = c.get('user');
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
-  if (!isHostOf(club, user) && !hasPermission(user, 'player.clubs.moderate')) {
+  if (!(await canModerateClub(club, user)) && !hasPermission(user, 'player.clubs.moderate')) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can view join requests' } }, 403);
   }
   const rows = await ClubJoinRequest.find({ clubId: club._id, status: 'pending' })
@@ -475,7 +486,7 @@ export async function approveRequest(c: any) {
   const user = c.get('user');
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
-  if (!isHostOf(club, user) && !hasPermission(user, 'player.clubs.moderate')) {
+  if (!(await canModerateClub(club, user)) && !hasPermission(user, 'player.clubs.moderate')) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can approve requests' } }, 403);
   }
   const req = await ClubJoinRequest.findOne({ _id: c.req.param('reqId'), clubId: club._id, status: 'pending' });
@@ -510,7 +521,7 @@ export async function denyRequest(c: any) {
   const user = c.get('user');
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
-  if (!isHostOf(club, user) && !hasPermission(user, 'player.clubs.moderate')) {
+  if (!(await canModerateClub(club, user)) && !hasPermission(user, 'player.clubs.moderate')) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can deny requests' } }, 403);
   }
   const req = await ClubJoinRequest.findOne({ _id: c.req.param('reqId'), clubId: club._id, status: 'pending' });
@@ -965,5 +976,102 @@ export async function deleteClubMessage(c: any) {
   const others = [...new Set(members.map((m: any) => String(m.userId)))].filter((uid) => uid && uid !== 'undefined' && uid !== user.sub);
   others.forEach((uid) => publishUserEvent(uid, 'club.message.deleted', { clubId, messageId: msgId }));
 
+  return c.json({ data: { ok: true } });
+}
+
+// ── Per-club staff ──────────────────────────────────────────────────────────
+// ClubStaff rows let a host delegate moderation to specific people without
+// making them full hosts. A club staff member can moderate posts and members
+// but cannot delete the club or manage other staff.
+
+async function isClubStaff(clubId: string, userId: string): Promise<boolean> {
+  const row = await ClubStaff.findOne({ clubId, userId, status: 'active' }).select('_id').lean();
+  return !!row;
+}
+
+/** True if the viewer is the host OR an assigned club staff member. */
+async function canModerateClub(club: any, viewer: any): Promise<boolean> {
+  if (isHostOf(club, viewer)) return true;
+  if (!viewer?.sub) return false;
+  return isClubStaff(String(club._id), viewer.sub);
+}
+
+const clubStaffSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/),
+  staffRole: z.string().max(30).optional(),
+});
+
+// GET /clubs/:id/staff
+export async function getClubStaff(c: any) {
+  const club = await loadClub(c.req.param('id'));
+  if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
+  const user = c.get('user');
+  if (!isHostOf(club, user) && !hasPermission(user, 'player.clubs.moderate')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can view club staff' } }, 403);
+  }
+  const rows = await ClubStaff.find({ clubId: club._id, status: 'active' })
+    .populate('userId', 'displayName email avatarUrl')
+    .sort({ createdAt: -1 })
+    .lean();
+  return c.json({ data: rows.map((r: any) => ({
+    id: String(r._id),
+    userId: String(r.userId?._id ?? r.userId),
+    displayName: r.userId?.displayName ?? null,
+    email: r.userId?.email ?? null,
+    avatarUrl: r.userId?.avatarUrl ?? null,
+    staffRole: r.staffRole || 'moderator',
+    createdAt: r.createdAt,
+  })) });
+}
+
+// POST /clubs/:id/staff
+export async function addClubStaff(c: any) {
+  const club = await loadClub(c.req.param('id'));
+  if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
+  const user = c.get('user');
+  if (!isHostOf(club, user) && !hasPermission(user, 'owner.staff.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can add club staff' } }, 403);
+  }
+  const body = clubStaffSchema.parse(await c.req.json());
+  const target = await User.findById(body.userId).select('_id').lean();
+  if (!target) return c.json({ error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
+  // Prevent adding the host themselves as staff
+  if (String(club.hostId?._id ?? club.hostId) === body.userId) {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'The host is already the owner' } }, 400);
+  }
+  const existing = await ClubStaff.findOne({ clubId: club._id, userId: body.userId });
+  if (existing) {
+    if (existing.status === 'active') {
+      return c.json({ error: { code: 'CONFLICT', message: 'Already a staff member' } }, 409);
+    }
+    existing.status = 'active';
+    existing.staffRole = body.staffRole || existing.staffRole;
+    await existing.save();
+    return c.json({ data: { id: existing._id, userId: body.userId, staffRole: existing.staffRole } });
+  }
+  const row = await ClubStaff.create({
+    clubId: club._id,
+    userId: body.userId,
+    staffRole: body.staffRole || 'moderator',
+    status: 'active',
+  });
+  return c.json({ data: { id: row._id, userId: body.userId, staffRole: row.staffRole } }, 201);
+}
+
+// DELETE /clubs/staff/:id
+export async function removeClubStaff(c: any) {
+  const staffId = c.req.param('id');
+  if (!objectId.safeParse(staffId).success) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Staff assignment not found' } }, 404);
+  }
+  const row = await ClubStaff.findById(staffId);
+  if (!row) return c.json({ error: { code: 'NOT_FOUND', message: 'Staff assignment not found' } }, 404);
+  const club = await Club.findById(row.clubId).select('hostId').lean();
+  const user = c.get('user');
+  if (!isHostOf(club, user) && !hasPermission(user, 'owner.staff.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can remove club staff' } }, 403);
+  }
+  row.status = 'inactive';
+  await row.save();
   return c.json({ data: { ok: true } });
 }

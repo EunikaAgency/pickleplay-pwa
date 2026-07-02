@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const ctx = await chromium.launch({headless:true});
+const c = await ctx.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+const page = await c.newPage();
+const r = await (await c.request.post('https://pickleballer-api.eunika.xyz/api/v1/auth/login',{data:{email:'info@eunika.agency',password:'justinianthegreat!'}})).json();
+await page.goto('https://pickleballer-pwa.eunika.xyz',{waitUntil:'domcontentloaded',timeout:10000});
+await page.evaluate(d=>{localStorage.clear();localStorage.setItem('pb-access-token',d.accessToken);localStorage.setItem('pb-refresh-token',d.refreshToken);localStorage.setItem('pb-user',JSON.stringify(d.user))},r.data);
+await page.goto('https://pickleballer-pwa.eunika.xyz/settings',{waitUntil:'domcontentloaded',timeout:10000});
+await page.waitForTimeout(4000);
+console.log('Email monitoring:',(await page.textContent('body'))?.includes('Email monitoring')?'✅ FOUND':'❌ MISSING');
+await ctx.close();

@@ -248,6 +248,7 @@ export function toAppUser(api: ApiUser): AppUser {
   const roles = [...new Set(sourceRoles.map(normalizeRole))];
   return {
     id: String(api.id),
+    email: api.email,
     displayName: api.displayName || api.email,
     firstName: api.firstName ?? undefined,
     // Stored as a relative '/uploads/<file>' path (served by the API host, not
@@ -395,6 +396,24 @@ export async function updateMe(patch: ProfileUpdate): Promise<AppUser> {
   return user;
 }
 
+/** Request a password-reset token for an email. In dev the response includes the
+ *  token inline so the app can navigate straight to the reset screen; in prod it
+ *  would be emailed. */
+export async function forgotPassword(email: string): Promise<{ message: string; token?: string }> {
+  return request<{ message: string; token?: string }>(`${AUTH_PREFIX}/forgot-password`, {
+    method: 'POST',
+    body: { email },
+  });
+}
+
+/** Set a new password using a reset token. */
+export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${AUTH_PREFIX}/reset-password`, {
+    method: 'POST',
+    body: { token, password },
+  });
+}
+
 /** Best-effort server logout; always clears local tokens. */
 export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken();
@@ -462,6 +481,7 @@ export interface ApiVenue {
   googleRating?: number | null;
   googleReviewCount?: number | null;
   amenityChips?: string[] | null;
+  customAmenities?: string[] | null;
   hasParking?: boolean | null;
   hasToilets?: boolean | null;
   hasShowers?: boolean | null;
@@ -1565,6 +1585,8 @@ export interface ApiPlayer {
   skillLevel?: number | null;
   skillLevelLabel?: string | null;
   lastActiveAt?: string | null;
+  /** True when the result came from an owner-scoped staff search. */
+  isStaff?: boolean;
 }
 
 export interface ListGamesParams {
@@ -1678,6 +1700,21 @@ export async function sendGameMessage(gameId: string, body: string): Promise<Api
 export async function searchPlayers(q: string): Promise<ApiPlayer[]> {
   const env = await rawRequest<{ players?: ApiPlayer[] }>(
     `/api/v1/search${toQuery({ q, type: 'players' })}`,
+    { auth: true },
+  );
+  return env.data?.players ?? [];
+}
+
+/**
+ * Staff-only search for the per-venue Staff tab. Returns only staff accounts
+ * created by the given owner (roleDefault:'staff' + parentOwnerUserId match).
+ * Pass an empty q to get all staff (for on-focus suggestions).
+ */
+export async function searchOwnerStaff(ownerUserId: string, q?: string): Promise<ApiPlayer[]> {
+  const params: Record<string, string> = { type: 'players', ownerUserId };
+  if (q && q.trim()) params.q = q.trim();
+  const env = await rawRequest<{ players?: ApiPlayer[] }>(
+    `/api/v1/search${toQuery(params)}`,
     { auth: true },
   );
   return env.data?.players ?? [];
@@ -2154,7 +2191,19 @@ export interface ApiClub {
   host: ClubPerson | null;
   isMember: boolean;
   isHost: boolean;
+  /** True when the viewer is an assigned club staff (moderator). */
+  isStaff?: boolean;
   joinRequestStatus: string | null;
+}
+
+export interface ApiClubStaff {
+  id: string;
+  userId: string;
+  displayName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  staffRole: string;
+  createdAt: string;
 }
 
 export interface ApiClubMember {
@@ -2256,6 +2305,22 @@ export async function leaveClub(id: string): Promise<{ left: boolean }> {
 /** Delete a club (host-only; cascades members/posts/reactions server-side). */
 export async function deleteClub(id: string): Promise<{ deleted: boolean }> {
   return request<{ deleted: boolean }>(`${CLUBS_PREFIX}/${id}`, { method: 'DELETE', auth: true });
+}
+
+/** A club's assigned staff (host-only). */
+export async function listClubStaff(clubId: string): Promise<ApiClubStaff[]> {
+  const env = await rawRequest<ApiClubStaff[]>(`${CLUBS_PREFIX}/${clubId}/staff`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Add a staff member to a club (host-only). */
+export async function addClubStaff(clubId: string, userId: string, staffRole?: string): Promise<ApiClubStaff> {
+  return request<ApiClubStaff>(`${CLUBS_PREFIX}/${clubId}/staff`, { method: 'POST', body: { userId, staffRole }, auth: true });
+}
+
+/** Remove a staff member from a club (host-only). */
+export async function removeClubStaff(staffId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`${CLUBS_PREFIX}/staff/${staffId}`, { method: 'DELETE', auth: true });
 }
 
 /** A club's members. */
@@ -2810,11 +2875,46 @@ export interface AppSettings {
   /** Platform service-fee % charged to the player on top of the venue price (default 7). */
   serviceFeePercent: number;
   testCard: { number: string; expiry: string; cvc: string };
+  /** BCC every transactional email to this address (admin toggle). */
+  emailBccEnabled?: boolean;
+  emailBccAddress?: string;
 }
 
 /** Public app settings — used by checkout to decide test vs live card UI. */
 export async function getSettings(): Promise<AppSettings> {
   return request<AppSettings>('/api/v1/settings');
+}
+
+/** Admin-only: update app settings. */
+export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress'>>): Promise<AppSettings> {
+  return request<AppSettings>('/api/v1/settings', { method: 'PATCH', body: patch, auth: true });
+}
+
+/** Template keys for the test-email tool. */
+export const TEST_EMAIL_TEMPLATES = [
+  'welcome',
+  'password-reset',
+  'password-changed',
+  'email-verification',
+  'booking-confirmed',
+  'booking-requested',
+  'booking-approved',
+  'payment-receipt',
+  'cancellation',
+  'membership',
+] as const;
+
+export type TestEmailTemplate = (typeof TEST_EMAIL_TEMPLATES)[number];
+
+export interface TestEmailResult {
+  status: 'ok' | 'partial' | 'error';
+  sent: { template: string; messageId: string }[];
+  errors: { template: string; error: string }[];
+}
+
+/** Admin-only: send sample emails for the selected templates to a test address. */
+export async function sendTestEmails(email: string, templates: TestEmailTemplate[]): Promise<TestEmailResult> {
+  return request<TestEmailResult>('/api/v1/settings/test-email', { method: 'POST', body: { email, templates }, auth: true });
 }
 
 /* ─── Organizer: tournaments, brackets, open play, rosters, venue requests ──

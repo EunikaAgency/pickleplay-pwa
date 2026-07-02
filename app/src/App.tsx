@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
+import { ForgotPasswordScreen } from './features/auth/ForgotPasswordScreen';
+import { ResetPasswordScreen } from './features/auth/ResetPasswordScreen';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
 import { SplashScreen } from './features/auth/SplashScreen';
 import { NearbyScreen } from './features/venues/NearbyScreen';
@@ -23,6 +25,7 @@ import { ClubChatScreen } from './features/clubs/ClubChatScreen';
 import { ProfileScreen } from './features/profile/ProfileScreen';
 import { EditProfileScreen } from './features/profile/EditProfileScreen';
 import { SettingsScreen } from './features/profile/SettingsScreen';
+import { TestEmailScreen } from './features/profile/TestEmailScreen';
 import { SearchScreen } from './features/search/SearchScreen';
 import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
 import { NotificationsScreen } from './features/profile/NotificationsScreen';
@@ -97,6 +100,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'club-chat': 'player.clubs.chat',
   'edit-profile': 'player.profile.manage',
   settings: 'player.profile.manage',
+  'test-email': 'admin.access',
   notifications: 'user.notifications.manage',
   messages: 'user.messages.send',
   chat: 'user.messages.send',
@@ -145,6 +149,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'invite-players': 'invite players',
   'edit-profile': 'manage your profile',
   settings: 'manage your settings',
+  'test-email': 'use the test email tool',
   notifications: 'see your notifications',
   messages: 'see your messages',
   chat: 'send a message',
@@ -284,6 +289,10 @@ function AppInner() {
   // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
   // restore etc. run during the intro); the splash just sits on top.
   const [showSplash, setShowSplash] = useState(() => {
+    // Skip the splash on deep-link entry points (reset-password, forgot-password)
+    // — the user clicked a link from an email, not a cold app launch.
+    const path = window.location.pathname;
+    if (path.startsWith('/reset-password') || path.startsWith('/forgot-password')) return false;
     try { return sessionStorage.getItem(SPLASH_KEY) !== '1'; } catch { return true; }
   });
   const dismissSplash = () => {
@@ -444,7 +453,7 @@ function AppInner() {
   const canShowCreate = !isLoggedIn || canCreateGame;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
-  const hideChrome = ['landing', 'onboarding', 'login'].includes(screen.id);
+  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password'].includes(screen.id);
   // Guests get the full chrome while browsing — that's how they roam the app.
   // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
   // app's mobile TabBar (and the install prompt riding above it) are suppressed.
@@ -464,13 +473,19 @@ function AppInner() {
   const renderScreen = () => {
     // Auth + onboarding surfaces render full-bleed regardless of login state.
     if (screen.id === 'login') {
-      return <LoginScreen onLoginSuccess={handleLoginSuccess} onBack={goBack} />;
+      return <LoginScreen onLoginSuccess={handleLoginSuccess} onBack={goBack} onNavigate={navigate} />;
     }
     if (screen.id === 'landing') {
       return <LandingScreen onGetStarted={goToLogin} onSignIn={goToLogin} />;
     }
     if (screen.id === 'onboarding') {
       return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+    }
+    if (screen.id === 'forgot-password') {
+      return <ForgotPasswordScreen onNavigate={navigate} onBack={goBack} />;
+    }
+    if (screen.id === 'reset-password') {
+      return <ResetPasswordScreen onNavigate={navigate} onBack={goBack} token={screen.params.token} />;
     }
 
     // Everything below is browsable as a guest; commit actions inside each
@@ -553,6 +568,8 @@ function AppInner() {
         return playerV2
           ? <SettingsScreenV2 {...v2Chrome} onLogout={handleLogout} />
           : <SettingsScreen onBack={goBack} onLogout={handleLogout} onNavigate={navigate} />;
+      case 'test-email':
+        return <TestEmailScreen onBack={goBack} />;
       case 'search':
         return <SearchScreen onNavigate={navigate} onBack={goBack} />;
       case 'invite-players':

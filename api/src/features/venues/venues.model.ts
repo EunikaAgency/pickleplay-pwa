@@ -50,6 +50,7 @@ export interface IVenue {
   hasPermanentNets?: boolean;
   allowsWalkins?: boolean;
   amenityChips?: string[];
+  customAmenities?: string[];
   amenityAirConditioning?: boolean;
   amenityTournamentLighting?: boolean;
   amenityParking?: boolean;
@@ -192,6 +193,7 @@ const venueSchema = new Schema({
   hasPaddleRental:   Boolean,
   hasProShop:        Boolean,
   amenityChips:      [String],
+  customAmenities:   [String],
   amenityAirConditioning:   String,
   amenityTournamentLighting: String,
   amenityParking:           String,

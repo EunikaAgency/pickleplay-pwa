@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
+import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
+import { getSettings, updateSettings } from '../../shared/lib/api';
 import { Chip } from '../../shared/components/ui/Chip';
 import { useTheme, type ThemePreference } from '../../shared/hooks/useTheme';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
@@ -36,6 +40,31 @@ const THEMES: { id: ThemePreference; label: string }[] = [
 
 export function SettingsScreen({ onLogout, onNavigate, onBack }: SettingsScreenProps) {
   const { theme, setTheme } = useTheme();
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user != null && (user.roleDefault === 'admin' || user.roles?.includes('admin') || userHasPermission(user, 'admin.access'));
+  const [bccEnabled, setBccEnabled] = useState(false);
+  const [bccAddress, setBccAddress] = useState('info@eunika.agency');
+  const [bccLoaded, setBccLoaded] = useState(false);
+  const [bccSaving, setBccSaving] = useState(false);
+  const [bccDirty, setBccDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    getSettings().then((s) => {
+      setBccEnabled(s.emailBccEnabled ?? false);
+      setBccAddress(s.emailBccAddress ?? 'info@eunika.agency');
+      setBccLoaded(true);
+    }).catch(() => setBccLoaded(true));
+  }, [isAdmin]);
+
+  const saveBcc = async () => {
+    setBccSaving(true);
+    try {
+      await updateSettings({ emailBccEnabled: bccEnabled, emailBccAddress: bccAddress });
+      setBccDirty(false);
+    } catch {}
+    setBccSaving(false);
+  };
 
   return (
     <div className="scroll pb-[60px] pt-[calc(20px+env(safe-area-inset-top))]">
@@ -86,6 +115,51 @@ export function SettingsScreen({ onLogout, onNavigate, onBack }: SettingsScreenP
           </div>
         </div>
       ))}
+
+      {isAdmin && bccLoaded && (
+        <div className="section">
+          <div className="section-head"><div className="hd-2">Email monitoring</div></div>
+          <div className="card p-4">
+            <p className="text-[13px] text-[var(--muted)] mb-3">Send a copy of every transactional email to a monitoring inbox.</p>
+            <label className="flex items-center justify-between cursor-pointer mb-3">
+              <span className="font-heading font-semibold text-[14px] text-[var(--ink)]">Email monitoring</span>
+              <input type="checkbox" checked={bccEnabled} onChange={(e) => { setBccEnabled(e.target.checked); setBccDirty(true); }} className="size-5 rounded accent-[var(--lime)]" />
+            </label>
+            {bccEnabled && (
+              <input
+                type="email" value={bccAddress}
+                onChange={(e) => { setBccAddress(e.target.value); setBccDirty(true); }}
+                placeholder="info@eunika.agency"
+                className="w-full h-11 rounded-xl border-2 border-[var(--muted)] bg-[var(--surface)] px-4 text-[14px] font-semibold text-[var(--ink)] placeholder:text-[var(--muted)] outline-none mb-3 focus:border-[var(--lime)]"
+              />
+            )}
+            {bccDirty && (
+              <button onClick={saveBcc} disabled={bccSaving}
+                className="h-10 px-5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-heading font-semibold text-[14px]">
+                {bccSaving ? 'Saving...' : 'Save'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="section">
+          <div className="section-head"><div className="hd-2">Admin tools</div></div>
+          <div className="set-list">
+            <button className="row" onClick={() => onNavigate('test-email')}>
+              <div className="ic" style={{ background: 'var(--primary)' }}>
+                <Icon name="mail" size={16} />
+              </div>
+              <div className="body">
+                <div className="name">Test email tool</div>
+                <div className="desc">Send sample emails to preview templates</div>
+              </div>
+              <Icon name="chevron" size={16} className="chev" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="section">
         <button
