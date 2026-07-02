@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pickleball UX Flowchart</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Toolbar -->
+  <header class="toolbar">
+    <h1 class="toolbar-title">🥒 Pickleball UX Flowchart</h1>
+    <div class="toolbar-actions">
+      <div class="zoom-controls">
+        <button class="btn btn-zoom" id="btnZoomOut" title="Zoom out">−</button>
+        <span class="zoom-label" id="zoomLabel">100%</span>
+        <button class="btn btn-zoom" id="btnZoomIn" title="Zoom in">+</button>
+      </div>
+      <button class="btn btn-secondary" id="btnRecenter" title="Center view on content">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/></svg>
+        Recenter
+      </button>
+      <button class="btn btn-secondary" id="btnReset" title="Restore default layout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 4v6h6"/><path d="M3.5 16.5A9 9 0 1 0 2 12"/></svg>
+        Reset Layout
+      </button>
+      <button class="btn btn-primary" id="btnExport" title="Copy node positions as JSON">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export JSON
+      </button>
+      <button class="btn btn-primary" id="btnImport" title="Paste JSON to restore layout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import JSON
+      </button>
+    </div>
+  </header>
+
+  <!-- Canvas -->
+  <main class="canvas-container" id="canvasContainer">
+    <div class="canvas-viewport" id="canvasViewport">
+      <div class="canvas-content" id="canvasContent">
+        <svg id="arrowLayer"></svg>
+        <!-- Nodes rendered by app.js -->
+      </div>
+    </div>
+  </main>
+
+  <!-- JSON Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Export JSON</h3>
+        <button class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="modalTextarea" rows="16" spellcheck="false"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalAction">Copy to Clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
