@@ -148,7 +148,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
             aria-label="Create a venue"
             className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-bold text-[13px] shadow-[var(--shadow-card)] active:scale-95 transition-transform"
           >
-            <Icon name="plus" size={16} /> Create venue
+            <Icon name="plus" size={16} /> Create
           </button>
         )}
       </div>
@@ -198,6 +198,14 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
       {header}
 
       <div className="px-5 mt-4 space-y-5">
+        <button
+          type="button"
+          onClick={() => onNavigate('owner-pricing')}
+          className="sm:hidden w-full h-11 rounded-full bg-[#0d131b] text-white font-extrabold text-[13px] flex items-center justify-center gap-2 shadow-[var(--shadow-card)] active:scale-[0.98]"
+        >
+          <Icon name="bolt" size={16} /> Manage venues pricing
+        </button>
+
         {/* Map of your venues — status pins, today's count inside each */}
         {mappable.length > 0 ? (
           <div className="rounded-[22px] overflow-hidden h-[42vh] min-h-[260px] shadow-[var(--shadow-card)] border-[0.5px] border-[var(--hairline)]">

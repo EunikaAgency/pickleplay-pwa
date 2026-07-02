@@ -25,6 +25,10 @@ interface SidebarProps {
   canGoBack: boolean;
   /** Open the direct-messages screen (shown only when signed in). */
   onOpenMessages?: () => void;
+  /** Open the standalone owner pricing screen. */
+  onOpenPricing?: () => void;
+  /** Whether the standalone owner pricing screen is active. */
+  pricingActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
 }
@@ -45,9 +49,10 @@ const tabs: SideTab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, showTournaments = true }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenPricing, pricingActive = false, showTournaments = true }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const visibleTabs = tabs.filter((t) => t.id !== 'tournaments' || showTournaments);
+  const showOwnerPricing = userHasPermission(currentUser, 'owner.access') && onOpenPricing;
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
     ? currentUser.skillLevel != null
@@ -77,21 +82,34 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
 
       <nav className="flex flex-col gap-1">
         {visibleTabs.map((t) => {
-          const isActive = activeTab === t.id;
-          // Guests see the "You" tab as "Login" — tapping it sends them to sign in.
+          const isActive = activeTab === t.id && !(t.id === 'nearby' && pricingActive);
+          // Guests see the "You" tab as "Login" - tapping it sends them to sign in.
           const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
           return (
-            <button
-              key={t.id}
-              className={`side-tab ${isActive ? 'active' : ''}`}
-              onClick={() => onTabPress(t.id)}
-              aria-current={isActive ? 'page' : undefined}
-            >
-              <span className="ico">
-                <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
-              </span>
-              {label}
-            </button>
+            <div key={t.id} className="contents">
+              <button
+                className={`side-tab ${isActive ? 'active' : ''}`}
+                onClick={() => onTabPress(t.id)}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className="ico">
+                  <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
+                </span>
+                {label}
+              </button>
+              {t.id === 'nearby' && showOwnerPricing && (
+                <button
+                  className={`side-tab ${pricingActive ? 'active' : ''}`}
+                  onClick={onOpenPricing}
+                  aria-current={pricingActive ? 'page' : undefined}
+                >
+                  <span className="ico">
+                    <Icon name="bolt" size={20} />
+                  </span>
+                  Pricing
+                </button>
+              )}
+            </div>
           );
         })}
         {isLoggedIn && onOpenMessages && (

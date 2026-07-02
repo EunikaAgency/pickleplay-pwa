@@ -193,7 +193,7 @@ src/
                              #   joins their OWN; getVenue returns viewerIsMember +
                              #   viewerMembershipTier + viewerMembershipExpiresAt; expiry
                              #   computed from plan cadence via computeMembershipExpiresAt,
-                             #   isActive gates on expiresAt > now))
+                             #   isActive gates on expiresAt > now));
 
   shared/
     db/                      # connect + seeders + importers:

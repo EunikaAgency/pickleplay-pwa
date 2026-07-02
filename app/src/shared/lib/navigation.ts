@@ -49,6 +49,7 @@ export type Screen =
   | { id: 'claim-venue' }
   | { id: 'owner-bookings'; params: { status?: string } }
   | { id: 'owner-front-desk'; params?: { venueId?: string } }
+  | { id: 'owner-pricing' }
   | { id: 'owner-insights' }
   | { id: 'owner-notifications' }
   | { id: 'owner-staff' }
@@ -132,6 +133,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'claim-venue': return '/owner/venues/claim';
     case 'owner-bookings': return `/owner/bookings${q({ status: screen.params?.status })}`;
     case 'owner-front-desk': return `/owner/front-desk${q({ venue: screen.params?.venueId })}`;
+    case 'owner-pricing': return '/owner/pricing';
     case 'owner-insights': return '/owner/insights';
     case 'owner-notifications': return '/owner/notifications';
     case 'owner-staff': return '/owner/staff';
@@ -226,6 +228,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       }
       if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : {} };
       if (b === 'front-desk') return { id: 'owner-front-desk', params: opt(sp.get('venue')) ? { venueId: sp.get('venue')! } : {} };
+      if (b === 'pricing') return { id: 'owner-pricing' };
       if (b === 'insights') return { id: 'owner-insights' };
       if (b === 'notifications') return { id: 'owner-notifications' };
       if (b === 'staff') return { id: 'owner-staff' };

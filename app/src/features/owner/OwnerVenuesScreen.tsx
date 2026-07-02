@@ -49,7 +49,7 @@ export function OwnerVenuesScreen({ onNavigate, onBack }: OwnerVenuesScreenProps
               aria-label="Create a new venue"
               className="inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3.5 rounded-full bg-[var(--lime)] text-[var(--lime-ink)] font-bold text-[13px] active:scale-95 transition-transform"
             >
-              <Icon name="plus" size={16} /> Create venue
+              <Icon name="plus" size={16} /> Create
             </button>
           )}
         </div>

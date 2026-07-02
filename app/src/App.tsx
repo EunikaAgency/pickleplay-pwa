@@ -40,6 +40,7 @@ import { OwnerSettlementsScreen } from './features/owner/OwnerSettlementsScreen'
 import { SubscriptionPlansScreen } from './features/owner/SubscriptionPlansScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
 import { OwnerFrontDeskScreen } from './features/owner/OwnerFrontDeskScreen';
+import { OwnerPricingScreen } from './features/owner/OwnerPricingScreen';
 import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
 import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
 import { OwnerNearbyScreen } from './features/owner/OwnerNearbyScreen';
@@ -113,6 +114,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'claim-venue': 'owner.venues.claim',
   'owner-bookings': 'owner.bookings.manage',
   'owner-front-desk': 'owner.bookings.manage',
+  'owner-pricing': 'owner.access',
   'owner-insights': 'owner.analytics.view',
   'owner-notifications': 'user.notifications.manage',
   'owner-staff': 'owner.staff.manage',
@@ -161,6 +163,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'claim-venue': 'claim a venue',
   'owner-bookings': 'see your bookings',
   'owner-front-desk': 'run the front desk',
+  'owner-pricing': 'manage venue pricing',
   'owner-insights': 'see your insights',
   'owner-staff': 'manage your staff',
   'owner-settlements': 'see your settlements',
@@ -241,7 +244,7 @@ function tabForScreen(id: ScreenId): TabId {
   if (id === 'court-details' || id === 'book-court' || id === 'open-play-book') return 'nearby';
   // Owner venue screens live under the "Venues" tab (which itself opens
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
-  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-settlements' || id === 'owner-subscription-plans') return 'nearby';
+  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans') return 'nearby';
   if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
   if (id === 'game-details' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
@@ -425,7 +428,8 @@ function AppInner() {
   // organizers, who are players too. Owners and admins don't get the player
   // Tournament tab (organizers still manage tournaments from the organizer hub).
   const isAdmin = userHasPermission(currentUser, 'admin.access');
-  const canSeeTournaments = !isOwner && !isAdmin;
+  // HIDDEN: tournaments temporarily disabled for all roles
+  const canSeeTournaments = false; // was: !isOwner && !isAdmin
   // Desktop sidebar layout for admin/owner: the frame cap is lifted so the
   // app can grow past 1024 px, activating the existing @container queries
   // that swap the bottom tab bars for a fixed sidebar.
@@ -598,6 +602,8 @@ function AppInner() {
         return <OwnerBookingsScreen initialStatus={screen.params?.status as 'all' | 'pending_approval' | 'confirmed' | 'cancelled' | undefined} onNavigate={navigate} onBack={goBack} />;
       case 'owner-front-desk':
         return <OwnerFrontDeskScreen venueId={screen.params?.venueId} onNavigate={navigate} onBack={goBack} />;
+      case 'owner-pricing':
+        return <OwnerPricingScreen onBack={goBack} />;
       case 'owner-insights':
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-notifications':
@@ -654,7 +660,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} showTournaments={canSeeTournaments} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} showTournaments={canSeeTournaments} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
