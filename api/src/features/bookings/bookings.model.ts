@@ -48,6 +48,12 @@ const bookingSchema = new Schema({
   amountPaid:          Number,
   // Still owed at the venue on arrival (0 when paid in full online).
   balanceDue:          Number,
+  // ── Pricing audit trail ── which rate source resolved the amount + the breakdown
+  // (populated by server-side validation on create; null for blocked/open-play).
+  rateSource:          { type: String, maxlength: 20 },   // 'surge'|'timeBlock'|'holiday'|'weekend'|'subUnit'|'court'|'venue'|'manual'
+  overrideId:          { type: Schema.Types.ObjectId, ref: 'SlotPriceOverride' },  // set when rateSource='surge'
+  baseRate:            Number,    // resolved rate before member discount
+  memberDiscountPercent: Number,  // 0–100
   // ── Owner-entered (off-platform) bookings: manual reservations + slot blocks ──
   // The staff/owner who created a manual or blocked booking (the platform `userId`
   // is set to them so the required ref is satisfied — they're not the customer).

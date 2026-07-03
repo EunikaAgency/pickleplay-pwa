@@ -8,7 +8,7 @@ import {
   getVenueMembers, addVenueMember, removeVenueMember, joinVenueMembership, leaveVenueMembership, respondMembershipInvite,
   getSlotOverrides, createSlotOverride, deleteSlotOverride,
   getVenueFaqs, createFaq, updateFaq, deleteFaq,
-  getVenueBookings, createVenueBooking, updateBookingStatus, getVenueAnalytics, getVenueAvailability, getVenueAvailabilityRange,
+  getVenueBookings, createVenueBooking, updateBookingStatus, getVenueAnalytics, getVenueAvailability, getVenueAvailabilityRange, batchVenueAvailability,
   createRecurringBooking, getRecurringBookings, cancelRecurringBooking,
   listSubscriptionPlans, createSubscriptionPlan, getSubscriptionPlan, updateSubscriptionPlan,
   deleteSubscriptionPlan, duplicateSubscriptionPlan, toggleSubscriptionPlan,
@@ -111,6 +111,7 @@ venuesRoutes.delete('/faqs/:id', requireAuth, deleteFaq);
 
 /* ─── Bookings ────────────────────────────────────────────────────── */
 
+venuesRoutes.post('/availability/batch', batchVenueAvailability);
 venuesRoutes.get('/:id/availability/range', getVenueAvailabilityRange);
 venuesRoutes.get('/:id/availability', getVenueAvailability);
 venuesRoutes.get('/:id/bookings', requireAuth, getVenueBookings);

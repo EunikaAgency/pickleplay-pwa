@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Conversation, Message, conversationKey } from './messages.model.js';
 import { User } from '../auth/auth.model.js';
 import { Venue } from '../venues/venues.model.js';
+import { Booking } from '../bookings/bookings.model.js';
 import { Notification } from '../interactions/interactions.model.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
@@ -52,6 +53,43 @@ export async function listConversations(c: any) {
   const users = otherIds.length ? await User.find({ _id: { $in: otherIds } }).select('displayName avatarUrl lastActiveAt').lean() : [];
   const userById = new Map((users as any[]).map((u) => [String(u._id), u]));
 
+  // Resolve context labels — venue names + booking info — in one batch pass so
+  // each conversation row can show where it came from.
+  const venueIds = convs.filter((cv: any) => cv.contextType === 'venue' && cv.contextId).map((cv: any) => String(cv.contextId));
+  const bookingIds = convs.filter((cv: any) => cv.contextType === 'booking' && cv.contextId).map((cv: any) => String(cv.contextId));
+  const [venues, bookings] = await Promise.all([
+    venueIds.length ? Venue.find({ _id: { $in: venueIds } }).select('displayName').lean() : [],
+    bookingIds.length ? Booking.find({ _id: { $in: bookingIds } }).select('date venueId').lean() : [],
+  ]) as [any[], any[]];
+  const venueById = new Map(venues.map((v) => [String(v._id), v]));
+  const bookingById = new Map(bookings.map((b) => [String(b._id), b]));
+  // Resolve booking venue names from the already-fetched venues + any additional ones.
+  const bookingVenueIds = [...new Set(bookings.map((b: any) => String(b.venueId)).filter(Boolean))] as string[];
+  const missingVenueIds = bookingVenueIds.filter((id) => !venueById.has(id));
+  const extraVenues = missingVenueIds.length ? await Venue.find({ _id: { $in: missingVenueIds } }).select('displayName').lean() : [];
+  for (const v of extraVenues as any[]) venueById.set(String(v._id), v);
+
+  function contextLabel(cv: any): string | null {
+    if (!cv.contextType || !cv.contextId) return null;
+    const cid = String(cv.contextId);
+    if (cv.contextType === 'venue') {
+      const v = venueById.get(cid);
+      return v?.displayName ?? null;
+    }
+    if (cv.contextType === 'booking') {
+      const bk = bookingById.get(cid);
+      if (!bk) return null;
+      const v = venueById.get(String(bk.venueId));
+      const venueName = v?.displayName ?? null;
+      const d = bk.date ? new Date(bk.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+      if (venueName && d) return `${venueName} · ${d}`;
+      if (venueName) return venueName;
+      if (d) return d;
+      return null;
+    }
+    return null;
+  }
+
   const data = await Promise.all(
     convs.map(async (cv: any) => {
       const otherId = otherParticipantId(cv, user.sub);
@@ -70,6 +108,7 @@ export async function listConversations(c: any) {
         unread,
         contextType: cv.contextType ?? null,
         contextId: cv.contextId ? String(cv.contextId) : null,
+        contextLabel: contextLabel(cv),
       };
     }),
   );

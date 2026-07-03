@@ -587,7 +587,7 @@ function AppInner() {
       case 'owner-front-desk':
         return <OwnerFrontDeskScreen venueId={screen.params?.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'owner-pricing':
-        return <OwnerPricingScreen onBack={goBack} />;
+        return <OwnerPricingScreen onBack={goBack} onNavigate={navigate} />;
       case 'owner-insights':
         return <OwnerInsightsScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-notifications':
@@ -644,7 +644,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} showTournaments={canSeeTournaments} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} showTournaments={canSeeTournaments} isOwner={isOwner} />
       )}
 
       <main className="app-main">{renderScreen()}</main>

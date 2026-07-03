@@ -3,7 +3,8 @@ import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap, useMapEve
 import L from 'leaflet';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
-import { listAllVenues, type ApiVenue } from '../../../shared/lib/api';
+import { DateTimeFilterBar } from './DateTimeFilterBar';
+import { listAllVenues, batchVenueAvailability, type ApiVenue } from '../../../shared/lib/api';
 import { venueImage, priceLabel, locationLine, indoorLabel, venueCoords } from '../../../shared/lib/venueDisplay';
 import { haversineKm, formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
 import { useAuthStore } from '../../../shared/lib/authStore';
@@ -185,6 +186,39 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
 
+  // Date/time availability filter
+  const [filterDate, setFilterDate] = useState<string | null>(null);
+  const [filterStartHour, setFilterStartHour] = useState<number | null>(null);
+  const [filterEndHour, setFilterEndHour] = useState<number | null>(null);
+  const [availByVenue, setAvailByVenue] = useState<Map<string, number[]> | null>(null);
+  const [availLoading, setAvailLoading] = useState(false);
+
+  const applyFilter = async (date: string, startHour: number, endHour?: number) => {
+    setFilterDate(date);
+    setFilterStartHour(startHour);
+    setFilterEndHour(endHour ?? null);
+    if (all.length === 0) return;
+    setAvailLoading(true);
+    try {
+      const ids = all.map((v) => v.id);
+      const result = await batchVenueAvailability(ids, date);
+      const map = new Map<string, number[]>();
+      for (const v of result.venues) map.set(v.venueId, v.freeByHour);
+      setAvailByVenue(map);
+    } catch {
+      setAvailByVenue(null);
+    } finally {
+      setAvailLoading(false);
+    }
+  };
+
+  const clearFilter = () => {
+    setFilterDate(null);
+    setFilterStartHour(null);
+    setFilterEndHour(null);
+    setAvailByVenue(null);
+  };
+
   // Load the full venue set once (distance ranking needs every venue, not one page).
   useEffect(() => {
     let alive = true;
@@ -248,7 +282,19 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = q ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q)) : all;
+    let base = q ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q)) : all;
+    // When the date/time filter is active, keep only venues with free courts across the chosen window.
+    if (availByVenue && filterStartHour != null) {
+      const endH = filterEndHour ?? filterStartHour + 1;
+      base = base.filter((v) => {
+        const fb = availByVenue.get(v.id);
+        if (!fb) return false;
+        for (let h = filterStartHour!; h < endH && h < 24; h++) {
+          if ((fb[h] ?? 0) <= 0) return false;
+        }
+        return true;
+      });
+    }
     const copy = [...base];
     switch (effectiveSort) {
       case 'distance':
@@ -266,14 +312,20 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       case 'rating':
       default: return copy.sort((a, b) => (b.googleRating ?? 0) - (a.googleRating ?? 0));
     }
-  }, [all, query, effectiveSort, distOf]);
+  }, [all, query, effectiveSort, distOf, availByVenue, filterStartHour, filterEndHour]);
 
   const visible = sorted.slice(0, VISIBLE);
   const featured = visible[0] ?? null;
   const rest = visible.slice(1);
   // In lobby mode, carry the intent into the court detail so the booking flow can
   // hand back to create-game once a court is reserved.
-  const open = (v: ApiVenue) => onNavigate('court-details', { id: v.slug || v.id, intent });
+  const open = (v: ApiVenue) => onNavigate('court-details', {
+    id: v.slug || v.id,
+    intent,
+    filterDate: filterDate ?? undefined,
+    filterStartHour: filterStartHour != null ? filterStartHour : undefined,
+    filterEndHour: filterEndHour ?? undefined,
+  });
 
   const distLabel = (v: ApiVenue) => {
     const d = distOf(v);
@@ -412,6 +464,15 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             </div>
           )}
 
+          <DateTimeFilterBar
+            filterDate={filterDate}
+            filterStartHour={filterStartHour}
+            filterEndHour={filterEndHour}
+            onApply={applyFilter}
+            onClear={clearFilter}
+            matchCount={availByVenue && filterStartHour != null ? sorted.length : null}
+            loading={availLoading}
+          />
 
           <div className="section-head">
             <div>

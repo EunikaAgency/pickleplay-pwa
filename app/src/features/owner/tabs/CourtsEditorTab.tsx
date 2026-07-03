@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Chip } from '../../../shared/components/ui/Chip';
 import { Segmented } from '../../../shared/components/ui/Segmented';
-import { OwnerSection } from '../components/OwnerSection';
 import { WeeklyHoursEditor } from '../components/WeeklyHoursEditor';
 import {
   listCourts,
@@ -52,16 +51,12 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const [courtName, setCourtName] = useState(court.courtName || '');
   const [description, setDescription] = useState(court.description || '');
   const [surfaceType, setSurfaceType] = useState(court.surfaceType || '');
-  const [hourlyRate, setHourlyRate] = useState(court.hourlyRate != null ? String(court.hourlyRate) : '');
   const [indoor, setIndoor] = useState(!!court.indoor);
   const [isActive, setIsActive] = useState(court.isActive !== false);
   // Multi-sport + half-court config (see the "Court configuration" block below).
   const [sport, setSport] = useState(court.sport || DEFAULT_SPORT);
   const [isSplittable, setIsSplittable] = useState(!!court.isSplittable);
   const [splitCount, setSplitCount] = useState(court.splitCount ?? 2);
-  const [subUnitRates, setSubUnitRates] = useState<Array<{ index: number; hourlyRate: string }>>(
-    (court.subUnitRates ?? []).map((r) => ({ index: r.index, hourlyRate: r.hourlyRate != null ? String(r.hourlyRate) : '' })),
-  );
   // Per-court booking policy: approval override + a turnover gap between bookings.
   const [approvalMode, setApprovalMode] = useState<'inherit' | 'auto' | 'manual'>(court.approvalMode ?? 'inherit');
   const [turnoverMinutes, setTurnoverMinutes] = useState(court.turnoverMinutes ? String(court.turnoverMinutes) : '');
@@ -96,15 +91,11 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
         courtName: courtName.trim(),
         description: description.trim(),
         surfaceType: surfaceType || undefined,
-        hourlyRate: hourlyRate.trim() === '' ? null : Number(hourlyRate),
         indoor,
         isActive,
         sport,
         isSplittable,
         splitCount,
-        subUnitRates: isSplittable
-          ? subUnitRates.filter((r) => r.hourlyRate.trim() !== '').map((r) => ({ index: r.index, hourlyRate: Number(r.hourlyRate) }))
-          : [],
         approvalMode,
         turnoverMinutes: turnoverMinutes.trim() === '' ? 0 : Number(turnoverMinutes),
         hasAircon,
@@ -178,14 +169,11 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     courtName !== (court.courtName || '') ||
     description !== (court.description || '') ||
     surfaceType !== (court.surfaceType || '') ||
-    hourlyRate !== (court.hourlyRate != null ? String(court.hourlyRate) : '') ||
     indoor !== !!court.indoor ||
     isActive !== (court.isActive !== false) ||
     sport !== (court.sport || DEFAULT_SPORT) ||
     isSplittable !== !!court.isSplittable ||
     splitCount !== (court.splitCount ?? 2) ||
-    // Compare sub-unit rates: sort keys so order doesn't matter.
-    (() => { const o = (court.subUnitRates ?? []).map((r: any) => `${r.index}:${r.hourlyRate ?? ''}`).sort().join(','); const n = subUnitRates.filter((r) => r.hourlyRate.trim() !== '').map((r) => `${r.index}:${r.hourlyRate}`).sort().join(','); return o !== n; })() ||
     approvalMode !== (court.approvalMode ?? 'inherit') ||
     turnoverMinutes !== (court.turnoverMinutes ? String(court.turnoverMinutes) : '') ||
     hasAircon !== !!court.hasAircon ||
@@ -199,7 +187,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
 
   // Collapsed-row summary (what the owner sees before expanding). Sport shows
   // only when it isn't the default, so single-sport venues stay uncluttered.
-  const summary = [sport && sport !== DEFAULT_SPORT ? sport : null, indoor ? 'Indoor' : null, surfaceType || null, hourlyRate.trim() ? `₱${hourlyRate}/hr` : null].filter(Boolean).join(' · ');
+  const summary = [sport && sport !== DEFAULT_SPORT ? sport : null, indoor ? 'Indoor' : null, surfaceType || null].filter(Boolean).join(' · ');
 
   return (
     <>
@@ -288,16 +276,10 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
               <label className="lbl">Name <span className="text-[var(--muted)] font-semibold">· Court {courtNumber}</span></label>
               <input className="control" value={courtName} maxLength={120} onChange={(e) => { setCourtName(e.target.value); setStatus('idle'); }} placeholder={`Court ${courtNumber}`} />
             </div>
-            <div className="flex gap-2">
-              <div className="field p-0! w-28">
-                <label className="lbl">Rate (₱/hr)</label>
-                <input className="control" inputMode="decimal" value={hourlyRate} maxLength={7} onChange={(e) => { setHourlyRate(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }} placeholder="Venue rate" />
-              </div>
-              <div className="field p-0! flex-1 min-w-0">
+            <div className="field p-0! flex-1 min-w-0">
                 <label className="lbl">Surface</label>
                 <input className="control" value={surfaceType} maxLength={50} onChange={(e) => { setSurfaceType(e.target.value); setStatus('idle'); }} placeholder="hard, wood…" />
               </div>
-            </div>
           </div>
         </div>
         {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold">{photoErr}</div>}
@@ -380,37 +362,6 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
                   value={String(splitCount)}
                   onChange={(v) => { setSplitCount(Number(v)); setStatus('idle'); }}
                 />
-              </div>
-            )}
-            {isSplittable && (
-              <div className="mt-2.5 space-y-2">
-                <label className="lbl font-semibold">Per-unit hourly rates (optional)</label>
-                {Array.from({ length: splitCount }, (_, i) => {
-                  const rate = subUnitRates.find((r) => r.index === i);
-                  return (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[var(--muted)] w-16">Half {i + 1}</span>
-                      <div className="flex-1 relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-[var(--muted)]">₱</span>
-                        <input
-                          type="number"
-                          className="input pl-8"
-                          placeholder={String(court.hourlyRate ?? '')}
-                          value={rate?.hourlyRate ?? ''}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setSubUnitRates((prev) => {
-                              const rest = prev.filter((r) => r.index !== i);
-                              return v.trim() === '' ? rest : [...rest, { index: i, hourlyRate: v }];
-                            });
-                            setStatus('idle');
-                          }}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-[var(--muted)]">/hr</span>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             )}
             <p className="t-sm text-[var(--muted)] mt-1">Let this court be booked as separate half-courts.</p>
@@ -516,7 +467,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
       {/* ── Operating Hours ── this court's own weekly hours (+ hours pricing).
           Inherits the venue default until first saved. Lazy — the editor only
           mounts (and fetches) when this tab is selected. */}
-      {tab === 'hours' && <WeeklyHoursEditor courtId={id} />}
+      {tab === 'hours' && <WeeklyHoursEditor courtId={id} hidePricing />}
 
       {/* Card-level Save — shown on any tab whenever there are unsaved changes.
           (Delete moved to the card header above.) */}
@@ -553,7 +504,6 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
 
   const [newName, setNewName] = useState('');
   const [newSurface, setNewSurface] = useState('');
-  const [newRate, setNewRate] = useState('');
   const [newIndoor, setNewIndoor] = useState(false);
   const [newSport, setNewSport] = useState(DEFAULT_SPORT);
   const [newApprovalMode, setNewApprovalMode] = useState<'inherit' | 'auto' | 'manual'>('inherit');
@@ -565,6 +515,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
   const [newSpaceAroundCourt, setNewSpaceAroundCourt] = useState('');
   const [newFloorType, setNewFloorType] = useState('');
   const [newBallType, setNewBallType] = useState('');
+  const [addExpanded, setAddExpanded] = useState(false);
   const [addStatus, setAddStatus] = useState<'idle' | 'saving' | 'error'>('idle');
 
   useEffect(() => {
@@ -602,11 +553,10 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
     if (addStatus === 'saving') return;
     setAddStatus('saving');
     try {
-      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, hourlyRate: newRate.trim() === '' ? undefined : Number(newRate), indoor: newIndoor, sport: newSport, approvalMode: newApprovalMode, turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover), hasAircon: newHasAircon, highCeiling: newHighCeiling, hasRefreshmentStand: newHasRefreshmentStand, spaceAroundCourt: newSpaceAroundCourt.trim() || undefined, floorType: newFloorType || undefined, ballType: newBallType || undefined });
+      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, indoor: newIndoor, sport: newSport, approvalMode: newApprovalMode, turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover), hasAircon: newHasAircon, highCeiling: newHighCeiling, hasRefreshmentStand: newHasRefreshmentStand, spaceAroundCourt: newSpaceAroundCourt.trim() || undefined, floorType: newFloorType || undefined, ballType: newBallType || undefined });
       setCourts((c) => [...c, created]);
       setNewName('');
       setNewSurface('');
-      setNewRate('');
       setNewIndoor(false);
       setNewSport(DEFAULT_SPORT);
       setNewApprovalMode('inherit');
@@ -635,16 +585,31 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
 
   return (
     <div className="courts-editor space-y-4">
-      <OwnerSection title="Add a court" icon="plus" description={`Name it — it'll be "Court ${nextNumber}" until you do. The court number is assigned automatically. Add photos & a description after it's created.`}>
+      <div className="card">
+        {/* Collapsible header — tap to expand the "Add a court" form. */}
+        <button
+          type="button"
+          onClick={() => setAddExpanded((v) => !v)}
+          aria-expanded={addExpanded}
+          className="flex-1 min-w-0 flex items-center gap-3 p-3 text-left w-full"
+        >
+          <span className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
+            <Icon name="plus" size={16} />
+          </span>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-[14px] text-[var(--ink)]">Add a court</div>
+            <div className="t-sm text-[var(--muted)] truncate">Name it — it'll be "Court {nextNumber}" until you do.</div>
+          </div>
+          <Icon name="chevron" size={16} className={`text-[var(--muted)] shrink-0 ${addExpanded ? 'rotate-90 transition-transform' : 'transition-transform'}`} />
+        </button>
+
+        {addExpanded && (
+        <div className="px-3 pb-3 pt-3 space-y-3 border-t-[0.5px] border-[var(--hairline)]">
         <div className="field p-0! mb-3">
           <label className="lbl">Name (optional)</label>
           <input className="control" value={newName} maxLength={120} onChange={(e) => setNewName(e.target.value)} placeholder={`e.g. Center Court (or leave blank for "Court ${nextNumber}")`} />
         </div>
         <div className="flex gap-3 mb-3">
-          <div className="field p-0! w-28">
-            <label className="lbl">Rate (₱/hr)</label>
-            <input className="control" inputMode="decimal" value={newRate} maxLength={7} onChange={(e) => setNewRate(e.target.value.replace(/[^\d.]/g, ''))} placeholder="200" />
-          </div>
           <div className="field p-0! flex-1">
             <label className="lbl">Surface</label>
             <input className="control" value={newSurface} maxLength={50} onChange={(e) => setNewSurface(e.target.value)} placeholder="hard, wood…" />
@@ -741,7 +706,9 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
           </button>
         </div>
         {addStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold mt-2">Couldn't add. Try again.</div>}
-      </OwnerSection>
+        </div>
+        )}
+      </div>
 
       {/* Courts — a plain label, with each court as its own standalone accordion
           card (no longer nested inside one big "Courts" section card). */}

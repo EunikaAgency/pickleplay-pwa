@@ -1,0 +1,125 @@
+- generic [ref=f2e3]:
+  - main [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - button "Back" [ref=f2e7] [cursor=pointer]:
+        - img [ref=f2e9]
+        - text: Back
+      - generic [ref=f2e11]:
+        - generic [ref=f2e12]:
+          - img [ref=f2e15]
+          - heading "PickleBallers" [level=1] [ref=f2e18]
+          - paragraph [ref=f2e19]: Find games. Meet players. Play pickleball.
+        - generic [ref=f2e20]:
+          - generic [ref=f2e21]:
+            - heading "Welcome back" [level=2] [ref=f2e22]
+            - paragraph [ref=f2e23]: Ready to hit the courts?
+          - generic [ref=f2e24]:
+            - generic [ref=f2e26]:
+              - text: Email
+              - generic [ref=f2e27]:
+                - generic:
+                  - generic:
+                    - img
+                - textbox "Email" [ref=f2e28]:
+                  - /placeholder: you@example.com
+            - generic [ref=f2e30]:
+              - text: Password
+              - generic [ref=f2e31]:
+                - generic:
+                  - generic:
+                    - img
+                - textbox "Password" [ref=f2e32]:
+                  - /placeholder: ••••••••
+                - button "Show password" [ref=f2e34] [cursor=pointer]:
+                  - img [ref=f2e36]
+            - button "Forgot password?" [ref=f2e40] [cursor=pointer]
+            - generic [ref=f2e41]:
+              - button "Sign in" [disabled]:
+                - text: Sign in
+                - generic:
+                  - img
+            - generic [ref=f2e42]:
+              - generic [ref=f2e43]: Quick test login
+              - generic [ref=f2e44]:
+                - button "Player 1" [ref=f2e45] [cursor=pointer]:
+                  - img [ref=f2e47]
+                  - text: Player 1
+                - button "Player 2" [ref=f2e49] [cursor=pointer]:
+                  - img [ref=f2e51]
+                  - text: Player 2
+                - button "Owner 1" [ref=f2e53] [cursor=pointer]:
+                  - img [ref=f2e55]
+                  - text: Owner 1
+                - button "Owner 2" [ref=f2e57] [cursor=pointer]:
+                  - img [ref=f2e59]
+                  - text: Owner 2
+                - button "Organizer 1" [ref=f2e61] [cursor=pointer]:
+                  - img [ref=f2e63]
+                  - text: Organizer 1
+                - button "Organizer 2" [ref=f2e65] [cursor=pointer]:
+                  - img [ref=f2e67]
+                  - text: Organizer 2
+          - paragraph [ref=f2e70]:
+            - text: New here?
+            - button "Create an account" [ref=f2e71] [cursor=pointer]
+        - generic [ref=f2e72]:
+          - generic [ref=f2e73]:
+            - img [ref=f2e75]
+            - text: SECURE
+          - generic [ref=f2e77]:
+            - img [ref=f2e79]
+            - text: 10K+ PLAYERS
+  - dialog [ref=f2e84]:
+    - generic [ref=f2e86]:
+      - generic [ref=f2e87]:
+        - heading [level=2] [ref=f2e88]: Create your free account
+        - generic [ref=f2e89]: You'll need an account to continue. Browsing stays free — sign up takes a few seconds.
+      - button [ref=f2e90] [cursor=pointer]:
+        - img [ref=f2e92]
+    - generic [ref=f2e95]:
+      - list [ref=f2e96]:
+        - listitem [ref=f2e97]:
+          - img [ref=f2e100]
+          - text: Join games and lock in your spot
+        - listitem [ref=f2e102]:
+          - img [ref=f2e105]
+          - text: Create matches and start clubs
+        - listitem [ref=f2e107]:
+          - img [ref=f2e110]
+          - text: Track your matches and streaks
+      - button [ref=f2e112] [cursor=pointer]: Create free account
+      - button [ref=f2e113] [cursor=pointer]: I already have an account
+  - img [ref=f2e116]
+  - img [ref=f2e119]
+  - img [ref=f2e122]
+  - img [ref=f2e125]
+  - generic [ref=f2e128]: 12 Games Today
+  - generic [ref=f2e130]: 2 Spots Left
+  - generic [ref=f2e132]: 4 Courts Nearby
+  - generic [ref=f2e134]:
+    - generic [ref=f2e135]:
+      - img [ref=f2e136]
+      - img [ref=f2e144]
+    - generic [ref=f2e176]:
+      - img [ref=f2e177]
+      - heading "P i c k l e B a l l e r s" [level=1] [ref=f2e184]:
+        - generic [ref=f2e185]:
+          - generic [ref=f2e186]: P
+          - generic [ref=f2e187]: i
+          - generic [ref=f2e188]: c
+          - generic [ref=f2e189]: k
+          - generic [ref=f2e190]: l
+          - generic [ref=f2e191]: e
+        - generic [ref=f2e192]:
+          - generic [ref=f2e193]: B
+          - generic [ref=f2e194]: a
+          - generic [ref=f2e195]: l
+          - generic [ref=f2e196]: l
+          - generic [ref=f2e197]: e
+          - generic [ref=f2e198]: r
+          - generic [ref=f2e199]: s
+  - generic [ref=f2e200]:
+    - paragraph [ref=f2e201]: Find games. Meet players. Play more.
+    - button "Let's Play" [ref=f2e202] [cursor=pointer]
+  - generic:
+    - heading "You're in 🎾" [level=2]

@@ -113,15 +113,15 @@ function VenueGlanceCard({ venue, glance, onOpen }: { venue: ApiVenue; glance: G
         <div className="ohome-venue-loc"><PinIco /> {locationLine(venue) || '—'}</div>
         <div className="ohome-venue-foot">
           <span className="ohome-venue-courts"><CourtIco /> {venue.courtCount ?? 0} courts</span>
+          {glance && (
+            <>
+              <span className="ohome-muted"><b className="tabular-nums">{glance.todayCount}</b> today</span>
+              {glance.pendingCount > 0 && <span className="ohome-pending tabular-nums">{glance.pendingCount} pending</span>}
+              <span className="ohome-muted"><b className="tabular-nums">{money(glance.todayRevenue)}</b> today</span>
+            </>
+          )}
           <span className="ohome-venue-manage">Manage <Chevron /></span>
         </div>
-        {glance && (
-          <div className="ohome-venue-glance">
-            <span className="ohome-muted"><b className="tabular-nums">{glance.todayCount}</b> today</span>
-            {glance.pendingCount > 0 && <span className="ohome-pending tabular-nums">{glance.pendingCount} pending</span>}
-            <span className="ohome-muted" style={{ marginLeft: 'auto' }}><b className="tabular-nums">{money(glance.todayRevenue)}</b> today</span>
-          </div>
-        )}
       </div>
     </button>
   );

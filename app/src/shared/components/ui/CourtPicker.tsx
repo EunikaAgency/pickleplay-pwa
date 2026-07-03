@@ -33,7 +33,6 @@ export function CourtPicker({ courts, value, onChange, priceFor }: CourtPickerPr
       {courts.map((court) => {
         const sel = court.id === value;
         const meta = courtMeta(court);
-        const price = priceFor?.(court);
         const img = apiImageUrl(court.mainImageUrl);
         return (
           <button
@@ -55,9 +54,6 @@ export function CourtPicker({ courts, value, onChange, priceFor }: CourtPickerPr
             <span className="truncate max-w-full">{courtLabel(court)}</span>
             {meta && (
               <span className={`text-[11px] font-semibold ${sel ? 'text-white/70' : 'text-[var(--muted)]'}`}>{meta}</span>
-            )}
-            {price && (
-              <span className={`text-[11px] font-bold ${sel ? 'text-white' : 'text-[var(--ink)]'}`}>{price}</span>
             )}
           </button>
         );

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Segmented } from '../../../shared/components/ui/Segmented';
-import { BarChart, Sparkline } from '../../../shared/components/ui/Chart';
+import { BarChart } from '../../../shared/components/ui/Chart';
 import { OwnerStat } from '../components/OwnerStat';
 import { BookingLinkShare } from '../components/BookingLinkShare';
 import { CompletenessMeter, type CompletenessCheck } from '../components/CompletenessMeter';
@@ -29,7 +29,6 @@ interface Counts {
 const EDITOR_ACTIONS = [
   { tab: 'listing', icon: 'storefront', label: 'Edit listing details' },
   { tab: 'courts', icon: 'paddle', label: 'Manage courts & hours' },
-  { tab: 'closures', icon: 'calendar', label: 'Set holiday closures' },
   { tab: 'faqs', icon: 'help', label: 'Edit FAQs' },
   { tab: 'photos', icon: 'camera', label: 'Manage photos' },
 ];
@@ -247,13 +246,6 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
         </div>
       </div>
 
-      {/* Sparkline footer hint of overall trend (subtle) */}
-      {canAnalytics && analytics && analytics.revenueDaily.length > 1 && (
-        <div className="px-1">
-          <div className="t-eyebrow mb-1">Last {analytics.revenueDaily.length} days</div>
-          <Sparkline points={analytics.revenueDaily.map((d) => d.amount)} />
-        </div>
-      )}
     </div>
   );
 }

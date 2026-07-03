@@ -1888,6 +1888,66 @@
   }
 }
 
+/* Owner desktop surfaces use the sidebar as the visual frame, so the content
+   should use the available workspace instead of the player-style 1100px cap. */
+@container app (min-width: 1024px) {
+  .app[data-role="owner"] .scroll {
+    padding-inline: 32px;
+  }
+
+  .app[data-role="owner"] .scroll > .px-5 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .app[data-role="owner"] .app-header,
+  .app[data-role="owner"] .searchbar,
+  .app[data-role="owner"] .section,
+  .app[data-role="owner"] .home-refined > .px-5 {
+    width: 100%;
+    max-width: none;
+  }
+
+  .app[data-role="owner"] .clubs-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app[data-role="owner"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .app[data-role="owner"] .grid.grid-cols-1.sm\:grid-cols-2 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container app (min-width: 1440px) {
+  .app[data-role="owner"] .clubs-grid,
+  .app[data-role="owner"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .app[data-role="owner"] .grid.grid-cols-1.sm\:grid-cols-2 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Explicit pricing override: the pricing grid is a workspace, not a centered
+   reading column. Keep it owner desktop only so mobile still uses bottom nav. */
+@media (min-width: 1024px) {
+  .app[data-role="owner"] .owner-pricing-screen {
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+  }
+
+  .app[data-role="owner"] .owner-pricing-screen > .owner-pricing-content {
+    width: 100%;
+    max-width: none;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
 /* Admin & owner on desktop (viewport ≥1024 px): switch .app from a centred
    phone-column to a sidebar + main row.  This is a viewport @media because
    the element establishing the container can't reliably query itself across

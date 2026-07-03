@@ -13,6 +13,7 @@ import { getCourtHours, putCourtHours, type OwnerHourEntry } from '../../../shar
 
 interface WeeklyHoursEditorProps {
   courtId: string;
+  hidePricing?: boolean;
 }
 
 // dayOfWeek is 0=Sunday in the API; display Monday-first.
@@ -110,7 +111,7 @@ function openPicker(e: React.MouseEvent<HTMLInputElement>) {
   (e.currentTarget as any).showPicker?.();
 }
 
-export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
+export function WeeklyHoursEditor({ courtId, hidePricing }: WeeklyHoursEditorProps) {
   const [rows, setRows] = useState<Record<number, Row>>({});
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -239,7 +240,7 @@ export function WeeklyHoursEditor({ courtId }: WeeklyHoursEditorProps) {
                   </div>
                 )}
               </div>
-              {!row.isClosed && (() => {
+              {!hidePricing && !row.isClosed && (() => {
                 const hasMultiPricing = row.pricing.length > 1;
                 const p = row.pricing[0];
                 const issue = hasMultiPricing ? pricingIssue(row, 0) : { message: null, openBad: false, closeBad: false };

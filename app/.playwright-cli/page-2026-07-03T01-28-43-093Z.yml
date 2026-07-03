@@ -1,0 +1,63 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - button "Back" [ref=e7] [cursor=pointer]:
+        - img [ref=e9]
+      - generic [ref=e11]:
+        - generic [ref=e12]: Owner console
+        - generic [ref=e13]: Your venues
+        - generic [ref=e14]: Manage your listings, hours, courts and reviews.
+  - dialog [ref=e40]:
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - heading [level=2] [ref=e44]: Create your free account
+        - generic [ref=e45]: You'll need an account to continue. Browsing stays free — sign up takes a few seconds.
+      - button [ref=e46] [cursor=pointer]:
+        - img [ref=e48]
+    - generic [ref=e51]:
+      - list [ref=e52]:
+        - listitem [ref=e53]:
+          - img [ref=e56]
+          - text: Join games and lock in your spot
+        - listitem [ref=e58]:
+          - img [ref=e61]
+          - text: Create matches and start clubs
+        - listitem [ref=e63]:
+          - img [ref=e66]
+          - text: Track your matches and streaks
+      - button [ref=e68] [cursor=pointer]: Create free account
+      - button [ref=e69] [cursor=pointer]: I already have an account
+  - img [ref=e72]
+  - img [ref=e75]
+  - img [ref=e78]
+  - img [ref=e81]
+  - generic [ref=e84]: 12 Games Today
+  - generic [ref=e86]: 2 Spots Left
+  - generic [ref=e88]: 4 Courts Nearby
+  - generic [ref=e90]:
+    - generic [ref=e91]:
+      - img [ref=e92]
+      - img [ref=e100]
+    - generic [ref=e132]:
+      - img [ref=e133]
+      - heading "P i c k l e B a l l e r s" [level=1] [ref=e140]:
+        - generic [ref=e141]:
+          - generic [ref=e142]: P
+          - generic [ref=e143]: i
+          - generic [ref=e144]: c
+          - generic [ref=e145]: k
+          - generic [ref=e146]: l
+          - generic [ref=e147]: e
+        - generic [ref=e148]:
+          - generic [ref=e149]: B
+          - generic [ref=e150]: a
+          - generic [ref=e151]: l
+          - generic [ref=e152]: l
+          - generic [ref=e153]: e
+          - generic [ref=e154]: r
+          - generic [ref=e155]: s
+  - generic [ref=e156]:
+    - paragraph [ref=e157]: Find games. Meet players. Play more.
+    - button "Let's Play" [ref=e158] [cursor=pointer]
+  - generic:
+    - heading "You're in 🎾" [level=2]

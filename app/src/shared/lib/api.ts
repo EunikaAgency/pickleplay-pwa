@@ -708,6 +708,25 @@ export async function getVenueAvailabilityRange(
   );
 }
 
+/* ─── Batch venue availability — powers the map date/time filter ─── */
+
+export interface BatchVenueAvailability {
+  date: string;
+  venues: { venueId: string; freeByHour: number[] }[];
+}
+
+/**
+ * Per-hour free-court counts for multiple venues on a single date — so the map
+ * can filter to only venues with a court free at the player's chosen hour (public).
+ * Max 200 venue IDs per request.
+ */
+export async function batchVenueAvailability(venueIds: string[], date: string): Promise<BatchVenueAvailability> {
+  return request<BatchVenueAvailability>(`${VENUES_PREFIX}/availability/batch`, {
+    method: 'POST',
+    body: JSON.stringify({ venueIds, date }),
+  });
+}
+
 /* ─── Check-ins (live presence) ─────────────────────────────── */
 //
 // A check-in = a player marking themselves present at a venue ("I'm here now").
@@ -1552,6 +1571,7 @@ export type GameStatus = 'published' | 'full' | 'cancelled';
 export interface ApiGame {
   id: string;
   title?: string | null;
+  description?: string | null;
   gameType?: string | null;        // 'singles' | 'doubles' | 'open'
   skillLabel?: string | null;
   whenLabel?: string | null;
@@ -1599,6 +1619,7 @@ export interface ListGamesParams {
 
 export interface CreateGamePayload {
   title?: string;
+  description?: string;
   venueId?: string;
   venueName?: string;
   gameType: 'singles' | 'doubles' | 'open';
@@ -2026,6 +2047,8 @@ export interface ApiConversationSummary {
   /** When the conversation was started from a venue page. */
   contextType?: string | null;
   contextId?: string | null;
+  /** Resolved label — venue name, or "VenueName · Date" for bookings. null = direct message. */
+  contextLabel?: string | null;
 }
 
 export interface ApiChatMessage {
@@ -2508,6 +2531,11 @@ export interface ApiBooking {
   paymentOption?: PaymentOption | null;
   amountPaid?: number | null;
   balanceDue?: number | null;
+  /** Pricing audit trail — which rate source resolved the amount + the breakdown. */
+  rateSource?: string | null;         // 'surge'|'timeBlock'|'holiday'|'weekend'|'subUnit'|'court'|'venue'|'manual'
+  overrideId?: string | null;        // SlotPriceOverride _id when rateSource='surge'
+  baseRate?: number | null;          // resolved rate before member discount
+  memberDiscountPercent?: number | null;  // 0–100
   /** Owner-entered bookings: off-platform customer + source, or a slot-block reason. */
   customerName?: string | null;
   customerPhone?: string | null;

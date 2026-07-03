@@ -7,6 +7,7 @@ import { Schema, model } from 'mongoose';
 const gameSchema = new Schema({
   creatorId:     { type: Schema.Types.ObjectId, ref: 'User', required: true },
   title:         { type: String, maxlength: 120 },
+  description:   { type: String, maxlength: 500 },
   // A real venue link is preferred; venueName is a free-text fallback for games
   // posted against a place that isn't in the venue directory.
   venueId:       { type: Schema.Types.ObjectId, ref: 'Venue' },

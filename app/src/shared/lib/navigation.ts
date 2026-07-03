@@ -16,8 +16,8 @@ export type Screen =
   | { id: 'clubs' }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
-  | { id: 'open-play-detail'; params: { source: 'game' | 'session'; id: string } }
-  | { id: 'court-details'; params: { id: string; intent?: 'lobby' } }
+  | { id: 'open-play-detail'; params: { source: 'auto' | 'game' | 'session'; id: string } }
+  | { id: 'court-details'; params: { id: string; intent?: 'lobby'; filterDate?: string; filterStartHour?: number; filterEndHour?: number } }
   | { id: 'club-details'; params: { id: string; invited?: boolean } }
   | { id: 'club-post'; params: { id: string; postId: string } }
   | { id: 'club-post-edit'; params: { id: string; postId: string } }
@@ -27,7 +27,7 @@ export type Screen =
   | { id: 'create-game'; params?: { bookingId?: string } }
   | { id: 'edit-game'; params: { id: string } }
   | { id: 'my-games' }
-  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number; intent?: 'lobby' } }
+  | { id: 'book-court'; params: { venueId?: string; date?: string; time?: string; hours?: number; courtId?: string; intent?: 'lobby' } }
   | { id: 'my-bookings' }
   // Refund / cancel a single court booking (e.g. after a host deletes a lobby but
   // keeps the court reserved).
@@ -105,8 +105,8 @@ export function pathFromScreen(screen: Screen): string {
     case 'clubs': return '/clubs';
     case 'profile': return '/profile';
     case 'game-details': return `/games/${screen.params.id}`;
-    case 'open-play-detail': return `/open-play/${screen.params.source}/${screen.params.id}`;
-    case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent })}`;
+    case 'open-play-detail': return `/open-play/${screen.params.id}`;
+    case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent, filterDate: screen.params.filterDate, filterStartHour: screen.params.filterStartHour })}`;
     case 'club-details': return `/clubs/${screen.params.id}${q({ invited: screen.params.invited })}`;
     case 'club-post': return `/clubs/${screen.params.id}/posts/${screen.params.postId}`;
     case 'club-post-edit': return `/clubs/${screen.params.id}/posts/${screen.params.postId}/edit`;
@@ -114,7 +114,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'create-game': return `/games/create${q({ bookingId: screen.params?.bookingId })}`;
     case 'edit-game': return `/games/${screen.params.id}/edit`;
     case 'my-games': return '/my-games';
-    case 'book-court': return `/book${q({ venueId: screen.params.venueId, date: screen.params.date, time: screen.params.time, hours: screen.params.hours, intent: screen.params.intent })}`;
+    case 'book-court': return `/book${q({ venueId: screen.params.venueId, date: screen.params.date, time: screen.params.time, hours: screen.params.hours, courtId: screen.params.courtId, intent: screen.params.intent })}`;
     case 'my-bookings': return '/my-bookings';
     case 'booking-refund': return `/bookings/${screen.params.bookingId}/refund`;
     case 'payment-history': return '/payments';
@@ -217,13 +217,14 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       // App.tsx) so the "you're invited" prompt still greets share-link visitors.
       return { id: 'club-details', params: { id: b, invited: sp.get('invited') === '1' || undefined } };
     case 'my-games': return { id: 'games', params: { section: 'open-play', view: 'manage' } };
-    case 'book': return { id: 'book-court', params: { venueId: opt(sp.get('venueId')), date: opt(sp.get('date')), time: opt(sp.get('time')), hours: opt(sp.get('hours')) ? Number(sp.get('hours')) : undefined, intent: lobby } };
+    case 'book': return { id: 'book-court', params: { venueId: opt(sp.get('venueId')), date: opt(sp.get('date')), time: opt(sp.get('time')), hours: opt(sp.get('hours')) ? Number(sp.get('hours')) : undefined, courtId: opt(sp.get('courtId')), intent: lobby } };
     case 'my-bookings': return { id: 'games', params: { section: 'booked', view: 'manage' } };
     case 'bookings':
       if (b && c === 'refund') return { id: 'booking-refund', params: { bookingId: b } };
       return { id: 'games', params: { section: 'booked', view: 'manage' } };
     case 'open-play':
       if ((b === 'game' || b === 'session') && c) return { id: 'open-play-detail', params: { source: b, id: c } };
+      if (b) return { id: 'open-play-detail', params: { source: 'auto', id: b } };
       return { id: 'games', params: { section: 'open-play', view: 'discover' } };
     case 'payments': return { id: 'payment-history' };
     case 'profile': return b === 'edit' ? { id: 'edit-profile' } : { id: 'profile' };

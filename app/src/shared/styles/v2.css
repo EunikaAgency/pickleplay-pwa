@@ -1479,6 +1479,465 @@
 .pb-v2.v2-nearby .np-price { font-size: 12px; font-weight: 700; color: var(--navy); }
 .pb-v2.v2-nearby .np-cta { font-size: 12px; font-weight: 700; color: var(--blue); }
 
+/* ── Date/time filter bar (DateTimeFilterBar.tsx) ── */
+.pb-v2.v2-nearby .dt-filter-bar {
+  flex-shrink: 0;
+  margin: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #CBD5E1);
+  border-radius: 14px;
+  padding: 7px 10px;
+  position: relative;
+  flex-wrap: wrap;
+}
+.pb-v2.v2-nearby .dt-filter-bar.active {
+  border-color: var(--lime, #CCFF33);
+  background: var(--bg-feature, #F4FFD6);
+}
+
+/* Date / time pills */
+.pb-v2.v2-nearby .dt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: none;
+  background: var(--bg-alt, #E1E8FF);
+  color: var(--ink, #1A2138);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.pb-v2.v2-nearby .dt-pill:hover {
+  background: var(--border, #CBD5E1);
+}
+.pb-v2.v2-nearby .dt-pill.open {
+  background: var(--blue, #3355FF);
+  color: #fff;
+}
+.pb-v2.v2-nearby .dt-pill.open .dt-chevron {
+  color: rgba(255,255,255,0.7);
+}
+.pb-v2.v2-nearby .dt-pill svg {
+  flex-shrink: 0;
+}
+.pb-v2.v2-nearby .dt-pill-label {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pb-v2.v2-nearby .dt-pill-label.placeholder {
+  color: var(--muted, #94A3B8);
+}
+.pb-v2.v2-nearby .dt-chevron {
+  flex-shrink: 0;
+  color: var(--muted, #94A3B8);
+}
+
+/* Apply / Clear action buttons (inline) */
+.pb-v2.v2-nearby .dt-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.pb-v2.v2-nearby .dt-action.dt-apply {
+  background: var(--lime, #CCFF33);
+  color: var(--on-accent, #1A2138);
+}
+.pb-v2.v2-nearby .dt-action.dt-apply:hover {
+  background: var(--lime-hover, #B8E600);
+}
+.pb-v2.v2-nearby .dt-action.dt-apply:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pb-v2.v2-nearby .dt-action.dt-clear {
+  background: transparent;
+  color: var(--muted, #94A3B8);
+  padding: 6px 6px;
+}
+.pb-v2.v2-nearby .dt-action.dt-clear:hover {
+  color: var(--error, #EF4444);
+  background: rgba(239,68,68,0.08);
+}
+
+/* Match count badge */
+.pb-v2.v2-nearby .dt-match-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--lime-ink, #166534);
+  background: var(--lime, #CCFF33);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pb-v2.v2-nearby .dt-loading {
+  flex-shrink: 0;
+  color: var(--blue, #3355FF);
+}
+.pb-v2.v2-nearby .dt-spin {
+  animation: v2spin 0.8s linear infinite;
+}
+
+/* ── Bottom sheet ── */
+.pb-v2.v2-nearby .dt-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: flex-end;
+  animation: dtFadeIn 0.18s ease-out;
+}
+@keyframes dtFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.pb-v2.v2-nearby .dt-sheet {
+  background: var(--surface, #fff);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 40px rgba(0,0,0,0.20);
+  padding: 0 18px calc(18px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: dtSlideUp 0.25s ease-out;
+}
+@keyframes dtSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.pb-v2.v2-nearby .dt-sheet-handle {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 6px;
+}
+.pb-v2.v2-nearby .dt-sheet-handle span {
+  width: 36px; height: 4px;
+  border-radius: 9999px;
+  background: var(--border, #CBD5E1);
+}
+
+/* Sheet header */
+.pb-v2.v2-nearby .dt-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pb-v2.v2-nearby .dt-sheet-title {
+  font-family: 'Grandstander', 'Fredoka', cursive;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink, #1A2138);
+  margin: 0;
+}
+.pb-v2.v2-nearby .dt-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-alt, #E1E8FF);
+  color: var(--muted, #94A3B8);
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .dt-sheet-close:hover {
+  background: var(--border, #CBD5E1);
+  color: var(--ink, #1A2138);
+}
+
+/* Date readout — full selected date */
+.pb-v2.v2-nearby .dt-date-readout {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue, #3355FF);
+  margin-bottom: 12px;
+}
+
+/* Quick shortcut chips */
+.pb-v2.v2-nearby .dt-shortcuts {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.pb-v2.v2-nearby .dt-shortcut-chip {
+  padding: 7px 14px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--border, #CBD5E1);
+  background: var(--surface, #fff);
+  color: var(--ink, #1A2138);
+  font-size: 12.5px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.pb-v2.v2-nearby .dt-shortcut-chip:hover {
+  background: var(--lime, #CCFF33);
+  border-color: var(--lime, #CCFF33);
+}
+
+/* Calendar wrapper — hides CalendarDatePicker's internal month nav (ours is above) */
+.pb-v2.v2-nearby .dt-cal-wrap [class*="rounded-3xl"] > [class*="justify-between"] {
+  display: none !important;
+}
+/* Add padding inside the CalendarDatePicker's card since we removed our own */
+.pb-v2.v2-nearby .dt-cal-wrap [class*="rounded-3xl"] {
+  padding: 16px !important;
+}
+
+/* Month/year nav */
+.pb-v2.v2-nearby .dt-monthnav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.pb-v2.v2-nearby .dt-monthnav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--muted, #94A3B8);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.pb-v2.v2-nearby .dt-monthnav-btn:hover {
+  background: var(--bg-alt, #E1E8FF);
+  color: var(--ink, #1A2138);
+}
+.pb-v2.v2-nearby .dt-monthnav-label {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #1A2138);
+}
+
+/* Sheet-wide action buttons (shared by date + time sheets) */
+.pb-v2.v2-nearby .dt-sheet-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.pb-v2.v2-nearby .dt-sheet-btn {
+  flex: 1;
+  padding: 12px 0;
+  border-radius: 12px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.pb-v2.v2-nearby .dt-sheet-cancel {
+  background: var(--bg-alt, #E1E8FF);
+  color: var(--muted, #64748B);
+}
+.pb-v2.v2-nearby .dt-sheet-cancel:hover {
+  background: var(--border, #CBD5E1);
+}
+.pb-v2.v2-nearby .dt-sheet-apply {
+  background: var(--lime, #CCFF33);
+  color: var(--on-accent, #1A2138);
+}
+.pb-v2.v2-nearby .dt-sheet-apply:hover {
+  background: var(--lime-hover, #B8E600);
+}
+
+/* Hour grid — 12 tappable chips, 6 columns */
+.pb-v2.v2-nearby .dt-hour-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.pb-v2.v2-nearby .dt-hour-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1.5px solid var(--border, #CBD5E1);
+  background: var(--surface, #fff);
+  color: var(--ink, #1A2138);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.pb-v2.v2-nearby .dt-hour-chip:hover {
+  background: var(--bg-alt, #E1E8FF);
+  border-color: var(--blue, #3355FF);
+}
+.pb-v2.v2-nearby .dt-hour-chip.selected {
+  background: var(--lime, #CCFF33);
+  border-color: var(--lime, #CCFF33);
+  color: var(--on-accent, #1A2138);
+  box-shadow: 0 2px 8px rgba(204,255,51,0.35);
+}
+
+/* Time label */
+.pb-v2.v2-nearby .dt-time-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #94A3B8);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* AM / PM toggle */
+.pb-v2.v2-nearby .dt-ampm-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 10px;
+  margin-top: 0;
+}
+.pb-v2.v2-nearby .dt-ampm-btn {
+  padding: 8px 22px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border, #CBD5E1);
+  background: var(--surface, #fff);
+  color: var(--ink, #1A2138);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.pb-v2.v2-nearby .dt-ampm-btn:hover {
+  background: var(--bg-alt, #E1E8FF);
+}
+.pb-v2.v2-nearby .dt-ampm-btn.active {
+  background: var(--blue, #3355FF);
+  border-color: var(--blue, #3355FF);
+  color: #fff;
+}
+
+/* Time pill wrapper — establishes positioning context for the dropdown */
+.pb-v2.v2-nearby .dt-time-wrap {
+  position: static;
+  flex-shrink: 0;
+}
+
+/* Time dropdown — matches HourSelect's dropdown style */
+.pb-v2.v2-nearby .dt-time-drop {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  overflow-y: auto;
+  border-radius: 16px;
+  border: 0.5px solid var(--hairline, #CBD5E1);
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 22px rgba(26,33,56,0.16);
+  padding: 10px;
+  margin-top: 6px;
+  animation: dtDropIn 0.15s ease-out;
+}
+.pb-v2.v2-nearby .dt-time-drop.up {
+  bottom: 100%;
+  margin-bottom: 6px;
+  margin-top: 0;
+  animation: dtDropUp 0.15s ease-out;
+}
+@keyframes dtDropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes dtDropUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Time dropdown actions */
+.pb-v2.v2-nearby .dt-time-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.pb-v2.v2-nearby .dt-time-btn {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.pb-v2.v2-nearby .dt-time-cancel {
+  background: var(--bg-alt, #E1E8FF);
+  color: var(--muted, #64748B);
+}
+.pb-v2.v2-nearby .dt-time-cancel:hover {
+  background: var(--border, #CBD5E1);
+}
+.pb-v2.v2-nearby .dt-time-apply {
+  background: var(--lime, #CCFF33);
+  color: var(--on-accent, #1A2138);
+}
+.pb-v2.v2-nearby .dt-time-apply:hover {
+  background: var(--lime-hover, #B8E600);
+}
+
+/* ── Court availability badge (CourtDetailsScreen) ── */
+.court-avail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+.court-avail-badge.available {
+  background: var(--lime, #CCFF33);
+  color: var(--on-accent, #1A2138);
+}
+.court-avail-badge.booked {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+/* Hide FAB + tab bar when date sheet is open */
+body[data-dt-sheet] .pb-v2 .v2c-fab,
+body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
+
 @keyframes v2spin { to { transform: rotate(360deg); } }
 
 /* ===================== Games.html → .pb-v2.v2-games ===================== */
@@ -1619,6 +2078,100 @@
   background: var(--lime);
   color: var(--ink);
   box-shadow: var(--shadow-sm);
+}
+
+/* Games fixed local header: title + inner tabs stay pinned, cards scroll. */
+.pb-v2.v2-games {
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pb-v2.v2-games > main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pb-v2.v2-games .page-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pb-v2.v2-games .games-intro,
+.pb-v2.v2-games .tab-group-row {
+  flex: 0 0 auto;
+}
+.pb-v2.v2-games .games-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: calc(148px + env(safe-area-inset-bottom));
+}
+.pb-v2.v2-games .games-list-scroll::-webkit-scrollbar { display: none; }
+
+/* Games nested tab redesign */
+.pb-v2.v2-games .games-section-tabs,
+.pb-v2.v2-games .games-view-tabs {
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pb-v2.v2-games .games-section-tabs::-webkit-scrollbar,
+.pb-v2.v2-games .games-view-tabs::-webkit-scrollbar { display: none; }
+.pb-v2.v2-games .games-section-tabs .tab-group,
+.pb-v2.v2-games .games-view-tabs .tab-group {
+  flex: 0 0 auto !important;
+  width: 100%;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  gap: 8px;
+  box-shadow: none !important;
+}
+.pb-v2.v2-games .games-section-tabs .seg-btn,
+.pb-v2.v2-games .games-view-tabs .seg-btn {
+  position: relative;
+  flex: 1 0 104px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 8px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 750;
+}
+.pb-v2.v2-games .games-section-tabs .seg-btn:hover:not(.active),
+.pb-v2.v2-games .games-view-tabs .seg-btn:hover:not(.active) {
+  border-color: var(--blue) !important;
+  color: var(--ink) !important;
+  background: var(--bg-alt) !important;
+}
+.pb-v2.v2-games .games-section-tabs .seg-btn.active {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border-color: #111827 !important;
+  box-shadow: inset 0 -3px 0 var(--lime) !important;
+}
+.pb-v2.v2-games .games-view-tabs { margin-top: 4px; margin-bottom: 14px; }
+.pb-v2.v2-games .games-view-tabs .seg-btn {
+  min-height: 34px;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--text-muted) !important;
+}
+.pb-v2.v2-games .games-view-tabs .seg-btn.active {
+  background: var(--lime) !important;
+  border-color: var(--lime) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
 }
 
 /* ---- Section heading + descriptive subheading ---- */
@@ -1794,6 +2347,7 @@
   margin-bottom: 12px;
   box-shadow: var(--shadow-md);
   display: flex;
+  width: 100%;
   min-height: 112px;
   transition: transform 150ms var(--ease-out), box-shadow 150ms;
   cursor: pointer;
@@ -1851,6 +2405,15 @@
 .pb-v2.v2-games .badge-open { background: #5C9E00; }
 .pb-v2.v2-games .badge-competitive { background: var(--warning); }
 .pb-v2.v2-games .badge-social { background: var(--info); }
+.pb-v2.v2-games .skill-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-tint);
+}
 .pb-v2.v2-games .game-body {
   flex: 1;
   padding: 13px 14px 12px;
@@ -2579,6 +3142,113 @@
     box-shadow: 0 4px 18px rgba(163,204,0,0.40);
   }
 .pb-v2.v2-clubs .join-btn:active { transform: scale(0.98); background: var(--lime-active); }
+.pb-v2.v2-clubs .discover-clubs-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+.pb-v2.v2-clubs .discover-club-card {
+    min-width: 0;
+    min-height: 170px;
+    background: var(--surface);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-subtle);
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 150ms var(--ease-out), transform 150ms var(--ease-out);
+  }
+.pb-v2.v2-clubs .discover-club-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+.pb-v2.v2-clubs .discover-club-card.featured {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-feature) 100%);
+    border-color: rgba(163,204,0,0.45);
+  }
+.pb-v2.v2-clubs .discover-club-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+.pb-v2.v2-clubs .discover-club-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: var(--bg-alt);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 17px;
+    font-weight: 700;
+  }
+.pb-v2.v2-clubs .discover-featured-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 7px;
+    border-radius: var(--radius-pill);
+    background: var(--lime);
+    color: var(--ink);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+.pb-v2.v2-clubs .discover-card-name {
+    font-family: 'Grandstander', cursive;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.15;
+    min-height: 32px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+.pb-v2.v2-clubs .discover-card-desc {
+    margin-top: 5px;
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--text-secondary);
+    min-height: 30px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+.pb-v2.v2-clubs .discover-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+  }
+.pb-v2.v2-clubs .discover-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    margin-bottom: 10px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+  }
+.pb-v2.v2-clubs .discover-club-card .join-sm-btn {
+    margin-top: auto;
+  }
+@media (max-width: 620px) {
+  .pb-v2.v2-clubs .discover-clubs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 390px) {
+  .pb-v2.v2-clubs .discover-clubs-grid { grid-template-columns: 1fr; }
+}
 .pb-v2.v2-clubs .nearby-scroll {
     display: flex;
     gap: 12px;
@@ -4639,10 +5309,16 @@
 .pb-v2.v2-owner-home .ohome-rb-amount { font-family: 'Grandstander', cursive; font-size: 36px; font-weight: 900; line-height: 1; color: #fff; }
 .pb-v2.v2-owner-home .ohome-rb-delta { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 800; color: var(--lime); padding-bottom: 3px; }
 .pb-v2.v2-owner-home .ohome-rb-spark { margin-top: 14px; }
-.pb-v2.v2-owner-home .ohome-rb-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.pb-v2.v2-owner-home .ohome-rb-foot { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-top: 14px; }
 .pb-v2.v2-owner-home .ohome-rb-meta { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: rgba(255,255,255,0.85); min-width: 0; }
 .pb-v2.v2-owner-home .ohome-rb-meta b { font-weight: 800; color: #fff; }
-.pb-v2.v2-owner-home .ohome-rb-btn { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 13px; padding: 10px 18px; border-radius: var(--radius-pill); white-space: nowrap; flex-shrink: 0; }
+.pb-v2.v2-owner-home .ohome-rb-btn { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 13px; padding: 10px 18px; border-radius: var(--radius-pill); text-align: center; width: 100%; }
+
+/* desktop: side-by-side */
+@media (min-width: 577px) {
+  .pb-v2.v2-owner-home .ohome-rb-foot { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+  .pb-v2.v2-owner-home .ohome-rb-btn { width: auto; text-align: inherit; }
+}
 
 /* quick actions */
 .pb-v2.v2-owner-home .ohome-qa { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 20px 0 4px; }
@@ -4712,13 +5388,13 @@
 .pb-v2.v2-owner-home .ohome-venue-body { padding: 14px; }
 .pb-v2.v2-owner-home .ohome-venue-name { font-family: 'Grandstander', cursive; font-weight: 700; font-size: 16px; color: var(--ink); }
 .pb-v2.v2-owner-home .ohome-venue-loc { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--text-secondary); margin-top: 3px; }
-.pb-v2.v2-owner-home .ohome-venue-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+.pb-v2.v2-owner-home .ohome-venue-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pb-v2.v2-owner-home .ohome-venue-foot .ohome-muted { font-size: 12px; color: var(--text-secondary); }
+.pb-v2.v2-owner-home .ohome-venue-foot .ohome-muted b { font-weight: 800; color: var(--ink); }
+.pb-v2.v2-owner-home .ohome-venue-foot .ohome-pending { font-size: 12px; color: var(--coral); font-weight: 800; }
 .pb-v2.v2-owner-home .ohome-venue-courts { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-secondary); }
 .pb-v2.v2-owner-home .ohome-venue-manage { display: inline-flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 800; color: var(--blue); }
-.pb-v2.v2-owner-home .ohome-venue-glance { display: flex; align-items: center; gap: 12px; font-size: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
-.pb-v2.v2-owner-home .ohome-venue-glance b { font-weight: 800; color: var(--ink); }
-.pb-v2.v2-owner-home .ohome-venue-glance .ohome-muted { color: var(--text-secondary); }
-.pb-v2.v2-owner-home .ohome-venue-glance .ohome-pending { color: var(--coral); font-weight: 800; }
+.pb-v2.v2-owner-home .ohome-venue-glance { display: none; }
 /* My-venues list: 2 columns on phones, 3 once the frame is tablet-wide. Keys off
    the frame (@container app), like the rest of the frame-capped responsive. The
    grid gap replaces the stacked cards' margin-top. */

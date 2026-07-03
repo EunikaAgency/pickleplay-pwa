@@ -19,9 +19,11 @@ import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
   getVenueBookings, listCourts, createVenueBooking, createRecurringBooking,
-  listRecurringBookings, cancelRecurringBooking,
+  listRecurringBookings, cancelRecurringBooking, listSlotOverrides, getHours,
   type ApiBooking, type ApiCourt, type ApiVenue, type VenueBookingPayload, type RecurringSeries,
+  type OwnerHourEntry, type SlotPriceOverride,
 } from '../../shared/lib/api';
+import { resolveHourlyRate } from '../../shared/lib/pricing';
 import type { Navigate } from '../../shared/lib/navigation';
 import { money, prettyDate, todayYMD, hoursBetween, addHours, snapToHour } from '../bookings/bookingDisplay';
 
@@ -364,6 +366,28 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Pricing engine data for the suggested amount.
+  const [venueHours, setVenueHours] = useState<OwnerHourEntry[]>([]);
+  const [overrides, setOverrides] = useState<SlotPriceOverride[]>([]);
+
+  useEffect(() => {
+    if (!vref) { setVenueHours([]); return; }
+    let alive = true;
+    getHours(vref)
+      .then((rows) => { if (alive) setVenueHours(rows); })
+      .catch(() => { if (alive) setVenueHours([]); });
+    return () => { alive = false; };
+  }, [vref]);
+
+  useEffect(() => {
+    if (!vref || !date) { setOverrides([]); return; }
+    let alive = true;
+    listSlotOverrides(vref, date)
+      .then((rows) => { if (alive) setOverrides(rows); })
+      .catch(() => { if (alive) setOverrides([]); });
+    return () => { alive = false; };
+  }, [vref, date]);
+
   // Default a court once they load.
   const prevCourtsForDefault = useRef(courts);
   if (courts !== prevCourtsForDefault.current) {
@@ -374,7 +398,11 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   }
 
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
-  const rate = selectedCourt?.hourlyRate != null ? selectedCourt.hourlyRate : (venue.priceFrom ?? 0);
+  const rateInfo = useMemo(() => resolveHourlyRate({
+    venue, court: selectedCourt, hours: venueHours, overrides,
+    date, startTime, isMember: false,
+  }), [venue, selectedCourt, venueHours, overrides, date, startTime]);
+  const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
   const suggested = Math.round(rate * hours * 100) / 100;
 

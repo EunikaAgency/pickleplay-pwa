@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
+import { listCourts, listSlotOverrides, createSlotOverride, deleteSlotOverride, type OwnerCourt } from '../../shared/lib/api';
+import type { Navigate } from '../../shared/lib/navigation';
 
 interface OwnerPricingScreenProps {
   onBack: () => void;
+  onNavigate: Navigate;
 }
 
 interface PricingRule {
@@ -14,10 +17,13 @@ interface PricingRule {
   color: string;
 }
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const HOURS = ['6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM'];
+const HOURS = ['12AM', '1AM', '2AM', '3AM', '4AM', '5AM', '6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM', '10PM', '11PM'];
 const COLOR_SWATCHES = ['#f59e0b', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#426383', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#64748b', '#4b5b70'];
-const CLOSED_COLOR = '#4b5b70';
+const CLOSED_COLOR = '#94a3b8';
+const CLOSED_TOOL_ID = 'closed';
+const SELECTED_VENUE_STORAGE_KEY = 'pb-owner-pricing-selected-venue';
 
 const INITIAL_RULES: PricingRule[] = [
   { id: 'weekday-peak', name: 'Weekday Evening Peak', shortName: 'Peak', price: '350', color: '#f59e0b' },
@@ -40,38 +46,337 @@ function cellLabel(rule: PricingRule | null) {
   return rule ? `${rule.shortName} · ₱${rule.price}` : 'Closed · ₱0';
 }
 
-export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
+function peso(n: number) {
+  return `₱${Math.round(n).toLocaleString()}`;
+}
+
+function readSavedVenue() {
+  try {
+    return window.localStorage.getItem(SELECTED_VENUE_STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function saveSelectedVenue(id: string) {
+  try {
+    if (id) window.localStorage.setItem(SELECTED_VENUE_STORAGE_KEY, id);
+    else window.localStorage.removeItem(SELECTED_VENUE_STORAGE_KEY);
+  } catch {
+    // localStorage can be unavailable; venue selection still works for this session.
+  }
+}
+
+const MONTH_INDEX: Record<string, number> = { January: 0, February: 1, March: 2, April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11 };
+
+function weekMonday(month: string, weekNum: number, year: number): Date {
+  const monthIdx = MONTH_INDEX[month] ?? new Date().getMonth();
+  const firstOfMonth = new Date(year, monthIdx, 1);
+  const dayOfWeek = firstOfMonth.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  return new Date(year, monthIdx, 1 + mondayOffset + (weekNum - 1) * 7);
+}
+
+function weekDateRange(month: string, weekNum: number, year: number): string {
+  const monday = weekMonday(month, weekNum, year);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fmt = (d: Date) => `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+  return monday.getMonth() === sunday.getMonth()
+    ? `${MONTHS_SHORT[monday.getMonth()]} ${monday.getDate()} – ${MONTHS_SHORT[sunday.getMonth()]} ${sunday.getDate()}`
+    : `${fmt(monday)} – ${fmt(sunday)}`;
+}
+
+/** calendar week numbers (1-5) whose Monday falls in the selected month. */
+function monthWeekNums(month: string, year: number): number[] {
+  const nums: number[] = [];
+  const monthIdx = MONTH_INDEX[month] ?? new Date().getMonth();
+  for (let w = 1; w <= 5; w++) {
+    if (weekMonday(month, w, year).getMonth() === monthIdx) nums.push(w);
+  }
+  return nums;
+}
+
+/** Contiguous time blocks for a single day from painted cells. */
+function dayBlocks(day: string, cells: Record<string, string>, rules: PricingRule[]): { openTime: string; closeTime: string; price: number; ruleId: string }[] {
+  const blocks: { openTime: string; closeTime: string; price: number; ruleId: string }[] = [];
+  const ruleMap = new Map(rules.map((r) => [r.id, r]));
+  const ruleForHour = (hour: number) => {
+    const ruleId = cells[cellKey(day, HOURS[hour])];
+    if (!ruleId) return null;
+    const rule = ruleMap.get(ruleId);
+    if (!rule) return null;
+    return { ruleId, price: Number(rule.price) || 0 };
+  };
+  let hour = 0;
+  while (hour < 24) {
+    const blockRule = ruleForHour(hour);
+    if (!blockRule) { hour++; continue; }
+    let endHour = hour + 1;
+    while (endHour < 24 && ruleForHour(endHour)?.price === blockRule.price) endHour++;
+    blocks.push({
+      openTime: `${String(hour).padStart(2, '0')}:00`,
+      closeTime: `${String(endHour).padStart(2, '0')}:00`,
+      price: blockRule.price,
+      ruleId: blockRule.ruleId,
+    });
+    hour = endHour;
+  }
+  return blocks;
+}
+
+
+export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenProps) {
   const { venues, status } = useOwnerDashboard({ withAnalytics: false });
-  const [venue, setVenue] = useState('');
+  const [venue, setVenue] = useState(readSavedVenue);
+  const [courts, setCourts] = useState<OwnerCourt[]>([]);
+  const [selectedCourtId, setSelectedCourtId] = useState('');
+  const [courtsLoading, setCourtsLoading] = useState(false);
   const [rules, setRules] = useState<PricingRule[]>(INITIAL_RULES);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PricingRule>(blankRule());
-  const [activeRuleId, setActiveRuleId] = useState(INITIAL_RULES[0]?.id ?? '');
-  const [paintedCells, setPaintedCells] = useState<Record<string, string>>({});
+  const [activeRuleId, setActiveRuleId] = useState(INITIAL_RULES[0]?.id ?? CLOSED_TOOL_ID);
+  // Per‑week painted cells, keyed by the week's Monday date (YYYY‑MM‑DD).
+  const [cellsByWeek, setCellsByWeek] = useState<Record<string, Record<string, string>>>({});
+  const [month, setMonth] = useState(() => MONTHS[new Date().getMonth()]);
+  const [week, setWeek] = useState(1);
   const [tooltip, setTooltip] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState('');
+  const [dirtyWeeks, setDirtyWeeks] = useState<Record<string, boolean>>({});
+  const [summaryOpen, setSummaryOpen] = useState(true);
+  const isPaintingRef = useRef(false);
+  const paintToolRef = useRef(activeRuleId);
+  const paintedDuringDragRef = useRef<Set<string>>(new Set());
+
+  const year = useMemo(() => new Date().getFullYear(), []);
+  const weekNums = useMemo(() => monthWeekNums(month, year), [month, year]);
+
+  // Week key = Monday date string, unique per calendar week.
+  const weekKey = useMemo(() => {
+    const m = weekMonday(month, week, year);
+    return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}-${String(m.getDate()).padStart(2, '0')}`;
+  }, [month, week, year]);
+
+  // All-court rules are venue-wide defaults; specific court views inherit them
+  // and can paint court-specific blocks on top.
+  const baseScopeKey = `${weekKey}|all`;
+  const scopeKey = `${weekKey}|${selectedCourtId || 'all'}`;
+
+  const selectedScopeCells = cellsByWeek[scopeKey] || {};
+  const venueWideCells = cellsByWeek[baseScopeKey] || {};
+  const paintedCells = selectedCourtId ? { ...venueWideCells, ...selectedScopeCells } : selectedScopeCells;
+  const isDirty = !!dirtyWeeks[scopeKey];
+  const markDirty = () => setDirtyWeeks((prev) => (prev[scopeKey] ? prev : { ...prev, [scopeKey]: true }));
+
+  // When switching months, reset week to first available if current is invalid.
+  useEffect(() => {
+    if (!weekNums.includes(week)) setWeek(weekNums[0] || 1);
+  }, [weekNums, week]);
 
   useEffect(() => {
-    if (!venue && venues.length > 0) setVenue(venues[0].slug || venues[0].id);
+    if (venues.length === 0) return;
+    const venueIds = venues.map((v) => v.slug || v.id);
+    if (venue && venueIds.includes(venue)) return;
+    const savedVenue = readSavedVenue();
+    const nextVenue = savedVenue && venueIds.includes(savedVenue) ? savedVenue : venueIds[0];
+    setVenue(nextVenue);
+    saveSelectedVenue(nextVenue);
   }, [venue, venues]);
 
   useEffect(() => {
-    if (rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(rules[0].id);
+    if (activeRuleId !== CLOSED_TOOL_ID && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLOSED_TOOL_ID);
   }, [activeRuleId, rules]);
+
+  useEffect(() => {
+    const remap = new Map<string, string>();
+    for (const rule of rules) {
+      if (!rule.id.startsWith('loaded-')) continue;
+      const canonical = rules.find((candidate) => candidate.id !== rule.id && !candidate.id.startsWith('loaded-') && Number(candidate.price) === Number(rule.price));
+      if (canonical) remap.set(rule.id, canonical.id);
+    }
+    if (remap.size === 0) return;
+    setRules((list) => list.filter((rule) => !remap.has(rule.id)));
+    setCellsByWeek((prev) => Object.fromEntries(
+      Object.entries(prev).map(([weekId, weekCells]) => [
+        weekId,
+        Object.fromEntries(Object.entries(weekCells).map(([key, ruleId]) => [key, remap.get(ruleId) ?? ruleId])),
+      ]),
+    ));
+    setActiveRuleId((id) => remap.get(id) ?? id);
+  }, [rules]);
+
+  useEffect(() => {
+    setCellsByWeek({});
+    setDirtyWeeks({});
+    setSaveStatus('idle');
+    setSaveError('');
+  }, [venue]);
+
+  useEffect(() => {
+    if (!venue) { setCourts([]); setSelectedCourtId(''); return; }
+    let cancelled = false;
+    setCourtsLoading(true);
+    listCourts(venue)
+      .then((list) => { if (!cancelled) { setCourts(list); setSelectedCourtId(''); } })
+      .catch(() => { if (!cancelled) setCourts([]); })
+      .finally(() => { if (!cancelled) setCourtsLoading(false); });
+    return () => { cancelled = true; };
+  }, [venue]);
+
+  // Load slot overrides for ALL scopes (all courts + each specific court) so the
+  // summary always has complete data regardless of which court is selected.
+  useEffect(() => {
+    if (!venue) return;
+    // Determine which scopes to load — all courts + the "all" scope.
+    const scopes = ['all', ...courts.map((c) => c.id)];
+    const wk = weekKey;
+    const monday = weekMonday(month, week, year);
+    let cancelled = false;
+
+    Promise.all(Array.from({ length: 7 }, (_, d) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + d);
+      return listSlotOverrides(venue, date.toISOString().slice(0, 10));
+    })).then((results) => {
+      if (cancelled) return;
+      const updates: Record<string, Record<string, string>> = {};
+      const newRuleMap = new Map<number, PricingRule>();
+      let ruleIdx = 0;
+      for (const scope of scopes) {
+        const sk = `${wk}|${scope}`;
+        if (cellsByWeek[sk] && Object.keys(cellsByWeek[sk]).length > 0) continue; // already painted
+        const allCells: Record<string, string> = {};
+        for (let d = 0; d < 7; d++) {
+          const dayLabel = DAYS[d];
+          for (const ov of results[d]) {
+            // Match override to scope: "all" → courtId null, specific → courtId match.
+            if (scope === 'all' ? ov.courtId != null : ov.courtId !== scope) continue;
+            const startH = parseInt(ov.startTime.slice(0, 2), 10);
+            const endH = parseInt(ov.endTime.slice(0, 2), 10);
+            if (isNaN(startH) || isNaN(endH)) continue;
+            let rule = rules.find((r) => Number(r.price) === ov.price) ?? newRuleMap.get(ov.price);
+            if (!rule) {
+              ruleIdx++;
+              rule = { id: `loaded-${ov.price}-${ruleIdx}`, name: `₱${ov.price}/hr`, shortName: `₱${ov.price}`, price: String(ov.price), color: COLOR_SWATCHES[(ruleIdx - 1) % COLOR_SWATCHES.length] };
+              newRuleMap.set(ov.price, rule);
+            }
+            for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = rule.id;
+          }
+        }
+        updates[sk] = allCells;
+      }
+      setCellsByWeek((prev) => ({ ...prev, ...updates }));
+      if (newRuleMap.size > 0) {
+        setRules((prev) => {
+          const existingIds = new Set(prev.map((r) => r.id));
+          const unique = [...newRuleMap.values()].filter((r) => !existingIds.has(r.id));
+          return unique.length > 0 ? [...prev, ...unique] : prev;
+        });
+      }
+    }).catch(() => { /* silent */ });
+    return () => { cancelled = true; };
+  }, [venue, courts, weekKey]);
 
   const hasVenues = venues.length > 0;
   const isEditing = editingId !== null;
   const formOpen = editingId !== null;
-  const activeRule = rules.find((rule) => rule.id === activeRuleId) ?? null;
+
+  const selectVenue = (id: string) => {
+    setVenue(id);
+    saveSelectedVenue(id);
+  };
+
+  const paintCellKey = (key: string, toolId = activeRuleId) => {
+    const sk = scopeKey;
+    if (toolId !== CLOSED_TOOL_ID && !rules.some((rule) => rule.id === toolId)) return;
+    if (toolId === CLOSED_TOOL_ID) {
+      setCellsByWeek((prev) => {
+        const cur = { ...(prev[sk] || {}) };
+        delete cur[key];
+        return { ...prev, [sk]: cur };
+      });
+      markDirty();
+      return;
+    }
+    setCellsByWeek((prev) => {
+      const cur = { ...(prev[sk] || {}) };
+      cur[key] = toolId;
+      return { ...prev, [sk]: cur };
+    });
+    markDirty();
+  };
 
   const paintCell = (day: string, hour: string) => {
-    if (!activeRule) return;
-    setPaintedCells((cells) => ({ ...cells, [cellKey(day, hour)]: activeRule.id }));
+    paintCellKey(cellKey(day, hour));
   };
 
   const ruleForCell = (day: string, hour: string) => {
     const ruleId = paintedCells[cellKey(day, hour)];
     return rules.find((rule) => rule.id === ruleId) ?? null;
   };
+
+  const paintDragTarget = (target: Element | null) => {
+    const cell = target?.closest('[data-pricing-cell-key]') as HTMLElement | null;
+    const key = cell?.dataset.pricingCellKey;
+    if (!key || paintedDuringDragRef.current.has(key)) return;
+    paintedDuringDragRef.current.add(key);
+    paintCellKey(key, paintToolRef.current);
+  };
+
+  const startCellPaint = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    event.preventDefault();
+    isPaintingRef.current = true;
+    paintToolRef.current = activeRuleId;
+    paintedDuringDragRef.current = new Set();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    paintDragTarget(event.currentTarget);
+  };
+
+  const moveCellPaint = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isPaintingRef.current) return;
+    event.preventDefault();
+    paintDragTarget(document.elementFromPoint(event.clientX, event.clientY));
+  };
+
+  const stopCellPaint = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!isPaintingRef.current) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    isPaintingRef.current = false;
+    paintedDuringDragRef.current = new Set();
+  };
+
+  const paintKeys = (keys: string[]) => {
+    const sk = scopeKey;
+    const allActive = activeRuleId !== CLOSED_TOOL_ID && keys.every((key) => (paintedCells[key] ?? '') === activeRuleId);
+    const shouldClear = activeRuleId === CLOSED_TOOL_ID || allActive;
+    setCellsByWeek((prev) => {
+      const cur = { ...(prev[sk] || {}) };
+      for (const key of keys) {
+        if (shouldClear) delete cur[key];
+        else cur[key] = activeRuleId;
+      }
+      return { ...prev, [sk]: cur };
+    });
+    markDirty();
+  };
+
+  const paintDayRow = (day: string) => {
+    paintKeys(HOURS.map((hour) => cellKey(day, hour)));
+  };
+
+  const paintHourColumn = (hour: string) => {
+    paintKeys(DAYS.map((day) => cellKey(day, hour)));
+  };
+
+  const paintedRuleIds = Object.values(paintedCells);
+  const paidHours = paintedRuleIds.length;
+  const weeklyRevenueEstimate = paintedRuleIds.reduce((sum, ruleId) => {
+    const rule = rules.find((r) => r.id === ruleId);
+    return sum + (Number(rule?.price) || 0);
+  }, 0);
 
   const showCellTooltip = (target: HTMLElement, label: string) => {
     const rect = target.getBoundingClientRect();
@@ -111,14 +416,66 @@ export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
   };
 
   const deleteRule = (id: string) => {
+    const deleted = rules.find((rule) => rule.id === id);
+    const replacement = deleted ? rules.find((rule) => rule.id !== id && Number(rule.price) === Number(deleted.price)) : null;
+    if (replacement) {
+      setCellsByWeek((prev) => Object.fromEntries(
+        Object.entries(prev).map(([weekId, weekCells]) => [
+          weekId,
+          Object.fromEntries(Object.entries(weekCells).map(([key, ruleId]) => [key, ruleId === id ? replacement.id : ruleId])),
+        ]),
+      ));
+    }
     setRules((list) => list.filter((rule) => rule.id !== id));
-    if (activeRuleId === id) setActiveRuleId('');
+    if (activeRuleId === id) setActiveRuleId(replacement?.id ?? CLOSED_TOOL_ID);
     if (editingId === id) closeForm();
   };
 
+  const handleSave = async () => {
+    if (!venue || saveStatus === 'saving') return;
+    setSaveStatus('saving');
+    setSaveError('');
+    try {
+      // Save every week+court scope that has painted cells, plus dirty
+      // scopes that were cleared so old persisted overrides are removed.
+      for (const [sk, weekCells] of Object.entries(cellsByWeek)) {
+        if (Object.keys(weekCells).length === 0 && !dirtyWeeks[sk]) continue;
+        const [datePart, courtPart] = sk.split('|');
+        const monday = new Date(datePart + 'T00:00:00');
+        const scopeCourtId = courtPart === 'all' ? undefined : courtPart;
+        for (let d = 0; d < 7; d++) {
+          const date = new Date(monday);
+          date.setDate(monday.getDate() + d);
+          const dateStr = date.toISOString().slice(0, 10);
+          // Delete only overrides matching this court scope.
+          const existing = await listSlotOverrides(venue, dateStr);
+          const toDelete = existing.filter((ov) => scopeCourtId ? ov.courtId === scopeCourtId : ov.courtId == null);
+          await Promise.all(toDelete.map((ov) => deleteSlotOverride(ov.id)));
+          const blocks = dayBlocks(DAYS[d], weekCells, rules);
+          for (const block of blocks) {
+            await createSlotOverride(venue, {
+              courtId: scopeCourtId || undefined,
+              date: dateStr,
+              startTime: block.openTime,
+              endTime: block.closeTime,
+              price: block.price,
+            });
+          }
+        }
+      }
+      setDirtyWeeks({});
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2500);
+    } catch (err: any) {
+      setSaveStatus('error');
+      setSaveError(err?.message || 'Unknown error');
+      setTimeout(() => { setSaveStatus('idle'); setSaveError(''); }, 4000);
+    }
+  };
+
   return (
-    <div className="scroll safe-top safe-bottom bg-[var(--bg)]">
-      <div className="px-5 pt-4 sm:px-0 sm:pt-0">
+    <div className="scroll owner-pricing-screen safe-top safe-bottom bg-[var(--bg)]">
+      <div className="owner-pricing-content px-5 pt-4 sm:px-0 sm:pt-0">
         <div className="bg-[var(--surface)] text-[var(--ink)] rounded-[8px] sm:rounded-none px-3 py-2.5 border border-[var(--hairline)] sm:border-x-0 sm:border-t-0 shadow-[var(--shadow-card)] sm:shadow-none">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex items-start gap-2">
@@ -132,17 +489,26 @@ export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
               </button>
               <div className="min-w-0">
                 <div className="font-heading font-extrabold text-[17px] leading-tight">Pricing Override</div>
-                <div className="mt-0.5 text-[12px] leading-snug text-[var(--muted)]">Drag to paint time blocks - changes apply immediately</div>
+                <div className="mt-0.5 text-[12px] leading-snug text-[var(--muted)]">Paint time blocks with pricing rules, then save</div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              {status !== 'loading' && !hasVenues && (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('owner-venues')}
+                  className="h-9 w-full sm:w-auto px-4 rounded-[4px] border border-[var(--field-border)] bg-[var(--surface-2)] text-[12px] font-extrabold text-[#f59e0b] text-left sm:text-center"
+                >
+                  No venue yet. Add or Claim a Venue
+                </button>
+              )}
               <select
                 value={venue}
-                onChange={(e) => setVenue(e.target.value)}
+                onChange={(e) => selectVenue(e.target.value)}
                 aria-label="Venue"
                 disabled={!hasVenues || status === 'loading'}
-                className="h-9 min-w-0 flex-1 sm:flex-none sm:min-w-[156px] rounded-[4px] border border-[var(--field-border)] bg-[var(--surface-2)] px-3 text-[12px] font-medium text-[var(--ink)] outline-none disabled:opacity-70"
+                className={status !== "loading" && !hasVenues ? "hidden" : "h-9 w-full min-w-0 sm:w-auto sm:min-w-[156px] rounded-[4px] border border-[var(--field-border)] bg-[var(--surface-2)] px-3 text-[12px] font-medium text-[var(--ink)] outline-none disabled:opacity-70"}
               >
                 {status === 'loading' && <option value="">Loading venues...</option>}
                 {status !== 'loading' && !hasVenues && <option value="">No venues yet</option>}
@@ -151,21 +517,47 @@ export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
                   return <option key={id} value={id}>{v.displayName || 'Venue'}</option>;
                 })}
               </select>
+              {venue && courts.length > 0 && (
+                <select
+                  value={selectedCourtId}
+                  onChange={(e) => setSelectedCourtId(e.target.value)}
+                  aria-label="Court"
+                  className="h-9 w-full min-w-0 sm:w-auto sm:min-w-[140px] rounded-[4px] border border-[var(--field-border)] bg-[var(--surface-2)] px-3 text-[12px] font-medium text-[var(--ink)] outline-none"
+                >
+                  <option value="">All courts</option>
+                  {courts.map((c) => (
+                    <option key={c.id} value={c.id}>{c.courtNumber}{c.courtName ? ` — ${c.courtName}` : ''}</option>
+                  ))}
+                </select>
+              )}
+              {venue && !courtsLoading && courts.length === 0 && (
+                <span className="text-[11px] text-[var(--muted)] whitespace-nowrap">
+                  No courts yet.{' '}
+                  <button type="button" onClick={() => onNavigate('owner-venue', { id: venue, tab: 'courts' })} className="font-bold text-[#f59e0b] underline">
+                    Add a court
+                  </button>
+                </span>
+              )}
               <button
                 type="button"
-                className="h-9 px-4 rounded-[4px] bg-[#f59e0b] text-[#111827] text-[12px] font-extrabold shadow-sm active:scale-[0.98] shrink-0"
+                onClick={handleSave}
+                disabled={saveStatus === 'saving' || !venue || !hasVenues}
+                style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
+                className={`h-9 w-full sm:w-auto px-4 rounded-[4px] text-[12px] font-extrabold shadow-sm active:scale-[0.98] shrink-0 disabled:opacity-60 ${
+                  saveStatus === 'error' ? 'bg-[var(--coral)] text-white' : 'bg-[#f59e0b] text-[#111827]'
+                }`}
               >
-                Save Schedule
+                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved ✓' : saveStatus === 'error' ? `Save failed${saveError ? ` — ${saveError}` : ''}` : 'Save Schedule'}
               </button>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 space-y-4">
+        <div className={status !== "loading" && !hasVenues ? "hidden" : "mt-4 space-y-4"}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Metric label="Peak Hours / Week" value="15" tone="amber" />
-            <Metric label="Weekly Rev Potential" value="₱25,250" />
-            <Metric label="Active Rules" value={String(rules.length)} tone="green" />
+            <Metric label="Paid Hours / Week" value={String(paidHours)} tone="amber" />
+            <Metric label="Weekly Revenue Estimate" value={peso(weeklyRevenueEstimate)} />
+            <Metric label="Pricing Rules" value={String(rules.length)} tone="green" />
           </div>
 
           {formOpen && (
@@ -233,18 +625,78 @@ export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
                 </button>
               );
             })}
+            {(() => {
+              const active = activeRuleId === CLOSED_TOOL_ID;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setActiveRuleId(CLOSED_TOOL_ID)}
+                  aria-pressed={active}
+                  className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
+                  style={{ borderColor: active ? CLOSED_COLOR : 'transparent', color: active ? CLOSED_COLOR : 'var(--muted)' }}
+                >
+                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: CLOSED_COLOR }} /> Closed/Clear
+                </button>
+              );
+            })()}
             <span className="ml-1">Click or drag to paint blocks</span>
           </div>
 
-          <div className="overflow-x-auto rounded-[8px] border border-[var(--hairline)] bg-[var(--surface)]">
-            <div className="min-w-[960px]">
-              <div className="grid grid-cols-[42px_repeat(16,minmax(52px,1fr))] border-b border-[var(--hairline)] text-[11px] text-[var(--muted)]">
-                <div className="px-2 py-3">Day</div>
-                {HOURS.map((hour) => <div key={hour} className="px-1 py-3 text-center">{hour}</div>)}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-[8px] border border-[var(--field-border)] bg-[var(--surface)] px-3 py-3 shadow-sm">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Schedule window</div>
+              <div className="text-[13px] font-extrabold text-[var(--ink)] mt-0.5">{weekDateRange(month, week, year)}</div>
+            </div>
+            {isDirty ? (
+              <div className="text-[12px] font-bold text-[#f59e0b]">Save before switching weeks</div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <select
+                  value={month}
+                  onChange={(e) => setMonth(e.target.value)}
+                  aria-label="Select month"
+                  className="h-9 min-w-0 rounded-[6px] border border-[var(--field-border)] bg-[var(--surface-2)] px-3 text-[12px] font-bold text-[var(--ink)] outline-none"
+                >
+                  {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select
+                  value={String(week)}
+                  onChange={(e) => setWeek(Number(e.target.value))}
+                  aria-label="Select week"
+                  className="h-9 min-w-0 rounded-[6px] border border-[var(--field-border)] bg-[var(--surface-2)] px-3 text-[12px] font-bold text-[var(--ink)] outline-none"
+                >
+                  {weekNums.map((wn, i) => <option key={wn} value={wn}>Week {i + 1}: {weekDateRange(month, wn, year)}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="overflow-x-auto rounded-[8px] border border-[var(--field-border)] bg-[var(--surface)] shadow-sm">
+            <div className="min-w-[1414px]">
+              <div className="grid grid-cols-[56px_repeat(24,minmax(52px,1fr))] border-b border-[var(--field-border)] text-[11px] text-[var(--muted)]">
+                <div className="sticky left-0 z-20 px-2 py-3 border-r border-[var(--field-border)] bg-[var(--surface)]">Day</div>
+                {HOURS.map((hour) => (
+                  <button
+                    key={hour}
+                    type="button"
+                    onClick={() => paintHourColumn(hour)}
+                    title={`${hour} column`}
+                    className="px-1 py-3 text-center border-r border-[var(--field-border)] last:border-r-0 hover:bg-[var(--surface-2)]"
+                  >
+                    {hour}
+                  </button>
+                ))}
               </div>
               {DAYS.map((day) => (
-                <div key={day} className="grid grid-cols-[42px_repeat(16,minmax(52px,1fr))] border-b border-[var(--hairline)] last:border-b-0">
-                  <div className="px-2 py-2 text-[12px] text-[var(--ink)]">{day}</div>
+                <div key={day} className="grid grid-cols-[56px_repeat(24,minmax(52px,1fr))] border-b border-[var(--field-border)] last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => paintDayRow(day)}
+                    title={`${day} row`}
+                    className="sticky left-0 z-10 px-2 py-2 text-left text-[12px] text-[var(--ink)] border-r border-[var(--field-border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] font-medium"
+                  >
+                    {day}
+                  </button>
                   {HOURS.map((hour) => {
                     const rule = ruleForCell(day, hour);
                     const label = cellLabel(rule);
@@ -254,10 +706,15 @@ export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
                         type="button"
                         aria-label={`${day} ${hour} ${label}`}
                         title={`${day} ${hour} · ${label}`}
+                        data-pricing-cell-key={cellKey(day, hour)}
                         onClick={() => paintCell(day, hour)}
+                        onPointerDown={startCellPaint}
+                        onPointerMove={moveCellPaint}
+                        onPointerUp={stopCellPaint}
+                        onPointerCancel={stopCellPaint}
                         onMouseEnter={(e) => showCellTooltip(e.currentTarget, label)}
                         onMouseLeave={() => setTooltip(null)}
-                        className="relative p-1 border-l border-[var(--hairline)]"
+                        className="relative touch-none select-none p-1 border-r border-[var(--field-border)] last:border-r-0"
                       >
                         <span className="block h-4 rounded-[2px]" style={{ background: rule?.color ?? CLOSED_COLOR }} />
                       </button>
@@ -286,10 +743,97 @@ export function OwnerPricingScreen({ onBack }: OwnerPricingScreenProps) {
                 </div>
                 <div className="text-[13px] font-extrabold shrink-0" style={{ color: rule.color }}>₱{rule.price}/hr</div>
                 <button type="button" onClick={() => openEdit(rule)} className="h-7 px-2 rounded-[4px] border border-[var(--field-border)] text-[11px] text-[var(--muted)]">Edit</button>
-                <button type="button" onClick={() => deleteRule(rule.id)} className="h-7 px-2 rounded-[4px] border border-red-500/50 text-[11px] text-red-500">Del</button>
+                <button type="button" onClick={() => deleteRule(rule.id)} className="h-7 px-2 rounded-[4px] border border-red-500/50 text-[11px] text-red-500">Delete</button>
               </div>
             ))}
           </div>
+
+          {/* Pricing summary — all courts, specific courts exclude blocks already on All courts */}
+          {venue && (() => {
+            const entries = Object.entries(cellsByWeek);
+            const courtMap = new Map<string, string>();
+            courtMap.set('all', 'All courts');
+            for (const c of courts) courtMap.set(c.id, c.courtName || `Court ${c.courtNumber}`);
+            const byCourt: Map<string, { label: string; blocks: { day: string; time: string; rule: PricingRule }[] }[]> = new Map();
+            for (const [, label] of courtMap) byCourt.set(label, []);
+            // Collect All courts blocks first so we can subtract them from specific courts.
+            const allCoverageByWeek = new Map<string, Map<string, string>>();
+            const hourOf = (time: string) => parseInt(time.slice(0, 2), 10);
+            for (const [sk, weekCells] of entries) {
+              if (Object.keys(weekCells).length === 0) continue;
+              const [datePart, courtPart] = sk.split('|');
+              if (courtPart !== 'all') continue;
+              const monday = new Date(datePart + 'T00:00:00');
+              const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+              const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              const weekLabel = `${MONTHS_SHORT[monday.getMonth()]} ${monday.getDate()} – ${MONTHS_SHORT[sunday.getMonth()]} ${sunday.getDate()}`;
+              if (!allCoverageByWeek.has(weekLabel)) allCoverageByWeek.set(weekLabel, new Map());
+              const coverage = allCoverageByWeek.get(weekLabel)!;
+              for (const day of DAYS) {
+                for (const b of dayBlocks(day, weekCells, rules)) {
+                  for (let h = hourOf(b.openTime); h < hourOf(b.closeTime); h++) coverage.set(`${day}|${h}`, b.ruleId);
+                }
+              }
+            }
+            for (const [sk, weekCells] of entries) {
+              if (Object.keys(weekCells).length === 0) continue;
+              const [datePart, courtPart] = sk.split('|');
+              const monday = new Date(datePart + 'T00:00:00');
+              const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+              const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              const weekLabel = `${MONTHS_SHORT[monday.getMonth()]} ${monday.getDate()} – ${MONTHS_SHORT[sunday.getMonth()]} ${sunday.getDate()}`;
+              const courtLabel = courtMap.get(courtPart);
+              if (!courtLabel) continue;
+              const weeks = byCourt.get(courtLabel);
+              if (!weeks) continue;
+              let weekEntry = weeks.find((w) => w.label === weekLabel);
+              if (!weekEntry) { weekEntry = { label: weekLabel, blocks: [] }; weeks.push(weekEntry); }
+              const inherited = courtPart !== 'all' ? allCoverageByWeek.get(weekLabel) : null;
+              for (const day of DAYS) {
+                for (const b of dayBlocks(day, weekCells, rules)) {
+                  const startHour = hourOf(b.openTime);
+                  const endHour = hourOf(b.closeTime);
+                  const coveredByAllCourts = inherited
+                    ? Array.from({ length: endHour - startHour }, (_, idx) => startHour + idx).every((h) => inherited.get(`${day}|${h}`) === weekCells[cellKey(day, HOURS[h])])
+                    : false;
+                  if (coveredByAllCourts) continue;
+                  const rule = rules.find((r) => r.id === b.ruleId);
+                  if (rule) weekEntry.blocks.push({ day, time: `${b.openTime} – ${b.closeTime}`, rule });
+                }
+              }
+            }
+            if (byCourt.size === 0) return null;
+            return (
+              <div className="rounded-[8px] border-2 border-[var(--field-border)] bg-[var(--surface)] shadow-sm overflow-hidden">
+                <button type="button" onClick={() => setSummaryOpen((v) => !v)} className={`w-full px-4 py-3 flex items-center justify-between gap-2 ${summaryOpen ? 'border-b-2 border-[var(--field-border)]' : ''}`}>
+                  <div className="font-heading font-extrabold text-[14px] text-[var(--ink)]">Pricing Summary</div>
+                  <Icon name="chevron" size={16} className={`text-[var(--muted)] transition-transform ${summaryOpen ? 'rotate-90' : ''}`} />
+                </button>
+                {summaryOpen && [...byCourt.entries()].map(([courtLabel, weeks]) => (
+                  <div key={courtLabel} className="border-b border-[var(--hairline)] last:border-b-0">
+                    <div className="px-4 py-2 bg-[var(--surface-2)] text-[13px] font-extrabold text-[var(--ink)]">{courtLabel}</div>
+                    {weeks.length === 0 && courtLabel !== 'All courts' ? (
+                      <div className="px-4 py-2 text-[12px] text-[var(--muted)]">Uses venue-wide pricing</div>
+                    ) : weeks.map((w) => (
+                      <div key={w.label} className="px-4 py-1.5 border-t border-[var(--hairline)] first:border-t-0">
+                        <div className="text-[11px] font-bold text-[var(--muted)] mb-1">{w.label}</div>
+                        {w.blocks.length === 0 ? (
+                          <div className="text-[12px] text-[var(--muted)]">—</div>
+                        ) : w.blocks.map((b, i) => (
+                          <div key={i} className="flex items-center gap-2 text-[12px] py-0.5">
+                            <span className="w-2 h-2 rounded-[2px] shrink-0" style={{ background: b.rule.color }} />
+                            <span className="font-semibold text-[var(--ink)]">{b.day}</span>
+                            <span className="text-[var(--muted)]">{b.time}</span>
+                            <span className="font-bold" style={{ color: b.rule.color }}>{b.rule.shortName} · ₱{b.rule.price}/hr</span>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
       {tooltip && (

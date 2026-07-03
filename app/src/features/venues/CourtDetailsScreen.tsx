@@ -9,7 +9,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { MembershipSheet } from './MembershipSheet';
 import type { Navigate } from '../../shared/lib/navigation';
-import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan } from '../../shared/lib/api';
+import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { onRealtime } from '../../shared/lib/realtimeBus';
@@ -19,11 +19,17 @@ import {
 } from '../../shared/lib/venueDisplay';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { getCurrentLocation, haversineKm, formatDistance } from '../../shared/lib/geo';
+import { resolveHourlyRate } from '../../shared/lib/pricing';
+import { todayYMD } from '../bookings/bookingDisplay';
 
 interface CourtDetailsScreenProps {
   courtId: string;
   /** 'lobby' = booking this court should hand back to create-game afterwards. */
   intent?: 'lobby';
+  /** Date from the map filter (YYYY-MM-DD) — when set, courts show availability badges. */
+  filterDate?: string;
+  /** Start hour from the map filter (0-23) — when set, courts show availability badges. */
+  filterStartHour?: number;
   onNavigate: Navigate;
   onBack: () => void;
 }
@@ -81,6 +87,14 @@ function gameSpots(g: ApiGame): string {
 
 // --- Schedule / availability helpers (self-contained) ---
 
+/** "14:00" → "2:00 PM". Inlined — the venues slice must not import bookings/bookingDisplay. */
+function to12h(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 /** Local YYYY-MM-DD for "today" (matches how the API stores/compares dates). */
 function localToday(): string {
   const d = new Date();
@@ -125,7 +139,7 @@ function readSavedVenues(): string[] {
   }
 }
 
-export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: CourtDetailsScreenProps) {
+export function CourtDetailsScreen({ courtId, intent, filterDate, filterStartHour, onNavigate, onBack }: CourtDetailsScreenProps) {
   const { trackVenueView } = useDemandTracking();
   const [venue, setVenue] = useState<ApiVenueDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
@@ -197,7 +211,7 @@ export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: Cour
 
   return (
     <DemoBranch loading={loadingUI} error={errorUI} empty={notFoundUI}>
-      {realState ?? (venue && <CourtDetail venue={venue} intent={intent} onNavigate={onNavigate} onBack={onBack} />)}
+      {realState ?? (venue && <CourtDetail venue={venue} intent={intent} filterDate={filterDate} filterStartHour={filterStartHour} onNavigate={onNavigate} onBack={onBack} />)}
     </DemoBranch>
   );
 }
@@ -205,11 +219,15 @@ export function CourtDetailsScreen({ courtId, intent, onNavigate, onBack }: Cour
 function CourtDetail({
   venue,
   intent,
+  filterDate,
+  filterStartHour,
   onNavigate,
   onBack,
 }: {
   venue: ApiVenueDetail;
   intent?: 'lobby';
+  filterDate?: string;
+  filterStartHour?: number;
   onNavigate: Navigate;
   onBack: () => void;
 }) {
@@ -234,6 +252,48 @@ function CourtDetail({
   const todayKey = DAY_KEYS[new Date().getDay()];
   const todayHours = venue.hours?.[todayKey];
   const hasHours = !!venue.hours && Object.keys(venue.hours).length > 0;
+
+  // Pricing engine data — fetched so the price label and per-court rates reflect
+  // time-block rates + slot overrides when a filter date/time is active.
+  const [venueHours, setVenueHours] = useState<OwnerHourEntry[]>([]);
+  const [overrides, setOverrides] = useState<SlotPriceOverride[]>([]);
+  const effectiveDate = filterDate ?? todayYMD();
+
+  useEffect(() => {
+    let alive = true;
+    getHours(venue.id)
+      .then((rows) => { if (alive) setVenueHours(rows); })
+      .catch(() => { if (alive) setVenueHours([]); });
+    return () => { alive = false; };
+  }, [venue.id]);
+
+  useEffect(() => {
+    if (!effectiveDate) { setOverrides([]); return; }
+    let alive = true;
+    listSlotOverrides(venue.id, effectiveDate)
+      .then((rows) => { if (alive) setOverrides(rows); })
+      .catch(() => { if (alive) setOverrides([]); });
+    return () => { alive = false; };
+  }, [venue.id, effectiveDate]);
+
+  // Helper: resolve the effective price label when a date/time filter is active,
+  // otherwise fall back to the static priceRangeLabel.
+  function effectivePriceLabel(): string | null {
+    if (filterDate != null && filterStartHour != null) {
+      const startTime = `${String(filterStartHour).padStart(2, '0')}:00`;
+      const resolved = courts.map((c) => resolveHourlyRate({
+        venue, court: c, hours: venueHours, overrides,
+        date: filterDate, startTime,
+        isMember: venue.viewerIsMember ?? false,
+      }).rate);
+      if (resolved.length > 0) {
+        const min = Math.min(...resolved);
+        const max = Math.max(...resolved);
+        return min === max ? `${sym}${min}/hr` : `${sym}${min}–${sym}${max}/hr`;
+      }
+    }
+    return price;
+  }
 
   // Gallery photos (resolved to absolute URLs, junk dropped). The hero already
   // shows the primary, so drop it from the strip to avoid showing it twice.
@@ -430,6 +490,13 @@ function CourtDetail({
   const avail = useVenueAvailability(venue.id, today);
   const todayClosed = !!todayHours && /closed/i.test(todayHours);
   const range = parseDayRange(todayHours);
+
+  // When arriving from the map filter, check venue-level availability for the chosen date+time
+  // so we can badge courts as Available / Fully booked.
+  const filterAvail = useVenueAvailability(venue.id, filterDate || '');
+  const filterHasAvail = filterDate != null && filterStartHour != null
+    ? !filterAvail.isFull(filterStartHour) && filterAvail.availability != null
+    : null;
   const freeHours: number[] = [];
   if (range) {
     for (let h = Math.max(range.open, avail.minBookableHour); h <= range.lastStart; h++) {
@@ -438,6 +505,13 @@ function CourtDetail({
   }
   const SLOT_CAP = 12;
   const slotChips = freeHours.slice(0, SLOT_CAP);
+
+  // Booking params — include filter date/time when arriving from the map filter.
+  const bookParams: Record<string, unknown> = { venueId: venue.id, intent };
+  if (filterDate && filterStartHour != null) {
+    bookParams.date = filterDate;
+    bookParams.time = to12h(`${String(filterStartHour).padStart(2, '0')}:00`);
+  }
 
   const ctaLabel = intent === 'lobby'
     ? 'Book & set up lobby'
@@ -503,7 +577,7 @@ function CourtDetail({
         <div className="kv-grid">
           <div className="kv">
             <div className="eyebrow">Price</div>
-            <div className="val">{price || '—'}</div>
+            <div className="val">{effectivePriceLabel() || '—'}</div>
             {(venue as any).pricingTaxLabel && <div className="t-sm mt-0.5 text-[var(--muted)]">{(venue as any).pricingTaxLabel}</div>}
             {venue.openPlayPrice != null && Number(venue.openPlayPrice) > 0 && (
               <button
@@ -771,7 +845,7 @@ function CourtDetail({
           </div>
         )}
 
-        {/* Per-court breakdown — number, type, surface, rate. */}
+        {/* Per-court breakdown — number, type, surface. */}
         {courts.length > 0 && (
           <div className="section p-0!">
             <div className="section-head px-0">
@@ -784,9 +858,6 @@ function CourtDetail({
                   c.indoor != null ? (c.indoor ? 'Indoor' : 'Outdoor') : null,
                   c.surfaceType ? c.surfaceType.charAt(0).toUpperCase() + c.surfaceType.slice(1) : null,
                 ].filter(Boolean);
-                const rate = typeof c.hourlyRate === 'number' && c.hourlyRate > 0
-                  ? c.hourlyRate
-                  : (typeof venue.priceFrom === 'number' ? venue.priceFrom : null);
                 const thumb = apiImageUrl(c.mainImageUrl);
                 const photos = (c.galleryImageUrls ?? []).map((u) => apiImageUrl(u)).filter(Boolean) as string[];
                 // This court's own hours for today (each court can keep its own schedule).
@@ -823,13 +894,16 @@ function CourtDetail({
                         {meta.length > 0 && (
                           <div className="text-[12px] text-[var(--muted)] font-semibold">{meta.join(' · ')}</div>
                         )}
+                        {/* Availability badge from map date/time filter */}
+                        {filterHasAvail != null && (
+                          <span className={`court-avail-badge${filterHasAvail ? ' available' : ' booked'}`}>
+                            {filterHasAvail ? 'Available' : 'Fully booked'}
+                          </span>
+                        )}
                         {courtTodayLabel && (
                           <div className={`text-[11.5px] font-semibold ${courtToday && !/closed/i.test(courtToday) ? 'text-[var(--lime-ink,var(--muted))]' : 'text-[var(--muted)]'}`}>{courtTodayLabel}</div>
                         )}
                       </div>
-                      {rate != null && (
-                        <div className="text-[13px] font-bold text-[var(--ink)] shrink-0">{sym}{rate}<span className="text-[var(--muted)] font-semibold">/hr</span></div>
-                      )}
                     </div>
                     {c.description && (
                       <p className="text-[12.5px] text-[var(--muted)] leading-snug">{c.description}</p>
@@ -950,7 +1024,7 @@ function CourtDetail({
               No games scheduled here yet.
             </div>
           ) : (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-4">
               {games.map((g) => {
                 const thumb = gameThumb(g);
                 const time = g.timeLabel || g.whenLabel || '';
@@ -1015,12 +1089,12 @@ function CourtDetail({
 
         {/* The lobby hand-off is a focused book-then-create flow — no membership CTA there. */}
         {intent === 'lobby' ? (
-          <Button fullWidth onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}>
+          <Button fullWidth onClick={() => onNavigate('book-court', bookParams)}>
             <Icon name="calendar" size={16} /> {ctaLabel}
           </Button>
         ) : (
           <>
-            <div className="flex gap-2.5">
+            <div className="flex flex-col gap-4">
               {/* Membership button: hidden when the player has an active (non-expired)
                   membership — they're already a member. Shown as "Renew Subscription"
                   when expired, and "Join Membership" for non-members.
@@ -1028,7 +1102,7 @@ function CourtDetail({
               {hasPendingInvite ? null : (!isMember || isExpired) && apiPlans && apiPlans.length > 0 ? (
                 <Button
                   variant={isExpired ? 'brand' : 'outline'}
-                  className={`flex-1 text-[15px] px-3 ${isExpired ? '' : 'shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]'}`}
+                  className={`flex-1 text-[15px] px-5 py-3.5 ${isExpired ? '' : 'shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]'}`}
                   onClick={() => openMembership()}
                 >
                   <Icon name={isExpired ? 'refresh' : 'star'} size={16} />
@@ -1037,15 +1111,15 @@ function CourtDetail({
               ) : null}
               {price ? (
                 <Button
-                  className={`text-[15px] px-3 ${!isMember || isExpired ? 'flex-1' : 'flex-1'}`}
-                  onClick={() => onNavigate('book-court', { venueId: venue.id, intent })}
+                  className="text-[15px] px-5 py-3.5 flex-1"
+                  onClick={() => onNavigate('book-court', bookParams)}
                 >
                   <Icon name="calendar" size={16} /> {ctaLabel}
                 </Button>
               ) : (
                 <Button
                   variant="outline"
-                  className="flex-1 text-[15px] px-3 shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]"
+                  className="flex-1 text-[15px] px-5 py-3.5 shadow-[0_6px_18px_-8px_rgba(15,23,42,0.22)]"
                   disabled
                 >
                   <Icon name="lock" size={16} /> Unavailable

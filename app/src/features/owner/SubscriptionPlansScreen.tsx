@@ -140,15 +140,15 @@ export function SubscriptionPlansScreen({ venueId, venueName, onBack }: Subscrip
 
       <div className="px-5 space-y-4">
         {/* ── Intro + Create ──────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-3">
-          <p className="t-sm text-[var(--muted)] flex-1">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between items-start gap-3">
+          <p className="t-sm text-[var(--muted)]">
             Manage the subscription plans available for {venueName || 'this venue'}. Only{' '}
             <strong className="text-[var(--ink)]">Active</strong> plans appear to players.
           </p>
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-full bg-[var(--primary)] text-white font-bold text-[12px] shrink-0"
+            className="w-full lg:w-auto inline-flex items-center justify-center gap-1.5 px-3 h-9 rounded-full bg-[var(--primary)] text-white font-bold text-[12px]"
           >
             <Icon name="add" size={14} /> Create Plan
           </button>
@@ -227,7 +227,7 @@ export function SubscriptionPlansScreen({ venueId, venueName, onBack }: Subscrip
                   </div>
 
                   {/* ── Actions ─────────────────────────────────────── */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="grid grid-cols-2 lg:flex lg:flex-wrap items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => openEdit(plan)}

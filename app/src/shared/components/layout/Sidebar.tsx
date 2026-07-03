@@ -31,6 +31,8 @@ interface SidebarProps {
   pricingActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
+  /** Owners get owner-specific labels (Profile instead of You, Venues instead of Nearby, etc.). */
+  isOwner?: boolean;
 }
 
 interface SideTab {
@@ -49,9 +51,20 @@ const tabs: SideTab[] = [
   { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenPricing, pricingActive = false, showTournaments = true }: SidebarProps) {
+// Owner labels track the owner screen each tab opens (App.tsx): home → the
+// owner dashboard, games → "Bookings", nearby → "Venues" ops map.
+const ownerTabs: SideTab[] = [
+  { id: 'home',    label: 'Home',     icon: 'home' },
+  { id: 'games',   label: 'Bookings', icon: 'calendar' },
+  { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
+  { id: 'nearby',  label: 'Venues',   icon: 'map_pin' },
+  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'profile', label: 'Profile',  icon: 'user' },
+];
+
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenPricing, pricingActive = false, showTournaments = true, isOwner = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
-  const visibleTabs = tabs.filter((t) => t.id !== 'tournaments' || showTournaments);
+  const visibleTabs = (isOwner ? ownerTabs : tabs).filter((t) => t.id !== 'tournaments' || showTournaments);
   const showOwnerPricing = userHasPermission(currentUser, 'owner.access') && onOpenPricing;
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
@@ -93,7 +106,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="ico">
-                  <Icon name={isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
+                  <Icon name={!isOwner && isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
                 </span>
                 {label}
               </button>

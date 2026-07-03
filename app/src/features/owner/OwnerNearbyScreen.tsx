@@ -201,7 +201,7 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
         <button
           type="button"
           onClick={() => onNavigate('owner-pricing')}
-          className="sm:hidden w-full h-11 rounded-full bg-[#0d131b] text-white font-extrabold text-[13px] flex items-center justify-center gap-2 shadow-[var(--shadow-card)] active:scale-[0.98]"
+          className="w-full h-11 rounded-full bg-[#0d131b] text-white font-extrabold text-[13px] flex items-center justify-center gap-2 shadow-[var(--shadow-card)] active:scale-[0.98]"
         >
           <Icon name="bolt" size={16} /> Manage venues pricing
         </button>

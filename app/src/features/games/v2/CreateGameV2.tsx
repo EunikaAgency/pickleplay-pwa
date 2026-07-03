@@ -29,6 +29,7 @@ export function CreateGameV2(props: Props) {
   const [loadError, setLoadError] = useState(false);
 
   const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
   const [type, setType] = useState<GameType>('open');
   const [spots, setSpots] = useState(8);
   const [skill, setSkill] = useState(SKILLS[0]);
@@ -66,6 +67,7 @@ export function CreateGameV2(props: Props) {
     try {
       const game = await createGame({
         title: name.trim() || undefined,
+        description: desc.trim() || undefined,
         venueId: booking.venueId ?? undefined,
         venueName: booking.venueName ?? undefined,
         gameType: type,
@@ -163,6 +165,14 @@ export function CreateGameV2(props: Props) {
               <input className="field-input" type="text" maxLength={60} placeholder="e.g. Saturday Morning Mix-In" value={name} onChange={(e) => setName(e.target.value)} aria-label="Game name" />
             </div>
             <div className="char-count">{name.length} / 60</div>
+          </div>
+
+          <div className="field-group">
+            <div className="field-label"><span className="field-label-text">Description (optional)</span></div>
+            <div className="input-wrap">
+              <textarea className="field-input" maxLength={500} rows={3} placeholder="Tell players what to expect — rules, vibe, what to bring…" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Game description" />
+            </div>
+            <div className="char-count">{desc.length} / 500</div>
           </div>
 
           <hr className="form-divider" />

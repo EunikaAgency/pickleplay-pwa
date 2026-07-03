@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { Booking } from './bookings.model.js';
-import { Venue, Court } from '../venues/venues.model.js';
+import { Venue, Court, VenueMember } from '../venues/venues.model.js';
 import { Payment } from '../payments/payments.model.js';
 import { recordDemand } from '../demand/demand.controller.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { bookingConfirmedReceipt, bookingRequestedReceipt, cancellationReceipt } from '../../shared/lib/email-templates.js';
+import { resolveHourlyRate, perPlayerSurcharge } from './pricing.js';
 
 function canEmail() { return isGmailConfigured() && hasValidTokens(); }
 
@@ -354,10 +355,81 @@ export async function createBooking(c: any) {
   // book venues (the default) confirm the moment the player books. A chosen court
   // can override the venue policy: 'manual' forces request-to-book, 'auto' forces
   // instant-book; 'inherit' (or no court) falls back to the venue's setting.
-  const venue = await Venue.findById(body.venueId).select('requireBookingApproval ownerUserId displayName').lean<{ requireBookingApproval?: boolean; ownerUserId?: any; displayName?: string }>();
+  const venue = await Venue.findById(body.venueId).select('requireBookingApproval ownerUserId displayName priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean<{ requireBookingApproval?: boolean; ownerUserId?: any; displayName?: string; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number }>();
   const requiresApproval = court?.approvalMode === 'manual' ? true
     : court?.approvalMode === 'auto' ? false
     : !!venue?.requireBookingApproval;
+
+  // ── Pricing validation (hard) — skip for blocked slots and open-play ──
+  let pricing: { rate: number; baseRate: number; source: string; memberApplied: boolean; memberDiscountPercent: number; overrideId?: string } | null = null;
+  if (body.bookingType !== 'blocked' && body.bookingType !== 'open_play' && body.startTime && body.endTime) {
+    const startH = Number(body.startTime.split(':')[0]);
+    const endH = Number(body.endTime.split(':')[0]);
+    const hours = Math.max(1, endH - startH);
+
+    // Resolve per clock hour so bookings crossing override boundaries validate
+    // correctly (e.g. 8–10am early bird + 10am–noon regular).
+    let expectedAmount = 0;
+    for (let h = startH; h < endH; h++) {
+      const hourStart = `${String(h).padStart(2, '0')}:00`;
+      const hr = await resolveHourlyRate({
+        venueId: body.venueId,
+        courtId: body.courtId || null,
+        subUnitIndex: body.subUnitIndex ?? null,
+        date: body.date,
+        startTime: hourStart,
+        isMember: false,
+      });
+      expectedAmount += hr.rate;
+      // Keep the first hour's breakdown for the audit trail.
+      if (!pricing) pricing = hr;
+    }
+
+    // Check if the player is a venue member (for member discount).
+    if (user?.sub && pricing) {
+      const membership = await VenueMember.findOne({
+        venueId: body.venueId, userId: user.sub, status: 'active',
+        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+      }).lean();
+      if (membership) {
+        pricing.memberApplied = true;
+        pricing.memberDiscountPercent = Math.max(0, Math.min(100, Number(venue?.memberDiscountPercent) || 0));
+        // Recalculate: apply member discount to each hour's base rate, sum up.
+        expectedAmount = 0;
+        for (let h = startH; h < endH; h++) {
+          const hourStart = `${String(h).padStart(2, '0')}:00`;
+          const hr = await resolveHourlyRate({
+            venueId: body.venueId,
+            courtId: body.courtId || null,
+            subUnitIndex: body.subUnitIndex ?? null,
+            date: body.date,
+            startTime: hourStart,
+            isMember: false,
+          });
+          expectedAmount += Math.round(hr.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
+        }
+        pricing.rate = Math.round(pricing.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
+      }
+    }
+
+    // Compute expected amount: per-hour total + equipment + per-player surcharge.
+    const equipAmount = body.hasEquipmentRental && body.equipmentRentalAmount != null
+      ? (typeof body.equipmentRentalAmount === 'number' ? body.equipmentRentalAmount : parseFloat(String(body.equipmentRentalAmount)))
+      : 0;
+    const surcharge = perPlayerSurcharge(venue, body.playerCount ?? 1);
+    const expectedTotal = Math.round((expectedAmount + Number(equipAmount) + surcharge) * 100) / 100;
+    const clientAmount = typeof body.amount === 'number' ? body.amount : parseFloat(String(body.amount));
+
+    // 1 PHP tolerance for rounding differences between client and server.
+    if (Math.abs(clientAmount - expectedTotal) > 1) {
+      return c.json({
+        error: {
+          code: 'PRICE_MISMATCH',
+          message: `Amount mismatch. Expected ₱${expectedTotal.toFixed(2)}, got ₱${clientAmount.toFixed(2)}. The rate may have changed — please refresh and try again.`,
+        },
+      }, 409);
+    }
+  }
 
   const result = await Booking.create({
     userId: user.sub, venueId: body.venueId, courtId: body.courtId || null,
@@ -380,6 +452,11 @@ export async function createBooking(c: any) {
     paymentOption: body.paymentOption || null,
     amountPaid: num(body.amountPaid),
     balanceDue: num(body.balanceDue),
+    // Pricing audit trail.
+    rateSource: pricing?.source ?? null,
+    overrideId: pricing?.overrideId ?? null,
+    baseRate: pricing?.baseRate ?? null,
+    memberDiscountPercent: pricing?.memberDiscountPercent ?? null,
   });
 
   // Notify the venue owner when a booking requires their approval.

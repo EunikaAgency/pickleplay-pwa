@@ -129,8 +129,8 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const joinedOpenGames = useMemo(() => mineGames.filter((g) => !(myId && g.creatorId === myId)), [mineGames, myId]);
   const mineGameIds = useMemo(() => new Set(mineGames.map((g) => g.id)), [mineGames]);
 
-  const gamesDiscover = useMemo(() => tournaments.filter((t) => isActiveTournament(t) && !tournamentRegs.has(t.id)), [tournaments, tournamentRegs]);
-  const gamesJoined = useMemo(() => tournaments.filter((t) => tournamentRegs.has(t.id)), [tournaments, tournamentRegs]);
+  const gamesDiscover = useMemo(() => publicGames.filter((g) => !mineGameIds.has(g.id)), [publicGames, mineGameIds]);
+  const gamesJoined = useMemo(() => joinedOpenGames, [joinedOpenGames]);
   const openDiscoverGames = useMemo(() => publicGames.filter((g) => !mineGameIds.has(g.id)), [publicGames, mineGameIds]);
   const openDiscoverSessions = useMemo(() => openSessions.filter((s) => !openSessionRegs.has(s.id)), [openSessions, openSessionRegs]);
   const openJoinedSessions = useMemo(() => openSessions.filter((s) => openSessionRegs.has(s.id)), [openSessions, openSessionRegs]);
@@ -141,6 +141,20 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setView(next === 'booked' ? 'manage' : 'discover');
   };
   const selectView = (next: View) => setView(next);
+
+  // Persist the active tab in the URL so it survives browser Back from a detail page.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (section !== 'games' || view !== 'discover') {
+      params.set('section', section);
+      if (view !== 'discover') params.set('view', view);
+    }
+    const qs = params.toString();
+    const url = `/games${qs ? `?${qs}` : ''}`;
+    if (window.location.pathname + window.location.search !== url) {
+      window.history.replaceState({ ...window.history.state }, '', url);
+    }
+  }, [section, view]);
 
   const leaveOpenGame = async (g: ApiGame) => {
     if (!canLeaveLobby(g)) return;
@@ -169,7 +183,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   };
 
   const subheading = section === 'games'
-    ? 'Organizer-created tournaments, brackets, and structured games.'
+    ? 'Player-created open play games. Book a court first, then host.'
     : section === 'open-play'
       ? 'Public sessions and player bookings other players can join.'
       : 'Your private court and venue bookings.';
@@ -195,7 +209,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
         {section !== 'booked' && (
           <div className="tab-group-row">
             <div className="tab-group" role="tablist" aria-label="Games view">
-              {(section === 'games' ? ['discover', 'joined'] : ['discover', 'joined', 'manage'] as View[]).map((key) => (
+              {(section === 'games' ? ['discover', 'joined', 'manage'] : ['discover', 'joined', 'manage'] as View[]).map((key) => (
                 <button key={key} className={'seg-btn' + (view === key ? ' active' : '')} role="tab" aria-selected={view === key} onClick={() => selectView(key as View)}>
                   {key === 'discover' ? 'Discover' : key === 'joined' ? 'Joined' : 'Manage'}
                 </button>
@@ -204,22 +218,37 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           </div>
         )}
 
-        {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
-        {!loading && section === 'games' && view === 'discover' && <TournamentList rows={gamesDiscover} empty="No organizer games available." onOpen={(t) => onNavigate('tournament', { id: t.slug || t.id })} />}
-        {!loading && section === 'games' && view === 'joined' && <TournamentList rows={gamesJoined} empty="Structured games you join show up here." onOpen={(t) => onNavigate('tournament', { id: t.slug || t.id })} />}
-        {!loading && section === 'open-play' && view === 'discover' && (
-          <OpenPlayDiscover games={openDiscoverGames} sessions={openDiscoverSessions} onNavigate={onNavigate} />
-        )}
-        {!loading && section === 'open-play' && view === 'joined' && (
-          <OpenPlayJoined games={joinedOpenGames} sessions={openJoinedSessions} onNavigate={onNavigate} onLeave={leaveOpenGame} busyId={actionId} />
-        )}
-        {!loading && section === 'open-play' && view === 'manage' && (
-          <OpenPlayManage games={createdOpenGames} onNavigate={onNavigate} onDelete={deleteOpenGame} busyId={actionId} />
-        )}
-        {!loading && section === 'booked' && (
-          <BookedManage bookings={privateBookings} onNavigate={onNavigate} />
-        )}
-        {actionError && <div className="vis-help" style={{ color: 'var(--warning)' }} role="alert">{actionError}</div>}
+        <div className="games-list-scroll">
+          {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
+          {!loading && section === 'games' && view === 'discover' && (
+            gamesDiscover.length === 0
+              ? <Empty text="No open games available." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
+              : gamesDiscover.map((g) => <GameCard key={'discover-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} />)
+          )}
+          {!loading && section === 'games' && view === 'joined' && (
+            gamesJoined.length === 0
+              ? <Empty text="Games you join show up here." />
+              : gamesJoined.map((g) => <GameCard key={'joined-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={canLeaveLobby(g) ? { label: actionId === g.id ? 'Leaving...' : 'Leave', onClick: () => leaveOpenGame(g) } : { label: 'Spot locked', onClick: () => undefined }} />)
+          )}
+          {!loading && section === 'games' && view === 'manage' && (
+            createdOpenGames.length === 0
+              ? <Empty text="Games you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
+              : createdOpenGames.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
+          )}
+          {!loading && section === 'open-play' && view === 'discover' && (
+            <OpenPlayDiscover games={openDiscoverGames} sessions={openDiscoverSessions} onNavigate={onNavigate} />
+          )}
+          {!loading && section === 'open-play' && view === 'joined' && (
+            <OpenPlayJoined games={joinedOpenGames} sessions={openJoinedSessions} onNavigate={onNavigate} onLeave={leaveOpenGame} busyId={actionId} />
+          )}
+          {!loading && section === 'open-play' && view === 'manage' && (
+            <OpenPlayManage games={createdOpenGames} onNavigate={onNavigate} onDelete={deleteOpenGame} busyId={actionId} />
+          )}
+          {!loading && section === 'booked' && (
+            <BookedManage bookings={privateBookings} onNavigate={onNavigate} />
+          )}
+          {actionError && <div className="vis-help" style={{ color: 'var(--warning)' }} role="alert">{actionError}</div>}
+        </div>
       </div>
     </V2Shell>
   );

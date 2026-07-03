@@ -10,6 +10,7 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 
 const createSchema = z.object({
   title: z.string().max(120).optional(),
+  description: z.string().max(500).optional(),
   venueId: objectId.optional(),
   venueName: z.string().max(120).optional(),
   gameType: z.enum(['singles', 'doubles', 'open']).default('doubles'),
@@ -38,6 +39,7 @@ const inviteSchema = z.object({ userIds: z.array(objectId).min(1).max(20) });
 // aren't here.
 const updateSchema = z.object({
   title: z.string().max(120).optional(),
+  description: z.string().max(500).optional(),
   gameType: z.enum(['singles', 'doubles', 'open']).optional(),
   skillLabel: z.string().max(30).optional(),
   capacity: z.number().int().min(2).max(16).optional(),
@@ -235,6 +237,7 @@ export async function createGame(c: any) {
   const game = await Game.create({
     creatorId: user.sub,
     title: body.title || null,
+    description: body.description || null,
     venueId: body.venueId || null,
     venueName: body.venueName || null,
     gameType: body.gameType,
@@ -510,6 +513,7 @@ export async function updateGame(c: any) {
 
   // Apply only provided fields; recompute derived values where inputs changed.
   if (body.title !== undefined) game.title = body.title || null;
+  if (body.description !== undefined) game.description = body.description || null;
   if (body.gameType !== undefined) game.gameType = body.gameType;
   if (body.skillLabel !== undefined) {
     game.skillLabel = body.skillLabel || null;

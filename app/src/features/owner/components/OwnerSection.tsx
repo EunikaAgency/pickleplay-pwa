@@ -15,13 +15,15 @@ interface OwnerSectionProps {
 export function OwnerSection({ title, icon, description, action, children }: OwnerSectionProps) {
   return (
     <section className="card p-4">
-      <div className="lg:flex flex-nowrap items-center gap-2.5 mb-3.5">
-        <span className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
-          <Icon name={icon} size={16} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="hd-3">{title}</div>
-          {description && <div className="t-sm">{description}</div>}
+      <div className="flex flex-col lg:flex-row lg:items-start gap-2.5 mb-3.5">
+        <div className="flex flex-nowrap items-start gap-2.5 min-w-0 flex-1">
+          <span className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
+            <Icon name={icon} size={16} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="hd-3">{title}</div>
+            {description && <div className="t-sm">{description}</div>}
+          </div>
         </div>
         {action && <div className="shrink-0">{action}</div>}
       </div>

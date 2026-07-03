@@ -91,6 +91,26 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
     </div>
   );
 
+  const discoverCard = (c: ApiClub, featuredClub = false) => (
+    <div key={c.id} className={`discover-club-card${featuredClub ? ' featured' : ''}`} role="button" onClick={() => open(c)}>
+      <div className="discover-club-head">
+        <div className="discover-club-icon" aria-hidden="true">{getInitials(c.name)}</div>
+        {featuredClub && <span className="discover-featured-label">Featured</span>}
+      </div>
+      <div className="discover-card-name">{c.name}</div>
+      {c.description && <div className="discover-card-desc">{c.description}</div>}
+      <div className="discover-card-tags">
+        <span className="featured-tag">{c.visibility === 'private' ? 'Private' : 'Public'}</span>
+        {c.visibility === 'public' && <span className="featured-tag open">Open</span>}
+      </div>
+      <div className="discover-card-meta">
+        <span>{c.memberCount} member{c.memberCount === 1 ? '' : 's'}</span>
+        <span>{c.postCount} post{c.postCount === 1 ? '' : 's'}</span>
+      </div>
+      <button className="join-sm-btn" onClick={(e) => { e.stopPropagation(); doJoin(c); }}>{joinLabel(c)}</button>
+    </div>
+  );
+
   return (
     <V2Shell screen="v2-clubs" chrome={chrome}>
       <div className="page-content">
@@ -152,41 +172,9 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
                 <div className="section-header" style={{ paddingTop: 4 }}>
                   <h2 className="section-title">Discover Nearby</h2>
                 </div>
-                <div className="featured-card" role="button" onClick={() => open(featured)}>
-                  <div className="featured-img-placeholder" style={{ position: 'relative' }}>
-                    <div className="featured-label" aria-label="Featured Club">⭐ Featured Club</div>
-                  </div>
-                  <div className="featured-content">
-                    <div className="featured-tags">
-                      <span className="featured-tag">{featured.visibility === 'private' ? 'Private' : 'Public'}</span>
-                      {featured.visibility === 'public' && <span className="featured-tag open">Open Enrollment</span>}
-                    </div>
-                    <div className="featured-name">{featured.name}</div>
-                    {featured.description && <div className="featured-desc">{featured.description}</div>}
-                    <div className="featured-stats">
-                      <div className="featured-stat">{featured.memberCount} members</div>
-                      <div className="featured-stat">{featured.postCount} posts</div>
-                    </div>
-                    <button className="join-btn" onClick={(e) => { e.stopPropagation(); doJoin(featured); }}>{joinLabel(featured)}</button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {filter === 'all' && nearby.length > 0 && (
-              <>
-                <div className="section-header">
-                  <h2 className="section-title">More Nearby</h2>
-                </div>
-                <div className="nearby-scroll" aria-label="Nearby clubs">
-                  {nearby.map((c) => (
-                    <div key={c.id} className="nearby-card" role="button" onClick={() => open(c)}>
-                      <div className="nearby-icon" style={{ background: '#E1E8FF' }}>{getInitials(c.name)}</div>
-                      <div className="nearby-card-name">{c.name}</div>
-                      <div className="nearby-card-meta">{c.memberCount} members</div>
-                      <button className="join-sm-btn" onClick={(e) => { e.stopPropagation(); doJoin(c); }}>{joinLabel(c)}</button>
-                    </div>
-                  ))}
+                <div className="discover-clubs-grid" aria-label="Discover nearby clubs">
+                  {discoverCard(featured, true)}
+                  {nearby.map((c) => discoverCard(c))}
                 </div>
               </>
             )}

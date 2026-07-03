@@ -12,8 +12,11 @@ import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
   listAllVenues, createBooking, checkout, getSettings, createGame, getGame, updateGame, kickPlayer, listCourts,
+  listSlotOverrides, getHours, getVenue,
   type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type ApiGame, type ApiGamePerson,
+  type OwnerHourEntry, type SlotPriceOverride,
 } from '../../shared/lib/api';
+import { resolveHourlyRate } from '../../shared/lib/pricing';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
 import { addHours, hoursBetween, money, prettyDate, to12h, todayYMD } from '../bookings/bookingDisplay';
@@ -88,6 +91,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const [type, setType] = useState<GameType>('doubles');
   const [skill, setSkill] = useState('3.0–3.5');
   const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
   const [spots, setSpots] = useState(4);
   const [vis, setVis] = useState<'public' | 'invite'>('public');
 
@@ -127,6 +131,43 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
     return () => { alive = false; };
   }, [selectedId]);
 
+  // Pricing engine data — fetched so resolveHourlyRate reflects time-block rates,
+  // slot overrides, and member discounts.
+  const [venueHours, setVenueHours] = useState<OwnerHourEntry[]>([]);
+  const [overrides, setOverrides] = useState<SlotPriceOverride[]>([]);
+  const [viewerIsMember, setViewerIsMember] = useState(false);
+
+  // Load time-block pricing for the venue.
+  useEffect(() => {
+    if (!selectedId) { setVenueHours([]); return; }
+    let alive = true;
+    setVenueHours([]);
+    getHours(selectedId)
+      .then((rows) => { if (alive) setVenueHours(rows); })
+      .catch(() => { if (alive) setVenueHours([]); });
+    return () => { alive = false; };
+  }, [selectedId]);
+
+  // Load slot price overrides for the chosen date.
+  useEffect(() => {
+    if (!selectedId || !date) { setOverrides([]); return; }
+    let alive = true;
+    listSlotOverrides(selectedId, date)
+      .then((rows) => { if (alive) setOverrides(rows); })
+      .catch(() => { if (alive) setOverrides([]); });
+    return () => { alive = false; };
+  }, [selectedId, date]);
+
+  // Check if the viewer is a venue member (for member discount).
+  useEffect(() => {
+    if (!selectedId) { setViewerIsMember(false); return; }
+    let alive = true;
+    getVenue(selectedId)
+      .then((v) => { if (alive) setViewerIsMember(!!v.viewerIsMember); })
+      .catch(() => { if (alive) setViewerIsMember(false); });
+    return () => { alive = false; };
+  }, [selectedId]);
+
   useEffect(() => {
     let alive = true;
     getSettings()
@@ -136,10 +177,34 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   }, []);
 
   const selected = useMemo(() => venues.find((v) => v.id === selectedId) ?? null, [venues, selectedId]);
+  const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
   const currency = selected?.pricingCurrency ?? 'PHP';
-  const rate = selected?.priceFrom ?? 0;
+  const rateInfo = useMemo(() => resolveHourlyRate({
+    venue: selected, court: selectedCourt, hours: venueHours, overrides,
+    date, startTime, isMember: viewerIsMember,
+  }), [selected, selectedCourt, venueHours, overrides, date, startTime, viewerIsMember]);
+  const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
-  const total = Math.round(rate * hours * 100) / 100;
+
+  // Per-hour rate resolution so bookings crossing override boundaries blend correctly.
+  const hourlyTotal = useMemo(() => {
+    if (!startTime || !endTime) return rate * hours;
+    const startH = Number(startTime.split(':')[0]);
+    const endH = Number(endTime.split(':')[0]);
+    if (!(endH > startH)) return 0;
+    let sum = 0;
+    for (let h = startH; h < endH; h++) {
+      const hourStart = `${String(h).padStart(2, '0')}:00`;
+      const ri = resolveHourlyRate({
+        venue: selected, court: selectedCourt, hours: venueHours, overrides,
+        date, startTime: hourStart, isMember: viewerIsMember,
+      });
+      sum += ri.rate;
+    }
+    return Math.round(sum * 100) / 100;
+  }, [startTime, endTime, rate, hours, selected, selectedCourt, venueHours, overrides, date, viewerIsMember]);
+
+  const total = hourlyTotal;
 
   // Live availability for the chosen court (or the venue pool when none) on this
   // date → greys out hours that court is already taken.
@@ -147,6 +212,67 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const slotUnavailable = rangeBlocked(startTime, endTime);
   const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
   const isTest = settings?.paymentTestMode ?? false;
+
+  // Operating-hours window for the selected date — derived from venueHours
+  // (VenueHour entries). Hours outside this window are hidden from the pickers.
+  const operatingWindow = useMemo(() => {
+    const dow = new Date(date + 'T00:00:00').getDay();
+    const dayEntries = venueHours.filter((h) => h.dayOfWeek === dow);
+
+    let open = 0;
+    let close = 24;
+    let hasExplicitHours = false;
+
+    if (dayEntries.length > 0) {
+      hasExplicitHours = true;
+      if (dayEntries.every((h) => h.isClosed || h.openTime === h.closeTime)) {
+        open = 0; close = 0;
+      } else {
+        const candidates = dayEntries.filter((h) => !h.isClosed && h.openTime !== h.closeTime);
+        const courtScoped = candidates.filter((h) => h.courtId != null);
+        const relevant = courtScoped.length > 0 ? courtScoped : candidates;
+        if (relevant.length > 0) {
+          open = 24; close = 0;
+          for (const h of relevant) {
+            const o = Number((h.openTime ?? '00:00').split(':')[0]);
+            const c = Number((h.closeTime ?? '24:00').split(':')[0]);
+            if (o < open) open = o;
+            if (c > close) close = c;
+          }
+          if (close <= open) { open = 0; close = 0; }
+        }
+      }
+    }
+
+    if (overrides.length > 0) {
+      for (const o of overrides) {
+        const oH = Number((o.startTime ?? '00:00').split(':')[0]);
+        const cH = Number((o.endTime ?? '00:00').split(':')[0]);
+        if (cH <= oH) continue;
+        if (hasExplicitHours && open === 0 && close === 0) {
+          open = oH; close = cH;
+        } else {
+          if (oH < open) open = oH;
+          if (cH > close) close = cH;
+        }
+      }
+    }
+
+    if (close <= open) return { open: 0, close: 0 };
+    return { open, close };
+  }, [venueHours, overrides, date]);
+
+  const startHourInfo = (h: number): { hide?: boolean; disabled?: boolean; note?: string } => {
+    if (h < operatingWindow.open || h >= operatingWindow.close) return { hide: true };
+    if (startDisabled(h)) return { disabled: true, note: 'Booked' };
+    return {};
+  };
+
+  const endHourInfo = (h: number): { hide?: boolean; disabled?: boolean; note?: string } => {
+    if (h < operatingWindow.open || h > operatingWindow.close) return { hide: true };
+    if (endDisabledFor(startTime)(h)) return { disabled: true, note: 'Unavailable' };
+    return {};
+  };
 
   // Spots are fixed for Singles (2) / Doubles (4); only Open is adjustable.
   // Picking a format snaps the count and locks the stepper.
@@ -202,6 +328,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
       await checkout({ bookingId: booking.id, amount: total, currency, method: isTest ? 'test_card' : 'card', card });
       const game = await createGame({
         title: name.trim() || undefined,
+        description: desc.trim() || undefined,
         venueId: selected.id,
         gameType: type,
         skillLabel: skill,
@@ -362,11 +489,11 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="lbl">Start time</div>
-                <HourSelect aria-label="Start time" value={startTime} onChange={onStartChange} disabled={startDisabled} />
+                <HourSelect aria-label="Start time" value={startTime} onChange={onStartChange} hourInfo={startHourInfo} />
               </div>
               <div>
                 <div className="lbl">End time</div>
-                <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
+                <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} hourInfo={endHourInfo} />
               </div>
             </div>
             {slotUnavailable && (
@@ -420,6 +547,12 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
           <div className="field mt-4">
             <div className="lbl">Game name (optional)</div>
             <input className="control" placeholder="e.g. Friday Night Dinks" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+          </div>
+
+          <div className="field">
+            <div className="lbl">Description (optional)</div>
+            <textarea className="control" placeholder="Tell players what to expect — rules, vibe, what to bring…" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={500} rows={3} />
+            <div className="text-[11px] font-semibold text-[var(--muted)] mt-1 text-right">{desc.length} / 500</div>
           </div>
 
           <div className="field">
@@ -552,6 +685,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
   const [type, setType] = useState<GameType>('doubles');
   const [skill, setSkill] = useState('3.0–3.5');
   const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
   const [spots, setSpots] = useState(4);
   const [vis, setVis] = useState<'public' | 'invite'>('public');
 
@@ -576,6 +710,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
         if (g.gameType === 'singles' || g.gameType === 'doubles' || g.gameType === 'open') setType(g.gameType);
         if (g.skillLabel) setSkill(g.skillLabel);
         setName(g.title || '');
+        setDesc(g.description || '');
         if (g.capacity) setSpots(g.capacity);
         setVis(g.visibility === 'invite' ? 'invite' : 'public');
       })
@@ -608,6 +743,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
     try {
       const updated = await updateGame(gameId, {
         title: name.trim() || undefined,
+        description: desc.trim() || undefined,
         gameType: type,
         skillLabel: skill,
         capacity: spots,
@@ -698,6 +834,12 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
       <div className="field mt-4">
         <div className="lbl">Game name (optional)</div>
         <input className="control" placeholder="e.g. Friday Night Dinks" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+      </div>
+
+      <div className="field">
+        <div className="lbl">Description (optional)</div>
+        <textarea className="control" placeholder="Tell players what to expect — rules, vibe, what to bring…" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={500} rows={3} />
+        <div className="text-[11px] font-semibold text-[var(--muted)] mt-1 text-right">{desc.length} / 500</div>
       </div>
 
       <div className="field">

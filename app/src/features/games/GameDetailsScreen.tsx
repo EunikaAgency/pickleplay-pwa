@@ -53,6 +53,9 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   // rule first; this gates the actual join behind a confirmation modal.
   const [confirmJoinOpen, setConfirmJoinOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [saved, setSaved] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(gameId); } catch { return false; }
+  });
 
   const [prevFetchKey, setPrevFetchKey] = useState(`${gameId}|${reloadKey}`);
   const fetchKey = `${gameId}|${reloadKey}`;
@@ -81,7 +84,6 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const spotsLeft = game?.spotsLeft ?? 0;
   const creatorId = game?.creatorId || game?.creator?.id;
   const isHost = !!(game && me && creatorId && me.id === creatorId);
-  const isOrganizer = !!me && userHasPermission(me, 'organizer.access');
   // The host can cancel (delete) their own game from inside the lobby — deleting
   // also releases the linked court reservation (handled server-side).
   const canManageGame = isHost && userHasPermission(me, 'player.games.manage');
@@ -109,7 +111,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   };
 
   const handleJoin = () => {
-    if (!game || isJoined || joining || isOrganizer) return;
+    if (!game || isJoined || joining || lobbyFull) return;
     // Browsing the game is free; committing to it requires an account.
     if (onRequireAuth && !onRequireAuth('join this game')) return;
     // Joining within the grace window can lock the spot once the lobby fills, so
@@ -167,6 +169,16 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   };
 
   const isFull = spotsLeft <= 0 && !isJoined;
+
+  const toggleSave = () => {
+    if (!game) return;
+    try {
+      const cur: string[] = JSON.parse(localStorage.getItem('pb-saved-games') || '[]');
+      const next = cur.includes(game.id) ? cur.filter((x) => x !== game.id) : [...cur, game.id];
+      localStorage.setItem('pb-saved-games', JSON.stringify(next));
+      setSaved(next.includes(game.id));
+    } catch { /* ignore */ }
+  };
 
   // A single grace-period notice whose wording adapts to the viewer's state
   // (host gets the "ready to play" banner instead, so they're excluded here).
@@ -279,8 +291,8 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 <button className="icon-btn" onClick={() => setShareOpen(true)} aria-label="Share this game">
                   <Icon name="share" size={16} />
                 </button>
-                <button className="icon-btn" aria-label="Save">
-                  <Icon name="heart_o" size={16} />
+                <button className="icon-btn" onClick={toggleSave} aria-label={saved ? 'Remove from saved' : 'Save this game'}>
+                  <Icon name={saved ? 'heart' : 'heart_o'} size={16} />
                 </button>
               </div>
             </div>
@@ -345,6 +357,10 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               <div className="kv">
                 <div className="eyebrow">Skill</div>
                 <div className="val">{game.skillLabel || 'Open'}</div>
+              </div>
+              <div className="kv">
+                <div className="eyebrow">Duration</div>
+                <div className="val">{game.durationLabel || '—'}</div>
               </div>
               <div className="kv">
                 <div className="eyebrow">Spots</div>
@@ -422,15 +438,21 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
 
             <div className="about-card">
               <div className="t-eyebrow mb-1.5">About this game</div>
-              <p>
-                {gameTypeLabel(game)} game{game.skillLabel ? ` · ${game.skillLabel}` : ''}, hosted by{' '}
-                {game.creator?.displayName || 'the host'}
-                {game.durationLabel ? ` · ${game.durationLabel}` : ''}.
-              </p>
-              <p>
-                {game.participantCount ?? participants.length} going
-                {spotsLeft > 0 ? ` · ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} still open` : ' · this game is full'}.
-              </p>
+              {game.description ? (
+                <p className="whitespace-pre-wrap">{game.description}</p>
+              ) : (
+                <>
+                  <p>
+                    {gameTypeLabel(game)} game{game.skillLabel ? ` · ${game.skillLabel}` : ''}, hosted by{' '}
+                    {game.creator?.displayName || 'the host'}
+                    {game.durationLabel ? ` · ${game.durationLabel}` : ''}.
+                  </p>
+                  <p>
+                    {game.participantCount ?? participants.length} going
+                    {spotsLeft > 0 ? ` · ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} still open` : ' · this game is full'}.
+                  </p>
+                </>
+              )}
             </div>
 
             <div className="mb-[18px]">
@@ -463,7 +485,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
           <div className="sticky-cta">
             <div className="price">
               <div className="eyebrow">{isJoined ? 'Your spot' : 'Open spots'}</div>
-              <div className="amount">{isJoined ? "You're in" : spotsLeft > 0 ? spotsLeft : 'Full'}</div>
+              <div className="amount">{isJoined ? "You're in" : spotsLeft > 0 ? (game.bookingId ? 'Free' : spotsLeft) : 'Full'}</div>
             </div>
             {isHost ? (
               canManageGame ? (
@@ -511,11 +533,6 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   Spot locked
                 </button>
               )
-            ) : isOrganizer ? (
-              <button className="btn-join" disabled>
-                <Icon name="shield" size={16} />
-                Organizer account
-              </button>
             ) : (
               <button className="btn-join" onClick={handleJoin} disabled={joining || isFull}>
                 {joining ? (

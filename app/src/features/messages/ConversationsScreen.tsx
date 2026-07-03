@@ -459,20 +459,30 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                     )}
                   </div>
                   <div className="meta min-w-0">
+                    {c.contextType && (
+                      <div className="truncate" style={{ color: 'var(--muted)', marginBottom: 1, fontSize: 11 }}>
+                        {c.contextType === 'venue' ? (
+                          <span className="inline-flex items-center" style={{ gap: 3 }}>
+                            <Icon name="sports_tennis" size={10} />
+                            {c.contextLabel || 'Venue inquiry'}
+                          </span>
+                        ) : c.contextType === 'booking' ? (
+                          <span className="inline-flex items-center" style={{ gap: 3 }}>
+                            <Icon name="event" size={10} />
+                            {c.contextLabel || 'Booking inquiry'}
+                          </span>
+                        ) : (
+                          c.contextType
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-2">
                       <div className="name truncate">{name}</div>
                       <div className="t-sm shrink-0">{timeAgo(c.lastAt)}</div>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className={`t-sm truncate ${c.unread > 0 ? 'font-bold text-[var(--ink)]' : ''}`}>
-                        {c.contextType === 'venue' ? (
-                          <span className="inline-flex items-center" style={{ gap: 6 }}>
-                            <Icon name="sports_tennis" size={12} />
-                            {c.lastBody ? cleanPreview(c.lastBody) : 'Venue inquiry'}
-                          </span>
-                        ) : (
-                          c.lastBody ? cleanPreview(c.lastBody) : 'No messages yet'
-                        )}
+                        {c.lastBody ? cleanPreview(c.lastBody) : 'No messages yet'}
                       </div>
                       {c.unread > 0 && (
                         <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--coral)] text-white text-[11px] font-extrabold leading-5 text-center">

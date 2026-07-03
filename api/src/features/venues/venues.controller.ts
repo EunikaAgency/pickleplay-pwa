@@ -5,6 +5,7 @@ import { VenuePricing } from '../payments/payments.model.js';
 import { VenueClaim } from './venue-management.model.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { bookingApprovedReceipt, membershipReceipt } from '../../shared/lib/email-templates.js';
+import { resolveHourlyRate, perPlayerSurcharge } from '../bookings/pricing.js';
 
 const canEmail = () => isGmailConfigured() && hasValidTokens();
 const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -1564,6 +1565,45 @@ export async function createVenueBooking(c: any) {
   if (conflict) return c.json({ error: { code: 'SLOT_CONFLICT', message: conflict } }, 409);
 
   const isBlock = body.bookingType === 'blocked';
+
+  // ── Pricing breakdown (soft) — compute the expected rate for the audit trail,
+  // but owners can override the amount. When they do, we tag it 'manual'.
+  let pricingSource: string | null = null;
+  let overrideId: string | null = null;
+  let baseRate: number | null = null;
+  let memberDiscPercent: number | null = null;
+  if (!isBlock && body.startTime && body.endTime) {
+    try {
+      // Resolve per clock hour so the audit trail matches multi-rate bookings.
+      const [sh = 0, sm = 0] = body.startTime.split(':').map(Number);
+      const [eh = 0, em = 0] = body.endTime.split(':').map(Number);
+      let expectedAmount = 0;
+      for (let h = sh; h < eh; h++) {
+        const hourStart = `${String(h).padStart(2, '0')}:00`;
+        const hr = await resolveHourlyRate({
+          venueId, courtId: body.courtId || null,
+          subUnitIndex: body.subUnitIndex ?? null,
+          date: body.date, startTime: hourStart, isMember: false,
+        });
+        expectedAmount += hr.rate;
+        if (!baseRate) {
+          baseRate = hr.baseRate;
+          memberDiscPercent = hr.memberDiscountPercent;
+          pricingSource = hr.source;
+          overrideId = hr.overrideId ?? null;
+        }
+      }
+      expectedAmount = Math.round(expectedAmount * 100) / 100;
+      const ownerAmount = body.amount ?? 0;
+      // If the owner entered an amount that differs from the computed total, tag it 'manual'.
+      if (Math.abs(ownerAmount - expectedAmount) > 1) {
+        pricingSource = 'manual';
+      }
+    } catch (_) {
+      // Pricing resolver failed (e.g. venue not found) — leave audit fields null.
+    }
+  }
+
   const booking = await Booking.create({
     // userId satisfies the required ref; createdByUserId records who entered it.
     userId: user.sub,
@@ -1584,6 +1624,11 @@ export async function createVenueBooking(c: any) {
     bookingSource: isBlock ? null : (body.bookingSource || null),
     blockReason: isBlock ? (body.blockReason || null) : null,
     notes: body.notes || null,
+    // Pricing audit trail.
+    rateSource: pricingSource,
+    overrideId,
+    baseRate,
+    memberDiscountPercent: memberDiscPercent,
   });
 
   // Enrich with the court label so the schedule row reads right without a refetch.
@@ -1931,6 +1976,38 @@ export async function getVenueAvailabilityRange(c: any) {
   });
 
   return c.json({ data: { from, to, capacity: courtId ? courtSubCount : capacity, courtId, days } });
+}
+
+/* ─── Batch availability — powers the map date/time filter ──────────── */
+
+const batchAvailabilitySchema = z.object({
+  venueIds: z.array(z.string()).min(1).max(200),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export async function batchVenueAvailability(c: any) {
+  const body = batchAvailabilitySchema.parse(await c.req.json());
+  const { venueIds, date } = body;
+
+  const results: { venueId: string; freeByHour: number[] }[] = [];
+
+  for (const rawId of venueIds) {
+    try {
+      const venueId = await resolveVenueId(rawId);
+      if (!venueId) continue;
+      const venue = await Venue.findById(venueId).select('deletedAt').lean<{ deletedAt?: Date | null }>();
+      if (!venue || venue.deletedAt) continue;
+      const capacity = await resolveVenueCapacity(venueId);
+      const bookings = await activeBookingsForDate(venueId, date);
+      const free = freeCourtsByHour(bookings, capacity);
+      results.push({ venueId, freeByHour: free });
+    } catch {
+      // Skip venues that error out (e.g. bad IDs) — the client filters them out.
+      continue;
+    }
+  }
+
+  return c.json({ data: { date, venues: results } });
 }
 
 export async function updateBookingStatus(c: any) {

@@ -28,6 +28,8 @@ interface BookCourtScreenProps {
   date?: string;
   time?: string;            // 12h label like "6:30 PM"
   hours?: number;
+  /** Pre-select this court in the CourtPicker (from the map filter's available-courts badge). */
+  courtId?: string;
   /** 'lobby' = the booking is a step toward hosting a lobby; the confirmation
    *  offers "Make Open Play" instead of just "View my bookings". */
   intent?: 'lobby';
@@ -58,7 +60,7 @@ function maskCard(card: CheckoutCard): { brand: string; last4: string } | undefi
   return { brand: cardBrand(n), last4: n.slice(-4) };
 }
 
-export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNavigate, onBack }: BookCourtScreenProps) {
+export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, courtId: courtIdProp, onNavigate, onBack }: BookCourtScreenProps) {
   const { trackBookingAttempt, trackBookingCompleted, trackCheckoutStarted, trackCheckoutAbandoned } = useDemandTracking();
   const [step, setStep] = useState(0);
 
@@ -83,7 +85,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
   // booker picks one and it drives both availability and the booking. Venues
   // with no defined courts fall back to a venue-level booking (no picker).
   const [courts, setCourts] = useState<ApiCourt[]>([]);
-  const [courtId, setCourtId] = useState('');
+  const [courtId, setCourtId] = useState(courtIdProp ?? '');
   // Half-court / split-court sub-unit: undefined = whole court, 0..N-1 = sub-unit.
   const [subUnitIndex, setSubUnitIndex] = useState<number | undefined>(undefined);
   // Equipment rental add-on (V2).
@@ -147,6 +149,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
       .catch(() => { if (alive) { setCourts([]); setCourtId(''); } });
     return () => { alive = false; };
   }, [selectedId]);
+
+  // When a courtId prop is passed (from the map filter), pre-select it once courts load.
+  useEffect(() => {
+    if (courtIdProp && courts.some((c) => c.id === courtIdProp)) {
+      setCourtId(courtIdProp);
+    }
+  }, [courtIdProp, courts]);
 
   // Reset sub-unit pick when changing courts (default to whole-court).
   const [prevCourtId, setPrevCourtId] = useState(courtId);
@@ -228,8 +237,59 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
   }), [selected, selectedCourt, subUnitIndex, venueHours, overrides, date, startTime, viewerIsMember]);
   const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
+
+  // Resolve the total by evaluating the rate independently for each clock hour.
+  // A booking that spans override boundaries (e.g. 8:00–12:00 crossing from the
+  // 08:00–10:00 early-bird window into the 10:00–23:00 regular window) gets the
+  // correct blended total instead of applying the start hour's rate to every hour.
+  const hourlyTotal = useMemo(() => {
+    if (!startTime || !endTime) return rate * hours;
+    const startH = Number(startTime.split(':')[0]);
+    const endH = Number(endTime.split(':')[0]);
+    if (!(endH > startH)) return 0;
+    let sum = 0;
+    for (let h = startH; h < endH; h++) {
+      const hourStart = `${String(h).padStart(2, '0')}:00`;
+      const ri = resolveHourlyRate({
+        venue: selected, court: selectedCourt, subUnitIndex, hours: venueHours, overrides,
+        date, startTime: hourStart, isMember: viewerIsMember,
+      });
+      sum += ri.rate;
+    }
+    return Math.round(sum * 100) / 100;
+  }, [startTime, endTime, rate, hours, selected, selectedCourt, subUnitIndex, venueHours, overrides, date, viewerIsMember]);
+
+  // Group consecutive hours by rate so the price card can show a line-item
+  // breakdown when the rate varies across the booking window (e.g. a surge
+  // override on the early hours, then the regular court rate afterwards).
+  const hourlyBreakdown = useMemo(() => {
+    if (!startTime || !endTime) return [];
+    const startH = Number(startTime.split(':')[0]);
+    const endH = Number(endTime.split(':')[0]);
+    if (!(endH > startH)) return [];
+    const rows: { hour: number; rate: number; source: string }[] = [];
+    for (let h = startH; h < endH; h++) {
+      const hourStart = `${String(h).padStart(2, '0')}:00`;
+      const ri = resolveHourlyRate({
+        venue: selected, court: selectedCourt, subUnitIndex, hours: venueHours, overrides,
+        date, startTime: hourStart, isMember: viewerIsMember,
+      });
+      rows.push({ hour: h, rate: ri.rate, source: ri.source });
+    }
+    const groups: { startHour: number; endHour: number; rate: number; source: string }[] = [];
+    for (const r of rows) {
+      const last = groups[groups.length - 1];
+      if (last && last.rate === r.rate && last.source === r.source) {
+        last.endHour = r.hour + 1;
+      } else {
+        groups.push({ startHour: r.hour, endHour: r.hour + 1, rate: r.rate, source: r.source });
+      }
+    }
+    return groups;
+  }, [startTime, endTime, selected, selectedCourt, subUnitIndex, venueHours, overrides, date, viewerIsMember]);
+
   const equipAmount = includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0;
-  const courtTotal = Math.round(rate * hours * 100) / 100;
+  const courtTotal = hourlyTotal;
   // Per-player surcharge — ₱ per extra player beyond the venue's included headcount.
   const surcharge = perPlayerSurcharge(selected, playerCount);
   // `subtotal` is the venue's price (court + equipment + per-player surcharge) — what
@@ -281,9 +341,71 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
 
   // Per-hour classification for the Start picker: hide past hours, but keep booked
   // ones visible-and-greyed with a "Booked" tag so it's clear *why* they're gone.
+  // Also hide hours outside the venue's operating window for the selected date.
+  const operatingWindow = useMemo(() => {
+    const dow = new Date(date + 'T00:00:00').getDay();
+    const dayEntries = venueHours.filter((h) => h.dayOfWeek === dow);
+
+    // Start from the VenueHour operating window for this day.
+    let open = 0;
+    let close = 24;
+    let hasExplicitHours = false;
+
+    if (dayEntries.length > 0) {
+      hasExplicitHours = true;
+      // If ALL entries are closed/zero-width, start with everything hidden.
+      if (dayEntries.every((h) => h.isClosed || h.openTime === h.closeTime)) {
+        open = 0; close = 0;
+      } else {
+        const candidates = dayEntries.filter((h) => !h.isClosed && h.openTime !== h.closeTime);
+        const courtScoped = candidates.filter((h) => h.courtId != null);
+        const relevant = courtScoped.length > 0 ? courtScoped : candidates;
+        if (relevant.length > 0) {
+          open = 24; close = 0;
+          for (const h of relevant) {
+            const o = Number((h.openTime ?? '00:00').split(':')[0]);
+            const c = Number((h.closeTime ?? '24:00').split(':')[0]);
+            if (o < open) open = o;
+            if (c > close) close = c;
+          }
+          if (close <= open) { open = 0; close = 0; }
+        }
+      }
+    }
+
+    // Expand the window to include any slot price overrides for this date —
+    // an override like "early bird 08:00–10:00" means those hours ARE bookable.
+    if (overrides.length > 0) {
+      for (const o of overrides) {
+        const oH = Number((o.startTime ?? '00:00').split(':')[0]);
+        const cH = Number((o.endTime ?? '00:00').split(':')[0]);
+        if (cH <= oH) continue;
+        if (hasExplicitHours && open === 0 && close === 0) {
+          // Venue is explicitly closed, but override says otherwise — open up.
+          open = oH; close = cH;
+        } else {
+          if (oH < open) open = oH;
+          if (cH > close) close = cH;
+        }
+      }
+    }
+
+    if (close <= open) return { open: 0, close: 0 };
+    return { open, close };
+  }, [venueHours, overrides, date]);
+
   const startHourInfo = (h: number): { hide?: boolean; disabled?: boolean; note?: string } => {
+    if (h < operatingWindow.open || h >= operatingWindow.close) return { hide: true };
     if (isPast(h)) return { hide: true };
     if (isFull(h)) return { disabled: true, note: 'Booked' };
+    return {};
+  };
+
+  // End-time filtering: hide hours before the start time, outside operating hours,
+  // and hours that would cause a booking conflict.
+  const endHourInfo = (h: number): { hide?: boolean; disabled?: boolean; note?: string } => {
+    if (h < operatingWindow.open || h > operatingWindow.close) return { hide: true };
+    if (endDisabledFor(startTime)(h)) return { disabled: true, note: 'Unavailable' };
     return {};
   };
 
@@ -635,7 +757,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
                 courts={courts}
                 value={courtId}
                 onChange={setCourtId}
-                priceFor={(c) => money(c.hourlyRate != null ? c.hourlyRate : (selected?.priceFrom ?? 0), currency) + '/hr'}
               />
             </div>
           )}
@@ -696,7 +817,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
               </div>
               <div>
                 <div className="lbl">End time</div>
-                <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} disabled={endDisabledFor(startTime)} />
+                <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} hourInfo={endHourInfo} />
               </div>
             </div>
             {slotUnavailable && (
@@ -731,14 +852,55 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
 
           {selected && (
             <div className="field">
-              <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 flex items-center justify-between">
+              <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4">
                 {hours > 0 ? (
-                  <>
-                    <div className="text-[13px] font-semibold text-[var(--muted)]">
-                      {money(rate, currency)}/hr × {hours} hr
+                  hourlyBreakdown.length > 1 || equipAmount > 0 || surcharge > 0 ? (
+                    /* ── Blended rates or add-ons: line-item breakdown ── */
+                    <div className="flex flex-col gap-1.5">
+                      {hourlyBreakdown.map((g, i) => {
+                        const segHrs = g.endHour - g.startHour;
+                        const segStart = `${String(g.startHour).padStart(2, '0')}:00`;
+                        const segEnd = `${String(g.endHour).padStart(2, '0')}:00`;
+                        return (
+                          <div key={i} className="flex items-center justify-between">
+                            <div className="text-[12px] font-semibold text-[var(--muted)]">
+                              {to12h(segStart)} – {to12h(segEnd)}
+                              <span className="opacity-70"> · {money(g.rate, currency)}/hr × {segHrs} hr</span>
+                            </div>
+                            <div className="text-[13px] font-semibold text-[var(--ink)] tabular-nums">
+                              {money(g.rate * segHrs, currency)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {equipAmount > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="text-[12px] font-semibold text-[var(--muted)]">Equipment rental</div>
+                          <div className="text-[13px] font-semibold text-[var(--ink)] tabular-nums">{money(equipAmount, currency)}</div>
+                        </div>
+                      )}
+                      {surcharge > 0 && (
+                        <div className="flex items-center justify-between">
+                          <div className="text-[12px] font-semibold text-[var(--muted)]">
+                            Extra players ({Math.max(0, playerCount - (Number(selected?.perPlayerFeeThreshold) || 1))} × {money(Number(selected?.perPlayerFee) || 0, currency)})
+                          </div>
+                          <div className="text-[13px] font-semibold text-[var(--ink)] tabular-nums">{money(surcharge, currency)}</div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t-[0.5px] border-[var(--hairline)]">
+                        <div className="text-[13px] font-bold text-[var(--ink)]">Total</div>
+                        <div className="font-heading font-bold text-[22px] text-[var(--ink)] tabular-nums">{money(subtotal, currency)}</div>
+                      </div>
                     </div>
-                    <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(subtotal, currency)}</div>
-                  </>
+                  ) : (
+                    /* ── Single rate, no add-ons: compact one-liner ── */
+                    <div className="flex items-center justify-between">
+                      <div className="text-[13px] font-semibold text-[var(--muted)]">
+                        {money(rate, currency)}/hr × {hours} hr
+                      </div>
+                      <div className="font-heading font-bold text-[22px] text-[var(--ink)]">{money(subtotal, currency)}</div>
+                    </div>
+                  )
                 ) : !endTime ? (
                   <div className="text-[13px] font-semibold text-[var(--muted)]">
                     Pick an end time to see the total.
@@ -775,14 +937,39 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, onNav
             {subUnitIndex != null && <ReviewRow label="Unit" value={`Half ${subUnitIndex + 1}`} />}
             <ReviewRow label="Date" value={prettyDate(date)} />
             <ReviewRow label="Time" value={`${to12h(startTime)} – ${to12h(endTime)}`} sub={`${hours} hr`} />
-            <ReviewRow
-              label="Rate"
-              value={`${money(rate, currency)}/hr`}
-              sub={[
-                rateInfo.source === 'surge' ? 'Adjusted rate' : rateInfo.source === 'holiday' ? 'Holiday rate' : rateInfo.source === 'weekend' ? 'Weekend rate' : rateInfo.source === 'timeBlock' ? 'Time-block rate' : rateInfo.source === 'subUnit' ? 'Sub-unit rate' : null,
-                rateInfo.memberApplied ? `Member −${rateInfo.memberDiscountPercent}%` : null,
-              ].filter(Boolean).join(' · ') || undefined}
-            />
+            {hourlyBreakdown.length > 1 ? (
+              /* ── Blended rates: per-block breakdown ── */
+              <div className="px-4 py-3.5 border-b-[0.5px] border-[var(--hairline)]">
+                <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)] mb-2">Rate</div>
+                <div className="flex flex-col gap-1">
+                  {hourlyBreakdown.map((g, i) => {
+                    const segHrs = g.endHour - g.startHour;
+                    const segStart = `${String(g.startHour).padStart(2, '0')}:00`;
+                    const segEnd = `${String(g.endHour).padStart(2, '0')}:00`;
+                    return (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="text-[12px] font-semibold text-[var(--muted)]">
+                          {to12h(segStart)} – {to12h(segEnd)}
+                          <span className="opacity-70"> · {money(g.rate, currency)}/hr × {segHrs} hr</span>
+                        </div>
+                        <div className="text-[13px] font-semibold text-[var(--ink)] tabular-nums">
+                          {money(g.rate * segHrs, currency)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <ReviewRow
+                label="Rate"
+                value={`${money(rate, currency)}/hr`}
+                sub={[
+                  rateInfo.source === 'surge' ? 'Adjusted rate' : rateInfo.source === 'holiday' ? 'Holiday rate' : rateInfo.source === 'weekend' ? 'Weekend rate' : rateInfo.source === 'timeBlock' ? 'Time-block rate' : rateInfo.source === 'subUnit' ? 'Sub-unit rate' : null,
+                  rateInfo.memberApplied ? `Member −${rateInfo.memberDiscountPercent}%` : null,
+                ].filter(Boolean).join(' · ') || undefined}
+              />
+            )}
             {surcharge > 0 && (
               <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">
                 <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--muted)]">

@@ -1,0 +1,346 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e8]:
+        - generic [ref=e10]:
+          - generic [ref=e11]: Pricing Override
+          - generic [ref=e12]: Paint time blocks with pricing rules, then save
+        - generic [ref=e13]:
+          - combobox "Venue" [disabled] [ref=e14]:
+            - option "Loading venues..." [selected]
+          - button "Save Schedule" [disabled] [ref=e15] [cursor=pointer]
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - generic [ref=e19]: Paid Hours / Week
+            - generic [ref=e20]: "0"
+          - generic [ref=e21]:
+            - generic [ref=e22]: Weekly Revenue Estimate
+            - generic [ref=e23]: ₱0
+          - generic [ref=e24]:
+            - generic [ref=e25]: Pricing Rules
+            - generic [ref=e26]: "4"
+        - generic [ref=e27]:
+          - generic [ref=e28]: "Paint tool:"
+          - button "Peak · ₱350" [pressed] [ref=e29] [cursor=pointer]: Peak · ₱350
+          - button "Wknd Prime · ₱450" [ref=e31] [cursor=pointer]: Wknd Prime · ₱450
+          - button "Holiday · ₱500" [ref=e33] [cursor=pointer]: Holiday · ₱500
+          - button "Early Bird · ₱150" [ref=e35] [cursor=pointer]: Early Bird · ₱150
+          - button "Closed/Clear" [ref=e37] [cursor=pointer]: Closed/Clear
+          - generic [ref=e39]: Click or drag to paint blocks
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: Schedule window
+            - generic [ref=e43]: Jul 6 – Jul 12
+          - generic [ref=e44]:
+            - combobox "Select month" [ref=e45]:
+              - option "January"
+              - option "February"
+              - option "March"
+              - option "April"
+              - option "May"
+              - option "June"
+              - option "July" [selected]
+              - option "August"
+              - option "September"
+              - option "October"
+              - option "November"
+              - option "December"
+            - combobox "Select week" [ref=e46]:
+              - 'option "Week 1: Jul 6 – Jul 12" [selected]'
+              - 'option "Week 2: Jul 13 – Jul 19"'
+              - 'option "Week 3: Jul 20 – Jul 26"'
+              - 'option "Week 4: Jul 27 – Aug 2"'
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]: Day
+            - button "12AM" [ref=e51] [cursor=pointer]
+            - button "1AM" [ref=e52] [cursor=pointer]
+            - button "2AM" [ref=e53] [cursor=pointer]
+            - button "3AM" [ref=e54] [cursor=pointer]
+            - button "4AM" [ref=e55] [cursor=pointer]
+            - button "5AM" [ref=e56] [cursor=pointer]
+            - button "6AM" [ref=e57] [cursor=pointer]
+            - button "7AM" [ref=e58] [cursor=pointer]
+            - button "8AM" [ref=e59] [cursor=pointer]
+            - button "9AM" [ref=e60] [cursor=pointer]
+            - button "10AM" [ref=e61] [cursor=pointer]
+            - button "11AM" [ref=e62] [cursor=pointer]
+            - button "12PM" [ref=e63] [cursor=pointer]
+            - button "1PM" [ref=e64] [cursor=pointer]
+            - button "2PM" [ref=e65] [cursor=pointer]
+            - button "3PM" [ref=e66] [cursor=pointer]
+            - button "4PM" [ref=e67] [cursor=pointer]
+            - button "5PM" [ref=e68] [cursor=pointer]
+            - button "6PM" [ref=e69] [cursor=pointer]
+            - button "7PM" [ref=e70] [cursor=pointer]
+            - button "8PM" [ref=e71] [cursor=pointer]
+            - button "9PM" [ref=e72] [cursor=pointer]
+            - button "10PM" [ref=e73] [cursor=pointer]
+            - button "11PM" [ref=e74] [cursor=pointer]
+          - generic [ref=e75]:
+            - button "Mon" [ref=e76] [cursor=pointer]
+            - button "Mon 12AM Closed · ₱0" [ref=e77] [cursor=pointer]
+            - button "Mon 1AM Closed · ₱0" [ref=e79] [cursor=pointer]
+            - button "Mon 2AM Closed · ₱0" [ref=e81] [cursor=pointer]
+            - button "Mon 3AM Closed · ₱0" [ref=e83] [cursor=pointer]
+            - button "Mon 4AM Closed · ₱0" [ref=e85] [cursor=pointer]
+            - button "Mon 5AM Closed · ₱0" [ref=e87] [cursor=pointer]
+            - button "Mon 6AM Closed · ₱0" [ref=e89] [cursor=pointer]
+            - button "Mon 7AM Closed · ₱0" [ref=e91] [cursor=pointer]
+            - button "Mon 8AM Closed · ₱0" [ref=e93] [cursor=pointer]
+            - button "Mon 9AM Closed · ₱0" [ref=e95] [cursor=pointer]
+            - button "Mon 10AM Closed · ₱0" [ref=e97] [cursor=pointer]
+            - button "Mon 11AM Closed · ₱0" [ref=e99] [cursor=pointer]
+            - button "Mon 12PM Closed · ₱0" [ref=e101] [cursor=pointer]
+            - button "Mon 1PM Closed · ₱0" [ref=e103] [cursor=pointer]
+            - button "Mon 2PM Closed · ₱0" [ref=e105] [cursor=pointer]
+            - button "Mon 3PM Closed · ₱0" [ref=e107] [cursor=pointer]
+            - button "Mon 4PM Closed · ₱0" [ref=e109] [cursor=pointer]
+            - button "Mon 5PM Closed · ₱0" [ref=e111] [cursor=pointer]
+            - button "Mon 6PM Closed · ₱0" [ref=e113] [cursor=pointer]
+            - button "Mon 7PM Closed · ₱0" [ref=e115] [cursor=pointer]
+            - button "Mon 8PM Closed · ₱0" [ref=e117] [cursor=pointer]
+            - button "Mon 9PM Closed · ₱0" [ref=e119] [cursor=pointer]
+            - button "Mon 10PM Closed · ₱0" [ref=e121] [cursor=pointer]
+            - button "Mon 11PM Closed · ₱0" [ref=e123] [cursor=pointer]
+          - generic [ref=e125]:
+            - button "Tue" [ref=e126] [cursor=pointer]
+            - button "Tue 12AM Closed · ₱0" [ref=e127] [cursor=pointer]
+            - button "Tue 1AM Closed · ₱0" [ref=e129] [cursor=pointer]
+            - button "Tue 2AM Closed · ₱0" [ref=e131] [cursor=pointer]
+            - button "Tue 3AM Closed · ₱0" [ref=e133] [cursor=pointer]
+            - button "Tue 4AM Closed · ₱0" [ref=e135] [cursor=pointer]
+            - button "Tue 5AM Closed · ₱0" [ref=e137] [cursor=pointer]
+            - button "Tue 6AM Closed · ₱0" [ref=e139] [cursor=pointer]
+            - button "Tue 7AM Closed · ₱0" [ref=e141] [cursor=pointer]
+            - button "Tue 8AM Closed · ₱0" [ref=e143] [cursor=pointer]
+            - button "Tue 9AM Closed · ₱0" [ref=e145] [cursor=pointer]
+            - button "Tue 10AM Closed · ₱0" [ref=e147] [cursor=pointer]
+            - button "Tue 11AM Closed · ₱0" [ref=e149] [cursor=pointer]
+            - button "Tue 12PM Closed · ₱0" [ref=e151] [cursor=pointer]
+            - button "Tue 1PM Closed · ₱0" [ref=e153] [cursor=pointer]
+            - button "Tue 2PM Closed · ₱0" [ref=e155] [cursor=pointer]
+            - button "Tue 3PM Closed · ₱0" [ref=e157] [cursor=pointer]
+            - button "Tue 4PM Closed · ₱0" [ref=e159] [cursor=pointer]
+            - button "Tue 5PM Closed · ₱0" [ref=e161] [cursor=pointer]
+            - button "Tue 6PM Closed · ₱0" [ref=e163] [cursor=pointer]
+            - button "Tue 7PM Closed · ₱0" [ref=e165] [cursor=pointer]
+            - button "Tue 8PM Closed · ₱0" [ref=e167] [cursor=pointer]
+            - button "Tue 9PM Closed · ₱0" [ref=e169] [cursor=pointer]
+            - button "Tue 10PM Closed · ₱0" [ref=e171] [cursor=pointer]
+            - button "Tue 11PM Closed · ₱0" [ref=e173] [cursor=pointer]
+          - generic [ref=e175]:
+            - button "Wed" [ref=e176] [cursor=pointer]
+            - button "Wed 12AM Closed · ₱0" [ref=e177] [cursor=pointer]
+            - button "Wed 1AM Closed · ₱0" [ref=e179] [cursor=pointer]
+            - button "Wed 2AM Closed · ₱0" [ref=e181] [cursor=pointer]
+            - button "Wed 3AM Closed · ₱0" [ref=e183] [cursor=pointer]
+            - button "Wed 4AM Closed · ₱0" [ref=e185] [cursor=pointer]
+            - button "Wed 5AM Closed · ₱0" [ref=e187] [cursor=pointer]
+            - button "Wed 6AM Closed · ₱0" [ref=e189] [cursor=pointer]
+            - button "Wed 7AM Closed · ₱0" [ref=e191] [cursor=pointer]
+            - button "Wed 8AM Closed · ₱0" [ref=e193] [cursor=pointer]
+            - button "Wed 9AM Closed · ₱0" [ref=e195] [cursor=pointer]
+            - button "Wed 10AM Closed · ₱0" [ref=e197] [cursor=pointer]
+            - button "Wed 11AM Closed · ₱0" [ref=e199] [cursor=pointer]
+            - button "Wed 12PM Closed · ₱0" [ref=e201] [cursor=pointer]
+            - button "Wed 1PM Closed · ₱0" [ref=e203] [cursor=pointer]
+            - button "Wed 2PM Closed · ₱0" [ref=e205] [cursor=pointer]
+            - button "Wed 3PM Closed · ₱0" [ref=e207] [cursor=pointer]
+            - button "Wed 4PM Closed · ₱0" [ref=e209] [cursor=pointer]
+            - button "Wed 5PM Closed · ₱0" [ref=e211] [cursor=pointer]
+            - button "Wed 6PM Closed · ₱0" [ref=e213] [cursor=pointer]
+            - button "Wed 7PM Closed · ₱0" [ref=e215] [cursor=pointer]
+            - button "Wed 8PM Closed · ₱0" [ref=e217] [cursor=pointer]
+            - button "Wed 9PM Closed · ₱0" [ref=e219] [cursor=pointer]
+            - button "Wed 10PM Closed · ₱0" [ref=e221] [cursor=pointer]
+            - button "Wed 11PM Closed · ₱0" [ref=e223] [cursor=pointer]
+          - generic [ref=e225]:
+            - button "Thu" [ref=e226] [cursor=pointer]
+            - button "Thu 12AM Closed · ₱0" [ref=e227] [cursor=pointer]
+            - button "Thu 1AM Closed · ₱0" [ref=e229] [cursor=pointer]
+            - button "Thu 2AM Closed · ₱0" [ref=e231] [cursor=pointer]
+            - button "Thu 3AM Closed · ₱0" [ref=e233] [cursor=pointer]
+            - button "Thu 4AM Closed · ₱0" [ref=e235] [cursor=pointer]
+            - button "Thu 5AM Closed · ₱0" [ref=e237] [cursor=pointer]
+            - button "Thu 6AM Closed · ₱0" [ref=e239] [cursor=pointer]
+            - button "Thu 7AM Closed · ₱0" [ref=e241] [cursor=pointer]
+            - button "Thu 8AM Closed · ₱0" [ref=e243] [cursor=pointer]
+            - button "Thu 9AM Closed · ₱0" [ref=e245] [cursor=pointer]
+            - button "Thu 10AM Closed · ₱0" [ref=e247] [cursor=pointer]
+            - button "Thu 11AM Closed · ₱0" [ref=e249] [cursor=pointer]
+            - button "Thu 12PM Closed · ₱0" [ref=e251] [cursor=pointer]
+            - button "Thu 1PM Closed · ₱0" [ref=e253] [cursor=pointer]
+            - button "Thu 2PM Closed · ₱0" [ref=e255] [cursor=pointer]
+            - button "Thu 3PM Closed · ₱0" [ref=e257] [cursor=pointer]
+            - button "Thu 4PM Closed · ₱0" [ref=e259] [cursor=pointer]
+            - button "Thu 5PM Closed · ₱0" [ref=e261] [cursor=pointer]
+            - button "Thu 6PM Closed · ₱0" [ref=e263] [cursor=pointer]
+            - button "Thu 7PM Closed · ₱0" [ref=e265] [cursor=pointer]
+            - button "Thu 8PM Closed · ₱0" [ref=e267] [cursor=pointer]
+            - button "Thu 9PM Closed · ₱0" [ref=e269] [cursor=pointer]
+            - button "Thu 10PM Closed · ₱0" [ref=e271] [cursor=pointer]
+            - button "Thu 11PM Closed · ₱0" [ref=e273] [cursor=pointer]
+          - generic [ref=e275]:
+            - button "Fri" [ref=e276] [cursor=pointer]
+            - button "Fri 12AM Closed · ₱0" [ref=e277] [cursor=pointer]
+            - button "Fri 1AM Closed · ₱0" [ref=e279] [cursor=pointer]
+            - button "Fri 2AM Closed · ₱0" [ref=e281] [cursor=pointer]
+            - button "Fri 3AM Closed · ₱0" [ref=e283] [cursor=pointer]
+            - button "Fri 4AM Closed · ₱0" [ref=e285] [cursor=pointer]
+            - button "Fri 5AM Closed · ₱0" [ref=e287] [cursor=pointer]
+            - button "Fri 6AM Closed · ₱0" [ref=e289] [cursor=pointer]
+            - button "Fri 7AM Closed · ₱0" [ref=e291] [cursor=pointer]
+            - button "Fri 8AM Closed · ₱0" [ref=e293] [cursor=pointer]
+            - button "Fri 9AM Closed · ₱0" [ref=e295] [cursor=pointer]
+            - button "Fri 10AM Closed · ₱0" [ref=e297] [cursor=pointer]
+            - button "Fri 11AM Closed · ₱0" [ref=e299] [cursor=pointer]
+            - button "Fri 12PM Closed · ₱0" [ref=e301] [cursor=pointer]
+            - button "Fri 1PM Closed · ₱0" [ref=e303] [cursor=pointer]
+            - button "Fri 2PM Closed · ₱0" [ref=e305] [cursor=pointer]
+            - button "Fri 3PM Closed · ₱0" [ref=e307] [cursor=pointer]
+            - button "Fri 4PM Closed · ₱0" [ref=e309] [cursor=pointer]
+            - button "Fri 5PM Closed · ₱0" [ref=e311] [cursor=pointer]
+            - button "Fri 6PM Closed · ₱0" [ref=e313] [cursor=pointer]
+            - button "Fri 7PM Closed · ₱0" [ref=e315] [cursor=pointer]
+            - button "Fri 8PM Closed · ₱0" [ref=e317] [cursor=pointer]
+            - button "Fri 9PM Closed · ₱0" [ref=e319] [cursor=pointer]
+            - button "Fri 10PM Closed · ₱0" [ref=e321] [cursor=pointer]
+            - button "Fri 11PM Closed · ₱0" [ref=e323] [cursor=pointer]
+          - generic [ref=e325]:
+            - button "Sat" [ref=e326] [cursor=pointer]
+            - button "Sat 12AM Closed · ₱0" [ref=e327] [cursor=pointer]
+            - button "Sat 1AM Closed · ₱0" [ref=e329] [cursor=pointer]
+            - button "Sat 2AM Closed · ₱0" [ref=e331] [cursor=pointer]
+            - button "Sat 3AM Closed · ₱0" [ref=e333] [cursor=pointer]
+            - button "Sat 4AM Closed · ₱0" [ref=e335] [cursor=pointer]
+            - button "Sat 5AM Closed · ₱0" [ref=e337] [cursor=pointer]
+            - button "Sat 6AM Closed · ₱0" [ref=e339] [cursor=pointer]
+            - button "Sat 7AM Closed · ₱0" [ref=e341] [cursor=pointer]
+            - button "Sat 8AM Closed · ₱0" [ref=e343] [cursor=pointer]
+            - button "Sat 9AM Closed · ₱0" [ref=e345] [cursor=pointer]
+            - button "Sat 10AM Closed · ₱0" [ref=e347] [cursor=pointer]
+            - button "Sat 11AM Closed · ₱0" [ref=e349] [cursor=pointer]
+            - button "Sat 12PM Closed · ₱0" [ref=e351] [cursor=pointer]
+            - button "Sat 1PM Closed · ₱0" [ref=e353] [cursor=pointer]
+            - button "Sat 2PM Closed · ₱0" [ref=e355] [cursor=pointer]
+            - button "Sat 3PM Closed · ₱0" [ref=e357] [cursor=pointer]
+            - button "Sat 4PM Closed · ₱0" [ref=e359] [cursor=pointer]
+            - button "Sat 5PM Closed · ₱0" [ref=e361] [cursor=pointer]
+            - button "Sat 6PM Closed · ₱0" [ref=e363] [cursor=pointer]
+            - button "Sat 7PM Closed · ₱0" [ref=e365] [cursor=pointer]
+            - button "Sat 8PM Closed · ₱0" [ref=e367] [cursor=pointer]
+            - button "Sat 9PM Closed · ₱0" [ref=e369] [cursor=pointer]
+            - button "Sat 10PM Closed · ₱0" [ref=e371] [cursor=pointer]
+            - button "Sat 11PM Closed · ₱0" [ref=e373] [cursor=pointer]
+          - generic [ref=e375]:
+            - button "Sun" [ref=e376] [cursor=pointer]
+            - button "Sun 12AM Closed · ₱0" [ref=e377] [cursor=pointer]
+            - button "Sun 1AM Closed · ₱0" [ref=e379] [cursor=pointer]
+            - button "Sun 2AM Closed · ₱0" [ref=e381] [cursor=pointer]
+            - button "Sun 3AM Closed · ₱0" [ref=e383] [cursor=pointer]
+            - button "Sun 4AM Closed · ₱0" [ref=e385] [cursor=pointer]
+            - button "Sun 5AM Closed · ₱0" [ref=e387] [cursor=pointer]
+            - button "Sun 6AM Closed · ₱0" [ref=e389] [cursor=pointer]
+            - button "Sun 7AM Closed · ₱0" [ref=e391] [cursor=pointer]
+            - button "Sun 8AM Closed · ₱0" [ref=e393] [cursor=pointer]
+            - button "Sun 9AM Closed · ₱0" [ref=e395] [cursor=pointer]
+            - button "Sun 10AM Closed · ₱0" [ref=e397] [cursor=pointer]
+            - button "Sun 11AM Closed · ₱0" [ref=e399] [cursor=pointer]
+            - button "Sun 12PM Closed · ₱0" [ref=e401] [cursor=pointer]
+            - button "Sun 1PM Closed · ₱0" [ref=e403] [cursor=pointer]
+            - button "Sun 2PM Closed · ₱0" [ref=e405] [cursor=pointer]
+            - button "Sun 3PM Closed · ₱0" [ref=e407] [cursor=pointer]
+            - button "Sun 4PM Closed · ₱0" [ref=e409] [cursor=pointer]
+            - button "Sun 5PM Closed · ₱0" [ref=e411] [cursor=pointer]
+            - button "Sun 6PM Closed · ₱0" [ref=e413] [cursor=pointer]
+            - button "Sun 7PM Closed · ₱0" [ref=e415] [cursor=pointer]
+            - button "Sun 8PM Closed · ₱0" [ref=e417] [cursor=pointer]
+            - button "Sun 9PM Closed · ₱0" [ref=e419] [cursor=pointer]
+            - button "Sun 10PM Closed · ₱0" [ref=e421] [cursor=pointer]
+            - button "Sun 11PM Closed · ₱0" [ref=e423] [cursor=pointer]
+        - generic [ref=e425]:
+          - generic [ref=e426]: Peak - ₱350/hr
+          - generic [ref=e428]: Wknd Prime - ₱450/hr
+          - generic [ref=e430]: Holiday - ₱500/hr
+          - generic [ref=e432]: Early Bird - ₱150/hr
+          - generic [ref=e434]: Closed - No charge
+        - generic [ref=e436]:
+          - generic [ref=e437]:
+            - generic [ref=e438]: Active Override Rules
+            - button "+ Add Rule" [ref=e439] [cursor=pointer]
+          - generic [ref=e440]:
+            - generic [ref=e443]: Weekday Evening Peak
+            - generic [ref=e444]: ₱350/hr
+            - button "Edit" [ref=e445] [cursor=pointer]
+            - button "Delete" [ref=e446] [cursor=pointer]
+          - generic [ref=e447]:
+            - generic [ref=e450]: Weekend Prime Slot
+            - generic [ref=e451]: ₱450/hr
+            - button "Edit" [ref=e452] [cursor=pointer]
+            - button "Delete" [ref=e453] [cursor=pointer]
+          - generic [ref=e454]:
+            - generic [ref=e457]: Holiday Special
+            - generic [ref=e458]: ₱500/hr
+            - button "Edit" [ref=e459] [cursor=pointer]
+            - button "Delete" [ref=e460] [cursor=pointer]
+          - generic [ref=e461]:
+            - generic [ref=e464]: Early Bird Discount
+            - generic [ref=e465]: ₱150/hr
+            - button "Edit" [ref=e466] [cursor=pointer]
+            - button "Delete" [ref=e467] [cursor=pointer]
+  - dialog [ref=e468]:
+    - generic [ref=e470]:
+      - generic [ref=e471]:
+        - heading [level=2] [ref=e472]: Create your free account
+        - generic [ref=e473]: You'll need an account to continue. Browsing stays free — sign up takes a few seconds.
+      - button [ref=e474] [cursor=pointer]:
+        - img [ref=e476]
+    - generic [ref=e479]:
+      - list [ref=e480]:
+        - listitem [ref=e481]:
+          - img [ref=e484]
+          - text: Join games and lock in your spot
+        - listitem [ref=e486]:
+          - img [ref=e489]
+          - text: Create matches and start clubs
+        - listitem [ref=e491]:
+          - img [ref=e494]
+          - text: Track your matches and streaks
+      - button [ref=e496] [cursor=pointer]: Create free account
+      - button [ref=e497] [cursor=pointer]: I already have an account
+  - img [ref=e500]
+  - img [ref=e503]
+  - img [ref=e506]
+  - img [ref=e509]
+  - generic [ref=e512]: 12 Games Today
+  - generic [ref=e514]: 2 Spots Left
+  - generic [ref=e516]: 4 Courts Nearby
+  - generic [ref=e518]:
+    - generic [ref=e519]:
+      - img [ref=e520]
+      - img [ref=e528]
+    - generic [ref=e560]:
+      - img [ref=e561]
+      - heading "P i c k l e B a l l e r s" [level=1] [ref=e568]:
+        - generic [ref=e569]:
+          - generic [ref=e570]: P
+          - generic [ref=e571]: i
+          - generic [ref=e572]: c
+          - generic [ref=e573]: k
+          - generic [ref=e574]: l
+          - generic [ref=e575]: e
+        - generic [ref=e576]:
+          - generic [ref=e577]: B
+          - generic [ref=e578]: a
+          - generic [ref=e579]: l
+          - generic [ref=e580]: l
+          - generic [ref=e581]: e
+          - generic [ref=e582]: r
+          - generic [ref=e583]: s
+  - generic [ref=e584]:
+    - paragraph [ref=e585]: Find games. Meet players. Play more.
+    - button "Let's Play" [ref=e586] [cursor=pointer]
+  - generic:
+    - heading "You're in 🎾" [level=2]

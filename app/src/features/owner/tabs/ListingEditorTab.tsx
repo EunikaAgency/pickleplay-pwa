@@ -1,11 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Button } from '../../../shared/components/ui/Button';
 import { Toast } from '../../../shared/components/ui/Toast';
 import { Chip } from '../../../shared/components/ui/Chip';
 import { FormField } from '../../../shared/components/forms/FormField';
 import { FormSelect } from '../../../shared/components/forms/FormSelect';
-import { OwnerSection } from '../components/OwnerSection';
 import { BookingLinkShare } from '../components/BookingLinkShare';
 import { updateVenue, checkBookingSlug, deleteVenue, ApiError, type OwnerVenueDetail, type BookingSlugCheck, type PaymentOption } from '../../../shared/lib/api';
 
@@ -100,6 +99,36 @@ function TagField({ label, value, onChange, placeholder = 'Add and press Enter' 
           Add
         </button>
       </div>
+    </div>
+  );
+}
+
+// A collapsible card section — matches the court card accordion pattern.
+// Only the section with `defaultOpen` starts expanded; the rest are collapsed.
+function CollapsibleSection({ title, icon, description, defaultOpen, children }: { title: string; icon: string; description?: string; defaultOpen?: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  return (
+    <div className="card">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex-1 min-w-0 flex items-center gap-3 p-3 text-left w-full"
+      >
+        <span className="w-8 h-8 rounded-[10px] bg-[var(--primary-tint)] text-[var(--primary)] flex items-center justify-center shrink-0">
+          <Icon name={icon} size={16} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-[14px] text-[var(--ink)]">{title}</div>
+          {description && <div className="t-sm text-[var(--muted)] truncate">{description}</div>}
+        </div>
+        <Icon name="chevron" size={16} className={`text-[var(--muted)] shrink-0 ${open ? 'rotate-90 transition-transform' : 'transition-transform'}`} />
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-3 space-y-3 border-t-[0.5px] border-[var(--hairline)]">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -261,7 +290,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
 
   return (
     <div className="space-y-4">
-      <OwnerSection title="Identity" icon="edit" description="How your venue appears across PickleBallers.">
+      <CollapsibleSection title="Identity" icon="edit" description="How your venue appears across PickleBallers." defaultOpen>
         <div className="space-y-3.5">
           <FormField label="Venue name" value={form.displayName} maxLength={200} onChange={(e) => set('displayName')(e.target.value)} />
           <FormField
@@ -286,9 +315,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             </div>
           </div>
         </div>
-      </OwnerSection>
+      </CollapsibleSection>
 
-      <OwnerSection title="Contact & booking" icon="message">
+      <CollapsibleSection title="Contact & booking" icon="message">
         <div className="space-y-3.5">
           <FormField label="Phone" value={form.phone} maxLength={20} onChange={(e) => set('phone')(e.target.value)} />
           <FormField label="Email" type="email" value={form.email} maxLength={255} onChange={(e) => set('email')(e.target.value)} />
@@ -348,9 +377,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             {slugError && <div className="t-sm text-[var(--coral)] font-bold mt-1">{slugError}</div>}
           </div>
         </div>
-      </OwnerSection>
+      </CollapsibleSection>
 
-      <OwnerSection title="Booking policy" icon="calendar" description="Decide whether bookings are accepted automatically or after your review.">
+      <CollapsibleSection title="Booking policy" icon="calendar" description="Decide whether bookings are accepted automatically or after your review.">
         <Chip
           selected={requireApproval}
           onClick={() => { setRequireApproval((v) => !v); setStatus('idle'); }}
@@ -374,105 +403,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
           </div>
         )}
 
-        {/* Payment options offered at checkout (instant-book). */}
-        {!requireApproval && (
-          <div className="mt-4 pt-4 border-t-[0.5px] border-[var(--hairline)]">
-            <div className="lbl">Payment options at checkout</div>
-            <div className="flex flex-wrap gap-2">
-              {([
-                { id: 'full', label: 'Pay in full' },
-                { id: 'deposit', label: 'Deposit' },
-                { id: 'pay_at_venue', label: 'Pay at venue' },
-              ] as { id: PaymentOption; label: string }[]).map((o) => (
-                <Chip key={o.id} selected={paymentOptions.includes(o.id)} onClick={() => togglePaymentOption(o.id)}>
-                  {paymentOptions.includes(o.id) && <Icon name="check" size={12} />} {o.label}
-                </Chip>
-              ))}
-            </div>
-            <div className="t-sm mt-2 text-[var(--muted)]">
-              Players choose one of these when they book. Full-payment always applies if you pick none.
-            </div>
-            {paymentOptions.includes('deposit') && (
-              <div className="field p-0! mt-3">
-                <FormField
-                  label="Deposit (% of total)"
-                  hint="How much the player pays online now; the rest is collected at the venue."
-                  value={depositPercent}
-                  inputMode="numeric"
-                  onChange={(e) => { setDepositPercent(e.target.value.replace(/[^\d]/g, '')); setStatus('idle'); }}
-                />
-              </div>
-            )}
-          </div>
-        )}
-      </OwnerSection>
+      </CollapsibleSection>
 
-      <OwnerSection title="Hourly rate" icon="bolt" description="Your venue's default rate per hour. For per-court rates use the Courts tab. For time-based pricing (peak/off-peak hours) use the Hours tab.">
-        <FormField label="Default rate (₱/hr)" placeholder="400" value={form.priceFrom} inputMode="decimal" onChange={(e) => set('priceFrom')(e.target.value.replace(/[^\d.]/g, ''))} />
-        <div className="t-sm mt-2 text-[var(--muted)]">
-          This is the fallback rate — courts, hours, or weekend/holiday overrides take priority when set.
-        </div>
-      </OwnerSection>
-
-      <OwnerSection title="Weekend & holiday pricing" icon="calendar" description="Optional — charge more (or less) on weekends and specific dates. Leave blank to use the default rate.">
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="Weekend rate (₱/hr)" hint="Sat & Sun" value={form.weekendPrice} inputMode="decimal" onChange={(e) => set('weekendPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
-          <FormField label="Holiday rate (₱/hr)" hint="The dates below" value={form.holidayPrice} inputMode="decimal" onChange={(e) => set('holidayPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
-        </div>
-        <div className="field p-0! mt-3.5">
-          <label className="lbl">Holiday dates</label>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {holidayDates.length === 0 && <span className="t-sm">None yet.</span>}
-            {[...holidayDates].sort().map((d) => (
-              <span key={d} className="chip active gap-1.5">
-                {d}
-                <button type="button" onClick={() => { setHolidayDates((xs) => xs.filter((x) => x !== d)); setStatus('idle'); }} aria-label={`Remove ${d}`}>
-                  <Icon name="close" size={12} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input type="date" className="control" value={holidayDraft} onChange={(e) => setHolidayDraft(e.target.value)} aria-label="Holiday date" />
-            <button
-              type="button"
-              onClick={() => { if (holidayDraft && !holidayDates.includes(holidayDraft)) { setHolidayDates((xs) => [...xs, holidayDraft]); setStatus('idle'); } setHolidayDraft(''); }}
-              className="px-4 rounded-2xl bg-[var(--surface-2)] text-[var(--primary)] font-bold text-[13px] shrink-0"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-      </OwnerSection>
-
-      <OwnerSection title="Extras" icon="add_circle" description="Optional add-ons and surcharges applied at checkout. Leave blank to skip.">
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="Equipment rental (₱)" placeholder="150" value={form.equipmentRentalPrice} inputMode="decimal" onChange={(e) => set('equipmentRentalPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
-          <FormField label="Open play (₱)" placeholder="200" value={form.openPlayPrice} inputMode="decimal" onChange={(e) => set('openPlayPrice')(e.target.value.replace(/[^\d.]/g, ''))} />
-          <FormField label="Fee per extra player (₱)" hint="₱ per head past threshold" value={form.perPlayerFee} inputMode="decimal" onChange={(e) => set('perPlayerFee')(e.target.value.replace(/[^\d.]/g, ''))} />
-          <FormField label="Players included" hint="Before surcharge applies" value={form.perPlayerFeeThreshold} inputMode="numeric" onChange={(e) => set('perPlayerFeeThreshold')(e.target.value.replace(/[^\d]/g, ''))} />
-        </div>
-        {(Number(form.perPlayerFee) || 0) > 0 && (
-          <p className="t-sm text-[var(--muted)] mt-2">
-            Players past <strong className="text-[var(--ink)]">{Number(form.perPlayerFeeThreshold) || 1}</strong> are charged an extra <strong className="text-[var(--ink)]">₱{Number(form.perPlayerFee).toLocaleString()}</strong> each.
-          </p>
-        )}
-        <div className="grid grid-cols-2 gap-3 mt-3.5">
-          <FormField
-            label="Member discount (%)"
-            hint="Auto-applied for venue members. 0 = none."
-            value={form.memberDiscountPercent}
-            inputMode="numeric"
-            onChange={(e) => set('memberDiscountPercent')(e.target.value.replace(/[^\d]/g, ''))}
-          />
-        </div>
-        <div className="field p-0! mt-3.5">
-          <label className="lbl">Pricing notes</label>
-          <textarea className="control" rows={2} placeholder="e.g. Includes balls. Per-person rate for groups above 4." value={form.priceNotes} onChange={(e) => set('priceNotes')(e.target.value)} />
-        </div>
-      </OwnerSection>
-
-      <OwnerSection title="Cancellation & refund policy" icon="close" description="Set the rules players see before booking. The platform enforces these automatically.">
+      <CollapsibleSection title="Cancellation & refund policy" icon="close" description="Set the rules players see before booking. The platform enforces these automatically.">
         <div className="grid grid-cols-2 gap-3">
           <FormField
             label="Cancel window (hrs)"
@@ -502,9 +435,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             {(Number(noShowFee) || 0) > 0 ? <> No-shows are charged an extra <strong className="text-[var(--ink)]">₱{Number(noShowFee).toLocaleString()}</strong>.</> : ' No-shows forfeit their payment.'}
           </p>
         </div>
-      </OwnerSection>
+      </CollapsibleSection>
 
-      <OwnerSection title="Amenities" icon="check" description="Tap what your venue offers. Add custom ones below.">
+      <CollapsibleSection title="Amenities" icon="check" description="Tap what your venue offers. Add custom ones below.">
         <div className="flex flex-wrap gap-2">
           {AMENITIES.map((a) => {
             const on = amenities[a.key as string];
@@ -526,9 +459,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         <div className="mt-3">
           <TagField label="Custom amenities" placeholder="e.g. Ball machine, Locker room, etc." value={chips.customAmenities} onChange={(v) => { setChips((c) => ({ ...c, customAmenities: v })); setStatus('idle'); }} />
         </div>
-      </OwnerSection>
+      </CollapsibleSection>
 
-      <OwnerSection title="Highlights" icon="star" description="Curated by PickleBallers from real activity and your venue details — not editable here.">
+      <CollapsibleSection title="Highlights" icon="star" description="Curated by PickleBallers from real activity and your venue details — not editable here.">
         <div className="space-y-3.5">
           <div className="rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3.5">
             <div className="text-[12px] text-[var(--ink-2)] leading-snug">
@@ -561,7 +494,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
           <TagField label="Amenity chips" value={chips.amenityChips} onChange={(v) => { setChips((c) => ({ ...c, amenityChips: v })); setStatus('idle'); }} />
           <TagField label="Things to know" value={chips.thingsToKnow} onChange={(v) => { setChips((c) => ({ ...c, thingsToKnow: v })); setStatus('idle'); }} />
         </div>
-      </OwnerSection>
+      </CollapsibleSection>
 
       {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold text-center">Couldn't save. Try again.</div>}
       {slugBlocked && <div className="t-sm text-[var(--coral)] font-bold text-center">Pick a free custom link before saving.</div>}
@@ -569,7 +502,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         {status === 'saving' ? 'Saving…' : status === 'saved' ? <><Icon name="check" size={18} /> Saved</> : 'Save changes'}
       </Button>
 
-      <OwnerSection title="Danger zone" icon="close" description="Deleting removes this venue and its listing. This can't be undone.">
+      <CollapsibleSection title="Danger zone" icon="close" description="Deleting removes this venue and its listing. This can't be undone.">
         {confirmDelete ? (
           <div className="rounded-xl bg-[var(--coral-soft)] p-3.5">
             <div className="text-[13px] font-bold text-[var(--ink)]">Delete “{venue.displayName || 'this venue'}”?</div>
@@ -607,7 +540,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             <Icon name="close" size={16} /> Delete venue
           </button>
         )}
-      </OwnerSection>
+      </CollapsibleSection>
 
       <Toast message="Listing saved" show={status === 'saved'} />
     </div>
