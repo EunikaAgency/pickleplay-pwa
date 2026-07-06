@@ -9,7 +9,7 @@ export type Screen =
   // lobby; Nearby shows a "select a court" banner and the booking flow hands back
   // to create-game on completion.
   | { id: 'nearby'; params?: { intent?: 'lobby' } }
-  | { id: 'games'; params?: { section?: 'games' | 'open-play' | 'booked'; view?: 'discover' | 'joined' | 'manage' } }
+  | { id: 'games'; params?: { section?: 'games' | 'open-play'; view?: 'discover' | 'joined' | 'invites' | 'manage' } }
   | { id: 'tournaments' }
   | { id: 'tournament'; params: { id: string } }
   | { id: 'tournament-chat'; params: { id: string; name?: string } }
@@ -41,6 +41,7 @@ export type Screen =
   | { id: 'search' }
   | { id: 'invite-players'; params: { id: string } }
   | { id: 'notifications' }
+  | { id: 'friends' }
   | { id: 'messages' }
   | { id: 'chat'; params: { id: string; name?: string } }
   | { id: 'game-chat'; params: { id: string; name?: string } }
@@ -68,7 +69,9 @@ export type Screen =
   | { id: 'organizer-venue-requests'; params: { tournamentId?: string } }
   | { id: 'admin-claims' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
-  | { id: 'open-play-book'; params: { venueId: string } };
+  | { id: 'open-play-book'; params: { venueId: string } }
+  // Public flowchart viewer (no auth required).
+  | { id: 'flowchart' };
 
 export type ScreenId = Screen['id'];
 
@@ -106,7 +109,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'profile': return '/profile';
     case 'game-details': return `/games/${screen.params.id}`;
     case 'open-play-detail': return `/open-play/${screen.params.id}`;
-    case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent, filterDate: screen.params.filterDate, filterStartHour: screen.params.filterStartHour })}`;
+    case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent, filterDate: screen.params.filterDate, filterStartHour: screen.params.filterStartHour, filterEndHour: screen.params.filterEndHour })}`;
     case 'club-details': return `/clubs/${screen.params.id}${q({ invited: screen.params.invited })}`;
     case 'club-post': return `/clubs/${screen.params.id}/posts/${screen.params.postId}`;
     case 'club-post-edit': return `/clubs/${screen.params.id}/posts/${screen.params.postId}/edit`;
@@ -126,6 +129,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'search': return '/search';
     case 'invite-players': return `/games/${screen.params.id}/invite`;
     case 'notifications': return '/notifications';
+    case 'friends': return '/friends';
     case 'messages': return '/messages';
     case 'chat': return `/messages/${screen.params.id}${q({ name: screen.params.name })}`;
     case 'game-chat': return `/games/${screen.params.id}/chat${q({ name: screen.params.name })}`;
@@ -153,6 +157,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'organizer-venue-requests': return `/organizer/venue-requests${q({ tournamentId: screen.params?.tournamentId })}`;
     case 'admin-claims': return '/admin/claims';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
+    case 'flowchart': return '/flowchart';
   }
   return '/';
 }
@@ -179,11 +184,11 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'reset-password': return { id: 'reset-password', params: { token: sp.get('token') || '' } };
     case 'onboarding': return { id: 'onboarding' };
     case 'nearby':
-      if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
+      if (b) return { id: 'court-details', params: { id: b, intent: lobby, filterDate: opt(sp.get('filterDate')), filterStartHour: opt(sp.get('filterStartHour')) ? Number(sp.get('filterStartHour')) : undefined, filterEndHour: opt(sp.get('filterEndHour')) ? Number(sp.get('filterEndHour')) : undefined } };
       return { id: 'nearby', params: lobby ? { intent: lobby } : undefined };
     case 'venues':
       if (b && c === 'open-play') return { id: 'open-play-book', params: { venueId: b } };
-      if (b) return { id: 'court-details', params: { id: b, intent: lobby } };
+      if (b) return { id: 'court-details', params: { id: b, intent: lobby, filterDate: opt(sp.get('filterDate')), filterStartHour: opt(sp.get('filterStartHour')) ? Number(sp.get('filterStartHour')) : undefined, filterEndHour: opt(sp.get('filterEndHour')) ? Number(sp.get('filterEndHour')) : undefined } };
       return { id: 'nearby' };
     case 'games':
       if (!b) {
@@ -192,8 +197,8 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
         return {
           id: 'games',
           params: {
-            section: section === 'open-play' || section === 'booked' ? section : 'games',
-            view: view === 'joined' || view === 'manage' ? view : 'discover',
+            section: section === 'open-play' ? 'open-play' : 'games',
+            view: view === 'joined' || view === 'invites' || view === 'manage' ? view : 'discover',
           },
         };
       }
@@ -218,10 +223,10 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'club-details', params: { id: b, invited: sp.get('invited') === '1' || undefined } };
     case 'my-games': return { id: 'games', params: { section: 'open-play', view: 'manage' } };
     case 'book': return { id: 'book-court', params: { venueId: opt(sp.get('venueId')), date: opt(sp.get('date')), time: opt(sp.get('time')), hours: opt(sp.get('hours')) ? Number(sp.get('hours')) : undefined, courtId: opt(sp.get('courtId')), intent: lobby } };
-    case 'my-bookings': return { id: 'games', params: { section: 'booked', view: 'manage' } };
+    case 'my-bookings': return { id: 'games', params: { section: 'open-play', view: 'manage' } };
     case 'bookings':
       if (b && c === 'refund') return { id: 'booking-refund', params: { bookingId: b } };
-      return { id: 'games', params: { section: 'booked', view: 'manage' } };
+      return { id: 'games', params: { section: 'open-play', view: 'manage' } };
     case 'open-play':
       if ((b === 'game' || b === 'session') && c) return { id: 'open-play-detail', params: { source: b, id: c } };
       if (b) return { id: 'open-play-detail', params: { source: 'auto', id: b } };
@@ -233,6 +238,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'settings' };
     case 'search': return { id: 'search' };
     case 'notifications': return { id: 'notifications' };
+    case 'friends': return { id: 'friends' };
     case 'messages': return b ? { id: 'chat', params: { id: b, name: opt(sp.get('name')) } } : { id: 'messages' };
     case 'owner':
       if (b === 'venues') {
@@ -263,6 +269,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'rosters') return c ? { id: 'organizer-roster', params: { id: c } } : { id: 'organizer-rosters' };
       if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : {} };
       return { id: 'organizer-hub' };
+    case 'flowchart': return { id: 'flowchart' };
     case 'admin':
       if (b === 'claims') return { id: 'admin-claims' };
       return { id: 'home' };
@@ -291,6 +298,8 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id.startsWith('organizer-')) return { id: 'organizer-hub' };
   if (id === 'admin-claims') return { id: 'profile' };
   if (id === 'open-play-book') return { id: 'nearby' };
+  if (id === 'flowchart') return { id: 'home' };
+  if (id === 'friends') return { id: 'profile' };
   return { id: 'home' };
 }
 

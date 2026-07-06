@@ -723,7 +723,7 @@ export interface BatchVenueAvailability {
 export async function batchVenueAvailability(venueIds: string[], date: string): Promise<BatchVenueAvailability> {
   return request<BatchVenueAvailability>(`${VENUES_PREFIX}/availability/batch`, {
     method: 'POST',
-    body: JSON.stringify({ venueIds, date }),
+    body: { venueIds, date },
   });
 }
 
@@ -1593,8 +1593,8 @@ export interface ApiGame {
   status?: GameStatus | string | null;
   /** The host's court reservation, made + paid when the game was created. */
   bookingId?: string | null;
-  /** Player ids the host has invited (notified) but who haven't joined yet. */
-  invitedUserIds?: string[];
+  /** Players invited + who invited them: `{ user, invitedBy }`. */
+  invitedUserIds?: { user: string; invitedBy?: ApiGamePerson | null }[];
 }
 
 /** A player result from people/invite search (`/search?type=players`). */
@@ -1615,6 +1615,8 @@ export interface ListGamesParams {
   date?: string;
   /** "My Games" — games the current user created or joined (needs auth). */
   mine?: boolean;
+  /** "My Invites" — games the current user was invited to (needs auth). */
+  invited?: boolean;
 }
 
 export interface CreateGamePayload {
@@ -1975,6 +1977,10 @@ export async function inviteToGame(id: string, userIds: string[]): Promise<{ inv
   return request<{ invited: number }>(`${GAMES_PREFIX}/${id}/invite`, { method: 'POST', body: { userIds }, auth: true });
 }
 
+export async function declineGameInvite(id: string): Promise<{ declined: boolean }> {
+  return request<{ declined: boolean }>(`${GAMES_PREFIX}/${id}/invite`, { method: 'DELETE', auth: true });
+}
+
 /* ─── Notifications (inbox) ──────────────────────────────────── */
 //
 // The current user's notification feed (e.g. "your lobby is full"). All routes
@@ -1990,6 +1996,8 @@ export interface ApiNotification {
   icon?: string | null;
   /** A relative app path (e.g. "/games/<id>") the client maps to a screen. */
   linkUrl?: string | null;
+  /** Opaque tag for grouping related notifications (e.g. friend-request-<id>). */
+  tag?: string | null;
   isRead: boolean;
   createdAt?: string;
 }
@@ -2042,6 +2050,8 @@ export interface ApiConversationSummary {
   otherParticipant: ApiChatParticipant | null;
   lastBody?: string | null;
   lastSenderId?: string | null;
+  /** Set when the last message was deleted — the senderId of the user who deleted it. */
+  lastDeletedBy?: string | null;
   lastAt?: string | null;
   unread: number;
   /** When the conversation was started from a venue page. */
@@ -2049,6 +2059,11 @@ export interface ApiConversationSummary {
   contextId?: string | null;
   /** Resolved label — venue name, or "VenueName · Date" for bookings. null = direct message. */
   contextLabel?: string | null;
+  /** Venue image URL (when contextType is 'venue'). Raw path — wrap with apiImageUrl. */
+  contextImageUrl?: string | null;
+  /** True when the current user owns this venue — the owner should see the
+   *  player's name + avatar, not the venue info. Players see the venue. */
+  viewerIsOwner?: boolean;
 }
 
 export interface ApiChatMessage {
@@ -2058,6 +2073,7 @@ export interface ApiChatMessage {
   body: string;
   createdAt?: string;
   mine: boolean;
+  deleted?: boolean;
   replyToMessageId?: string | null;
   replyTo?: ApiChatMessage | null;
   readByOther?: boolean;
@@ -2139,6 +2155,73 @@ export async function deleteConversation(id: string): Promise<void> {
 /** Delete one of your own messages (removed for both participants). */
 export async function deleteMessage(conversationId: string, messageId: string): Promise<void> {
   await request(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Friends ────────────────────────────────────────────────── */
+//
+// Player-to-player social connections. Send/accept/reject friend requests;
+// list friends; search for friendable users. Only users with role player/coach/
+// organizer can be friended (enforced server-side).
+
+const FRIENDS_PREFIX = '/api/v1/friends';
+
+export interface ApiFriendProfile {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  roleDefault: string;
+  bio: string | null;
+  skillLevel: number | null;
+  skillLevelLabel: string | null;
+}
+
+export interface ApiFriend {
+  id: string;
+  friend: ApiFriendProfile;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt?: string;
+  sentByMe: boolean;
+}
+
+/** List the current user's accepted friends. */
+export async function listFriends(): Promise<ApiFriend[]> {
+  const env = await rawRequest<ApiFriend[]>(FRIENDS_PREFIX, { auth: true });
+  return env.data ?? [];
+}
+
+/** List pending friend requests (sent + received). */
+export async function listPendingFriendRequests(): Promise<ApiFriend[]> {
+  const env = await rawRequest<ApiFriend[]>(`${FRIENDS_PREFIX}/pending`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Suggested friendable users — nearby (when lat/lng passed) → shared games/clubs → random. */
+export async function suggestFriends(lat?: number | null, lng?: number | null): Promise<(ApiFriendProfile & { distanceKm?: number })[]> {
+  const params: Record<string, string> = {};
+  if (lat != null && lng != null) { params.lat = String(lat); params.lng = String(lng); }
+  const env = await rawRequest<(ApiFriendProfile & { distanceKm?: number })[]>(`${FRIENDS_PREFIX}/suggestions${toQuery(params)}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Search for friendable users (player/coach/organizer, excludes existing + self). */
+export async function searchFriendableUsers(q: string): Promise<ApiFriendProfile[]> {
+  const env = await rawRequest<ApiFriendProfile[]>(`${FRIENDS_PREFIX}/search${toQuery({ q })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Send a friend request to a user. */
+export async function sendFriendRequest(userId: string): Promise<{ id: string; status: string; sentByMe: boolean }> {
+  return request<{ id: string; status: string; sentByMe: boolean }>(`${FRIENDS_PREFIX}/request`, { method: 'POST', body: { userId }, auth: true });
+}
+
+/** Accept or reject a friend request. */
+export async function respondToFriendRequest(requestId: string, accept: boolean): Promise<{ id: string; status: string }> {
+  return request<{ id: string; status: string }>(`${FRIENDS_PREFIX}/request/${encodeURIComponent(requestId)}`, { method: 'PATCH', body: { accept }, auth: true });
+}
+
+/** Remove a friend (either side can do this). */
+export async function removeFriend(friendshipId: string): Promise<{ id: string; removed: boolean }> {
+  return request<{ id: string; removed: boolean }>(`${FRIENDS_PREFIX}/${encodeURIComponent(friendshipId)}`, { method: 'DELETE', auth: true });
 }
 
 /* ─── Web Push (OS notifications) ────────────────────────────── */
@@ -2906,6 +2989,8 @@ export interface AppSettings {
   /** BCC every transactional email to this address (admin toggle). */
   emailBccEnabled?: boolean;
   emailBccAddress?: string;
+  /** Pricing mode: 'start' = rate based on booking start time (default); 'blend' = per-hour resolution. */
+  pricingMode?: 'start' | 'blend';
 }
 
 /** Public app settings — used by checkout to decide test vs live card UI. */
@@ -2914,7 +2999,7 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 /** Admin-only: update app settings. */
-export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress'>>): Promise<AppSettings> {
+export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress' | 'pricingMode'>>): Promise<AppSettings> {
   return request<AppSettings>('/api/v1/settings', { method: 'PATCH', body: patch, auth: true });
 }
 

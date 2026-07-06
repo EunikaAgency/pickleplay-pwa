@@ -278,7 +278,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
       ) : (
         <div className="scroll pb-[130px]">
           <div className="detail-hero">
-            <div className="img bg-[linear-gradient(135deg,#0040e0_0%,#6c83ff_60%,#a5b9ff_100%)]" />
+            <div className="img" style={{ backgroundImage: `url(${apiImageUrl(game?.courtImage) || apiImageUrl(game?.venue?.image) || '/fallback-game.png'})` }} />
             <div className="absolute -right-7 top-[60px] opacity-85 [transform:rotate(-12deg)_scale(1.1)]">
               <CourtIllustration width={240} />
             </div>
@@ -463,21 +463,6 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                     {game.participantCount ?? participants.length} going{spotsLeft > 0 ? ` · ${spotsLeft} spots open` : ''}
                   </div>
                 </div>
-                <button className="more" onClick={() => onNavigate('invite-players', { id: game.id })}>Invite</button>
-              </div>
-              <div className="players-grid">
-                {participants.map((p, i) => (
-                  <div key={p.id} className="player">
-                    <Avatar src={p.avatarUrl} name={p.displayName || 'Player'} size={56} variant={AVATAR_VARIANTS[i % AVATAR_VARIANTS.length]} />
-                    <div className="name">{me && p.id === me.id ? 'You' : (p.displayName || 'Player').split(' ')[0]}</div>
-                  </div>
-                ))}
-                {Array.from({ length: spotsLeft }, (_, i) => (
-                  <div key={`e${i}`} className="player empty">
-                    <Avatar size={56} />
-                    <div className="name text-[var(--muted)]!">Open</div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -619,7 +604,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
             gameId={game.id}
             title={gameTitle(game)}
             subtitle={[timeLine(game), gameLocation(game), spotsLabel(game)].filter(Boolean).join(' · ')}
-            image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || ''}
+            image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || '/fallback-game.png'}
             gameType={gameTypeLabel(game)}
             skillLabel={game.skillLabel ?? undefined}
             dateTime={[dayParts(game).day === 'TODAY' ? 'Today' : dayParts(game).day === 'TOM' ? 'Tomorrow' : dayParts(game).day, timeLine(game)].filter(Boolean).join(' · ') || undefined}

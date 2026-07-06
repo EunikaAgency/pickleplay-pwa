@@ -29,6 +29,8 @@ interface ShareLobbySheetProps {
   capacity?: number;
   /** Lets the empty-state CTA jump to the Clubs tab; optional. */
   onNavigate?: Navigate;
+  /** Called when the user taps "Invite" — parent should open an invite sheet. */
+  onInvite?: () => void;
 }
 
 /**
@@ -42,10 +44,11 @@ interface ShareLobbySheetProps {
  * Share-to-club is gated client-side on `player.clubs.post` (server is the real
  * authority); guests/ineligible users still get Copy link.
  */
-export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, image, gameType, skillLabel, dateTime, venue, spotsLeft, capacity, onNavigate }: ShareLobbySheetProps) {
+export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, image, gameType, skillLabel, dateTime, venue, spotsLeft, capacity, onNavigate, onInvite }: ShareLobbySheetProps) {
   const user = useAuthStore((s) => s.user);
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
   const canShareToClub = isLoggedIn && userHasPermission(user, 'player.clubs.post');
+  const canInvite = isLoggedIn && userHasPermission(user, 'player.games.invite');
 
   const [mode, setMode] = useState<'choose' | 'clubs'>('choose');
   const [clubs, setClubs] = useState<ApiClub[] | null>(null);
@@ -142,6 +145,16 @@ export function ShareLobbySheet({ open, onClose, gameId, title, subtitle, image,
       >
         {mode === 'choose' ? (
           <div className="px-1 pb-2 flex flex-col gap-2.5">
+            {canInvite && onInvite && (
+              <button type="button" onClick={() => { onClose(); onInvite(); }} className={rowClass}>
+                <span className="shrink-0 text-[var(--primary)]"><Icon name="mail" size={20} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-bold text-[var(--ink)]">Invite</span>
+                  <span className="block text-[12px] text-[var(--muted)] truncate">Search and invite players to this game</span>
+                </span>
+                <span className="shrink-0 text-[var(--muted)]"><Icon name="forward" size={16} /></span>
+              </button>
+            )}
             <button type="button" onClick={copyLink} className={rowClass}>
               <span className="shrink-0 text-[var(--primary)]"><Icon name="globe" size={20} /></span>
               <span className="min-w-0 flex-1">

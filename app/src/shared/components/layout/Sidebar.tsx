@@ -2,6 +2,7 @@ import { Icon } from '../ui/Icon';
 import { Avatar } from '../ui/Avatar';
 import type { TabId } from '../../lib/navigation';
 import { useAuthStore } from '../../lib/authStore';
+import { useMessageStore } from '../../lib/messageStore';
 import { userHasPermission, type AppUser } from '../../lib/permissions';
 
 /** Human label for a signed-in user's role, used as the sidebar footer subtitle. */
@@ -33,6 +34,8 @@ interface SidebarProps {
   showTournaments?: boolean;
   /** Owners get owner-specific labels (Profile instead of You, Venues instead of Nearby, etc.). */
   isOwner?: boolean;
+  /** Organizers get organizer-specific labels (Organize instead of Today, etc.). */
+  isOrganizer?: boolean;
 }
 
 interface SideTab {
@@ -62,9 +65,20 @@ const ownerTabs: SideTab[] = [
   { id: 'profile', label: 'Profile',  icon: 'user' },
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenPricing, pricingActive = false, showTournaments = true, isOwner = false }: SidebarProps) {
+// Organizer tabs — the organizer console home lives on the "Organize" tab.
+const organizerTabs: SideTab[] = [
+  { id: 'home',    label: 'Organize', icon: 'trophy' },
+  { id: 'games',   label: 'Games',    icon: 'calendar' },
+  { id: 'nearby',  label: 'Nearby',   icon: 'map_pin' },
+  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'profile', label: 'Profile',  icon: 'user' },
+];
+
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenPricing, pricingActive = false, showTournaments = true, isOwner = false, isOrganizer = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
-  const visibleTabs = (isOwner ? ownerTabs : tabs).filter((t) => t.id !== 'tournaments' || showTournaments);
+  const unreadMessages = useMessageStore((s) => s.unread);
+  const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
+  const visibleTabs = roleTabs.filter((t) => t.id !== 'tournaments' || showTournaments);
   const showOwnerPricing = userHasPermission(currentUser, 'owner.access') && onOpenPricing;
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
@@ -106,7 +120,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
                 aria-current={isActive ? 'page' : undefined}
               >
                 <span className="ico">
-                  <Icon name={!isOwner && isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
+                  <Icon name={(!isOwner && !isOrganizer) && isActive ? (t.iconFill ?? t.icon) : t.icon} size={20} />
                 </span>
                 {label}
               </button>
@@ -126,11 +140,16 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
           );
         })}
         {isLoggedIn && onOpenMessages && (
-          <button className="side-tab" onClick={onOpenMessages}>
+          <button className={`side-tab ${activeTab === 'messages' ? 'active' : ''}`} onClick={onOpenMessages} aria-current={activeTab === 'messages' ? 'page' : undefined}>
             <span className="ico">
               <Icon name="chat" size={20} />
             </span>
             Messages
+            {unreadMessages > 0 && (
+              <span className="side-tab-badge" aria-label={`${unreadMessages} unread messages`}>
+                {unreadMessages > 99 ? '99+' : unreadMessages}
+              </span>
+            )}
           </button>
         )}
       </nav>

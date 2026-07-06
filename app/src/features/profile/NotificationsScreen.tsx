@@ -6,7 +6,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
-import { listNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, respondToVenueMembershipInvite, getVenue, listPublicPlans, type ApiNotification, type ApiSubscriptionPlan } from '../../shared/lib/api';
+import { listNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, respondToVenueMembershipInvite, getVenue, listPublicPlans, respondToFriendRequest, type ApiNotification, type ApiSubscriptionPlan } from '../../shared/lib/api';
 import { MembershipSheet } from '../venues/MembershipSheet';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { useNotificationStore } from '../../shared/lib/notificationStore';
@@ -30,6 +30,7 @@ function bgForType(type?: string | null): IconBg {
     case 'venue_membership_removed':  return 'coral';
     case 'booking_pending_approval':  return 'coral';
     case 'booking_approved':          return 'lime';
+    case 'friend_request':            return 'lime';
     case 'message':                   return 'blue';
     case 'alert':                     return 'coral';
     default:                          return 'blue';
@@ -88,6 +89,9 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   if (clubPost) { onNavigate('club-post', { id: clubPost[1], postId: clubPost[2] }); return true; }
   const club = linkUrl.match(/^\/clubs\/([a-z0-9-]+)$/);
   if (club) { onNavigate('club-details', { id: club[1] }); return true; }
+  // Friends
+  const friendsLink = linkUrl.match(/^\/friends/);
+  if (friendsLink) { onNavigate('friends'); return true; }
   // Owner bookings inbox (e.g. /owner/bookings?status=pending_approval).
   const ownerBookings = linkUrl.match(/^\/owner\/bookings(\?.*)?$/);
   if (ownerBookings) {
@@ -98,7 +102,7 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   return false;
 }
 
-const FILTERS = ['All', 'Unread'] as const;
+const FILTERS = ['All', 'Unread', 'Friend Request'] as const;
 type Filter = (typeof FILTERS)[number];
 
 type PushState = 'idle' | 'enabling' | 'on' | 'denied' | 'unsupported';
@@ -158,7 +162,11 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
   const retry = () => { setLoading(true); setError(null); setReloadKey((k) => k + 1); };
 
   const unread = items.filter((n) => !n.isRead).length;
-  const visible = filter === 'Unread' ? items.filter((n) => !n.isRead) : items;
+  const visible = filter === 'Unread'
+    ? items.filter((n) => !n.isRead)
+    : filter === 'Friend Request'
+      ? items.filter((n) => n.type === 'friend_request')
+      : items;
 
   // Keep the global unread badge in lockstep with what this screen shows (the
   // user is looking at the authoritative list here), so marking read updates the
@@ -348,11 +356,17 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
         ) : visible.length === 0 ? (
           <EmptyState
             icon="bell"
-            title={filter === 'Unread' ? "You're all caught up" : 'No notifications yet'}
+            title={
+              filter === 'Unread' ? "You're all caught up"
+              : filter === 'Friend Request' ? 'No friend requests'
+              : 'No notifications yet'
+            }
             description={
               filter === 'Unread'
                 ? 'Nothing unread right now.'
-                : "We'll ping you when something happens — like when your game's lobby fills up."
+                : filter === 'Friend Request'
+                  ? 'Friend requests will appear here.'
+                  : "We'll ping you when something happens — like when your game's lobby fills up."
             }
           />
         ) : (
@@ -413,6 +427,85 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
               }
               // Already read (handled) — fall through to render as a regular notification.
             }
+
+            // Friend requests: show Confirm/Reject while unread. Once read, render as
+            // a regular notification — tapping navigates to /friends.
+            if (n.type === 'friend_request') {
+              const st = inviteState[n.id];
+              const resolved = st === 'accepted' || st === 'declined';
+              const pending = !n.isRead && !resolved;
+              if (pending || resolved) {
+                return (
+                  <div key={n.id} className={`notif ${!n.isRead ? 'unread' : ''}`}>
+                    <div className={`ic ${bgForType(n.type)}`}>
+                      <Icon name={iconFor(n)} size={18} />
+                    </div>
+                    <div className="body">
+                      <div className="head">
+                        <strong>{cleanTitle(n.title)}</strong>
+                        {n.body ? <> — {n.body}</> : null}
+                      </div>
+                      <div className="time">{relativeTime(n.createdAt)}</div>
+                      {resolved ? (
+                        <div className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--muted)]">
+                          <Icon name={st === 'accepted' ? 'check_circle' : 'cancel'} size={14} />
+                          {st === 'accepted' ? 'Friend request accepted' : 'Friend request declined'}
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const requestId = (n.tag || '').replace('friend-request-', '');
+                              if (!requestId) { onNavigate('friends'); return; }
+                              setInviteState((s) => ({ ...s, [n.id]: 'accepting' }));
+                              try {
+                                await respondToFriendRequest(requestId, true);
+                                setInviteState((s) => ({ ...s, [n.id]: 'accepted' }));
+                                if (!n.isRead) {
+                                  setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+                                  void markNotificationRead(n.id).catch(() => {});
+                                }
+                              } catch {
+                                setInviteState((s) => { const next = { ...s }; delete next[n.id]; return next; });
+                              }
+                            }}
+                            disabled={!!st}
+                            className="rounded-xl bg-[var(--ink)] text-white text-[13px] font-bold px-3.5 py-1.5 disabled:opacity-60"
+                          >
+                            {st === 'accepting' ? '…' : 'Confirm'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const requestId = (n.tag || '').replace('friend-request-', '');
+                              if (!requestId) { onNavigate('friends'); return; }
+                              setInviteState((s) => ({ ...s, [n.id]: 'declining' }));
+                              try {
+                                await respondToFriendRequest(requestId, false);
+                                setInviteState((s) => ({ ...s, [n.id]: 'declined' }));
+                                if (!n.isRead) {
+                                  setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+                                  void markNotificationRead(n.id).catch(() => {});
+                                }
+                              } catch {
+                                setInviteState((s) => { const next = { ...s }; delete next[n.id]; return next; });
+                              }
+                            }}
+                            disabled={!!st}
+                            className="rounded-xl bg-[var(--surface-2)] text-[var(--ink)] text-[13px] font-bold px-3.5 py-1.5 disabled:opacity-60"
+                          >
+                            {st === 'declining' ? '…' : 'Reject'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              // Already handled — fall through to render as a regular notification.
+            }
+
             const hasTarget = /^\/(games\/[0-9a-fA-F]{24}(\/chat)?|messages\/[0-9a-fA-F]{24}|clubs\/[a-z0-9-]+(\/posts\/[0-9a-fA-F]{24})?)$/.test(n.linkUrl || '');
             return (
               <div key={n.id} className={`notif ${!n.isRead ? 'unread' : ''} flex items-start`}>

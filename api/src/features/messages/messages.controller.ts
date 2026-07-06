@@ -4,6 +4,7 @@ import { User } from '../auth/auth.model.js';
 import { Venue } from '../venues/venues.model.js';
 import { Booking } from '../bookings/bookings.model.js';
 import { Notification } from '../interactions/interactions.model.js';
+import { Media } from '../media/media.model.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
@@ -57,11 +58,25 @@ export async function listConversations(c: any) {
   // each conversation row can show where it came from.
   const venueIds = convs.filter((cv: any) => cv.contextType === 'venue' && cv.contextId).map((cv: any) => String(cv.contextId));
   const bookingIds = convs.filter((cv: any) => cv.contextType === 'booking' && cv.contextId).map((cv: any) => String(cv.contextId));
-  const [venues, bookings] = await Promise.all([
-    venueIds.length ? Venue.find({ _id: { $in: venueIds } }).select('displayName').lean() : [],
+  const [venues, bookings, venueMedia] = await Promise.all([
+    venueIds.length ? Venue.find({ _id: { $in: venueIds } }).select('displayName mainImageUrl ownerUserId').lean() : [],
     bookingIds.length ? Booking.find({ _id: { $in: bookingIds } }).select('date venueId').lean() : [],
-  ]) as [any[], any[]];
+    venueIds.length ? Media.find({ ownerType: 'venue', ownerId: { $in: venueIds } }).select('ownerId url isPrimary').lean() : [],
+  ]) as [any[], any[], any[]];
   const venueById = new Map(venues.map((v) => [String(v._id), v]));
+  // Map venueId → best image URL. Start with mainImageUrl (CSV import, may be a
+  // relative path like /images/venues/<slug>/...), then override with Media images
+  // (user-uploaded, higher priority — prefer primary, then first found).
+  const venueImageById = new Map<string, string>();
+  for (const v of venues) {
+    if ((v as any).mainImageUrl) venueImageById.set(String(v._id), (v as any).mainImageUrl);
+  }
+  for (const m of venueMedia) {
+    const vid = String((m as any).ownerId);
+    if (!venueImageById.has(vid) || (m as any).isPrimary) {
+      venueImageById.set(vid, (m as any).url);
+    }
+  }
   const bookingById = new Map(bookings.map((b) => [String(b._id), b]));
   // Resolve booking venue names from the already-fetched venues + any additional ones.
   const bookingVenueIds = [...new Set(bookings.map((b: any) => String(b.venueId)).filter(Boolean))] as string[];
@@ -97,6 +112,7 @@ export async function listConversations(c: any) {
       const unread = await Message.countDocuments({
         conversationId: cv._id,
         senderId: { $ne: user.sub },
+        deleted: { $ne: true },
         createdAt: { $gt: since },
       });
       return {
@@ -104,11 +120,18 @@ export async function listConversations(c: any) {
         otherParticipant: personView(otherId ? userById.get(otherId) : null) ?? (otherId ? { id: otherId, displayName: 'Player', avatarUrl: null } : null),
         lastBody: cv.lastBody ?? null,
         lastSenderId: cv.lastSenderId ? String(cv.lastSenderId) : null,
+        lastDeletedBy: cv.lastDeletedBy ? String(cv.lastDeletedBy) : null,
         lastAt: cv.lastAt ?? null,
         unread,
         contextType: cv.contextType ?? null,
         contextId: cv.contextId ? String(cv.contextId) : null,
         contextLabel: contextLabel(cv),
+        contextImageUrl: cv.contextType === 'venue' && cv.contextId ? (venueImageById.get(String(cv.contextId)) ?? null) : null,
+        /** True when the current user owns this venue — the owner should see the
+         *  player's name + avatar, not the venue's. Players see the venue. */
+        viewerIsOwner: cv.contextType === 'venue' && cv.contextId
+          ? String((venueById.get(String(cv.contextId)) as any)?.ownerUserId) === user.sub
+          : false,
       };
     }),
   );
@@ -158,14 +181,26 @@ export async function startConversation(c: any) {
       conv.lastBody = introBody;
       conv.lastSenderId = user.sub as any;
       conv.lastAt = now;
+      conv.lastDeletedBy = null;
       await conv.save();
 
       // Notify the recipient about this first message.
-      const me = await User.findById(user.sub).select('displayName').lean();
+      const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
       const senderName = (me as any)?.displayName || 'Someone';
+      const senderAvatar = (me as any)?.avatarUrl ?? null;
       publishUserEvent(userId, 'message.created', {
         conversationId: String(conv._id),
         message: { id: String(msg._id), senderId: String(user.sub), body: introBody, createdAt: now, mine: false },
+        conversation: {
+          lastBody: introBody,
+          lastSenderId: String(user.sub),
+          lastAt: now,
+          lastDeletedBy: null,
+          otherParticipant: { id: String(user.sub), displayName: senderName, avatarUrl: senderAvatar },
+          contextType: 'venue',
+          contextId: contextId,
+          unread: 1,
+        },
       });
       await notifyUser(userId, {
         type: 'message',
@@ -256,6 +291,7 @@ export async function getConversation(c: any) {
           body: m.body,
           createdAt: m.createdAt,
           mine,
+          deleted: m.deleted === true,
           replyToMessageId: m.replyToMessageId ? String(m.replyToMessageId) : null,
           replyTo: m.replyToMessageId ? (replyById.get(String(m.replyToMessageId)) ?? null) : null,
           readByOther,
@@ -308,6 +344,7 @@ export async function sendMessage(c: any) {
   conv.lastBody = body;
   conv.lastSenderId = user.sub as any;
   conv.lastAt = now;
+  conv.lastDeletedBy = null;
   conv.hiddenFor = [] as any;
   conv.reads = [
     ...(conv.reads ?? []).filter((r: any) => String(r.userId) !== user.sub),
@@ -318,9 +355,15 @@ export async function sendMessage(c: any) {
   // Notify the recipient (in-app inbox + push + live unread badge).
   const recipientId = otherParticipantId(conv, user.sub);
   if (recipientId) {
+    const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
+    const senderName = (me as any)?.displayName || 'Someone';
+    const senderAvatar = (me as any)?.avatarUrl ?? null;
+
     // Live-push the message itself to the recipient's open chat (realtime),
     // before the notification so an open thread updates instantly. `mine` is
-    // false from the recipient's perspective.
+    // false from the recipient's perspective. Also include enough conversation-
+    // summary data so the conversation list can surgically upsert without a
+    // full re-fetch (lastBody, lastAt, otherParticipant, context).
     publishUserEvent(recipientId, 'message.created', {
       conversationId: String(conv._id),
       message: {
@@ -332,10 +375,26 @@ export async function sendMessage(c: any) {
         replyToMessageId: replyToMessageId || null,
         replyTo,
       },
+      // Conversation-summary fields for the recipient's conversation list so
+      // it can insert/update the row without re-fetching the full list.
+      conversation: {
+        lastBody: body,
+        lastSenderId: String(user.sub),
+        lastAt: now,
+        lastDeletedBy: null,
+        otherParticipant: {
+          id: String(user.sub),
+          displayName: senderName,
+          avatarUrl: senderAvatar,
+        },
+        contextType: conv.contextType ?? null,
+        contextId: conv.contextId ? String(conv.contextId) : null,
+        // Unread count from the recipient's perspective: the recipient hasn't
+        // read this yet, so it's at least 1 (the client adds it to any existing
+        // unread count for the thread).
+        unread: 1,
+      },
     });
-
-    const me = await User.findById(user.sub).select('displayName').lean();
-    const senderName = (me as any)?.displayName || 'Someone';
     const preview = body.length > 120 ? `${body.slice(0, 117)}…` : body;
     await notifyUser(recipientId, {
       type: 'message',
@@ -457,18 +516,48 @@ export async function deleteMessage(c: any) {
   if (String((msg as any).senderId) !== user.sub) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'You can only delete your own messages' } }, 403);
   }
-  await msg.deleteOne();
+  // Soft-delete so the "deleted" placeholder survives page refresh.
+  (msg as any).deleted = true;
+  await msg.save();
 
-  // If it was the thread's last message, refresh the preview from what remains.
-  const latest = await Message.findOne({ conversationId: conv._id }).sort({ createdAt: -1 }).lean();
-  conv.lastBody = (latest as any)?.body ?? null;
-  conv.lastSenderId = (latest as any)?.senderId ?? null;
-  conv.lastAt = (latest as any)?.createdAt ?? null;
+  // Was this the chronologically last message? Compare against the latest
+  // non-deleted message (if any). If the deleted message was last, mark
+  // lastDeletedBy so the conversation list shows "You deleted a message" /
+  // "Name deleted a message". Otherwise, show the actual latest message.
+  const deletedAt = (msg as any).createdAt;
+  const latest = await Message.findOne({ conversationId: conv._id, deleted: { $ne: true } }).sort({ createdAt: -1 }).lean();
+  if (!latest || new Date(deletedAt).getTime() >= new Date((latest as any).createdAt).getTime()) {
+    // The deleted message was the last one (or the only one).
+    conv.lastDeletedBy = (msg as any).senderId;
+    if (latest) {
+      conv.lastBody = (latest as any).body;
+      conv.lastSenderId = (latest as any).senderId;
+      conv.lastAt = (latest as any).createdAt;
+    }
+  } else {
+    // The deleted message was older — use the actual latest message.
+    conv.lastBody = (latest as any).body;
+    conv.lastSenderId = (latest as any).senderId;
+    conv.lastAt = (latest as any).createdAt;
+    conv.lastDeletedBy = null;
+  }
   await conv.save();
 
-  // Tell the other participant so their open chat drops the message live.
+  // Tell BOTH participants so their open chat + conversation list update live.
+  // Include the updated conversation preview so the list can surgically update
+  // without a full re-fetch.
   const otherId = otherParticipantId(conv, user.sub);
-  if (otherId) publishUserEvent(otherId, 'message.deleted', { conversationId: String(conv._id), messageId: String(msgId) });
+  const deletedBy = String((msg as any).senderId);
+  const convPreview = {
+    lastBody: conv.lastBody ?? null,
+    lastSenderId: conv.lastSenderId ? String(conv.lastSenderId) : null,
+    lastAt: conv.lastAt ?? null,
+    lastDeletedBy: conv.lastDeletedBy ? String(conv.lastDeletedBy) : null,
+    deletedBy: deletedBy !== user.sub ? deletedBy : user.sub,
+  };
+  const payload = { conversationId: String(conv._id), messageId: String(msgId), conversation: convPreview };
+  publishUserEvent(user.sub, 'message.deleted', payload);
+  if (otherId) publishUserEvent(otherId, 'message.deleted', payload);
 
   return c.json({ data: { ok: true } });
 }
@@ -521,11 +610,22 @@ export async function getVenueConversation(c: any) {
     conv.lastAt = now;
     await conv.save();
 
-    const me = await User.findById(user.sub).select('displayName').lean();
+    const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
     const senderName = (me as any)?.displayName || 'Someone';
+    const senderAvatar = (me as any)?.avatarUrl ?? null;
     publishUserEvent(ownerId, 'message.created', {
       conversationId: String(conv._id),
       message: { id: String(msg._id), senderId: String(user.sub), body: introBody, createdAt: now, mine: false },
+      conversation: {
+        lastBody: introBody,
+        lastSenderId: String(user.sub),
+        lastAt: now,
+        lastDeletedBy: null,
+        otherParticipant: { id: String(user.sub), displayName: senderName, avatarUrl: senderAvatar },
+        contextType: 'venue',
+        contextId: venueId,
+        unread: 1,
+      },
     });
     await notifyUser(ownerId, {
       type: 'message',
@@ -558,7 +658,7 @@ export async function unreadMessageCount(c: any) {
   await Promise.all(
     convs.map(async (cv: any) => {
       const since = new Date(readAtMs(cv, user.sub));
-      count += await Message.countDocuments({ conversationId: cv._id, senderId: { $ne: user.sub }, createdAt: { $gt: since } });
+      count += await Message.countDocuments({ conversationId: cv._id, senderId: { $ne: user.sub }, deleted: { $ne: true }, createdAt: { $gt: since } });
     }),
   );
   return c.json({ data: { count } });

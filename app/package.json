@@ -14,6 +14,7 @@
     "@types/croppie": "^2.6.4",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "croppie": "^2.6.5",
+    "framer-motion": "^12.42.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.22.0",
     "react": "^19.2.6",

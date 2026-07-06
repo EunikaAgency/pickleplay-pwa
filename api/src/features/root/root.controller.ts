@@ -378,6 +378,18 @@ export function listEndpoints(c: any) {
       ],
     },
     {
+      name: 'Friends',
+      endpoints: [
+        { path: '/api/v1/friends', methods: ['GET'], description: "List the current user's accepted friends", auth: 'user' },
+        { path: '/api/v1/friends/pending', methods: ['GET'], description: 'List pending friend requests (sent + received)', auth: 'user' },
+        { path: '/api/v1/friends/search', methods: ['GET'], description: 'Search for friendable users (player/coach/organizer, excludes existing + self) — ?q=search', auth: 'user' },
+        { path: '/api/v1/friends/suggestions', methods: ['GET'], description: 'Suggested friendable users — ?lat=&lng= for nearby, else shared games/clubs, else random', auth: 'user' },
+        { path: '/api/v1/friends/request', methods: ['POST'], description: 'Send a friend request to a user — body { userId }', auth: 'user' },
+        { path: '/api/v1/friends/request/:id', methods: ['PATCH'], description: 'Accept or reject a friend request — body { accept: boolean }', auth: 'user' },
+        { path: '/api/v1/friends/:id', methods: ['DELETE'], description: 'Remove a friend (either side)', auth: 'user' },
+      ],
+    },
+    {
       name: 'Admin',
       endpoints: [
         { path: '/api/v1/admin/dashboard', methods: ['GET'], description: 'Admin dashboard summary', auth: 'admin' },

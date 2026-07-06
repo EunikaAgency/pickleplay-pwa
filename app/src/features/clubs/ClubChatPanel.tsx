@@ -31,7 +31,7 @@ export function ClubChatPanel({ clubId, onNavigate }: { clubId: string; onNaviga
   }, [rawSend]);
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-340px)] min-h-[320px] -mx-1">
+    <div className="flex flex-col h-[calc(100dvh-340px)] min-h-[320px] -mx-1 rounded-2xl bg-slate-200 overflow-hidden">
       <ChatThreadBody
         messages={messages}
         loading={loading}

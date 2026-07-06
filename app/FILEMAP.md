@@ -252,12 +252,16 @@ src/
                         #    abandoned, booking_link_shared),
                         #   useNotificationPolling (keeps the unread badge live: polls +
                         #    refreshes on focus/visibility while signed in — now a fallback),
+                        #   useMessagePolling (polls unread message count for the sidebar/tab-bar
+                        #    Messages badge — same focus/visibility-refresh pattern),
                         #   useRealtimeStream (one app-wide EventSource to GET /api/v1/me/stream;
                         #    fans new notifications + incoming messages onto the realtime bus)
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
                         # geo.ts (distance/geolocation), demoState.tsx, skillTiers.ts, initials.ts, types.ts,
                         # roleDisplay.ts (ROLE_META label+colour + primaryRole — shared profile role badges),
                         # notificationStore.ts (Zustand: live unread count + refresh, for the badge),
+                        # messageStore.ts (Zustand: live unread message count + refresh, for the
+                        #   sidebar/tab-bar/V2TopNav Messages badge),
                         # realtimeBus.ts (tiny in-app pub/sub; useRealtimeStream publishes, screens subscribe)
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
     styles/index.css    # Tailwind + all design tokens (--primary, --lime, --coral, shadows…)
@@ -477,6 +481,7 @@ src/
 | Manage games you created (edit details, kick, delete) | `features/games/MyGamesScreen.tsx` (from Profile → "My games") **and** inline on the Games tab's "My Games" rows (`GameManageActions.tsx`); editing reuses `CreateGameScreen` with a `gameId` prop (the `ManageGameScreen` form: edit details + remove players via `kickPlayer`); `updateGame`/`deleteGame`/`kickPlayer` in `shared/lib/api.ts`; gated by `player.games.manage` |
 | Payment history / spend report (player) | `features/profile/PaymentHistoryScreen.tsx` (entry rows in `ProfileScreen.tsx` + `v2/ProfileScreenV2.tsx`); `listPayments` in `shared/lib/api.ts` → `GET /api/v1/payments` (self-scoped); `shared/components/ui/Chart.tsx` `BarChart`; gated by `player.payments.view` (`SCREEN_PERMISSIONS` in `App.tsx`) |
 | Direct messages / chat (realtime) | `features/messages/{ConversationsScreen,ChatScreen}.tsx`; messaging endpoints in `shared/lib/api.ts`; entry from `GameDetailsScreen` "Message organizer" + Profile → Messages; deep-link `/messages/:id` via `navigation.ts`; gated by `user.messages.send`. Realtime via `shared/hooks/useRealtimeStream.ts` + `shared/lib/realtimeBus.ts` (SSE `GET /api/v1/me/stream`) |
+| Live message badge (unread) | `shared/lib/messageStore.ts` + `shared/hooks/useMessagePolling.ts` (started in `App.tsx`); badge on `Sidebar.tsx` Messages button (`.side-tab-badge`), `TabBar.tsx` Messages tab (`.tab-unread-badge`), and `V2Chrome.tsx` V2TopNav Messages icon (`.v2c-notif-badge`) |
 | Realtime stream (chat + notifications) | `shared/hooks/useRealtimeStream.ts` (one EventSource, mounted in `App.tsx`) + `shared/lib/realtimeBus.ts` (in-app pub/sub); backed by API `GET /api/v1/me/stream` |
 | Live notification badge (unread) | `shared/lib/notificationStore.ts` + `shared/hooks/useNotificationPolling.ts` (started in `App.tsx`); `shared/components/ui/NotificationBadge.tsx` on the home bell + TabBar "You" tab |
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |

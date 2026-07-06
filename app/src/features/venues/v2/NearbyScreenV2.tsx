@@ -280,21 +280,22 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   // so the list isn't arbitrary while the permission prompt is pending/denied.
   const effectiveSort: SortKey = sort === 'distance' && !userLoc ? 'rating' : sort;
 
+  const venueMatchesAvailabilityFilter = useCallback((v: ApiVenue): boolean => {
+    if (!availByVenue || filterStartHour == null) return true;
+    const fb = availByVenue.get(v.id);
+    if (!fb) return false;
+    const endH = Math.min(filterEndHour ?? filterStartHour + 1, 24);
+    for (let h = filterStartHour; h < endH; h++) {
+      if ((fb[h] ?? 0) <= 0) return false;
+    }
+    return true;
+  }, [availByVenue, filterStartHour, filterEndHour]);
+
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
     let base = q ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q)) : all;
     // When the date/time filter is active, keep only venues with free courts across the chosen window.
-    if (availByVenue && filterStartHour != null) {
-      const endH = filterEndHour ?? filterStartHour + 1;
-      base = base.filter((v) => {
-        const fb = availByVenue.get(v.id);
-        if (!fb) return false;
-        for (let h = filterStartHour!; h < endH && h < 24; h++) {
-          if ((fb[h] ?? 0) <= 0) return false;
-        }
-        return true;
-      });
-    }
+    if (availByVenue && filterStartHour != null) base = base.filter(venueMatchesAvailabilityFilter);
     const copy = [...base];
     switch (effectiveSort) {
       case 'distance':
@@ -312,7 +313,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       case 'rating':
       default: return copy.sort((a, b) => (b.googleRating ?? 0) - (a.googleRating ?? 0));
     }
-  }, [all, query, effectiveSort, distOf, availByVenue, filterStartHour, filterEndHour]);
+  }, [all, query, effectiveSort, distOf, availByVenue, filterStartHour, venueMatchesAvailabilityFilter]);
 
   const visible = sorted.slice(0, VISIBLE);
   const featured = visible[0] ?? null;
@@ -332,17 +333,16 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     return d != null ? formatDistance(d) : null;
   };
 
-  // Map pins: every search-matched venue that resolves to coordinates (the map
-  // shows them all; the radius/sort only narrows the *list*). Tagged with their
-  // distance from the user when located, so popups can show it.
+  // Map pins: every search/date-time-matched venue that resolves to coordinates.
+  // Tagged with distance from the user when located, so popups can show it.
   const pins = useMemo<MapPin[]>(() => {
     const q = query.trim().toLowerCase();
     const base = q ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q)) : all;
-    return base.flatMap((v) => {
+    return base.filter(venueMatchesAvailabilityFilter).flatMap((v) => {
       const c = venueCoords(v);
       return c ? [{ v, lat: c[0], lng: c[1], distanceKm: userLoc ? haversineKm(userLoc, c) : null }] : [];
     });
-  }, [all, query, userLoc]);
+  }, [all, query, userLoc, venueMatchesAvailabilityFilter]);
 
   const mapPoints = useMemo<[number, number][]>(() => pins.map((p) => [p.lat, p.lng]), [pins]);
   const mapCenter: [number, number] = userLoc ?? (pins[0] ? [pins[0].lat, pins[0].lng] : MAP_FALLBACK_CENTER);

@@ -40,15 +40,6 @@ const IO_OPTIONS = [
   { value: 'both', label: 'Both' },
 ];
 
-// How long a player has to pay after the owner approves a request-to-book.
-const PAY_WINDOW_OPTIONS = [
-  { value: '1', label: '1 hour' },
-  { value: '12', label: '12 hours' },
-  { value: '24', label: '24 hours' },
-  { value: '48', label: '48 hours' },
-  { value: '72', label: '72 hours' },
-];
-
 const str = (v: unknown) => (v == null ? '' : String(v));
 
 // Live slug normalization for the custom booking-link field — mirrors the
@@ -172,9 +163,6 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
   // editorial (not owner-typed claims) — shown read-only here. See the API's
   // computeVenueHighlights; the owner shapes them by keeping amenities/details accurate.
   const curated = venue.curatedHighlights ?? { bestFor: [], whatPlayersLike: [] };
-  // Booking policy: require-approval (request-to-book) + the per-venue pay-window.
-  const [requireApproval, setRequireApproval] = useState<boolean>(Boolean(venue.requireBookingApproval));
-  const [payWindow, setPayWindow] = useState<string>(str(venue.bookingPayWindowHours || 24));
   // Payment options offered at checkout (deposit / full / pay-at-venue) + deposit size.
   const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>(
     (venue.paymentOptions ?? ['full']).filter((o): o is PaymentOption => o === 'full' || o === 'deposit' || o === 'pay_at_venue'),
@@ -267,8 +255,6 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         perPlayerFeeThreshold: Number(form.perPlayerFeeThreshold) || 1,
         holidayDates,
         bookingSlug: customSlug.trim(),
-        requireBookingApproval: requireApproval,
-        bookingPayWindowHours: Number(payWindow) || 24,
         // Always keep at least full-pay; default-fall-back if the owner cleared all.
         paymentOptions: paymentOptions.length ? paymentOptions : ['full'],
         depositPercent: Number(depositPercent) || 50,
@@ -377,32 +363,6 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             {slugError && <div className="t-sm text-[var(--coral)] font-bold mt-1">{slugError}</div>}
           </div>
         </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title="Booking policy" icon="calendar" description="Decide whether bookings are accepted automatically or after your review.">
-        <Chip
-          selected={requireApproval}
-          onClick={() => { setRequireApproval((v) => !v); setStatus('idle'); }}
-        >
-          {requireApproval && <Icon name="check" size={12} />}
-          Require my approval for bookings
-        </Chip>
-        <div className="t-sm mt-2 text-[var(--muted)]">
-          {requireApproval
-            ? 'Players send a request; you approve it, then they pay within the window to confirm.'
-            : 'Bookings are confirmed instantly when a player books and pays.'}
-        </div>
-        {requireApproval && (
-          <div className="field p-0! mt-3.5">
-            <FormSelect
-              label="Players must pay within"
-              options={PAY_WINDOW_OPTIONS}
-              value={payWindow}
-              onChange={(e) => { setPayWindow(e.target.value); setStatus('idle'); }}
-            />
-          </div>
-        )}
-
       </CollapsibleSection>
 
       <CollapsibleSection title="Cancellation & refund policy" icon="close" description="Set the rules players see before booking. The platform enforces these automatically.">

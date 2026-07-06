@@ -93,7 +93,7 @@ export function GameManageActions({ game, onNavigate, onDeleted, className = '' 
         gameId={game.id}
         title={gameTitle(game)}
         subtitle={[timeLine(game), gameLocation(game), spotsLabel(game)].filter(Boolean).join(' · ')}
-        image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || ''}
+        image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || '/fallback-game.png'}
         gameType={gameTypeLabel(game)}
         skillLabel={game.skillLabel ?? undefined}
         dateTime={[dayParts(game).day === 'TODAY' ? 'Today' : dayParts(game).day === 'TOM' ? 'Tomorrow' : dayParts(game).day, timeLine(game)].filter(Boolean).join(' · ') || undefined}

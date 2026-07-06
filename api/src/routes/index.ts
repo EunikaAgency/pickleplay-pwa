@@ -31,6 +31,7 @@ import messagesRoutes from '../features/messages/messages.routes.js';
 import staffRoutes from '../features/staff/staff.routes.js';
 import demandRoutes from '../features/demand/demand.routes.js';
 import waitlistRoutes from '../features/waitlist/waitlist.routes.js';
+import friendsRoutes from '../features/friends/friends.routes.js';
 
 const routes = new Hono();
 
@@ -63,6 +64,8 @@ v1.route('/messages', messagesRoutes);
 v1.route('/staff', staffRoutes);
 v1.route('/demand', demandRoutes);
 v1.route('/waitlist', waitlistRoutes);
+v1.route('/friends', friendsRoutes);
+v1.route('/friends', friendsRoutes);
 v1.route('/media', mediaRoutes);
 v1.route('/subscriptions', subscriptionsRoutes);
 v1.route('/cities', citiesRoutes);

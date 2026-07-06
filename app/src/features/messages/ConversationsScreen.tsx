@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { Icon } from '../../shared/components/ui/Icon';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
@@ -11,6 +12,7 @@ import {
   getOwnerPlayerSuggestions,
   startConversation,
   deleteConversation,
+  apiImageUrl,
   type ApiConversationSummary,
   type ApiPlayer,
   type OwnerPlayerSuggestion,
@@ -93,6 +95,199 @@ function isActive(iso?: string | null): boolean {
   return (Date.now() - ts) < ACTIVE_WINDOW_MIN * 60_000;
 }
 
+// ─── Realtime event types ───────────────────────────────────────
+
+interface RealtimeConversationPreview {
+  lastBody: string | null;
+  lastSenderId: string | null;
+  lastAt: string | null;
+  lastDeletedBy: string | null;
+  otherParticipant?: { id: string; displayName: string; avatarUrl: string | null } | null;
+  contextType?: string | null;
+  contextId?: string | null;
+  unread?: number;
+  /** Present on message.deleted — who deleted the message. */
+  deletedBy?: string;
+}
+
+interface RealtimeMessagePayload {
+  conversationId?: string;
+  message?: unknown;
+  conversation?: RealtimeConversationPreview;
+}
+
+interface RealtimeDeletePayload {
+  conversationId?: string;
+  messageId?: string;
+  conversation?: RealtimeConversationPreview;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function realtimeMessagePayload(value: unknown): RealtimeMessagePayload | null {
+  if (!isRecord(value)) return null;
+  return {
+    conversationId: typeof value.conversationId === 'string' ? value.conversationId : undefined,
+    message: value.message,
+    conversation: isRecord(value.conversation) ? (value.conversation as unknown as RealtimeConversationPreview) : undefined,
+  };
+}
+
+function realtimeDeletePayload(value: unknown): RealtimeDeletePayload | null {
+  if (!isRecord(value)) return null;
+  return {
+    conversationId: typeof value.conversationId === 'string' ? value.conversationId : undefined,
+    messageId: typeof value.messageId === 'string' ? value.messageId : undefined,
+    conversation: isRecord(value.conversation) ? (value.conversation as unknown as RealtimeConversationPreview) : undefined,
+  };
+}
+
+// ─── Memoized conversation row ──────────────────────────────────
+
+interface ConvRowProps {
+  c: ApiConversationSummary;
+  userId: string | undefined;
+  onNavigate: Navigate;
+  onRemove: (c: ApiConversationSummary) => void;
+}
+
+const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove }: ConvRowProps) {
+  // For venue/booking conversations: the player (non-owner) sees venue name +
+  // image; the owner sees the player's name + avatar so they know WHO messaged.
+  const isVenueForPlayer = c.contextLabel && !c.viewerIsOwner;
+  const name = isVenueForPlayer ? c.contextLabel! : (c.otherParticipant?.displayName ?? 'Player');
+  const avatarSrc = isVenueForPlayer
+    ? (c.contextImageUrl ? apiImageUrl(c.contextImageUrl) : null)
+    : c.otherParticipant?.avatarUrl;
+  const active = isActive(c.otherParticipant?.lastActiveAt);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+      transition={{
+        layout: { type: 'spring', stiffness: 500, damping: 50, mass: 0.7 },
+        opacity: { duration: 0.2 },
+      }}
+      key={c.id}
+      role="button"
+      tabIndex={0}
+      className="organizer m-0! cursor-pointer"
+      onClick={() => onNavigate('chat', { id: c.id, name })}
+      onKeyDown={(e) => { if (e.key === 'Enter') onNavigate('chat', { id: c.id, name }); }}
+    >
+      <div className="relative shrink-0">
+        <Avatar src={avatarSrc} name={name} size={44} />
+        {c.otherParticipant?.lastActiveAt != null && (
+          <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
+        )}
+      </div>
+      <div className="meta min-w-0">
+        {(c.contextType === 'venue' || c.contextType === 'booking') && (
+          <div className="truncate" style={{ color: 'var(--muted)', marginBottom: 1, fontSize: 11 }}>
+            {c.contextType === 'venue' ? (
+              <span className="inline-flex items-center" style={{ gap: 3 }}>
+                <Icon name="sports_tennis" size={10} />
+                Venue
+              </span>
+            ) : (
+              <span className="inline-flex items-center" style={{ gap: 3 }}>
+                <Icon name="event" size={10} />
+                Booking
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <div className="name truncate">{name}</div>
+          <div className="t-sm shrink-0">{timeAgo(c.lastAt)}</div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className={`t-sm truncate ${c.unread > 0 ? 'font-bold text-[var(--ink)]' : ''}`}>
+            {c.lastDeletedBy
+              ? (c.lastDeletedBy === userId
+                ? 'You deleted a message'
+                : `${c.otherParticipant?.displayName ?? 'Someone'} deleted a message`)
+              : c.lastBody ? cleanPreview(c.lastBody) : 'No messages yet'}
+          </div>
+          {c.unread > 0 && (
+            <motion.span
+              key={`badge-${c.id}-${c.unread}`}
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--coral)] text-white text-[11px] font-extrabold leading-5 text-center"
+            >
+              {c.unread > 9 ? '9+' : c.unread}
+            </motion.span>
+          )}
+        </div>
+      </div>
+      <button
+        type="button"
+        aria-label={`Delete conversation with ${name}`}
+        className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--coral)]"
+        onClick={(e) => { e.stopPropagation(); onRemove(c); }}
+      >
+        <Icon name="close" size={16} />
+      </button>
+    </motion.div>
+  );
+});
+
+// ─── Source grouping ────────────────────────────────────────────
+
+/** Canonical source keys — add new ones here to grow the sections. */
+type ConversationSource = 'direct' | 'venue' | 'booking';
+
+interface SourceDef {
+  key: ConversationSource;
+  label: string;
+  icon: string;
+  /** Determines which conversations belong in this section. */
+  match: (c: ApiConversationSummary) => boolean;
+}
+
+/** Ordered source definitions. A section renders only when it has ≥1 conversation. */
+const SOURCES: SourceDef[] = [
+  {
+    key: 'direct',
+    label: 'Direct Messages',
+    icon: 'chat',
+    match: (c) => !c.contextType,
+  },
+  {
+    key: 'venue',
+    label: 'Venues',
+    icon: 'sports_tennis',
+    match: (c) => c.contextType === 'venue',
+  },
+  {
+    key: 'booking',
+    label: 'Bookings',
+    icon: 'event',
+    match: (c) => c.contextType === 'booking',
+  },
+];
+
+/** Split a flat conversation list into ordered, non-empty sections sorted
+ *  newest-first within each. */
+function groupBySource(items: ApiConversationSummary[]) {
+  return SOURCES
+    .map((def) => ({
+      ...def,
+      items: items
+        .filter(def.match)
+        .sort((a, b) => new Date(b.lastAt ?? 0).getTime() - new Date(a.lastAt ?? 0).getTime()),
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
+// ─── Screen ─────────────────────────────────────────────────────
+
 export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenProps) {
   const user = useAuthStore((s) => s.user);
   const isOwner = userHasPermission(user, 'owner.access');
@@ -131,9 +326,102 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
     return () => { alive = false; };
   }, [reloadKey]);
 
-  // Realtime: an incoming message changes a thread's last-message / unread /
-  // ordering — reload the list so it reflects the new activity immediately.
-  useEffect(() => onRealtime('message', () => setReloadKey((k) => k + 1)), []);
+  // ── Realtime: surgical conversation-list updates ──────────────
+  // Instead of a full re-fetch on every event, we surgically update the
+  // affected conversation in local state. The server now includes a
+  // `conversation` preview payload in message.created / message.deleted
+  // events so the list stays current with zero flicker.
+
+  useEffect(() => {
+    return onRealtime('message', (payload: unknown) => {
+      const p = realtimeMessagePayload(payload);
+      if (!p || !p.conversationId) return;
+      const cid = p.conversationId; // narrowed to string
+
+      setItems((prev) => {
+        const idx = prev.findIndex((x) => x.id === cid);
+        const conv = p.conversation;
+        if (!conv) {
+          // Fallback: no preview data — re-fetch the full list (shouldn't happen
+          // with the updated server, but this guards old event shapes).
+          setReloadKey((k) => k + 1);
+          return prev;
+        }
+
+        if (idx === -1) {
+          // Brand-new conversation — insert at the top with the preview data.
+          const newItem: ApiConversationSummary = {
+            id: cid,
+            otherParticipant: conv.otherParticipant ?? null,
+            lastBody: conv.lastBody,
+            lastSenderId: conv.lastSenderId,
+            lastDeletedBy: conv.lastDeletedBy,
+            lastAt: conv.lastAt,
+            unread: conv.unread ?? 1,
+            contextType: conv.contextType ?? null,
+            contextId: conv.contextId ?? null,
+            contextLabel: null, // resolved server-side on the next full fetch
+          };
+          return [newItem, ...prev];
+        }
+
+        // Existing conversation — bump it to the top with updated preview.
+        const existing = prev[idx];
+        // Don't increment unread if this is our own message echoed back
+        // (e.g. from another tab — the server only sends to the recipient,
+        // but guard defensively).
+        const isOwnMessage = conv.lastSenderId === user?.id;
+        const unreadDelta = isOwnMessage ? 0 : (conv.unread ?? 1);
+        const updated: ApiConversationSummary = {
+          ...existing,
+          lastBody: conv.lastBody ?? existing.lastBody,
+          lastSenderId: conv.lastSenderId ?? existing.lastSenderId,
+          lastAt: conv.lastAt ?? existing.lastAt,
+          lastDeletedBy: conv.lastDeletedBy ?? null,
+          unread: existing.unread + unreadDelta,
+          // New conversation may carry fresher participant info.
+          otherParticipant: conv.otherParticipant ?? existing.otherParticipant,
+          contextType: conv.contextType ?? existing.contextType,
+          contextId: conv.contextId ?? existing.contextId,
+        };
+        const rest = [...prev];
+        rest.splice(idx, 1);
+        return [updated, ...rest];
+      });
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
+    return onRealtime('message.deleted', (payload: unknown) => {
+      const p = realtimeDeletePayload(payload);
+      if (!p || !p.conversationId) return;
+
+      setItems((prev) => {
+        const idx = prev.findIndex((x) => x.id === p.conversationId);
+        if (idx === -1) return prev;
+        const conv = p.conversation;
+        if (!conv) {
+          setReloadKey((k) => k + 1);
+          return prev;
+        }
+        const existing = prev[idx];
+        const updated: ApiConversationSummary = {
+          ...existing,
+          lastBody: conv.lastBody ?? existing.lastBody,
+          lastSenderId: conv.lastSenderId ?? existing.lastSenderId,
+          lastAt: conv.lastAt ?? existing.lastAt,
+          lastDeletedBy: conv.lastDeletedBy ?? existing.lastDeletedBy,
+          // Don't change unread — a deletion doesn't affect it.
+        };
+        const rest = [...prev];
+        rest.splice(idx, 1);
+        // Keep the conversation at its current position (deletion doesn't
+        // necessarily mean new activity worth surfacing top).
+        rest.splice(0, 0, updated);
+        return rest;
+      });
+    });
+  }, []);
 
   // Debounced people search while composing. A blank/short query clears results.
   // Owners filter their pre-loaded suggestion list locally instead of hitting the
@@ -195,7 +483,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
     setSuggestions([]); setSuggestionsLoading(false);
   };
 
-  const removeConv = async (c: ApiConversationSummary) => {
+  const removeConv = useCallback(async (c: ApiConversationSummary) => {
     if (!window.confirm('Delete this conversation? It will come back if they message you again.')) return;
     setItems((prev) => prev.filter((x) => x.id !== c.id)); // optimistic
     try {
@@ -203,7 +491,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
     } catch {
       setReloadKey((k) => k + 1); // restore from server on failure
     }
-  };
+  }, []);
 
   const startWith = async (p: ApiPlayer) => {
     if (starting) return;
@@ -217,17 +505,14 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
     }
   };
 
-  // Start a conversation from an owner suggestion — scoped to the booking or venue.
+  // Start a direct conversation from an owner suggestion — no context attached.
+  // Booking/venue scoping only applies when explicitly started from those surfaces
+  // (e.g. "Message venue" button on CourtDetailsScreen).
   const startWithSuggestion = async (s: OwnerPlayerSuggestion) => {
     if (starting) return;
     setStarting(true);
     try {
-      const context = s.latestBooking
-        ? { contextType: 'booking' as const, contextId: s.latestBooking.bookingId }
-        : s.memberVenueId
-          ? { contextType: 'venue' as const, contextId: s.memberVenueId }
-          : undefined;
-      const conv = await startConversation(s.id, context);
+      const conv = await startConversation(s.id);
       closeCompose();
       onNavigate('chat', { id: conv.id, name: s.displayName });
     } catch {
@@ -435,73 +720,37 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
           <EmptyState
             icon="chat"
             title="No messages yet"
-            description="Tap the compose button to message any player — or use “Message organizer” on any game."
+            description={'Tap the compose button to message any player — or use "Message organizer" on any game.'}
             action={{ label: 'New message', onPress: openCompose }}
           />
         ) : (
-          <div className="flex flex-col gap-2.5">
-            {items.map((c) => {
-              const name = c.otherParticipant?.displayName ?? 'Player';
-              const active = isActive(c.otherParticipant?.lastActiveAt);
-              return (
+          <div className="flex flex-col" style={{ gap: 24 }}>
+            {groupBySource(items).map((group) => (
+              <div key={group.key} className="flex flex-col" style={{ gap: 8 }}>
                 <div
-                  key={c.id}
-                  role="button"
-                  tabIndex={0}
-                  className="organizer m-0! cursor-pointer"
-                  onClick={() => onNavigate('chat', { id: c.id, name })}
-                  onKeyDown={(e) => { if (e.key === 'Enter') onNavigate('chat', { id: c.id, name }); }}
+                  className="flex items-center"
+                  style={{ gap: 6, paddingLeft: 2 }}
                 >
-                  <div className="relative shrink-0">
-                    <Avatar src={c.otherParticipant?.avatarUrl} name={name} size={44} />
-                    {c.otherParticipant?.lastActiveAt != null && (
-                      <span className={`absolute -right-0.5 -bottom-0.5 w-3 h-3 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
-                    )}
-                  </div>
-                  <div className="meta min-w-0">
-                    {c.contextType && (
-                      <div className="truncate" style={{ color: 'var(--muted)', marginBottom: 1, fontSize: 11 }}>
-                        {c.contextType === 'venue' ? (
-                          <span className="inline-flex items-center" style={{ gap: 3 }}>
-                            <Icon name="sports_tennis" size={10} />
-                            {c.contextLabel || 'Venue inquiry'}
-                          </span>
-                        ) : c.contextType === 'booking' ? (
-                          <span className="inline-flex items-center" style={{ gap: 3 }}>
-                            <Icon name="event" size={10} />
-                            {c.contextLabel || 'Booking inquiry'}
-                          </span>
-                        ) : (
-                          c.contextType
-                        )}
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="name truncate">{name}</div>
-                      <div className="t-sm shrink-0">{timeAgo(c.lastAt)}</div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className={`t-sm truncate ${c.unread > 0 ? 'font-bold text-[var(--ink)]' : ''}`}>
-                        {c.lastBody ? cleanPreview(c.lastBody) : 'No messages yet'}
-                      </div>
-                      {c.unread > 0 && (
-                        <span className="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-[var(--coral)] text-white text-[11px] font-extrabold leading-5 text-center">
-                          {c.unread > 9 ? '9+' : c.unread}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label={`Delete conversation with ${name}`}
-                    className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--coral)]"
-                    onClick={(e) => { e.stopPropagation(); removeConv(c); }}
-                  >
-                    <Icon name="close" size={16} />
-                  </button>
+                  <Icon name={group.icon} size={14} />
+                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                    {group.label}
+                  </span>
                 </div>
-              );
-            })}
+                <motion.div className="flex flex-col gap-2.5" layout>
+                  <AnimatePresence mode="popLayout">
+                    {group.items.map((c) => (
+                      <ConvRow
+                        key={c.id}
+                        c={c}
+                        userId={user?.id}
+                        onNavigate={onNavigate}
+                        onRemove={removeConv}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Navigate, TabId } from '../../lib/navigation';
 import { useNotificationStore } from '../../lib/notificationStore';
+import { useMessageStore } from '../../lib/messageStore';
 
 /**
  * Shared chrome for the v2.1 player design: a sticky top nav, the bottom tab bar
@@ -23,6 +24,7 @@ interface TopNavProps {
 
 export function V2TopNav({ onNavigate, isLoggedIn, onBack, title }: TopNavProps) {
   const unread = useNotificationStore((s) => s.unread);
+  const unreadMessages = useMessageStore((s) => s.unread);
   return (
     <header className="v2c-topnav">
       <div className="v2c-inner">
@@ -46,6 +48,11 @@ export function V2TopNav({ onNavigate, isLoggedIn, onBack, title }: TopNavProps)
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
+              {isLoggedIn && unreadMessages > 0 && (
+                <span className="v2c-notif-badge" aria-label={`${unreadMessages} unread messages`}>
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </button>
           )}
           <button className="v2c-iconbtn" aria-label="Notifications" onClick={() => onNavigate('notifications')}>
@@ -131,6 +138,9 @@ export interface V2ScreenChrome {
   /** Which bottom-nav tabs to show (role-derived in App — e.g. owners/admins
    *  don't get the player Tournament tab). Defaults to all when omitted. */
   tabIds?: TabId[];
+  /** When true, V2Shell suppresses its own bottom tab bar — used when the
+   *  classic TabBar (owner/organizer) provides the mobile bottom nav instead. */
+  suppressTabBar?: boolean;
 }
 
 export interface V2ShellProps {
@@ -163,8 +173,8 @@ export function V2Shell({ screen, chrome, onBack, title, hideTabBar, hideFab, hi
     <div className={`pb-v2 ${screen}`}>
       <V2TopNav onNavigate={chrome.onNavigate} isLoggedIn={chrome.isLoggedIn} onBack={back} title={title} />
       <main>{children}</main>
-      {!hideFab && <V2Fab onClick={chrome.onCreate} />}
-      {!hideTabBar && <V2TabBar activeTab={chrome.activeTab} onTabPress={chrome.onTabPress} tabIds={chrome.tabIds} />}
+      {!hideFab && !chrome.suppressTabBar && <V2Fab onClick={chrome.onCreate} />}
+      {!hideTabBar && !chrome.suppressTabBar && <V2TabBar activeTab={chrome.activeTab} onTabPress={chrome.onTabPress} tabIds={chrome.tabIds} />}
     </div>
   );
 }

@@ -21,6 +21,10 @@ const conversationSchema = new Schema(
     lastBody: { type: String, maxlength: 4000 },
     lastSenderId: { type: Schema.Types.ObjectId, ref: 'User' },
     lastAt: { type: Date },
+    // Tracks who deleted the last message, so the conversation list can show
+    // "You deleted a message" / "Message deleted" instead of stale body text.
+    // Cleared when a new message is sent.
+    lastDeletedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     // Per-participant last-read timestamps, for unread counts.
     reads: [
       {
@@ -51,6 +55,7 @@ const messageSchema = new Schema(
     senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     body: { type: String, required: true, maxlength: 4000 },
     replyToMessageId: { type: Schema.Types.ObjectId, ref: 'Message', default: null },
+    deleted: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

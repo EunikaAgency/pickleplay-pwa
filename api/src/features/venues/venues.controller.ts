@@ -1794,6 +1794,24 @@ export async function getVenueAvailability(c: any) {
   if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
   const { date, courtId } = availabilityQuerySchema.parse(c.req.query());
 
+  // ── SlotPriceOverrides ARE the schedule ─────────────────────────
+  // A venue is only open on dates where it has at least one override.
+  const overrides = await SlotPriceOverride.find({ venueId, date })
+    .lean<{ startTime: string; endTime: string; courtId?: any }[]>();
+  if (overrides.length === 0) {
+    // Closed — no overrides on this date at all.
+    const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, free: 0 }));
+    return c.json({ data: { date, capacity: 0, hours } });
+  }
+
+  // Build the open-hour mask from override windows.
+  const slotOpen = new Array<boolean>(24).fill(false);
+  for (const o of overrides) {
+    const s = Number(o.startTime.split(':')[0]);
+    const e = Number(o.endTime.split(':')[0]);
+    for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
+  }
+
   // Per-court view: a court is free for an hour only when it isn't itself booked
   // AND the venue pool still has a court to spare — court-less (venue-level)
   // reservations consume the pool even though they don't name a court, so a named
@@ -1826,7 +1844,9 @@ export async function getVenueAvailability(c: any) {
       // court can't be booked either.
       const capacity = await resolveVenueCapacity(venueId);
       const poolFree = freeCourtsByHour(all, capacity);
-      const hours = freeByHour.map((fc, hour) => ({ hour, free: Math.min(fc, (poolFree[hour] ?? 0) > 0 ? fc : 0) }));
+      let hours = freeByHour.map((fc, hour) => ({ hour, free: Math.min(fc, (poolFree[hour] ?? 0) > 0 ? fc : 0) }));
+      // Zero out hours outside override windows.
+      hours = hours.map((h) => ({ ...h, free: slotOpen[h.hour] ? h.free : 0 }));
       return c.json({ data: { date, capacity: subCount, courtId, hours, isSplittable: true } });
     }
 
@@ -1835,7 +1855,9 @@ export async function getVenueAvailability(c: any) {
     // Court-specific occupancy honors the court's turnover buffer (a gap after each
     // booking), so the picker greys the same too-close hours the create guard rejects.
     const courtFree = courtFreeHoursWithTurnover(all.filter((b) => String(b.courtId) === courtId), court?.turnoverMinutes ?? 0);
-    const hours = poolFree.map((pf, hour) => ({ hour, free: courtFree[hour] && pf > 0 ? 1 : 0 }));
+    let hours = poolFree.map((pf, hour) => ({ hour, free: (courtFree[hour] && pf > 0 ? 1 : 0) }));
+    // Zero out hours outside override windows.
+    hours = hours.map((h) => ({ ...h, free: slotOpen[h.hour] ? h.free : 0 }));
     return c.json({ data: { date, capacity: 1, courtId, hours } });
   }
 
@@ -1843,7 +1865,8 @@ export async function getVenueAvailability(c: any) {
   const free = freeCourtsByHour(await activeBookingsForDate(venueId, date), capacity);
   // hours[h].free = courts free for the slot starting at hour h (a booking can
   // start there when free > 0). The client greys hours where free <= 0.
-  const hours = free.map((freeCourts, hour) => ({ hour, free: freeCourts }));
+  // Zero out hours outside override windows.
+  const hours = free.map((freeCourts, hour) => ({ hour, free: slotOpen[hour] ? freeCourts : 0 }));
   return c.json({ data: { date, capacity, hours } });
 }
 
@@ -1882,46 +1905,17 @@ export async function getVenueAvailabilityRange(c: any) {
 
   const capacity = await resolveVenueCapacity(venueId);
 
-  // Bookable start-hour window per weekday (0=Sun..6=Sat). Hours now live per
-  // court (a null courtId is the venue default a court inherits), so the venue
-  // window is the UNION across courts — open when ANY court is open, from the
-  // earliest open to the latest close. When a court is chosen, scope to its own
-  // effective window. A day with no row, or all-closed, has no window (rendered
-  // "closed", never "full"); no hours at all → assume all-day so "full" means
-  // every hour's pool is exhausted.
-  const allHourRows = await VenueHour.find({ venueId })
-    .lean<{ dayOfWeek: number; courtId?: any; price?: number | null; isClosed?: boolean; openTime?: string; closeTime?: string }[]>();
-  const defaultHourRows = allHourRows.filter((h) => h.courtId == null);
-  const effFor = (cid: string) => {
-    const own = allHourRows.filter((h) => h.courtId != null && String(h.courtId) === cid);
-    return own.length ? own : defaultHourRows;
-  };
-  let rowSets: typeof allHourRows[];
-  if (courtId) {
-    rowSets = [effFor(courtId)];
-  } else {
-    const cts = await Court.find({ venueId, isActive: true }).select('_id').lean<{ _id: any }[]>();
-    rowSets = cts.length ? cts.map((ct) => effFor(String(ct._id))) : [defaultHourRows];
+  // ── SlotPriceOverrides ARE the schedule ─────────────────────────
+  // Fetch all overrides for this venue in the date range, grouped by date.
+  const allOverrides = await SlotPriceOverride.find({
+    venueId,
+    date: { $gte: from, $lte: to },
+  }).lean<{ date: string; startTime: string; endTime: string }[]>();
+  const overridesByDate = new Map<string, typeof allOverrides>();
+  for (const o of allOverrides) {
+    const arr = overridesByDate.get(o.date);
+    if (arr) arr.push(o); else overridesByDate.set(o.date, [o]);
   }
-  const windowByDow = new Map<number, { open: number; lastStart: number } | null>();
-  for (let dow = 0; dow < 7; dow++) {
-    let open: number | null = null, lastStart: number | null = null, anyRow = false;
-    for (const rows of rowSets) {
-      const dayRows = rows.filter((h) => h.dayOfWeek === dow);
-      if (!dayRows.length) continue;
-      anyRow = true;
-      const op = dayRows.find((h) => h.price == null) || dayRows[0];
-      if (!op || op.isClosed || !op.openTime || !op.closeTime) continue;
-      const o = Number(op.openTime.split(':')[0]) || 0;
-      const cparts = op.closeTime.split(':').map(Number);
-      const ls = (cparts[1] ?? 0) > 0 ? (cparts[0] ?? 0) : (cparts[0] ?? 0) - 1;
-      if (ls < o) continue;
-      if (open == null || o < open) open = o;
-      if (lastStart == null || ls > lastStart) lastStart = ls;
-    }
-    if (anyRow) windowByDow.set(dow, open != null && lastStart != null ? { open, lastStart } : null);
-  }
-  const hasHours = allHourRows.length > 0;
 
   // All active bookings across the range, grouped by date (one query).
   const bookings = await Booking.find({ venueId, date: { $gte: from, $lte: to }, status: { $ne: 'cancelled' } })
@@ -1933,8 +1927,7 @@ export async function getVenueAvailabilityRange(c: any) {
     if (arr) arr.push(b); else byDate.set(b.date, [b]);
   }
 
-  // Per-court turnover buffer + split-court config — fetched once (not per-date)
-  // since the court's setting doesn't change mid-request.
+  // Per-court turnover buffer + split-court config — fetched once (not per-date).
   const courtConfig = courtId
     ? await Court.findById(courtId).select('turnoverMinutes isSplittable splitCount').lean<{ turnoverMinutes?: number; isSplittable?: boolean; splitCount?: number }>()
     : null;
@@ -1942,15 +1935,23 @@ export async function getVenueAvailabilityRange(c: any) {
   const courtSubCount = courtConfig?.isSplittable ? (courtConfig.splitCount ?? 2) : 1;
 
   const days = dates.map((date) => {
-    const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
-    const win = hasHours ? (windowByDow.get(dow) ?? null) : { open: 0, lastStart: 23 };
-    if (!win) return { date, openHours: 0, freeHours: 0, full: false, closed: true };
+    const dayOverrides = overridesByDate.get(date);
+    if (!dayOverrides || dayOverrides.length === 0) {
+      return { date, openHours: 0, freeHours: 0, full: false, closed: true };
+    }
+
+    // Build open-hour mask from override windows for this date.
+    const slotOpen = new Array<boolean>(24).fill(false);
+    for (const o of dayOverrides) {
+      const s = Number(o.startTime.split(':')[0]);
+      const e = Number(o.endTime.split(':')[0]);
+      for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
+    }
+
     const dayBookings = byDate.get(date) ?? [];
     let free: number[];
     if (courtId) {
       if (courtSubCount > 1) {
-        // Splittable court: per-sub-unit free counts. Whole-court bookings (no
-        // subUnitIndex) consume all sub-units; sub-unit bookings consume one each.
         const freeByHour = new Array(24).fill(courtSubCount);
         for (const b of dayBookings.filter((b) => String(b.courtId) === courtId)) {
           for (const h of hoursTouched(b.startTime, b.endTime)) {
@@ -1962,16 +1963,19 @@ export async function getVenueAvailabilityRange(c: any) {
         free = freeByHour.map((fc, hour) => Math.min(fc, (poolFree[hour] ?? 0) > 0 ? fc : 0));
       } else {
         const poolFree = freeCourtsByHour(dayBookings, capacity);
-        // Honor the court's turnover buffer (gap between bookings), same as the
-        // single-date endpoint + create-time clash guard.
         const courtFree = courtFreeHoursWithTurnover(dayBookings.filter((b) => String(b.courtId) === courtId), courtTurnover);
         free = poolFree.map((pf, hour) => ((courtFree[hour]) && pf > 0 ? 1 : 0));
       }
     } else {
       free = freeCourtsByHour(dayBookings, capacity);
     }
+
     let openHours = 0, freeHours = 0;
-    for (let h = win.open; h <= win.lastStart; h++) { openHours++; if ((free[h] ?? 0) > 0) freeHours++; }
+    for (let h = 0; h < 24; h++) {
+      if (!slotOpen[h]) continue;
+      openHours++;
+      if ((free[h] ?? 0) > 0) freeHours++;
+    }
     return { date, openHours, freeHours, full: openHours > 0 && freeHours === 0, closed: false };
   });
 
@@ -1997,9 +2001,32 @@ export async function batchVenueAvailability(c: any) {
       if (!venueId) continue;
       const venue = await Venue.findById(venueId).select('deletedAt').lean<{ deletedAt?: Date | null }>();
       if (!venue || venue.deletedAt) continue;
+
+      // ── SlotPriceOverrides ARE the schedule ─────────────────────
+      // A venue is only open on dates where it has at least one override.
+      // Hours not covered by any override are closed (zero free courts).
+      const overrides = await SlotPriceOverride.find({ venueId, date })
+        .lean<{ startTime: string; endTime: string }[]>();
+
+      if (overrides.length === 0) continue; // no schedule = closed — omit
+
       const capacity = await resolveVenueCapacity(venueId);
       const bookings = await activeBookingsForDate(venueId, date);
       const free = freeCourtsByHour(bookings, capacity);
+
+      // Build the open-hour mask from the union of all override windows.
+      const slotOpen = new Array<boolean>(24).fill(false);
+      for (const o of overrides) {
+        const s = Number(o.startTime.split(':')[0]);
+        const e = Number(o.endTime.split(':')[0]);
+        for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
+      }
+
+      // Zero out hours outside every override window.
+      for (let h = 0; h < 24; h++) {
+        if (!slotOpen[h]) free[h] = 0;
+      }
+
       results.push({ venueId, freeByHour: free });
     } catch {
       // Skip venues that error out (e.g. bad IDs) — the client filters them out.

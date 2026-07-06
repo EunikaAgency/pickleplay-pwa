@@ -20,9 +20,11 @@ interface PricingRule {
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = ['12AM', '1AM', '2AM', '3AM', '4AM', '5AM', '6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM', '10PM', '11PM'];
-const COLOR_SWATCHES = ['#f59e0b', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#426383', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#64748b', '#4b5b70'];
+const COLOR_SWATCHES = ['#f59e0b', '#f97316', '#eab308', '#14b8a6', '#06b6d4', '#3b82f6', '#426383', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#64748b', '#4b5b70'];
 const CLOSED_COLOR = '#94a3b8';
 const CLOSED_TOOL_ID = 'closed';
+const RESERVED_COLOR = '#22c55e';
+const RESERVED_TOOL_ID = 'reserved';
 const SELECTED_VENUE_STORAGE_KEY = 'pb-owner-pricing-selected-venue';
 
 const INITIAL_RULES: PricingRule[] = [
@@ -42,7 +44,8 @@ const blankRule = (): PricingRule => ({
 
 const cellKey = (day: string, hour: string) => `${day}:${hour}`;
 
-function cellLabel(rule: PricingRule | null) {
+function cellLabel(rule: PricingRule | null, isReserved: boolean) {
+  if (isReserved) return 'Reserved · Paid';
   return rule ? `${rule.shortName} · ₱${rule.price}` : 'Closed · ₱0';
 }
 
@@ -186,7 +189,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   }, [venue, venues]);
 
   useEffect(() => {
-    if (activeRuleId !== CLOSED_TOOL_ID && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLOSED_TOOL_ID);
+    if (activeRuleId !== CLOSED_TOOL_ID && activeRuleId !== RESERVED_TOOL_ID && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLOSED_TOOL_ID);
   }, [activeRuleId, rules]);
 
   useEffect(() => {
@@ -290,7 +293,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
   const paintCellKey = (key: string, toolId = activeRuleId) => {
     const sk = scopeKey;
-    if (toolId !== CLOSED_TOOL_ID && !rules.some((rule) => rule.id === toolId)) return;
+    if (toolId !== CLOSED_TOOL_ID && toolId !== RESERVED_TOOL_ID && !rules.some((rule) => rule.id === toolId)) return;
     if (toolId === CLOSED_TOOL_ID) {
       setCellsByWeek((prev) => {
         const cur = { ...(prev[sk] || {}) };
@@ -371,7 +374,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     paintKeys(DAYS.map((day) => cellKey(day, hour)));
   };
 
-  const paintedRuleIds = Object.values(paintedCells);
+  const paintedRuleIds = Object.values(paintedCells).filter((id) => id !== RESERVED_TOOL_ID);
   const paidHours = paintedRuleIds.length;
   const weeklyRevenueEstimate = paintedRuleIds.reduce((sum, ruleId) => {
     const rule = rules.find((r) => r.id === ruleId);
@@ -626,6 +629,20 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               );
             })}
             {(() => {
+              const active = activeRuleId === RESERVED_TOOL_ID;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setActiveRuleId(RESERVED_TOOL_ID)}
+                  aria-pressed={active}
+                  className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
+                  style={{ borderColor: active ? RESERVED_COLOR : 'transparent', color: active ? RESERVED_COLOR : 'var(--muted)' }}
+                >
+                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: RESERVED_COLOR }} /> Reserved
+                </button>
+              );
+            })()}
+            {(() => {
               const active = activeRuleId === CLOSED_TOOL_ID;
               return (
                 <button
@@ -698,8 +715,10 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                     {day}
                   </button>
                   {HOURS.map((hour) => {
+                    const isReserved = (paintedCells[cellKey(day, hour)] ?? '') === RESERVED_TOOL_ID;
                     const rule = ruleForCell(day, hour);
-                    const label = cellLabel(rule);
+                    const label = cellLabel(rule, isReserved);
+                    const bg = isReserved ? RESERVED_COLOR : (rule?.color ?? CLOSED_COLOR);
                     return (
                       <button
                         key={`${day}-${hour}`}
@@ -716,7 +735,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                         onMouseLeave={() => setTooltip(null)}
                         className="relative touch-none select-none p-1 border-r border-[var(--field-border)] last:border-r-0"
                       >
-                        <span className="block h-4 rounded-[2px]" style={{ background: rule?.color ?? CLOSED_COLOR }} />
+                        <span className="block h-4 rounded-[2px]" style={{ background: bg }} />
                       </button>
                     );
                   })}
@@ -727,6 +746,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
             {rules.map((rule) => <Legend key={rule.id} color={rule.color} label={`${rule.shortName} - ₱${rule.price}/hr`} />)}
+            <Legend color={RESERVED_COLOR} label="Reserved - Paid" />
             <Legend color={CLOSED_COLOR} label="Closed - No charge" />
           </div>
 

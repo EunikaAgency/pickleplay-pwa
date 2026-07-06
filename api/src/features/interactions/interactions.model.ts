@@ -54,6 +54,7 @@ const notificationSchema = new Schema({
   body:    { type: String, required: true },
   icon:    { type: String, maxlength: 50 },
   linkUrl: String,
+  tag:     { type: String, maxlength: 200 },
   isRead:  { type: Boolean, default: false },
 }, { timestamps: true });
 

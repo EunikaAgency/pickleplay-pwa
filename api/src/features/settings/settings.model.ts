@@ -14,6 +14,9 @@ const appSettingsSchema = new Schema({
   // BCC a copy of every transactional email to a monitoring address (e.g. info@).
   emailBccEnabled: { type: Boolean, default: false },
   emailBccAddress: { type: String, default: 'info@eunika.agency', maxlength: 255 },
+  // Pricing mode: 'start' = rate based on booking start time only (default);
+  // 'blend' = resolve per clock hour for bookings that cross override boundaries.
+  pricingMode:    { type: String, enum: ['start', 'blend'], default: 'start' },
   updatedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

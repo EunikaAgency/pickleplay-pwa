@@ -136,7 +136,7 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
         <p className="t-sm mt-2">Find games. Meet players. Play pickleball.</p>
       </div>
 
-      <div className="mx-4 mt-5 rounded-3xl p-5 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-pop)]">
+      <div className="mx-auto mt-5 w-full max-w-[720px] rounded-3xl p-5 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-[var(--shadow-pop)]">
         <div className="p-5">
           <h2 className="hd-2">{mode === 'register' ? 'Create your account' : 'Welcome back'}</h2>
           <p className="t-sm mt-1">{mode === 'register' ? 'Join the community in seconds.' : 'Ready to hit the courts?'}</p>

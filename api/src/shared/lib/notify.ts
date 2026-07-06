@@ -31,7 +31,7 @@ export async function notifyUser(userId: unknown, p: NotifyPayload): Promise<voi
   if (!userId) return;
   let createdId: string | null = null;
   try {
-    const doc = await Notification.create({ userId: userId as any, type: p.type, title: p.title, body: p.body, icon: p.icon, linkUrl: p.linkUrl });
+    const doc = await Notification.create({ userId: userId as any, type: p.type, title: p.title, body: p.body, icon: p.icon, linkUrl: p.linkUrl, tag: p.tag });
     createdId = String((doc as any)._id);
   } catch {
     /* in-app notification is best-effort */
@@ -52,7 +52,7 @@ export async function notifyUsers(userIds: Array<unknown>, p: NotifyPayload): Pr
   let docs: any[] = [];
   try {
     docs = await Notification.insertMany(
-      ids.map((userId) => ({ userId, type: p.type, title: p.title, body: p.body, icon: p.icon, linkUrl: p.linkUrl })),
+      ids.map((userId) => ({ userId, type: p.type, title: p.title, body: p.body, icon: p.icon, linkUrl: p.linkUrl, tag: p.tag })),
     );
   } catch {
     /* in-app notifications are best-effort */

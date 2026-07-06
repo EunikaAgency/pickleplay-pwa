@@ -135,18 +135,20 @@ export function SettingsScreenV2(props: SettingsV2Props) {
   const [privacy, setPrivacy] = useState<PrivacySetting>(user?.privacySetting ?? 'public');
   const [saveError, setSaveError] = useState(false);
 
-  // Admin-only: email monitoring settings
+  // Admin-only: email monitoring + pricing mode settings
   const isAdmin = user != null && (user.roleDefault === 'admin' || user.roles?.includes('admin') || userHasPermission(user, 'admin.access'));
   const [bccEnabled, setBccEnabled] = useState(false);
   const [bccAddress, setBccAddress] = useState('info@eunika.agency');
   const [bccSaving, setBccSaving] = useState(false);
   const [bccDirty, setBccDirty] = useState(false);
+  const [pricingMode, setPricingMode] = useState<'start' | 'blend'>('start');
 
   useEffect(() => {
     if (!isAdmin) return;
     getSettings().then((s) => {
       setBccEnabled(s.emailBccEnabled ?? false);
       setBccAddress(s.emailBccAddress ?? 'info@eunika.agency');
+      setPricingMode(s.pricingMode ?? 'start');
     }).catch(() => {});
   }, [isAdmin]);
 
@@ -225,6 +227,17 @@ export function SettingsScreenV2(props: SettingsV2Props) {
             <div className="settings-label">
               <strong>Edit Profile</strong>
               <span>Name, photo &amp; bio</span>
+            </div>
+            <Chevron />
+          </li>
+
+          <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('friends')}>
+            <div className="settings-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <div className="settings-label">
+              <strong>Friends</strong>
+              <span>Manage your connections</span>
             </div>
             <Chevron />
           </li>
@@ -338,6 +351,34 @@ export function SettingsScreenV2(props: SettingsV2Props) {
               {bccSaving ? "Saving..." : "Save"}
             </button>
           )}
+        </div>
+      )}
+
+      {/* ADMIN: Pricing mode */}
+      {isAdmin && (
+        <div className="content-section">
+          <h2 className="section-title">Pricing mode</h2>
+          <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+            How multi-hour bookings are priced when they span override boundaries (e.g. early bird → regular).
+          </p>
+          <Segmented
+            options={[
+              { value: 'start' as const, label: 'Per start time' },
+              { value: 'blend' as const, label: 'Blended' },
+            ]}
+            value={pricingMode}
+            onChange={async (v) => {
+              setPricingMode(v as 'start' | 'blend');
+              try {
+                await updateSettings({ pricingMode: v as 'start' | 'blend' });
+              } catch { /* ignore */ }
+            }}
+          />
+          <p style={{ marginTop: 8, fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>
+            {pricingMode === 'start'
+              ? 'Rate is determined by the booking start time and applied to all hours.'
+              : 'Each hour resolves its own rate — bookings crossing override windows blend.'}
+          </p>
         </div>
       )}
 

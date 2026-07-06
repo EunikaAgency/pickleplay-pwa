@@ -120,10 +120,11 @@ export async function findSlotConflict(body: {
   const wanted = hoursTouched(body.startTime, body.endTime);
   if (!wanted.length) return null;
 
-  // A player can't be on two courts at once: reject a window that overlaps one
-  // this same user already holds at this venue/date — regardless of how many
-  // courts the venue has. The capacity pool below only stops the venue selling
-  // more courts than exist; it never stops ONE user stacking overlapping slots
+  // A player can't double-book the same court: reject a window that overlaps one
+  // this same user already holds on THIS court at this venue/date. Different
+  // courts at the same time are allowed (booking for a group across multiple
+  // courts). The capacity pool below stops the venue selling more courts than
+  // exist; it never stops ONE user stacking overlapping slots on the same court
   // (which is how a 3-court venue let the same player book 7–11 and 8–11). This
   // covers Create Game too: that flow reserves the court via this same path.
   // Time strings are zero-padded "HH:MM", so lexical < / > is chronological
@@ -131,12 +132,12 @@ export async function findSlotConflict(body: {
   // owner-entered manual/blocked bookings (no single customer to double-book).
   if (userId) {
     const ownClash = await Booking.findOne({
-      userId, venueId: body.venueId, date: body.date,
+      userId, venueId: body.venueId, courtId: body.courtId, date: body.date,
       status: { $ne: 'cancelled' },
       startTime: { $ne: null, $lt: body.endTime },
       endTime: { $ne: null, $gt: body.startTime },
     }).lean();
-    if (ownClash) return 'You already have a booking here that overlaps this time. Cancel it first or pick another slot.';
+    if (ownClash) return 'You already have a booking on this court that overlaps this time. Cancel it first or pick another slot.';
   }
 
   // A specific court holds one booking per slot: any overlap on that court clashes.
@@ -350,15 +351,13 @@ export async function createBooking(c: any) {
     return c.json({ error: { code: 'SLOT_CONFLICT', message: conflictMessage } }, 409);
   }
 
-  // Approval venues hold the booking as a request: it lands 'pending_approval'
-  // with no payment, and the owner must accept before the player pays. Instant-
-  // book venues (the default) confirm the moment the player books. A chosen court
-  // can override the venue policy: 'manual' forces request-to-book, 'auto' forces
-  // instant-book; 'inherit' (or no court) falls back to the venue's setting.
-  const venue = await Venue.findById(body.venueId).select('requireBookingApproval ownerUserId displayName priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean<{ requireBookingApproval?: boolean; ownerUserId?: any; displayName?: string; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number }>();
-  const requiresApproval = court?.approvalMode === 'manual' ? true
-    : court?.approvalMode === 'auto' ? false
-    : !!venue?.requireBookingApproval;
+  // Per-court approval — a court set to 'manual' requires owner approval before
+  // the player pays; anything else (including 'auto' and 'inherit') confirms instantly.
+  const requiresApproval = court?.approvalMode === 'manual';
+
+  // Venue still needed for pricing, member discount, per-player surcharge,
+  // and owner notification — just no longer for the approval decision.
+  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean<{ displayName?: string; ownerUserId?: any; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number }>();
 
   // ── Pricing validation (hard) — skip for blocked slots and open-play ──
   let pricing: { rate: number; baseRate: number; source: string; memberApplied: boolean; memberDiscountPercent: number; overrideId?: string } | null = null;
@@ -367,22 +366,39 @@ export async function createBooking(c: any) {
     const endH = Number(body.endTime.split(':')[0]);
     const hours = Math.max(1, endH - startH);
 
-    // Resolve per clock hour so bookings crossing override boundaries validate
-    // correctly (e.g. 8–10am early bird + 10am–noon regular).
+    // Read pricing mode from settings: 'start' (default) = start-time rate × hours;
+    // 'blend' = resolve per clock hour so bookings crossing override boundaries
+    // validate correctly (e.g. 8–10am early bird + 10am–noon regular).
+    const { getSingleton } = await import('../settings/settings.controller.js');
+    const appSettings = await getSingleton();
+    const blendMode = appSettings?.pricingMode === 'blend';
+
     let expectedAmount = 0;
-    for (let h = startH; h < endH; h++) {
-      const hourStart = `${String(h).padStart(2, '0')}:00`;
-      const hr = await resolveHourlyRate({
+    if (blendMode) {
+      for (let h = startH; h < endH; h++) {
+        const hourStart = `${String(h).padStart(2, '0')}:00`;
+        const hr = await resolveHourlyRate({
+          venueId: body.venueId,
+          courtId: body.courtId || null,
+          subUnitIndex: body.subUnitIndex ?? null,
+          date: body.date,
+          startTime: hourStart,
+          isMember: false,
+        });
+        expectedAmount += hr.rate;
+        if (!pricing) pricing = hr;
+      }
+    } else {
+      // Start mode: resolve once at start time, multiply by hours.
+      pricing = await resolveHourlyRate({
         venueId: body.venueId,
         courtId: body.courtId || null,
         subUnitIndex: body.subUnitIndex ?? null,
         date: body.date,
-        startTime: hourStart,
+        startTime: body.startTime,
         isMember: false,
       });
-      expectedAmount += hr.rate;
-      // Keep the first hour's breakdown for the audit trail.
-      if (!pricing) pricing = hr;
+      expectedAmount = pricing.rate * hours;
     }
 
     // Check if the player is a venue member (for member discount).
@@ -394,25 +410,28 @@ export async function createBooking(c: any) {
       if (membership) {
         pricing.memberApplied = true;
         pricing.memberDiscountPercent = Math.max(0, Math.min(100, Number(venue?.memberDiscountPercent) || 0));
-        // Recalculate: apply member discount to each hour's base rate, sum up.
-        expectedAmount = 0;
-        for (let h = startH; h < endH; h++) {
-          const hourStart = `${String(h).padStart(2, '0')}:00`;
-          const hr = await resolveHourlyRate({
-            venueId: body.venueId,
-            courtId: body.courtId || null,
-            subUnitIndex: body.subUnitIndex ?? null,
-            date: body.date,
-            startTime: hourStart,
-            isMember: false,
-          });
-          expectedAmount += Math.round(hr.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
+        if (blendMode) {
+          expectedAmount = 0;
+          for (let h = startH; h < endH; h++) {
+            const hourStart = `${String(h).padStart(2, '0')}:00`;
+            const hr = await resolveHourlyRate({
+              venueId: body.venueId,
+              courtId: body.courtId || null,
+              subUnitIndex: body.subUnitIndex ?? null,
+              date: body.date,
+              startTime: hourStart,
+              isMember: false,
+            });
+            expectedAmount += Math.round(hr.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
+          }
+        } else {
+          expectedAmount = Math.round(pricing.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100 * hours;
         }
         pricing.rate = Math.round(pricing.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
       }
     }
 
-    // Compute expected amount: per-hour total + equipment + per-player surcharge.
+    // Compute expected amount: total + equipment + per-player surcharge.
     const equipAmount = body.hasEquipmentRental && body.equipmentRentalAmount != null
       ? (typeof body.equipmentRentalAmount === 'number' ? body.equipmentRentalAmount : parseFloat(String(body.equipmentRentalAmount)))
       : 0;

@@ -22,10 +22,13 @@ const gameSchema = new Schema({
   date:          { type: String },                        // computed YYYY-MM-DD (best-effort)
   capacity:      { type: Number, default: 4 },
   participantIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  // Players the host has invited (notified). The invite is the notification +
-  // deep link; this list just records who was asked, so re-invites dedupe and
-  // the host can see pending invites. Joining is still via the normal flow.
-  invitedUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  // Players who have been invited. Each entry records who was invited and who
+  // sent the invite, so the invitee can see the inviter's name and re-invites
+  // (same user by same inviter) dedupe. Joining is still via the normal flow.
+  invitedUserIds: [{
+    user:      { type: Schema.Types.ObjectId, ref: 'User' },
+    invitedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  }],
   visibility:    { type: String, default: 'public' },     // 'public' | 'invite'
   // Lifecycle: a game is created at a fixed venue and is immediately joinable.
   status:        { type: String, default: 'published' },  // 'published' (filling) | 'full' | 'cancelled'

@@ -186,8 +186,12 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
 
-  // Per-hour rate resolution so bookings crossing override boundaries blend correctly.
+  // Pricing mode: 'start' = rate from booking start time × hours (default);
+  // 'blend' = resolve each clock hour independently (crosses override boundaries).
+  const blendMode = settings?.pricingMode === 'blend';
+
   const hourlyTotal = useMemo(() => {
+    if (!blendMode) return rate * hours;
     if (!startTime || !endTime) return rate * hours;
     const startH = Number(startTime.split(':')[0]);
     const endH = Number(endTime.split(':')[0]);
@@ -202,7 +206,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
       sum += ri.rate;
     }
     return Math.round(sum * 100) / 100;
-  }, [startTime, endTime, rate, hours, selected, selectedCourt, venueHours, overrides, date, viewerIsMember]);
+  }, [blendMode, startTime, endTime, rate, hours, selected, selectedCourt, venueHours, overrides, date, viewerIsMember]);
 
   const total = hourlyTotal;
 

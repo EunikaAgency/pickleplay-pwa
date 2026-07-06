@@ -20,7 +20,7 @@ import {
 const TEST_CARD = { number: '4242 4242 4242 4242', expiry: '12/34', cvc: '123' } as const;
 
 /** Read (creating on first access) the singleton settings document. */
-async function getSingleton() {
+export async function getSingleton() {
   return AppSettings.findOneAndUpdate(
     { key: 'global' },
     { $setOnInsert: { key: 'global', paymentTestMode: true } },
@@ -44,13 +44,14 @@ export async function getServiceFeePercent(): Promise<number> {
   return s?.serviceFeePercent ?? 7;
 }
 
-function publicShape(s: { paymentTestMode?: boolean; serviceFeePercent?: number; emailBccEnabled?: boolean; emailBccAddress?: string } | null) {
+function publicShape(s: { paymentTestMode?: boolean; serviceFeePercent?: number; emailBccEnabled?: boolean; emailBccAddress?: string; pricingMode?: string } | null) {
   return {
     paymentTestMode: s?.paymentTestMode ?? true,
     serviceFeePercent: s?.serviceFeePercent ?? 7,
     testCard: TEST_CARD,
     emailBccEnabled: s?.emailBccEnabled ?? false,
     emailBccAddress: s?.emailBccAddress ?? 'info@eunika.agency',
+    pricingMode: (s?.pricingMode as 'start' | 'blend') ?? 'start',
   };
 }
 
@@ -74,6 +75,7 @@ const updateSchema = z.object({
   serviceFeePercent: z.number().min(0).max(100).optional(),
   emailBccEnabled: z.boolean().optional(),
   emailBccAddress: z.string().email().max(255).optional(),
+  pricingMode: z.enum(['start', 'blend']).optional(),
 });
 
 /** Admin-only write of the payment mode + service fee. */
@@ -88,6 +90,7 @@ export async function updateSettings(c: any) {
   if (body.serviceFeePercent !== undefined) update.serviceFeePercent = body.serviceFeePercent;
   if (body.emailBccEnabled !== undefined) update.emailBccEnabled = body.emailBccEnabled;
   if (body.emailBccAddress !== undefined) update.emailBccAddress = body.emailBccAddress;
+  if (body.pricingMode !== undefined) update.pricingMode = body.pricingMode;
   const s = await AppSettings.findOneAndUpdate(
     { key: 'global' },
     update,

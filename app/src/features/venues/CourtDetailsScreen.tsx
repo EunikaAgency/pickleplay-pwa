@@ -30,6 +30,8 @@ interface CourtDetailsScreenProps {
   filterDate?: string;
   /** Start hour from the map filter (0-23) — when set, courts show availability badges. */
   filterStartHour?: number;
+  /** End hour from the map filter (0-23) — pre-fills the booking end time. */
+  filterEndHour?: number;
   onNavigate: Navigate;
   onBack: () => void;
 }
@@ -139,7 +141,7 @@ function readSavedVenues(): string[] {
   }
 }
 
-export function CourtDetailsScreen({ courtId, intent, filterDate, filterStartHour, onNavigate, onBack }: CourtDetailsScreenProps) {
+export function CourtDetailsScreen({ courtId, intent, filterDate, filterStartHour, filterEndHour, onNavigate, onBack }: CourtDetailsScreenProps) {
   const { trackVenueView } = useDemandTracking();
   const [venue, setVenue] = useState<ApiVenueDetail | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
@@ -211,7 +213,7 @@ export function CourtDetailsScreen({ courtId, intent, filterDate, filterStartHou
 
   return (
     <DemoBranch loading={loadingUI} error={errorUI} empty={notFoundUI}>
-      {realState ?? (venue && <CourtDetail venue={venue} intent={intent} filterDate={filterDate} filterStartHour={filterStartHour} onNavigate={onNavigate} onBack={onBack} />)}
+      {realState ?? (venue && <CourtDetail venue={venue} intent={intent} filterDate={filterDate} filterStartHour={filterStartHour} filterEndHour={filterEndHour} onNavigate={onNavigate} onBack={onBack} />)}
     </DemoBranch>
   );
 }
@@ -221,6 +223,7 @@ function CourtDetail({
   intent,
   filterDate,
   filterStartHour,
+  filterEndHour,
   onNavigate,
   onBack,
 }: {
@@ -228,6 +231,7 @@ function CourtDetail({
   intent?: 'lobby';
   filterDate?: string;
   filterStartHour?: number;
+  filterEndHour?: number;
   onNavigate: Navigate;
   onBack: () => void;
 }) {
@@ -246,7 +250,12 @@ function CourtDetail({
   const coords = venueCoords(venue);
   const sym = currencySymbol(venue.pricingCurrency);
 
-  const requireApproval = !!venue.requireBookingApproval;
+  // Per-court approval — a court set to 'manual' requires owner approval; anything
+  // else confirms instantly. When there are no courts, fall back to the venue flag.
+  const courtsList = venue.courts ?? [];
+  const requireApproval = courtsList.length > 0
+    ? courtsList.some((c) => c.approvalMode === 'manual')
+    : !!venue.requireBookingApproval;
   const reviewCount = venue.googleReviewCount ?? null;
 
   const todayKey = DAY_KEYS[new Date().getDay()];
@@ -511,6 +520,9 @@ function CourtDetail({
   if (filterDate && filterStartHour != null) {
     bookParams.date = filterDate;
     bookParams.time = to12h(`${String(filterStartHour).padStart(2, '0')}:00`);
+    if (filterEndHour != null && filterEndHour > filterStartHour) {
+      bookParams.hours = filterEndHour - filterStartHour;
+    }
   }
 
   const ctaLabel = intent === 'lobby'
@@ -1109,7 +1121,7 @@ function CourtDetail({
                   {isExpired ? 'Renew Subscription' : 'Join Membership'}
                 </Button>
               ) : null}
-              {price ? (
+              {effectivePriceLabel() ? (
                 <Button
                   className="text-[15px] px-5 py-3.5 flex-1"
                   onClick={() => onNavigate('book-court', bookParams)}
@@ -1126,7 +1138,7 @@ function CourtDetail({
                 </Button>
               )}
             </div>
-            {!price && (
+            {!effectivePriceLabel() && (
               <div className="text-[12px] text-[var(--muted)] font-semibold mt-2 text-center">
                 {apiPlans && apiPlans.length > 0
                   ? 'No rates listed for this court yet — membership still available.'

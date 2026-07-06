@@ -215,21 +215,15 @@
 
 /* Tablet & up: rather than frame the mobile app inside big black gutters, let
    the phone frame grow to fill the viewport — capped at 1000px, just under the
-   1024px desktop breakpoint, so the legacy sidebar layout (the `@container app`
-   blocks far below + the v2 tab-bar hide in v2.css) never re-activates. The app
-   keeps its mobile single-column layout, only wider. This is a viewport `@media`
-   (not a `@container`) on purpose: the frame's own width depends on
-   `--frame-max`, so the cap must key off the device, not the frame itself. */
+   1024px desktop breakpoint. */
 @media (min-width: 577px) {
   :root { --frame-max: 1000px; }
 }
 
-/* Admin & owner: lift the phone-frame cap so the app can grow to desktop
-   widths.  Once the frame passes 1024 px the existing @container queries
-   swap the bottom tab bars for the sidebar — giving these roles a dashboard
-   layout on large screens (players/guests keep the mobile-only frame). */
+/* Roles that already had max-width: none via data-role. */
 .app[data-role="admin"],
-.app[data-role="owner"] {
+.app[data-role="owner"],
+.app[data-role="organizer"] {
   max-width: none;
 }
 
@@ -255,6 +249,13 @@
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.45;
+}
+
+/* Desktop (≥1024px): lift the phone-frame cap for ALL users so the
+   @container queries fire and swap the bottom tab bars for the sidebar.
+   MUST come after the .app rule above so it wins the cascade. */
+@media (min-width: 1024px) {
+  .app { max-width: none; }
 }
 
 .scroll {
@@ -640,6 +641,27 @@
 .tabbar .tab:active { transform: scale(0.94); }
 .tabbar .tab.active { color: var(--primary); }
 .tabbar .tab .label { max-width: 100%; overflow: hidden; white-space: nowrap; font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em; }
+.tabbar .tab .tab-icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.tabbar .tab .tab-unread-dot {
+  position: absolute; top: -2px; right: -6px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--coral);
+  border: 2px solid var(--bg);
+}
+.tabbar .tab .tab-unread-badge {
+  position: absolute; top: -4px; right: -8px;
+  width: 17px; height: 17px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 1;
+  border: 2px solid var(--bg);
+}
 
 /* Owner variant — the v2.1 player tab-bar look (flat, full-width, lime active
    dot). Owners use this skin so their bar matches the redesigned owner screens.
@@ -791,7 +813,7 @@
 .detail-hero .info h1 { font-family: var(--font-heading); font-weight: 600; font-size: 28px; line-height: 1.1; letter-spacing: -0.01em; }
 
 /* Detail body */
-.detail-body { padding: 20px; }
+.detail-body { padding: 20px 16px; }
 .kv-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 18px; }
 .kv {
   background: var(--surface);
@@ -1700,12 +1722,11 @@
   .time-grid         { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* ─── Desktop (≥1024) — full sidebar redesign ─── */
+/* ─── Desktop (≥1024) — full sidebar redesign for ALL roles ─── */
 @container app (min-width: 1024px) {
-  /* The .app container can't query itself reliably across engines, so the
-     flex-direction switch to sidebar + main row is handled by the @media
-     block immediately below (gated on [data-role] — only admin/owner get
-     the desktop layout).  The rest here targets descendants. */
+  /* The sidebar layout activates for every role at this width. The @media
+     (min-width:1024px) above lifts --frame-max for all .app, so players also
+     reach this container query now. */
   .app { flex-direction: row; align-items: stretch; }
 
   /* Sidebar replaces the floating tabbar. */
@@ -1810,7 +1831,7 @@
     padding-right: 40px;
   }
   .detail-hero .info h1 { font-size: 36px; }
-  .detail-body          { max-width: 1100px; margin: 0 auto; padding: 32px 40px 40px; }
+  .detail-body          { padding: 32px 24px 40px; }
   .detail-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
@@ -1888,46 +1909,53 @@
   }
 }
 
-/* Owner desktop surfaces use the sidebar as the visual frame, so the content
-   should use the available workspace instead of the player-style 1100px cap. */
+/* Desktop: .app-main is already the workspace beside the sidebar. Replace the
+   centered phone-width padding with a consistent 32px inset, and neutralise
+   mobile-only padding/margin breakouts so content uses the new gutter. */
 @container app (min-width: 1024px) {
-  .app[data-role="owner"] .scroll {
+  .scroll {
     padding-inline: 32px;
   }
 
-  .app[data-role="owner"] .scroll > .px-5 {
+  .scroll > .px-5 {
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
 
-  .app[data-role="owner"] .app-header,
-  .app[data-role="owner"] .searchbar,
-  .app[data-role="owner"] .section,
-  .app[data-role="owner"] .home-refined > .px-5 {
+  .app-header,
+  .searchbar,
+  .section,
+  .home-refined > .px-5 {
     width: 100%;
     max-width: none;
   }
 
-  .app[data-role="owner"] .clubs-grid {
+  .app[data-role="owner"] .clubs-grid,
+  .app[data-role="organizer"] .clubs-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .app[data-role="owner"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3 {
+  .app[data-role="owner"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3,
+  .app[data-role="organizer"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .app[data-role="owner"] .grid.grid-cols-1.sm\:grid-cols-2 {
+  .app[data-role="owner"] .grid.grid-cols-1.sm\:grid-cols-2,
+  .app[data-role="organizer"] .grid.grid-cols-1.sm\:grid-cols-2 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @container app (min-width: 1440px) {
   .app[data-role="owner"] .clubs-grid,
-  .app[data-role="owner"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3 {
+  .app[data-role="owner"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3,
+  .app[data-role="organizer"] .clubs-grid,
+  .app[data-role="organizer"] .home-refined .grid.grid-cols-2.sm\:grid-cols-3 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .app[data-role="owner"] .grid.grid-cols-1.sm\:grid-cols-2 {
+  .app[data-role="owner"] .grid.grid-cols-1.sm\:grid-cols-2,
+  .app[data-role="organizer"] .grid.grid-cols-1.sm\:grid-cols-2 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
@@ -1948,13 +1976,11 @@
   }
 }
 
-/* Admin & owner on desktop (viewport ≥1024 px): switch .app from a centred
-   phone-column to a sidebar + main row.  This is a viewport @media because
-   the element establishing the container can't reliably query itself across
-   engines (unlike the descendant rules in the @container block above). */
+/* Desktop (≥1024px): redundant safety net for the flex-direction switch.
+   The @container rule above already handles this for all roles; this viewport
+   media query ensures the row layout even if the container query fails. */
 @media (min-width: 1024px) {
-  .app[data-role="admin"],
-  .app[data-role="owner"] {
+  .app {
     flex-direction: row;
     align-items: stretch;
   }
@@ -2017,6 +2043,20 @@
   width: 22px; height: 22px;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+}
+.sidebar .side-tab .side-tab-badge {
+  margin-left: auto;
+  min-width: 22px; height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--coral);
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 22px;
+  text-align: center;
+  white-space: nowrap;
 }
 .sidebar .side-create {
   margin-top: 14px;

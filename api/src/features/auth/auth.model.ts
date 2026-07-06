@@ -32,6 +32,9 @@ export interface IUser {
   /** Self-service account preferences (notification toggles + display units). */
   preferences?: IUserPreferences;
   lastLoginAt?: Date;
+  /** Self-reported location for nearby-people discovery. */
+  lat?: number;
+  lng?: number;
   /** Updated on every authenticated request for presence indicators. */
   lastActiveAt?: Date;
   createdAt: Date;
@@ -87,6 +90,8 @@ const userSchema = new Schema({
   modePreference:  { type: String, default: 'player' },
   hasOnboarded:    { type: Boolean, default: false },
   preferences:     { type: userPreferencesSchema, default: () => ({}) },
+  lat:             Number,
+  lng:             Number,
   lastLoginAt:     Date,
   lastActiveAt:    Date,
 }, { timestamps: true });

@@ -52,6 +52,7 @@ const listQuery = z.object({
   date: z.string().optional(),
   mine: z.coerce.boolean().optional(),
   creator: z.string().optional(),
+  invited: z.coerce.boolean().optional(),
 });
 
 const VENUE_SELECT = 'displayName slug area city lat lng priceFrom priceFromLabel mainImageUrl';
@@ -59,7 +60,7 @@ const POPULATE = [
   { path: 'creatorId', select: 'displayName avatarUrl' },
   { path: 'participantIds', select: 'displayName avatarUrl' },
   { path: 'venueId', select: VENUE_SELECT },
-  // The host's booked court → its photo, so cards can prefer the court image
+  { path: 'invitedUserIds.invitedBy', select: 'displayName avatarUrl' },
   // over the venue image (falls back to the venue image when the court has none).
   { path: 'bookingId', select: 'courtId', populate: { path: 'courtId', select: 'mainImageUrl' } },
 ];
@@ -176,7 +177,18 @@ function serialize(r: any) {
     participants,
     participantCount: participants.length,
     spotsLeft: Math.max(0, capacity - participants.length),
-    invitedUserIds: (r.invitedUserIds ?? []).map((p: any) => String(p)),
+    invitedUserIds: (r.invitedUserIds ?? []).map((entry: any) => {
+      // Handle both old (bare ObjectId string) and new ({ user, invitedBy }) formats.
+      if (typeof entry === 'object' && entry !== null) {
+        return {
+          user: String(entry.user?._id ?? entry.user),
+          invitedBy: entry.invitedBy && typeof entry.invitedBy === 'object'
+            ? { id: String(entry.invitedBy._id), displayName: entry.invitedBy.displayName, avatarUrl: entry.invitedBy.avatarUrl ?? null }
+            : null,
+        };
+      }
+      return { user: String(entry) };
+    }),
   };
 }
 
@@ -185,7 +197,11 @@ export async function listGames(c: any) {
   const user = c.get('user');
   const filter: Record<string, any> = {};
 
-  if (q.mine) {
+  if (q.invited) {
+    // "My Invites" = games where the current user is in invitedUserIds.user.
+    if (!user) return c.json({ data: [] });
+    filter['invitedUserIds.user'] = user.sub;
+  } else if (q.mine) {
     // "My Games" = games I created OR joined. Requires a signed-in user.
     if (!user) return c.json({ data: [] });
     filter.$or = [{ creatorId: user.sub }, { participantIds: user.sub }];
@@ -341,6 +357,11 @@ export async function joinGame(c: any) {
     }
     const wasFull = game.status === 'full';
     game.participantIds.push(user.sub);
+    // Remove from invitedUserIds since they've joined now.
+    (game as any).invitedUserIds = (game.invitedUserIds ?? []).filter((entry: any) => {
+      const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
+      return uid !== user.sub;
+    }) as any;
     const nowFull = game.participantIds.length >= (game.capacity ?? 0);
     if (nowFull) game.status = 'full';
     await game.save();
@@ -428,10 +449,10 @@ export async function kickPlayer(c: any) {
   return c.json({ data: serialize(populated) });
 }
 
-/** Host invites players to their game. The invite IS a notification + deep link
- *  (the invitee taps through and joins normally) — we also record them on
- *  `invitedUserIds` so re-invites dedupe. Anyone already on the roster, and the
- *  host themselves, are skipped. */
+/** Anyone on the roster (host or participant) can invite other players to their
+ *  game. The invite IS a notification + deep link (the invitee taps through and
+ *  joins normally) — we also record them on `invitedUserIds` so re-invites
+ *  dedupe. Anyone already on the roster, and the inviter themselves, are skipped. */
 export async function inviteToGame(c: any) {
   const user = c.get('user');
   if (!hasPermission(user, 'player.games.invite')) {
@@ -443,8 +464,9 @@ export async function inviteToGame(c: any) {
   }
   const game = await Game.findById(id);
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
-  if (String(game.creatorId) !== user.sub) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can invite players' } }, 403);
+  const isParticipant = game.participantIds.some((p: any) => String(p) === user.sub);
+  if (String(game.creatorId) !== user.sub && !isParticipant) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only participants can invite players to this game' } }, 403);
   }
   if (game.status === 'cancelled') {
     return c.json({ error: { code: 'CONFLICT', message: "Can't invite to a cancelled game" } }, 409);
@@ -457,9 +479,15 @@ export async function inviteToGame(c: any) {
     return c.json({ data: { invited: 0 } });
   }
   // Record invitees (merge, dedupe) so re-invites don't pile up.
-  const invited = new Set((game.invitedUserIds ?? []).map((p: any) => String(p)));
-  targets.forEach((t) => invited.add(t));
-  game.invitedUserIds = [...invited] as any;
+  // Each entry tracks { user, invitedBy } so the invitee can see who invited them.
+  const existing = (game.invitedUserIds ?? []).map((entry: any) =>
+    typeof entry === 'object' && entry.user ? String(entry.user) : String(entry)
+  );
+  const existingSet = new Set(existing);
+  const newEntries = targets
+    .filter((t) => !existingSet.has(t))
+    .map((t) => ({ user: t, invitedBy: user.sub }));
+  (game as any).invitedUserIds = [...(game.invitedUserIds ?? []), ...newEntries] as any;
   await game.save();
 
   const inviterName = await actorName(user.sub);
@@ -477,7 +505,53 @@ export async function inviteToGame(c: any) {
     linkUrl: `/games/${id}`,
     tag: `game-invite-${id}`,
   });
+  // Realtime push so the invitee's Invites tab updates without a refresh.
+  targets.forEach((uid) => publishUserEvent(uid, 'game.invited', { gameId: id }));
   return c.json({ data: { invited: targets.length } });
+}
+
+/** Remove the current user from a game's invited list (decline the invite).
+ *  Notifies the person who invited them so they know the invite was declined. */
+export async function declineInvite(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  if (!objectId.safeParse(id).success) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  }
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  // Find who invited this user (if tracked) before removing the entry.
+  let inviterId: string | null = null;
+  for (const entry of (game.invitedUserIds ?? [])) {
+    const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
+    if (uid === user.sub) {
+      inviterId = typeof entry === 'object' && entry.invitedBy ? String(entry.invitedBy) : null;
+      break;
+    }
+  }
+  // Remove the current user from invitedUserIds (handle both old and new format).
+  (game as any).invitedUserIds = (game.invitedUserIds ?? []).filter((entry: any) => {
+    const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
+    return uid !== user.sub;
+  }) as any;
+  await game.save();
+  // Notify the inviter that their invite was declined.
+  if (inviterId && inviterId !== user.sub) {
+    const declinerName = await actorName(user.sub);
+    const where = game.title
+      ? `"${game.title}"`
+      : game.venueName
+        ? `the game at ${game.venueName}`
+        : 'your game';
+    await notifyUser(inviterId, {
+      type: 'game_invite_declined',
+      title: 'Invite declined',
+      body: `${declinerName} declined your invite to ${where}.`,
+      icon: 'mail',
+      linkUrl: `/games/${id}`,
+    });
+  }
+  return c.json({ data: { declined: true } });
 }
 
 // ---- Edit / delete (host-only) ------------------------------------------

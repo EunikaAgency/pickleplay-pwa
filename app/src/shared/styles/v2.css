@@ -1537,6 +1537,11 @@
 .pb-v2.v2-nearby .dt-pill-label.placeholder {
   color: var(--muted, #94A3B8);
 }
+.pb-v2.v2-nearby .dt-time-prefix {
+  font-weight: 400;
+  opacity: 0.55;
+  font-size: 0.9em;
+}
 .pb-v2.v2-nearby .dt-chevron {
   flex-shrink: 0;
   color: var(--muted, #94A3B8);
@@ -1940,6 +1945,15 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 
 @keyframes v2spin { to { transform: rotate(360deg); } }
 
+/* Desktop: the V2TabBar is hidden at this width, so drop the 64px bottom gap
+   the sheet reserves for it. .app-main already constrains v2 screens beside
+   the desktop sidebar. */
+@container app (min-width: 1024px) {
+  .pb-v2.v2-nearby .nearby-sheet {
+    bottom: 0;
+  }
+}
+
 /* ===================== Games.html → .pb-v2.v2-games ===================== */
 .pb-v2.v2-games {
   --blue:           #3355FF;
@@ -2050,6 +2064,37 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
+}
+.pb-v2.v2-games .section-dropdown-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.pb-v2.v2-games .section-dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--border, #CBD5E1);
+  border-radius: 8px;
+  padding: 10px 36px 10px 14px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  width: 100%;
+  outline: none;
+  transition: border-color 150ms var(--ease-out);
+}
+.pb-v2.v2-games .section-dropdown:focus {
+  border-color: var(--lime-active);
+}
+.pb-v2.v2-games .section-dropdown-chevron {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: var(--text-secondary);
 }
 .pb-v2.v2-games .tab-group {
   display: flex;
@@ -2457,6 +2502,44 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   color: var(--text-muted);
   line-height: 1.3;
 }
+.pb-v2.v2-games .vis-indicator {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pb-v2.v2-games .vis-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.pb-v2.v2-games .vis-indicator.public { color: #2D8A56; }
+.pb-v2.v2-games .vis-indicator.public::before { background: #2D8A56; }
+.pb-v2.v2-games .vis-indicator.private { color: var(--muted); }
+.pb-v2.v2-games .vis-indicator.private::before { background: var(--muted); }
+.pb-v2.v2-games .vis-indicator.toggle {
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  margin-left: -6px;
+  border-radius: var(--radius-pill);
+  transition: background 150ms var(--ease-out);
+  font-family: inherit;
+}
+.pb-v2.v2-games .vis-indicator.toggle:hover {
+  background: var(--border-subtle);
+}
+.pb-v2.v2-games .vis-indicator.toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .pb-v2.v2-games .players-row {
   display: flex;
   align-items: center;
@@ -2642,6 +2725,53 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   background: var(--lime-active);
 }
 .pb-v2.v2-games .tab-item svg { width: 22px; height: 22px; }
+
+/* Search bar (per-subtab quick filter) */
+.pb-v2.v2-games .search-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 0 12px;
+  height: 40px;
+  transition: border-color 150ms;
+  box-shadow: var(--shadow-sm);
+}
+.pb-v2.v2-games .search-bar:focus-within { border-color: var(--blue); }
+.pb-v2.v2-games .search-icon { flex-shrink: 0; color: var(--text-muted); }
+.pb-v2.v2-games .search-input {
+  flex: 1; border: none; background: none; outline: none;
+  font-family: inherit; font-size: 14px; font-weight: 500;
+  color: var(--text-primary); padding: 0;
+}
+.pb-v2.v2-games .search-input::placeholder { color: var(--text-muted); font-weight: 400; }
+.pb-v2.v2-games .search-clear {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--border-subtle); color: var(--text-secondary);
+  padding: 0; transition: background 150ms;
+}
+.pb-v2.v2-games .search-clear:hover { background: var(--text-muted); color: #fff; }
+
+/* Booked tab: date range + venue dropdown */
+.pb-v2.v2-games .field-input {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 150ms;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.pb-v2.v2-games .field-input:focus { border-color: var(--blue); }
+
 @media (prefers-reduced-motion: reduce) {
 .pb-v2.v2-games * { transition: none !important; animation: none !important; }
 }

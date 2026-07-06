@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Chip } from '../../../shared/components/ui/Chip';
 import { Segmented } from '../../../shared/components/ui/Segmented';
-import { WeeklyHoursEditor } from '../components/WeeklyHoursEditor';
 import {
   listCourts,
   createCourt,
@@ -35,13 +34,9 @@ const SPORTS = [DEFAULT_SPORT, 'Tennis', 'Badminton', 'Padel', 'Basketball', 'Vo
 const FLOOR_TYPES = ['Wood', 'Professional'];
 const BALL_TYPES = ['Indoor', 'Outdoor'];
 
-// Per-court booking-approval choices, rendered as a single-select chip group
-// (matching the Court type / Ball type pickers) instead of a segmented control.
-const APPROVAL_MODES: { value: 'inherit' | 'auto' | 'manual'; label: string }[] = [
-  { value: 'inherit', label: 'Venue default' },
-  { value: 'auto', label: 'Instant' },
-  { value: 'manual', label: 'Approve' },
-];
+/** Map a boolean "requires approval" toggle to the court's stored approvalMode. */
+const toMode = (on: boolean) => on ? 'manual' : 'auto';
+const fromMode = (m?: string | null) => m === 'manual';
 
 function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (c: OwnerCourt) => void; onDeleted: (id: string) => void }) {
   const id = entityId(court);
@@ -58,7 +53,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const [isSplittable, setIsSplittable] = useState(!!court.isSplittable);
   const [splitCount, setSplitCount] = useState(court.splitCount ?? 2);
   // Per-court booking policy: approval override + a turnover gap between bookings.
-  const [approvalMode, setApprovalMode] = useState<'inherit' | 'auto' | 'manual'>(court.approvalMode ?? 'inherit');
+  const [requiresApproval, setRequiresApproval] = useState(fromMode(court.approvalMode));
   const [turnoverMinutes, setTurnoverMinutes] = useState(court.turnoverMinutes ? String(court.turnoverMinutes) : '');
   // ── Court features ── owner-described physical attributes shown on the court page.
   const [hasAircon, setHasAircon] = useState(!!court.hasAircon);
@@ -77,7 +72,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const [expanded, setExpanded] = useState(false);
   // Which tab of the expanded editor is showing. Defaults to the details form;
   // the Hours tab mounts its editor lazily (see below).
-  const [tab, setTab] = useState<'info' | 'gallery' | 'hours'>('info');
+  const [tab, setTab] = useState<'info' | 'gallery'>('info');
   // The gallery photo currently open in the full-screen preview (null = closed).
   const [lightbox, setLightbox] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -96,7 +91,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
         sport,
         isSplittable,
         splitCount,
-        approvalMode,
+        approvalMode: toMode(requiresApproval),
         turnoverMinutes: turnoverMinutes.trim() === '' ? 0 : Number(turnoverMinutes),
         hasAircon,
         highCeiling,
@@ -174,7 +169,7 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
     sport !== (court.sport || DEFAULT_SPORT) ||
     isSplittable !== !!court.isSplittable ||
     splitCount !== (court.splitCount ?? 2) ||
-    approvalMode !== (court.approvalMode ?? 'inherit') ||
+    requiresApproval !== fromMode(court.approvalMode) ||
     turnoverMinutes !== (court.turnoverMinutes ? String(court.turnoverMinutes) : '') ||
     hasAircon !== !!court.hasAircon ||
     highCeiling !== !!court.highCeiling ||
@@ -240,7 +235,6 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
         options={[
           { value: 'info', label: 'Court Info' },
           { value: 'gallery', label: 'Gallery' },
-          { value: 'hours', label: 'Hours' },
         ]}
         value={tab}
         onChange={setTab}
@@ -368,24 +362,21 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
           </div>
         </div>
 
-        {/* ── Booking policy ── per-court override of the venue's approval mode, plus
-            an optional turnover gap kept free between bookings on this court. */}
+        {/* ── Booking policy ── per-court toggle, plus an optional turnover gap
+            kept free between bookings on this court. */}
         <div className="space-y-3 bg-[var(--surface-2)] rounded-xl p-3">
           <div className="field p-0!">
             <label className="lbl">Booking approval</label>
             <div className="flex flex-wrap items-center gap-2">
-              {APPROVAL_MODES.map((m) => (
-                <Chip key={m.value} selected={approvalMode === m.value} onClick={() => { setApprovalMode(m.value); setStatus('idle'); }}>
-                  {approvalMode === m.value && <Icon name="check" size={12} />} {m.label}
-                </Chip>
-              ))}
+              <Chip selected={requiresApproval} onClick={() => { setRequiresApproval((v) => !v); setStatus('idle'); }}>
+                {requiresApproval && <Icon name="check" size={12} />}
+                Require my approval
+              </Chip>
             </div>
             <p className="t-sm text-[var(--muted)] mt-1">
-              {approvalMode === 'inherit'
-                ? 'Follows your venue’s booking policy.'
-                : approvalMode === 'auto'
-                ? 'Bookings on this court confirm instantly.'
-                : 'You approve each booking before the player pays.'}
+              {requiresApproval
+                ? 'You approve each booking on this court before the player pays.'
+                : 'Bookings on this court confirm instantly.'}
             </p>
           </div>
           <div className="field p-0! w-40">
@@ -464,11 +455,6 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
       </div>
       )}
 
-      {/* ── Operating Hours ── this court's own weekly hours (+ hours pricing).
-          Inherits the venue default until first saved. Lazy — the editor only
-          mounts (and fetches) when this tab is selected. */}
-      {tab === 'hours' && <WeeklyHoursEditor courtId={id} hidePricing />}
-
       {/* Card-level Save — shown on any tab whenever there are unsaved changes.
           (Delete moved to the card header above.) */}
       {dirty && (
@@ -506,7 +492,7 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
   const [newSurface, setNewSurface] = useState('');
   const [newIndoor, setNewIndoor] = useState(false);
   const [newSport, setNewSport] = useState(DEFAULT_SPORT);
-  const [newApprovalMode, setNewApprovalMode] = useState<'inherit' | 'auto' | 'manual'>('inherit');
+  const [newRequiresApproval, setNewRequiresApproval] = useState(false);
   const [newTurnover, setNewTurnover] = useState('');
   // Court-profile attributes, settable at creation (mirrors the per-court editor).
   const [newHasAircon, setNewHasAircon] = useState(false);
@@ -553,13 +539,13 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
     if (addStatus === 'saving') return;
     setAddStatus('saving');
     try {
-      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, indoor: newIndoor, sport: newSport, approvalMode: newApprovalMode, turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover), hasAircon: newHasAircon, highCeiling: newHighCeiling, hasRefreshmentStand: newHasRefreshmentStand, spaceAroundCourt: newSpaceAroundCourt.trim() || undefined, floorType: newFloorType || undefined, ballType: newBallType || undefined });
+      const created = await createCourt(venueId, { courtNumber: String(nextNumber), courtName: newName.trim() || undefined, surfaceType: newSurface || undefined, indoor: newIndoor, sport: newSport, approvalMode: toMode(newRequiresApproval), turnoverMinutes: newTurnover.trim() === '' ? 0 : Number(newTurnover), hasAircon: newHasAircon, highCeiling: newHighCeiling, hasRefreshmentStand: newHasRefreshmentStand, spaceAroundCourt: newSpaceAroundCourt.trim() || undefined, floorType: newFloorType || undefined, ballType: newBallType || undefined });
       setCourts((c) => [...c, created]);
       setNewName('');
       setNewSurface('');
       setNewIndoor(false);
       setNewSport(DEFAULT_SPORT);
-      setNewApprovalMode('inherit');
+      setNewRequiresApproval(false);
       setNewTurnover('');
       setNewHasAircon(false);
       setNewHighCeiling(false);
@@ -666,25 +652,20 @@ export function CourtsEditorTab({ venueId, reload }: CourtsEditorTabProps) {
           <label className="lbl">Space around court</label>
           <input className="control" value={newSpaceAroundCourt} maxLength={30} onChange={(e) => setNewSpaceAroundCourt(e.target.value)} placeholder="e.g. 3m" />
         </div>
-        {/* Per-court booking policy: override the venue's approval mode + optional
-            turnover gap — settable at creation so owners don't have to create then
-            re-open each court to configure it. */}
+        {/* Per-court booking policy: a simple toggle — settable at creation. */}
         <div className="space-y-3 bg-[var(--surface-2)] rounded-xl p-3 mb-3">
           <div className="field p-0!">
             <label className="lbl">Booking approval</label>
             <div className="flex flex-wrap items-center gap-2">
-              {APPROVAL_MODES.map((m) => (
-                <Chip key={m.value} selected={newApprovalMode === m.value} onClick={() => setNewApprovalMode(m.value)}>
-                  {newApprovalMode === m.value && <Icon name="check" size={12} />} {m.label}
-                </Chip>
-              ))}
+              <Chip selected={newRequiresApproval} onClick={() => setNewRequiresApproval((v) => !v)}>
+                {newRequiresApproval && <Icon name="check" size={12} />}
+                Require my approval
+              </Chip>
             </div>
             <p className="t-sm text-[var(--muted)] mt-1">
-              {newApprovalMode === 'inherit'
-                ? 'Follows your venue’s booking policy.'
-                : newApprovalMode === 'auto'
-                ? 'Bookings on this court confirm instantly.'
-                : 'You approve each booking before the player pays.'}
+              {newRequiresApproval
+                ? 'You approve each booking on this court before the player pays.'
+                : 'Bookings on this court confirm instantly.'}
             </p>
           </div>
           <div className="field p-0! w-40">

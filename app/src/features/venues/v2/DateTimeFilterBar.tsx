@@ -188,6 +188,8 @@ function DatePickerPanel({ initialDate, onApply, onCancel }: {
     const d = new Date(date);
     const day = Math.min(d.getDate(), lastDay);
     const pad = (n: number) => String(n).padStart(2, '0');
+    setVisibleYear(year);
+    setVisibleMonth(month);
     setDate(`${year}-${pad(month + 1)}-${pad(day)}`);
     setNavKey((k) => k + 1);
   };
@@ -289,6 +291,16 @@ export function DateTimeFilterBar({
     ? to12h(draftEnd)
     : null;
 
+  // Auto-apply the filter whenever the minimum fields (date + start time) are set.
+  // Called after each pick so the user never has to click a separate Apply button.
+  const tryAutoApply = (date: string, start: string, end: string) => {
+    const startNum = start ? Number(start.split(':')[0]) : null;
+    if (startNum == null) return;
+    const endNum = end ? Number(end.split(':')[0]) : null;
+    const endH = (endNum != null && endNum > startNum) ? endNum : undefined;
+    onApply(date, startNum, endH);
+  };
+
   const applyAll = () => {
     if (draftStartNum == null) return;
     const end = (draftEndNum != null && draftEndNum > draftStartNum) ? draftEndNum : undefined;
@@ -372,7 +384,7 @@ export function DateTimeFilterBar({
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
             <span className={`dt-pill-label${!displayStart ? ' placeholder' : ''}`}>
-              {displayStart || 'Start'}
+              {displayStart ? <><span className="dt-time-prefix">From </span>{displayStart}</> : 'From…'}
             </span>
             <svg className="dt-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
@@ -381,7 +393,7 @@ export function DateTimeFilterBar({
           {startOpen && (
             <HourDropdown
               initialHour={draftStartNum}
-              onApply={(h) => { setDraftStart(`${String(h).padStart(2, '0')}:00`); setStartOpen(false); }}
+              onApply={(h) => { const v = `${String(h).padStart(2, '0')}:00`; setDraftStart(v); setStartOpen(false); tryAutoApply(draftDate, v, draftEnd); }}
               onClose={cancelStart}
               label="Start time"
             />
@@ -401,7 +413,7 @@ export function DateTimeFilterBar({
               <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
             </svg>
             <span className={`dt-pill-label${!displayEnd ? ' placeholder' : ''}`}>
-              {displayEnd || 'End'}
+              {displayEnd ? <><span className="dt-time-prefix">to </span>{displayEnd}</> : 'to…'}
             </span>
             <svg className="dt-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
@@ -410,7 +422,7 @@ export function DateTimeFilterBar({
           {endOpen && (
             <HourDropdown
               initialHour={draftEndNum}
-              onApply={(h) => { setDraftEnd(`${String(h).padStart(2, '0')}:00`); setEndOpen(false); }}
+              onApply={(h) => { const v = `${String(h).padStart(2, '0')}:00`; setDraftEnd(v); setEndOpen(false); tryAutoApply(draftDate, draftStart, v); }}
               onClose={cancelEnd}
               label="End time"
             />
@@ -458,7 +470,7 @@ export function DateTimeFilterBar({
         </div>
         <DatePickerPanel
           initialDate={draftDate}
-          onApply={(d) => { setDraftDate(d); setDateSheet(false); }}
+          onApply={(d) => { setDraftDate(d); setDateSheet(false); tryAutoApply(d, draftStart, draftEnd); }}
           onCancel={cancelDate}
         />
       </Sheet>

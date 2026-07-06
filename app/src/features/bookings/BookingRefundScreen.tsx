@@ -109,6 +109,11 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
   const alreadyCancelled = booking.status === 'cancelled';
   const when = [prettyDate(booking.date), timeRange(booking)].filter(Boolean).join(' · ');
 
+  // Past bookings are read-only — no cancel/refund actions.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isPast = !!(booking.date && booking.date < todayStr);
+  const isReadOnly = alreadyCancelled || isPast;
+
   // Post-cancel success — the request is in, no more actions needed.
   if (done) {
     return (
@@ -140,7 +145,7 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
 
   return (
     <div className="scroll pb-[120px] pt-[calc(20px+env(safe-area-inset-top))]">
-      <ScreenHeader onBack={onBack} title="Refund & cancel" eyebrow="Court reservation" />
+      <ScreenHeader onBack={onBack} title={isPast ? 'Booking details' : 'Refund & cancel'} eyebrow="Court reservation" />
 
       <div className="px-5 mt-1">
         {/* Booking summary */}
@@ -157,6 +162,11 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
                 Cancelled
               </span>
             )}
+            {isPast && !alreadyCancelled && (
+              <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[var(--lime)] text-[var(--ink)]">
+                Completed
+              </span>
+            )}
           </div>
           <div className="mt-3 pt-3 border-t-[0.5px] border-[var(--hairline)] flex items-center justify-between">
             <span className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">Paid</span>
@@ -164,10 +174,12 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
           </div>
         </div>
 
-        {alreadyCancelled ? (
+        {isReadOnly ? (
           <div className="mt-5 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] px-4 py-4 text-[13px] font-semibold text-[var(--ink-2)]">
-            This booking is already cancelled. Any eligible refund will be processed to your original
-            payment method — no further action is needed.
+            {alreadyCancelled
+              ? "This booking is already cancelled. Any eligible refund will be processed to your original payment method — no further action is needed."
+              : "This booking is in the past. No changes can be made — it's here for your records."
+            }
           </div>
         ) : (
           <>

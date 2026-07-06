@@ -675,7 +675,7 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
           )}
 
           {activeTab === 'feed' && (
-            <>
+            <div className="-mx-1 rounded-2xl bg-slate-200 overflow-hidden p-3">
               {canPost ? (
                 // One grouped composer card (textarea + attachments + a bottom
                 // toolbar with Photo on the left, send on the right) — Facebook/
@@ -807,7 +807,7 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

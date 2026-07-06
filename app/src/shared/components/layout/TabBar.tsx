@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import type { TabId } from '../../lib/navigation';
+import { useMessageStore } from '../../lib/messageStore';
 
 interface TabBarProps {
   activeTab: TabId;
@@ -11,6 +12,8 @@ interface TabBarProps {
   /** Owners get the v2.1-skinned bar (flat, lime active-dot) with labels that
    *  match the owner screens each tab opens, instead of the player labels. */
   isOwner?: boolean;
+  /** Organizers get organizer-specific labels (Organize instead of Today, etc.). */
+  isOrganizer?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
 }
@@ -39,17 +42,28 @@ const ownerTabs: Tab[] = [
   { id: 'profile', label: 'Profile',  icon: 'user' },
 ];
 
-export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, showTournaments = true }: TabBarProps) {
-  const items = (isOwner ? ownerTabs : tabs).filter((t) => t.id !== 'tournaments' || showTournaments);
+// Organizer tabs — home opens the organizer hub ("Organize").
+const organizerTabs: Tab[] = [
+  { id: 'home',    label: 'Organize', icon: 'trophy' },
+  { id: 'games',   label: 'Games',    icon: 'calendar' },
+  { id: 'nearby',  label: 'Nearby',   icon: 'map_pin' },
+  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'profile', label: 'Profile',  icon: 'user' },
+];
+
+export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, isOrganizer = false, showTournaments = true }: TabBarProps) {
+  const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
+  const items = roleTabs.filter((t) => t.id !== 'tournaments' || showTournaments);
+  const unreadMessages = useMessageStore((s) => s.unread);
   return (
-    <nav className={`tabbar${isOwner ? ' tabbar--owner' : ''}`} aria-label="Primary navigation">
+    <nav className={`tabbar${isOwner || isOrganizer ? ' tabbar--owner' : ''}`} aria-label="Primary navigation">
       {items.map((t) => {
         const isActive = activeTab === t.id;
         // Guests see the "You" and "Messages" tabs as "Login" — tapping sends them to sign in.
         const label = (t.id === 'profile' || t.id === 'messages') && !isLoggedIn ? 'Login' : t.label;
         // Owner bar follows the v2.1 design: outline icons + colour/dot for the
         // active tab (no filled-icon swap).
-        const iconName = !isOwner && isActive ? (t.iconFill ?? t.icon) : t.icon;
+        const iconName = (!isOwner && !isOrganizer) && isActive ? (t.iconFill ?? t.icon) : t.icon;
         return (
           <button
             key={t.id}
@@ -60,7 +74,14 @@ export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, sho
             {/* The unread-notification badge lives on the header bell (see the
              *  owner home/profile bells), matching the player chrome — not on
              *  this tab. */}
-            <Icon name={iconName} size={22} />
+            <span className="tab-icon-wrap">
+              <Icon name={iconName} size={22} />
+              {t.id === 'messages' && unreadMessages > 0 && (
+                <span className="tab-unread-badge" aria-label={`${unreadMessages} unread messages`}>
+                  {unreadMessages > 99 ? '99+' : unreadMessages}
+                </span>
+              )}
+            </span>
             {label && <span className="label">{label}</span>}
           </button>
         );
