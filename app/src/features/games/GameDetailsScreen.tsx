@@ -465,6 +465,24 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   </div>
                 </div>
               </div>
+              {/* Who's joined — the roster with the host + "you" marked. */}
+              {participants.length > 0 && (
+                <div className="flex flex-col gap-2.5">
+                  {participants.map((p) => {
+                    const isHostRow = p.id === (game.creator?.id ?? game.creatorId);
+                    const isMe = !!(me && p.id === me.id);
+                    return (
+                      <div key={p.id} className="flex items-center gap-3">
+                        <Avatar src={p.avatarUrl} name={p.displayName} size={36} />
+                        <div className="text-[14px] font-semibold text-[var(--ink)]">
+                          {p.displayName}{isMe ? ' (you)' : ''}
+                        </div>
+                        {isHostRow && <span className="tag lime ml-auto">Host</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
