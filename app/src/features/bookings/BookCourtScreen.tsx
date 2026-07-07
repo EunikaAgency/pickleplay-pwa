@@ -49,6 +49,16 @@ const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; d
 // ── Open-play game details (step 1 when bookingMode === 'open_play') ──
 const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
 
+// ── Public-game details (step 1 when bookingMode === 'public_game') ──
+type GameFormat = 'bracketing' | 'round_robin' | 'mini_tournament';
+const FORMAT_OPTIONS: { v: GameFormat; label: string; icon: string }[] = [
+  { v: 'bracketing', label: 'Bracketing', icon: '🏆' },
+  { v: 'round_robin', label: 'Round-robin', icon: '🔁' },
+  { v: 'mini_tournament', label: 'Mini-tournament', icon: '🎯' },
+];
+const MIN_SLOTS = 2;
+const MAX_SLOTS = 16;
+
 /** A venue is bookable only if it has a rate (decision: require a price). */
 function isBookable(v: ApiVenue): boolean {
   return v.priceFrom != null;
@@ -116,6 +126,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [opSkill, setOpSkill] = useState('3.0–3.5');
   const [opName, setOpName] = useState('');
   const [opDesc, setOpDesc] = useState('');
+  // Public-game details (collected in step 1 when bookingMode === 'public_game').
+  // Name/description reuse opName/opDesc (only one mode is active at a time).
+  const [pgFormat, setPgFormat] = useState<GameFormat | null>(null);
+  const [pgSlots, setPgSlots] = useState(4);
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -386,16 +400,21 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     return venues.filter((v) => `${v.displayName} ${locationLine(v)}`.toLowerCase().includes(q));
   }, [venues, query]);
 
-  const totalSteps = bookingMode === 'open_play' ? 4 : 3;
+  // Open play AND public game both insert a "game details" step (index 1), so
+  // they're 4-step flows; a plain private booking stays 3 steps.
+  const hasDetailsStep = bookingMode === 'open_play' || bookingMode === 'public_game';
+  const totalSteps = hasDetailsStep ? 4 : 3;
   const stepTitles = bookingMode === 'open_play'
     ? ['Court & time', 'Open play details', 'Summary', 'Checkout']
+    : bookingMode === 'public_game'
+    ? ['Court & time', 'Public game details', 'Summary', 'Checkout']
     : ['Court & time', 'Summary', 'Checkout'];
 
   // Map the visual step index to the logical step for rendering.
-  // In open-play mode: 0=court, 1=game details, 2=summary, 3=checkout.
-  // In other modes:    0=court, 1=summary, 2=checkout.
-  const summaryStep = bookingMode === 'open_play' ? 2 : 1;
-  const checkoutStep = bookingMode === 'open_play' ? 3 : 2;
+  // With a details step: 0=court, 1=game details, 2=summary, 3=checkout.
+  // Without (private):   0=court, 1=summary, 2=checkout.
+  const summaryStep = hasDetailsStep ? 2 : 1;
+  const checkoutStep = hasDetailsStep ? 3 : 2;
   const back = () => {
     if (step > 0) {
       // Demand signal: user left checkout without completing.
@@ -441,6 +460,37 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       return null;
     }
   };
+
+  /** Create the public game (format + capped roster) on a confirmed booking.
+   *  Best-effort, same as open play. */
+  const createPublicGame = async (bookingId: string) => {
+    try {
+      const game = await createGame({
+        title: opName.trim() || undefined,
+        description: opDesc.trim() || undefined,
+        venueId: selected?.id,
+        gameType: 'public',
+        format: pgFormat ?? undefined,
+        capacity: pgSlots,
+        skillLabel: 'All levels',
+        timeLabel: to12h(startTime),
+        durationLabel: hours > 0 ? `${hours} hr` : undefined,
+        date,
+        visibility: 'public',
+        bookingId,
+      });
+      return game;
+    } catch {
+      return null;
+    }
+  };
+
+  /** Create the game that goes with a confirmed booking, per booking mode
+   *  (open play → interest game, public game → format game, else none). */
+  const createGameForMode = (bookingId: string) =>
+    bookingMode === 'open_play' ? createOpenPlayGame(bookingId)
+      : bookingMode === 'public_game' ? createPublicGame(bookingId)
+      : Promise.resolve(null);
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
@@ -491,8 +541,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       // Pay-at-venue: the booking is already confirmed at creation and nothing is
       // charged online, so skip checkout entirely.
       if (payAtVenue) {
-        if (bookingMode === 'open_play') {
-          const game = await createOpenPlayGame(booking.id);
+        if (hasDetailsStep) {
+          const game = await createGameForMode(booking.id);
           setDone({ confirmed: true, bookingId: booking.id, gameId: game?.id ?? null });
         } else {
           setDone({ confirmed: true, bookingId: booking.id });
@@ -510,8 +560,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       const confirmed = result.booking?.status === 'confirmed';
       const bookingId = result.booking?.id ?? booking.id;
       let gameId: string | null = null;
-      if (bookingMode === 'open_play' && confirmed) {
-        const game = await createOpenPlayGame(bookingId);
+      if (hasDetailsStep && confirmed) {
+        const game = await createGameForMode(bookingId);
         gameId = game?.id ?? null;
       }
       setDone({ confirmed, bookingId, gameId });
@@ -540,6 +590,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       // "free" until then, so we'd wave a possibly-taken slot through (fail closed).
       if (availabilityPending) { setError('Checking availability — one moment…'); return; }
       if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
+    }
+    // Public game requires a format before leaving the details step.
+    if (bookingMode === 'public_game' && step === 1 && !pgFormat) {
+      setError('Pick a format for your game.');
+      return;
     }
     setError(null);
     if (step < totalSteps - 1) {
@@ -577,43 +632,41 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   };
 
   if (done) {
-    // When the booking was a step toward hosting a lobby, lead with "Create your
-    // lobby" (only once the court is actually confirmed) so the flow hands
-    // straight back to the create form, pre-locked to this reservation.
-    const lobbyHandoff = bookingMode === 'public_game' && done.confirmed && done.bookingId;
-    const lobbyAction = lobbyHandoff
+    // Open play + public game create their game inline during the booking flow, so
+    // the confirmation offers to view the live game (interest board / lobby).
+    const isPublic = bookingMode === 'public_game';
+    const gameDone = hasDetailsStep && done.confirmed && !!done.gameId;
+    const viewGameAction = gameDone
       ? [{
-          label: 'Create public game',
+          label: isPublic ? 'View public game' : 'View open play',
           variant: 'dark' as const,
-          onClick: () => onNavigate('create-game', { bookingId: done.bookingId! }),
+          onClick: () => (isPublic
+            ? onNavigate('game-details', { id: done.gameId! }, { replace: true })
+            : onNavigate('open-play-detail', { source: 'game', id: done.gameId! }, { replace: true })),
         }]
       : [];
-    // Open play: the game was created alongside the booking — offer to view it.
-    const openPlayDone = bookingMode === 'open_play' && done.confirmed && done.gameId;
     return (
       <CompletionScreen
         icon={done.confirmed ? 'check' : 'clock'}
         title={
-          openPlayDone ? 'Open play created!'
+          gameDone ? (isPublic ? 'Public game created!' : 'Open play created!')
             : done.confirmed ? 'Booking confirmed!'
             : 'Booking requested'
         }
         description={
-          openPlayDone
-            ? 'Your court is booked and your open play is live. Players can show interest now.'
+          gameDone
+            ? (isPublic
+              ? 'Your court is booked and your public game is live. Players can join up to your slot cap.'
+              : 'Your court is booked and your open play is live. Players can show interest now.')
             : done.confirmed
-            ? lobbyHandoff
-              ? 'Your court is booked. Create the public game next so other players can join.'
-              : 'Your court is booked. You can see it under My bookings.'
+            ? 'Your court is booked. You can see it under My bookings.'
             : 'Your request was sent and is awaiting venue approval.'
         }
         actions={[
-          ...(openPlayDone
-            ? [{ label: 'View open play', variant: 'dark' as const, onClick: () => onNavigate('game-details', { id: done.gameId! }, { replace: true }) }]
-            : lobbyAction),
+          ...viewGameAction,
           // `replace` drops the finished wizard from the back stack so Back from
           // My bookings doesn't re-open it at step 1.
-          { label: 'View my bookings', variant: (lobbyHandoff || openPlayDone) ? ('outline' as const) : ('dark' as const), onClick: () => onNavigate('my-bookings', undefined, { replace: true }) },
+          { label: 'View my bookings', variant: gameDone ? ('outline' as const) : ('dark' as const), onClick: () => onNavigate('my-bookings', undefined, { replace: true }) },
           { label: 'Done', variant: 'outline' as const, onClick: onBack },
         ]}
       />
@@ -1006,6 +1059,93 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         </>
       )}
 
+      {/* ─── Step 1 (public game): format + slots + details ─────── */}
+      {bookingMode === 'public_game' && step === 1 && (
+        <>
+          <div className="field">
+            <div className="lbl">Game format</div>
+            <div className="time-grid">
+              {FORMAT_OPTIONS.map((f) => (
+                <button
+                  key={f.v}
+                  type="button"
+                  className={`time-pick ${pgFormat === f.v ? 'active' : ''}`}
+                  onClick={() => setPgFormat(f.v)}
+                >
+                  <span className="mr-1">{f.icon}</span>{f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <div className="lbl">Player slots · {pgSlots}</div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+                <button type="button" aria-label="Fewer slots" onClick={() => setPgSlots((n) => Math.max(MIN_SLOTS, n - 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={pgSlots <= MIN_SLOTS}>
+                  <Icon name="minus" size={18} />
+                </button>
+                <div className="w-12 text-center font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums">{pgSlots}</div>
+                <button type="button" aria-label="More slots" onClick={() => setPgSlots((n) => Math.min(MAX_SLOTS, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={pgSlots >= MAX_SLOTS}>
+                  <Icon name="plus" size={18} />
+                </button>
+              </div>
+              <div className="text-[12px] font-semibold text-[var(--muted)]">Only {pgSlots} players can join (you count as one).</div>
+            </div>
+          </div>
+
+          <div className="field mt-4">
+            <div className="lbl">Game name (optional)</div>
+            <input
+              className="control"
+              placeholder="e.g. Saturday Night Bracket"
+              value={opName}
+              onChange={(e) => setOpName(e.target.value)}
+              maxLength={120}
+            />
+          </div>
+
+          <div className="field">
+            <div className="lbl">Description (optional)</div>
+            <textarea
+              className="control"
+              placeholder="Tell players what to expect — rules, vibe, what to bring…"
+              value={opDesc}
+              onChange={(e) => setOpDesc(e.target.value)}
+              maxLength={500}
+              rows={3}
+            />
+            <div className="text-[11px] font-semibold text-[var(--muted)] mt-1 text-right">{opDesc.length} / 500</div>
+          </div>
+
+          {/* Summary card: court + time recap so the host sees what they're publishing on. */}
+          {selected && (
+            <div className="field">
+              <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3.5 border-b-[0.5px] border-[var(--hairline)]">
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">Court</div>
+                  <div className="text-right min-w-0">
+                    <div className="font-heading font-semibold text-[14px] text-[var(--ink)] truncate">{selected.displayName}</div>
+                    {locationLine(selected) && <div className="text-[11px] font-semibold text-[var(--muted)]">{locationLine(selected)}</div>}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3.5 border-b-[0.5px] border-[var(--hairline)]">
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">Date</div>
+                  <div className="font-heading font-semibold text-[14px] text-[var(--ink)]">{prettyDate(date)}</div>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)]">Time</div>
+                  <div className="text-right">
+                    <div className="font-heading font-semibold text-[14px] text-[var(--ink)]">{to12h(startTime)} – {to12h(endTime)}</div>
+                    {hours > 0 && <div className="text-[11px] font-semibold text-[var(--muted)]">{hours} hr</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       {/* ─── Step {summaryStep === 1 ? '1' : '2'}: review ──────────────────────── */}
       {step === summaryStep && selected && (
         <>
@@ -1027,6 +1167,23 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           <div className="field">
             <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
               <ReviewRow label="Skill level" value={opSkill} />
+              {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
+              {opDesc.trim() && (
+                <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">
+                  <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--muted)] mb-1">Description</div>
+                  <div className="text-[13px] font-semibold text-[var(--ink)] whitespace-pre-wrap">{opDesc.trim()}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Public-game recap — format + slots + optional name/desc. */}
+        {bookingMode === 'public_game' && (
+          <div className="field">
+            <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+              <ReviewRow label="Format" value={FORMAT_OPTIONS.find((f) => f.v === pgFormat)?.label ?? '—'} />
+              <ReviewRow label="Player slots" value={String(pgSlots)} />
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
                 <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">
