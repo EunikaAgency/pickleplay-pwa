@@ -1572,7 +1572,9 @@ export interface ApiGame {
   id: string;
   title?: string | null;
   description?: string | null;
-  gameType?: string | null;        // 'singles' | 'doubles' | 'open'
+  gameType?: string | null;        // 'singles' | 'doubles' | 'open' | 'public'
+  /** Competitive format for a public game (null otherwise). */
+  format?: 'bracketing' | 'round_robin' | 'mini_tournament' | string | null;
   skillLabel?: string | null;
   whenLabel?: string | null;
   timeLabel?: string | null;
@@ -1582,6 +1584,10 @@ export interface ApiGame {
   spotsLeft?: number | null;
   participantCount?: number | null;
   participants?: ApiGamePerson[];
+  /** Open Play interest (gameType 'open'): who tapped "I'm Interested" + the count.
+   *  `viewerInterested` is derived client-side from `interestedUsers` vs the user id. */
+  interestedUsers?: ApiGamePerson[];
+  interestedCount?: number | null;
   creator?: ApiGamePerson | null;
   creatorId?: string | null;
   venue?: ApiGameVenue | null;
@@ -1624,14 +1630,17 @@ export interface CreateGamePayload {
   description?: string;
   venueId?: string;
   venueName?: string;
-  gameType: 'singles' | 'doubles' | 'open';
+  gameType: 'singles' | 'doubles' | 'open' | 'public';
+  /** Competitive format — required for a public game, ignored otherwise. */
+  format?: 'bracketing' | 'round_robin' | 'mini_tournament';
   skillLabel?: string;
   whenLabel?: string;
   timeLabel?: string;
   durationLabel?: string;
   /** Explicit YYYY-MM-DD from the date picker; overrides the derived date. */
   date?: string;
-  capacity: number;
+  /** Player cap. Optional — the server defaults it (4) for open/interest games. */
+  capacity?: number;
   visibility: 'public' | 'invite';
   /** The host's court reservation (created + paid via the booking flow) to link. */
   bookingId?: string;
@@ -1686,6 +1695,12 @@ export async function joinGame(id: string): Promise<ApiGame> {
 /** Leave a game (re-opens it if it was full). */
 export async function leaveGame(id: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/leave`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Toggle "I'm Interested" on an Open Play game (gameType 'open'). Idempotent —
+ *  taps interest in if absent, out if present. Returns the updated game. */
+export async function toggleGameInterest(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/interest`, { method: 'POST', body: {}, auth: true });
 }
 
 /** Host removes a player from the roster. */
@@ -3308,12 +3323,16 @@ export interface ApiOpenPlaySession {
   startTime?: string;
   endTime?: string;
   capacity?: number;
+  /** Interest count (interest-based Open Play — everyone who tapped "I'm Interested"). */
   joinedCount?: number;
   price?: number;
   levelLabel?: string;
   status?: string;
   organizerName?: string;
   description?: string;
+  /** Present on the detail (getOpenPlaySession): who tapped "I'm Interested" + the count. */
+  interestedUsers?: ApiGamePerson[];
+  interestedCount?: number;
   myRegistrationStatus?: string | null;
 }
 

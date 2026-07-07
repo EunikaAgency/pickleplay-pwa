@@ -88,13 +88,40 @@ export function gameTitle(g: Pick<ApiGame, 'title' | 'gameType' | 'skillLabel'>)
 /** "Doubles" / "Open" — capitalized game type, or a sensible default. */
 export function gameTypeLabel(g: Pick<ApiGame, 'gameType'>): string {
   if (!g.gameType) return 'Open';
+  const t = g.gameType.toLowerCase();
+  if (t === 'open') return 'Open Play';
+  if (t === 'public') return 'Public game';
   return g.gameType.charAt(0).toUpperCase() + g.gameType.slice(1);
+}
+
+/** A public game's competitive format label, e.g. "Round-robin". Empty for others. */
+export function gameFormatLabel(g: Pick<ApiGame, 'format'>): string {
+  switch (g.format) {
+    case 'bracketing': return 'Bracketing';
+    case 'round_robin': return 'Round-robin';
+    case 'mini_tournament': return 'Mini-tournament';
+    default: return '';
+  }
+}
+
+/** True for an interest-based Open Play game (gameType 'open', incl. the untyped default). */
+export function isOpenPlayGame(g: Pick<ApiGame, 'gameType'>): boolean {
+  return ((g.gameType || '').toLowerCase() || 'open') === 'open';
 }
 
 /** "3 left" / "Full". */
 export function spotsLabel(g: Pick<ApiGame, 'spotsLeft'>): string {
   const n = g.spotsLeft ?? 0;
   return n > 0 ? `${n} left` : 'Full';
+}
+
+/** Interest count for an Open Play game, e.g. "5 interested" / "No interest yet". */
+export function interestCount(g: Pick<ApiGame, 'interestedCount' | 'interestedUsers'>): number {
+  return g.interestedCount ?? g.interestedUsers?.length ?? 0;
+}
+export function interestLabel(g: Pick<ApiGame, 'interestedCount' | 'interestedUsers'>): string {
+  const n = interestCount(g);
+  return n > 0 ? `${n} interested` : 'No interest yet';
 }
 
 /* ─── Lobby leave / grace-period rules ───────────────────────── */

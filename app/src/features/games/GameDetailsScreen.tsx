@@ -15,7 +15,7 @@ import { getGame, joinGame, leaveGame, deleteGame, startConversation, ApiError, 
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
-  dayParts, gameTitle, gameTypeLabel, timeLine, gameLocation, spotsLabel,
+  dayParts, gameTitle, gameTypeLabel, gameFormatLabel, timeLine, gameLocation, spotsLabel,
   LOBBY_LEAVE_GRACE_PERIOD_DAYS, isLobbyFull, isWithinGracePeriod, canLeaveLobby,
 } from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -308,6 +308,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   </button>
                 )}
                 <span className="tag">{gameTypeLabel(game)}</span>
+                {gameFormatLabel(game) && <span className="tag lime">{gameFormatLabel(game)}</span>}
                 {game.visibility === 'invite' && <span className="tag">Invite only</span>}
               </div>
               <h1>{gameTitle(game)}</h1>
@@ -352,7 +353,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
             <div className="kv-grid">
               <div className="kv">
                 <div className="eyebrow">Format</div>
-                <div className="val">{gameTypeLabel(game)}</div>
+                <div className="val">{gameFormatLabel(game) || gameTypeLabel(game)}</div>
               </div>
               <div className="kv">
                 <div className="eyebrow">Skill</div>

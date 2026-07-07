@@ -4751,6 +4751,49 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   margin-top: 10px;
   padding-bottom: 6px;
 }
+/* Wizard step navigation (Back + Continue/Publish) + the review summary. */
+.pb-v2.v2-creategame .wiz-nav { display: flex; align-items: center; gap: 10px; }
+.pb-v2.v2-creategame .wiz-nav .submit-btn { flex: 1; }
+.pb-v2.v2-creategame .wiz-back {
+  padding: 15px 20px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-app);
+  color: var(--text-secondary);
+  font-family: 'Grandstander', cursive;
+  font-size: 15px;
+  font-weight: 700;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: background 150ms var(--ease-out);
+}
+.pb-v2.v2-creategame .wiz-back:hover { background: var(--bg-alt); }
+.pb-v2.v2-creategame .wiz-back:disabled { opacity: 0.5; cursor: default; }
+.pb-v2.v2-creategame .wiz-summary {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+.pb-v2.v2-creategame .wiz-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.pb-v2.v2-creategame .wiz-summary-row:last-child { border-bottom: none; }
+.pb-v2.v2-creategame .wiz-summary-row strong {
+  font-family: 'Grandstander', cursive;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: right;
+}
 .pb-v2.v2-creategame .pro-banner {
   display: flex;
   align-items: center;

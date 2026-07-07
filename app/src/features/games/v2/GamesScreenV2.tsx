@@ -11,7 +11,7 @@ import { useAuthStore } from '../../../shared/lib/authStore';
 import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
-import { canLeaveLobby } from '../gameDisplay';
+import { canLeaveLobby, gameFormatLabel, interestLabel } from '../gameDisplay';
 
 type Section = 'games' | 'open-play';
 type View = 'discover' | 'joined' | 'invites' | 'manage';
@@ -44,6 +44,7 @@ function typeBadge(g: ApiGame): { cls: string; label: string } {
   const t = (g.gameType || '').toLowerCase();
   if (t === 'doubles') return { cls: 'badge-competitive', label: 'Doubles' };
   if (t === 'singles') return { cls: 'badge-social', label: 'Singles' };
+  if (t === 'public') return { cls: 'badge-competitive', label: gameFormatLabel(g) || 'Public game' };
   return { cls: 'badge-open', label: 'Open Play' };
 }
 function slots(g: ApiGame): { joined: number; cap: number; pct: number; almost: boolean } {
@@ -512,12 +513,16 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
           {gameVenueLoc(game) && <div className="game-meta-loc">{gameVenueLoc(game)}</div>}
         </div>
         {showVisibility && <div className="vis-indicator public">Public</div>}
-        {s.cap > 0 && (
+        {isOpenPlayGame(game) ? (
+          <div className="players-row">
+            <span className="players-label">{interestLabel(game)}</span>
+          </div>
+        ) : s.cap > 0 ? (
           <div className="players-row">
             <div className="fill-track"><div className={`fill-bar${s.almost ? ' near-full' : ''}`} style={{ width: `${s.pct}%` }} /></div>
             <span className={`players-label${s.almost ? ' near-full' : ''}`}>{s.joined}/{s.cap}</span>
           </div>
-        )}
+        ) : null}
         {action && (
           <div className="game-actions" onClick={(e) => e.stopPropagation()}>
             <button type="button" className="game-action-btn" onClick={action.onClick}>{action.label}</button>

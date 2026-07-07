@@ -65,7 +65,12 @@ src/
                        #   GameDetails' "Chat"; realtime via realtimeBus 'game.message'; gated by
                        #   player.games.chat), GameFilterSheet + gameFilters (when/skill/type/openings
                        #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
-                       #   list/detail/join/kick/group-chat; invite-send still demo)
+                       #   list/detail/join/kick/group-chat; invite-send still demo).
+                       #   Open Play (gameType 'open') = INTEREST board, no lobby: v2/OpenPlayDetail
+                       #   shows an "I'm Interested" toggle (toggleGameInterest) + who's interested,
+                       #   not slots (applies to organizer sessions too). Public game (gameType
+                       #   'public') = v2/CreateGameV2 4-step wizard (Format→Slots→Details→Review)
+                       #   → format-driven capped game with the full lobby (GameDetails).
     bookings/          # BookCourt (pick venue→court (CourtPicker)→whole-hour start/end via HourSelect,
                        #   taken hours greyed out from that court's live availability→pay test-checkout;
                        #   at a venue with requireBookingApproval it becomes "Request booking" — saves

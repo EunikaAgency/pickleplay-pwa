@@ -12,7 +12,9 @@ const gameSchema = new Schema({
   // posted against a place that isn't in the venue directory.
   venueId:       { type: Schema.Types.ObjectId, ref: 'Venue' },
   venueName:     { type: String, maxlength: 120 },
-  gameType:      { type: String, default: 'doubles' },   // 'singles' | 'doubles' | 'open'
+  gameType:      { type: String, default: 'doubles' },   // 'singles' | 'doubles' | 'open' | 'public'
+  // Competitive format for a 'public' game (null otherwise): how the session is run.
+  format:        { type: String },                        // 'bracketing' | 'round_robin' | 'mini_tournament' | null
   skillLabel:    { type: String, maxlength: 30 },         // verbatim, e.g. '3.0–3.5'
   skillMin:      Number,                                  // best-effort parse of skillLabel
   skillMax:      Number,
@@ -22,6 +24,9 @@ const gameSchema = new Schema({
   date:          { type: String },                        // computed YYYY-MM-DD (best-effort)
   capacity:      { type: Number, default: 4 },
   participantIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  // Open Play interest: players who tapped "I'm Interested" (a soft signal, not a
+  // committed roster). Only meaningful for gameType 'open'; capacity does not apply.
+  interestedUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   // Players who have been invited. Each entry records who was invited and who
   // sent the invite, so the invitee can see the inviter's name and re-invites
   // (same user by same inviter) dedupe. Joining is still via the normal flow.
@@ -39,6 +44,7 @@ const gameSchema = new Schema({
 gameSchema.index({ status: 1, date: 1 });
 gameSchema.index({ creatorId: 1 });
 gameSchema.index({ participantIds: 1 });
+gameSchema.index({ interestedUserIds: 1 });
 
 export const Game = model('Game', gameSchema);
 

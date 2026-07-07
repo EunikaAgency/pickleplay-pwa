@@ -4,17 +4,18 @@ import { CourtIllustration } from '../../../shared/components/ui/CourtIllustrati
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ShareLobbySheet } from '../../../shared/components/ui/ShareLobbySheet';
+import { Avatar } from '../../../shared/components/ui/Avatar';
 import { InvitePlayersSheet } from '../InvitePlayersSheet';
 import { GameDetailsScreen } from '../GameDetailsScreen';
 import { type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import {
-  getGame, joinGame, leaveGame, apiImageUrl,
+  getGame, toggleGameInterest, apiImageUrl,
   getOpenPlaySession, joinOpenPlaySession, leaveOpenPlaySession,
-  type ApiGame, type ApiOpenPlaySession,
+  type ApiGame, type ApiGamePerson, type ApiOpenPlaySession,
 } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
-import { dayParts, gameTitle, gameTypeLabel, gameLocation, spotsLabel, timeLine } from '../gameDisplay';
+import { dayParts, gameTitle, gameTypeLabel, gameLocation, interestLabel, timeLine } from '../gameDisplay';
 
 interface Props {
   source: 'auto' | 'game' | 'session';
@@ -133,28 +134,21 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
     try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(initialGame.id); } catch { return false; }
   });
 
-  const participants = game.participants ?? [];
-  const isJoined = !!(me && participants.some((p) => p.id === me.id));
-  const cap = game.capacity ?? 0;
-  const joinedCount = game.participantCount ?? participants.length;
-  const spotsLeft = cap > 0 ? Math.max(0, cap - joinedCount) : 999;
-  const isFull = cap > 0 && spotsLeft <= 0;
+  // Open Play is interest-based: no roster/slots, just a soft "I'm Interested" signal.
+  const interested: ApiGamePerson[] = game.interestedUsers ?? [];
+  const isInterested = !!(me && interested.some((p) => p.id === me.id));
+  const interestedCount = game.interestedCount ?? interested.length;
 
-  const toggleJoin = async () => {
+  const toggleInterest = async () => {
     if (!game || busy) return;
-    if (!isJoined && !chrome.requireAuth('join Open Play')) return;
+    if (!isInterested && !chrome.requireAuth('show interest')) return;
     setBusy(true);
     setError(null);
     try {
-      if (isJoined) {
-        const updated = await leaveGame(game.id);
-        setGame(updated);
-      } else {
-        const updated = await joinGame(game.id);
-        setGame(updated);
-      }
+      const updated = await toggleGameInterest(game.id);
+      setGame(updated);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not update your Open Play spot.');
+      setError(e instanceof Error ? e.message : 'Could not update your interest.');
     } finally {
       setBusy(false);
     }
@@ -226,10 +220,8 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             <div className="val">{gameTypeLabel(game)}</div>
           </div>
           <div className="kv">
-            <div className="eyebrow">Spots</div>
-            <div className={`val ${spotsLeft > 0 ? 'lime' : ''}`}>
-              {cap > 0 ? `${joinedCount}/${cap} joined` : `${joinedCount} joined`}
-            </div>
+            <div className="eyebrow">Interested</div>
+            <div className={`val ${interestedCount > 0 ? 'lime' : ''}`}>{interestedCount}</div>
           </div>
         </div>
 
@@ -271,21 +263,36 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             <p>Open Play{level !== 'All levels' ? ` · ${level}` : ''} at {venue}.</p>
           )}
           <p>
-            {joinedCount} going
-            {spotsLeft > 0 && spotsLeft < 999 ? ` · ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} still open` : ''}{isFull ? ' · this session is full' : ''}.
+            {interestedCount > 0
+              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} interested so far — drop in if it suits you.`
+              : 'No one’s shown interest yet. Tap “I’m Interested” to let others know you might come.'}
           </p>
         </div>
 
-        {/* Spots summary */}
+        {/* Interested people */}
         <div className="mb-[18px]">
           <div className="flex items-baseline justify-between mb-3">
             <div>
-              <div className="t-eyebrow">Players</div>
-              <div className="hd-3 mt-1">
-                {joinedCount} going{spotsLeft > 0 && spotsLeft < 999 ? ` · ${spotsLeft} spots open` : ''}
-              </div>
+              <div className="t-eyebrow">Interested</div>
+              <div className="hd-3 mt-1">{interestLabel(game)}</div>
             </div>
           </div>
+          {interested.length > 0 ? (
+            <div className="flex flex-col gap-2.5">
+              {interested.map((p) => (
+                <div key={p.id} className="flex items-center gap-3">
+                  <Avatar src={p.avatarUrl} name={p.displayName} size={36} />
+                  <div className="text-[14px] font-semibold text-[var(--ink)]">
+                    {p.displayName}{me && p.id === me.id ? ' (you)' : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-[13px] font-semibold text-[var(--muted)]">
+              Be the first to show interest.
+            </div>
+          )}
         </div>
 
         {error && (
@@ -298,28 +305,18 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
       {/* ── Sticky CTA ── */}
       <div className="sticky-cta">
         <div className="price">
-          <div className="eyebrow">{isJoined ? 'Your spot' : 'Open spots'}</div>
-          <div className="amount">{isJoined ? "You're in" : spotsLeft > 0 ? spotsLeft : 'Full'}</div>
+          <div className="eyebrow">Interested</div>
+          <div className="amount">{interestedCount}</div>
         </div>
-        {isJoined ? (
-          <button className="btn-join btn-leave" onClick={toggleJoin} disabled={busy}>
-            {busy ? (
-              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Leaving…</>
-            ) : (
-              <><Icon name="logout" size={16} /> Leave Open Play</>
-            )}
-          </button>
-        ) : (
-          <button className="btn-join" onClick={toggleJoin} disabled={busy || isFull}>
-            {busy ? (
-              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Joining…</>
-            ) : isFull ? (
-              'Session full'
-            ) : (
-              <><Icon name="bolt" size={16} /> Join Open Play</>
-            )}
-          </button>
-        )}
+        <button className={`btn-join ${isInterested ? 'btn-leave' : ''}`} onClick={toggleInterest} disabled={busy}>
+          {busy ? (
+            <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
+          ) : isInterested ? (
+            <><Icon name="check" size={16} /> Interested</>
+          ) : (
+            <><Icon name="bolt" size={16} /> I'm Interested</>
+          )}
+        </button>
       </div>
 
       <ShareLobbySheet
@@ -327,14 +324,12 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
         onClose={() => setShareOpen(false)}
         gameId={game.id}
         title={gameTitle(game)}
-        subtitle={[timeLine(game), gameLocation(game), spotsLabel(game)].filter(Boolean).join(' · ')}
+        subtitle={[timeLine(game), gameLocation(game), interestLabel(game)].filter(Boolean).join(' · ')}
         image={apiImageUrl(game.courtImage) || apiImageUrl(game.venue?.image) || '/fallback-game.png'}
         gameType={gameTypeLabel(game)}
         skillLabel={game.skillLabel ?? undefined}
         dateTime={[dayParts(game).day === 'TODAY' ? 'Today' : dayParts(game).day === 'TOM' ? 'Tomorrow' : dayParts(game).day, timeLine(game)].filter(Boolean).join(' · ') || undefined}
         venue={gameLocation(game)}
-        spotsLeft={game.spotsLeft ?? undefined}
-        capacity={game.capacity ?? undefined}
         onNavigate={chrome.onNavigate}
         onInvite={() => setInviteOpen(true)}
       />
@@ -350,6 +345,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
 /* ─── Organizer-created Open Play session detail (ApiOpenPlaySession — unchanged) ─── */
 
 function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V2ScreenChrome; onBack: () => void }) {
+  const me = useAuthStore((s) => s.user);
   const [session, setSession] = useState<ApiOpenPlaySession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -369,36 +365,24 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
     return () => { alive = false; };
   }, [id]);
 
-  const joined = !!(session?.myRegistrationStatus === 'registered');
-  const waitlisted = session?.myRegistrationStatus === 'waitlisted';
-  const cap = session?.capacity ?? 0;
-  const joinedCount = session?.joinedCount ?? 0;
-  const spotsLeft = cap > 0 ? Math.max(0, cap - joinedCount) : 0;
-  const isFull = cap > 0 && spotsLeft <= 0;
+  // Interest-based: "registered" now means "interested" (no capacity/waitlist).
+  const isInterested = session?.myRegistrationStatus === 'registered';
+  const interested: ApiGamePerson[] = session?.interestedUsers ?? [];
+  const interestedCount = session?.interestedCount ?? session?.joinedCount ?? interested.length;
 
-  const toggleJoin = async () => {
+  const toggleInterest = async () => {
     if (!session || busy) return;
-    if (!joined && !chrome.requireAuth('join Open Play')) return;
+    if (!isInterested && !chrome.requireAuth('show interest')) return;
     setBusy(true);
     setError(null);
     try {
-      if (joined) {
-        await leaveOpenPlaySession(session.id);
-        setSession({
-          ...session,
-          myRegistrationStatus: null,
-          joinedCount: Math.max(0, joinedCount - 1),
-        });
-      } else {
-        const res = await joinOpenPlaySession(session.id);
-        setSession({
-          ...session,
-          myRegistrationStatus: res.status,
-          joinedCount: res.status === 'registered' ? joinedCount + 1 : joinedCount,
-        });
-      }
+      if (isInterested) await leaveOpenPlaySession(session.id);
+      else await joinOpenPlaySession(session.id);
+      // Refetch so the interested list + count stay authoritative.
+      const fresh = await getOpenPlaySession(session.id);
+      setSession(fresh);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not update your Open Play spot.');
+      setError(e instanceof Error ? e.message : 'Could not update your interest.');
     } finally {
       setBusy(false);
     }
@@ -492,10 +476,8 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
             <div className="val">{money(Number(session.price ?? 0), 'PHP')}</div>
           </div>
           <div className="kv">
-            <div className="eyebrow">Spots</div>
-            <div className={`val ${spotsLeft > 0 ? 'lime' : ''}`}>
-              {cap > 0 ? `${joinedCount}/${cap} joined` : `${joinedCount} joined`}
-            </div>
+            <div className="eyebrow">Interested</div>
+            <div className={`val ${interestedCount > 0 ? 'lime' : ''}`}>{interestedCount}</div>
           </div>
         </div>
 
@@ -546,21 +528,36 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
             </p>
           )}
           <p>
-            {joinedCount} going
-            {spotsLeft > 0 ? ` · ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} still open` : ' · this session is full'}.
+            {interestedCount > 0
+              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} interested so far.`
+              : 'No one’s shown interest yet.'}
           </p>
         </div>
 
-        {/* Spots summary */}
+        {/* Interested people */}
         <div className="mb-[18px]">
           <div className="flex items-baseline justify-between mb-3">
             <div>
-              <div className="t-eyebrow">Players</div>
-              <div className="hd-3 mt-1">
-                {joinedCount} going{spotsLeft > 0 ? ` · ${spotsLeft} spots open` : ''}
-              </div>
+              <div className="t-eyebrow">Interested</div>
+              <div className="hd-3 mt-1">{interestedCount > 0 ? `${interestedCount} interested` : 'No interest yet'}</div>
             </div>
           </div>
+          {interested.length > 0 ? (
+            <div className="flex flex-col gap-2.5">
+              {interested.map((p) => (
+                <div key={p.id} className="flex items-center gap-3">
+                  <Avatar src={p.avatarUrl} name={p.displayName} size={36} />
+                  <div className="text-[14px] font-semibold text-[var(--ink)]">
+                    {p.displayName}{me && p.id === me.id ? ' (you)' : ''}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-[13px] font-semibold text-[var(--muted)]">
+              Be the first to show interest.
+            </div>
+          )}
         </div>
 
         {error && (
@@ -573,45 +570,27 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
       {/* ── Sticky CTA ── */}
       <div className="sticky-cta">
         <div className="price">
-          <div className="eyebrow">{joined ? 'Your spot' : 'Open spots'}</div>
-          <div className="amount">{joined ? "You're in" : spotsLeft > 0 ? spotsLeft : 'Full'}</div>
+          <div className="eyebrow">Interested</div>
+          <div className="amount">{interestedCount}</div>
         </div>
-        {joined ? (
-          <button className="btn-join btn-leave" onClick={toggleJoin} disabled={busy}>
-            {busy ? (
-              <>
-                <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
-                Leaving…
-              </>
-            ) : (
-              <>
-                <Icon name="logout" size={16} />
-                Leave Open Play
-              </>
-            )}
-          </button>
-        ) : waitlisted ? (
-          <button className="btn-join joined" disabled>
-            <Icon name="clock" size={16} />
-            Waitlisted
-          </button>
-        ) : (
-          <button className="btn-join" onClick={toggleJoin} disabled={busy || isFull}>
-            {busy ? (
-              <>
-                <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
-                Joining…
-              </>
-            ) : isFull ? (
-              'Session full'
-            ) : (
-              <>
-                <Icon name="bolt" size={16} />
-                Join Open Play
-              </>
-            )}
-          </button>
-        )}
+        <button className={`btn-join ${isInterested ? 'btn-leave' : ''}`} onClick={toggleInterest} disabled={busy}>
+          {busy ? (
+            <>
+              <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
+              {isInterested ? 'Removing…' : 'Saving…'}
+            </>
+          ) : isInterested ? (
+            <>
+              <Icon name="check" size={16} />
+              Interested
+            </>
+          ) : (
+            <>
+              <Icon name="bolt" size={16} />
+              I'm Interested
+            </>
+          )}
+        </button>
       </div>
 
       {session && (
@@ -626,8 +605,6 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           skillLabel={session.levelLabel ?? undefined}
           dateTime={sessionWhen(session)}
           venue={session.venueName}
-          spotsLeft={session.capacity ? Math.max(0, session.capacity - (session.joinedCount ?? 0)) : undefined}
-          capacity={session.capacity ?? undefined}
           onNavigate={chrome.onNavigate}
           onInvite={() => setInviteOpen(true)}
         />

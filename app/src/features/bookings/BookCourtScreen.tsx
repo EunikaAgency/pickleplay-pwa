@@ -600,7 +600,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         }
         description={
           openPlayDone
-            ? 'Your court is booked and your open play is live. Players can join now.'
+            ? 'Your court is booked and your open play is live. Players can show interest now.'
             : done.confirmed
             ? lobbyHandoff
               ? 'Your court is booked. Create the public game next so other players can join.'

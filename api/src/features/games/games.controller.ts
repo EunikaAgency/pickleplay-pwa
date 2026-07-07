@@ -8,12 +8,18 @@ import { hasPermission } from '../../shared/lib/permissions.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 
+// Competitive format for a public game — how the session is run.
+const gameFormat = z.enum(['bracketing', 'round_robin', 'mini_tournament']);
+
 const createSchema = z.object({
   title: z.string().max(120).optional(),
   description: z.string().max(500).optional(),
   venueId: objectId.optional(),
   venueName: z.string().max(120).optional(),
-  gameType: z.enum(['singles', 'doubles', 'open']).default('doubles'),
+  // 'open' = interest-based Open Play (no roster); 'public' = format-driven, capped
+  // game with a lobby; 'singles'/'doubles' = classic fixed-seat lobbies.
+  gameType: z.enum(['singles', 'doubles', 'open', 'public']).default('doubles'),
+  format: gameFormat.optional(),
   skillLabel: z.string().max(30).optional(),
   whenLabel: z.string().max(30).optional(),
   timeLabel: z.string().max(20).optional(),
@@ -40,7 +46,8 @@ const inviteSchema = z.object({ userIds: z.array(objectId).min(1).max(20) });
 const updateSchema = z.object({
   title: z.string().max(120).optional(),
   description: z.string().max(500).optional(),
-  gameType: z.enum(['singles', 'doubles', 'open']).optional(),
+  gameType: z.enum(['singles', 'doubles', 'open', 'public']).optional(),
+  format: gameFormat.optional(),
   skillLabel: z.string().max(30).optional(),
   capacity: z.number().int().min(2).max(16).optional(),
   visibility: z.enum(['public', 'invite']).optional(),
@@ -59,6 +66,7 @@ const VENUE_SELECT = 'displayName slug area city lat lng priceFrom priceFromLabe
 const POPULATE = [
   { path: 'creatorId', select: 'displayName avatarUrl' },
   { path: 'participantIds', select: 'displayName avatarUrl' },
+  { path: 'interestedUserIds', select: 'displayName avatarUrl' },
   { path: 'venueId', select: VENUE_SELECT },
   { path: 'invitedUserIds.invitedBy', select: 'displayName avatarUrl' },
   // over the venue image (falls back to the venue image when the court has none).
@@ -155,6 +163,7 @@ function serialize(r: any) {
         }
       : null;
   const participants = (r.participantIds ?? []).map(refPerson);
+  const interestedUsers = (r.interestedUserIds ?? []).map(refPerson);
   const capacity = r.capacity ?? 4;
   const creator = r.creatorId && typeof r.creatorId === 'object' ? refPerson(r.creatorId) : null;
   const venue = refVenue(r.venueId);
@@ -177,6 +186,10 @@ function serialize(r: any) {
     participants,
     participantCount: participants.length,
     spotsLeft: Math.max(0, capacity - participants.length),
+    // Open Play interest (soft signal). The client derives `viewerInterested` by
+    // checking its own id against this list, mirroring how it derives isJoined.
+    interestedUsers,
+    interestedCount: interestedUsers.length,
     invitedUserIds: (r.invitedUserIds ?? []).map((entry: any) => {
       // Handle both old (bare ObjectId string) and new ({ user, invitedBy }) formats.
       if (typeof entry === 'object' && entry !== null) {
@@ -248,7 +261,8 @@ export async function createGame(c: any) {
   }
   const body = createSchema.parse(await c.req.json());
   const { skillMin, skillMax } = parseSkill(body.skillLabel);
-  // Singles 1v1 and Doubles 2v2 have a fixed seat count; only Open is custom.
+  // Singles 1v1 and Doubles 2v2 have a fixed seat count; Open (interest-only) and
+  // Public (format-driven) use the custom capacity the host set.
   const capacity = body.gameType === 'singles' ? 2 : body.gameType === 'doubles' ? 4 : body.capacity;
   const game = await Game.create({
     creatorId: user.sub,
@@ -257,6 +271,8 @@ export async function createGame(c: any) {
     venueId: body.venueId || null,
     venueName: body.venueName || null,
     gameType: body.gameType,
+    // Format only applies to public games; ignore it for other types.
+    format: body.gameType === 'public' ? (body.format || null) : null,
     skillLabel: body.skillLabel || null,
     skillMin,
     skillMax,
@@ -350,6 +366,10 @@ export async function joinGame(c: any) {
   if (game.status === 'cancelled') {
     return c.json({ error: { code: 'CLOSED', message: 'This game has been cancelled' } }, 409);
   }
+  // Open Play has no roster — it uses the "I'm Interested" signal instead of join.
+  if (String(game.gameType) === 'open') {
+    return c.json({ error: { code: 'INVALID_STATE', message: 'Open Play uses "I\'m Interested", not join.' } }, 400);
+  }
   const already = game.participantIds.some((p: any) => String(p) === user.sub);
   if (!already) {
     if (game.participantIds.length >= (game.capacity ?? 0)) {
@@ -413,6 +433,30 @@ export async function leaveGame(c: any) {
       tag: `game-leave-${String(game._id)}`,
     });
   }
+  const populated = await Game.findById(id).populate(POPULATE).lean();
+  return c.json({ data: serialize(populated) });
+}
+
+/** Toggle the caller's "I'm Interested" on an Open Play game. Idempotent: taps in
+ *  if absent, out if present. Interest is a soft signal (no capacity, no roster),
+ *  so it only applies to gameType 'open'. */
+export async function toggleGameInterest(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  if (game.status === 'cancelled') {
+    return c.json({ error: { code: 'CLOSED', message: 'This Open Play has been cancelled' } }, 409);
+  }
+  if (String(game.gameType) !== 'open') {
+    return c.json({ error: { code: 'INVALID_STATE', message: 'Only Open Play uses "I\'m Interested".' } }, 400);
+  }
+  const list = ((game as any).interestedUserIds ?? []) as any[];
+  const already = list.some((p: any) => String(p) === user.sub);
+  (game as any).interestedUserIds = already
+    ? list.filter((p: any) => String(p) !== user.sub)
+    : [...list, user.sub];
+  await game.save();
   const populated = await Game.findById(id).populate(POPULATE).lean();
   return c.json({ data: serialize(populated) });
 }
@@ -589,6 +633,7 @@ export async function updateGame(c: any) {
   if (body.title !== undefined) game.title = body.title || null;
   if (body.description !== undefined) game.description = body.description || null;
   if (body.gameType !== undefined) game.gameType = body.gameType;
+  if (body.format !== undefined) (game as any).format = body.format || null;
   if (body.skillLabel !== undefined) {
     game.skillLabel = body.skillLabel || null;
     const { skillMin, skillMax } = parseSkill(body.skillLabel);

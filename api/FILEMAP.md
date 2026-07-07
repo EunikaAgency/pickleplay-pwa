@@ -89,8 +89,13 @@ src/
                              #     POST realtime-fans-out tournament.message.created via userEvents).
                              #   Open play: OpenPlaySeries + OpenPlaySession + OpenPlayRegistration —
                              #     create recurring series (generates instances)/mine/cancel
-                             #     series|instance + player join/leave + roster + reg mgmt.
-    games/                   # player-created open-play games at a fixed venue + per-game GROUP CHAT
+                             #     series|instance + INTEREST toggle (join/leave = "I'm Interested",
+                             #     no capacity/waitlist; getOpenPlaySession returns interestedUsers)
+                             #     + roster + reg mgmt.
+    games/                   # player games: gameType open=INTEREST-only Open Play (interestedUserIds
+                             #   + POST /:id/interest toggle, no roster/capacity; join/leave rejected),
+                             #   public=format-driven capped game (format bracketing|round_robin|
+                             #   mini_tournament + roster), singles/doubles=classic lobby. Per-game GROUP CHAT
                              #   (GameMessage model; GET/POST /:id/messages, roster-only, gated by
                              #   player.games.chat; POST realtime-fans-out game.message.created via
                              #   shared/lib/userEvents.ts). create (POST takes

@@ -51,7 +51,20 @@ export async function getOpenPlaySession(c: any) {
   const reg = user
     ? await OpenPlayRegistration.findOne({ sessionId: (sess as any)._id, userId: user.sub }).select('status').lean()
     : null;
-  return c.json({ data: { ...sessionView(sess), myRegistrationStatus: (reg as any)?.status ?? null } });
+  // Open Play is interest-based: everyone who tapped "I'm Interested" (a registration)
+  // is surfaced so the detail can show how many and WHO are interested.
+  const regs = await OpenPlayRegistration.find({ sessionId: (sess as any)._id, status: 'registered' }).select('userId').lean();
+  const uids = [...new Set(regs.map((r: any) => r.userId?.toString()).filter(Boolean))];
+  const users = uids.length
+    ? await User.find({ _id: { $in: uids } }).select('displayName avatarUrl').lean()
+    : [];
+  const interestedUsers = (users as any[]).map((u) => ({ id: String(u._id), displayName: u.displayName, avatarUrl: u.avatarUrl ?? null }));
+  return c.json({ data: {
+    ...sessionView(sess),
+    myRegistrationStatus: (reg as any)?.status ?? null,
+    interestedUsers,
+    interestedCount: interestedUsers.length,
+  } });
 }
 
 export async function listTournaments(c: any) {
@@ -801,26 +814,12 @@ export async function cancelOpenPlaySession(c: any) {
   return c.json({ data: { id: sess._id, status: 'cancelled' } });
 }
 
-// Confirmed-spot count for a session (waitlisted entries don't consume a spot).
+// Interest count for a session (everyone who tapped "I'm Interested").
 async function sessionConfirmedCount(sessionId: any): Promise<number> {
   return OpenPlayRegistration.countDocuments({ sessionId, status: 'registered' });
 }
 
-// Promote the oldest waitlisted player into a freed session spot + notify.
-async function promoteNextSessionWaitlist(sessionId: any, title: string): Promise<any> {
-  const next = await OpenPlayRegistration.findOne({ sessionId, status: 'waitlisted' }).sort({ createdAt: 1 });
-  if (!next) return null;
-  next.status = 'registered';
-  await next.save();
-  await notifyUser(next.userId, {
-    type: 'open_play', title: "You're in!",
-    body: `A spot opened in "${title}" — you're off the waitlist.`,
-    icon: 'how_to_reg', linkUrl: '/open-play',
-  });
-  return next;
-}
-
-// POST /api/v1/open-play/:id/join — player joins a session (waitlists if full).
+// POST /api/v1/open-play/:id/join — player marks interest in a session.
 export async function joinOpenPlay(c: any) {
   const user = c.get('user');
   const sess = await OpenPlaySession.findById(c.req.param('id'));
@@ -830,13 +829,13 @@ export async function joinOpenPlay(c: any) {
   }
   const existing = await OpenPlayRegistration.findOne({ sessionId: sess._id, userId: user.sub }).lean();
   if (existing) {
-    return c.json({ error: { code: 'CONFLICT', message: 'You already joined' }, status: (existing as any).status }, 409);
+    return c.json({ error: { code: 'CONFLICT', message: 'You already showed interest' }, status: (existing as any).status }, 409);
   }
+  // Interest-based Open Play: everyone who taps is "interested" (registered). No
+  // capacity gate and no waitlist — it's a soft signal, not a committed spot.
+  const reg = await OpenPlayRegistration.create({ sessionId: sess._id, userId: user.sub, status: 'registered' });
   const taken = await sessionConfirmedCount(sess._id);
-  const full = (sess.capacity ?? 0) > 0 && taken >= (sess.capacity ?? 0);
-  const status = full ? 'waitlisted' : 'registered';
-  const reg = await OpenPlayRegistration.create({ sessionId: sess._id, userId: user.sub, status });
-  if (status === 'registered') await OpenPlaySession.updateOne({ _id: sess._id }, { joinedCount: taken + 1 });
+  await OpenPlaySession.updateOne({ _id: sess._id }, { joinedCount: taken });
   return c.json({ data: { id: reg._id, status: reg.status } }, 201);
 }
 
@@ -845,11 +844,8 @@ export async function leaveOpenPlay(c: any) {
   const user = c.get('user');
   const sessionId = c.req.param('id');
   const reg = await OpenPlayRegistration.findOneAndDelete({ sessionId, userId: user.sub });
-  if (!reg) return c.json({ error: { code: 'NOT_FOUND', message: 'You have not joined' } }, 404);
-  if ((reg as any).status === 'registered') {
-    const sess = await OpenPlaySession.findById(sessionId).select('title').lean();
-    await promoteNextSessionWaitlist(sessionId, (sess as any)?.title || 'the session');
-  }
+  if (!reg) return c.json({ error: { code: 'NOT_FOUND', message: 'You are not interested in this session' } }, 404);
+  // Interest-based: no waitlist to promote when someone drops out.
   const taken = await sessionConfirmedCount(sessionId);
   await OpenPlaySession.updateOne({ _id: sessionId }, { joinedCount: taken });
   return c.json({ data: { ok: true } });

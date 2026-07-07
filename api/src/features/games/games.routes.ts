@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { optionalAuth, requireAuth } from '../../shared/middleware/auth.js';
 import {
-  createGame, getGame, joinGame, leaveGame, kickPlayer, listGames, updateGame, deleteGame,
+  createGame, getGame, joinGame, leaveGame, toggleGameInterest, kickPlayer, listGames, updateGame, deleteGame,
   inviteToGame, declineInvite,
   listGameMessages, sendGameMessage,
 } from './games.controller.js';
@@ -16,6 +16,7 @@ gamesRoutes.patch('/:id', requireAuth, updateGame);
 gamesRoutes.delete('/:id', requireAuth, deleteGame);
 gamesRoutes.post('/:id/join', requireAuth, joinGame);
 gamesRoutes.post('/:id/leave', requireAuth, leaveGame);
+gamesRoutes.post('/:id/interest', requireAuth, toggleGameInterest);  // Open Play "I'm Interested" toggle
 gamesRoutes.post('/:id/kick', requireAuth, kickPlayer);  // host removes a player
 gamesRoutes.post('/:id/invite', requireAuth, inviteToGame);    // participants invite players
 gamesRoutes.delete('/:id/invite', requireAuth, declineInvite); // decline an invite
