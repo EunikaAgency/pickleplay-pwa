@@ -142,7 +142,10 @@ src/
                        # OwnerNearby (the Nearby tab for owners — a "your venues" operations
                        # map: your venues as live-status pins (today's bookings / pending /
                        # occupancy), tap → glance → console; attention-sorted venue list below);
-                       # OwnerVenues (list w/ per-card glance + "Claim" entry), OwnerVenue
+                       # OwnerVenues (list w/ per-card glance + "Claim" entry),
+                       # OwnerVenuesV2 (courts-first view w/ venue dropdown, reuses
+                       # CourtsEditorTab; the primary owner "Venues" tab entry point),
+                       # OwnerVenue
                        # (tabbed host), OwnerNewVenue (create), ClaimVenue (search the
                        # directory for an unclaimed listing → submit an ownership claim
                        # with proof; gated by owner.venues.claim); OwnerStaff (org-level
