@@ -8,6 +8,7 @@ import {
   type ApiBooking, type ApiGame, type ApiOpenPlaySession, type ApiTournament,
 } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
+import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
 import { canLeaveLobby } from '../gameDisplay';
@@ -172,6 +173,10 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
   // Invited games — only the Open Play section has an invites tab
   const openInvitedGames = useMemo(() => invitedGames.filter((g) => isOpenPlayGame(g)), [invitedGames]);
+  // Keep the FAB's invite badge in sync with this screen's live set, so an
+  // accept/decline here clears it immediately (not just on the next poll).
+  const setInviteCount = useInviteStore((s) => s.setCount);
+  useEffect(() => { if (isLoggedIn) setInviteCount(openInvitedGames.length); }, [openInvitedGames.length, isLoggedIn, setInviteCount]);
 
   const privateBookings = useMemo(() => bookings.filter((b) => b.bookingType !== 'open_play'), [bookings]);
 
@@ -192,26 +197,26 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const openInvitedGamesF = useMemo(() => filterGames(openInvitedGames), [openInvitedGames, q]);
   const bookedFiltered = useMemo(() => filterBookings(privateBookings), [privateBookings, q]);
 
+  // Reflect the active tab into the URL *through the router* (onNavigate), not a
+  // raw history.replaceState. The rendered screen is derived from the URL, and
+  // only routerNavigate notifies that derivation — a bare replaceState left App's
+  // screen state stale, so a later navigate() to the same view (e.g. re-tapping
+  // the "Play" FAB → Invites) became a no-op and the tab/FAB desynced. Defaults
+  // are dropped so the URL stays clean (/games for games+discover). `replace`
+  // keeps tab switches out of the back stack. It survives browser Back too.
+  const syncTabUrl = (nextSection: Section, nextView: View) => {
+    onNavigate('games', {
+      section: nextSection === 'games' ? undefined : nextSection,
+      view: nextView === 'discover' ? undefined : nextView,
+    }, { replace: true });
+  };
   const selectSection = (next: Section) => {
     setSection(next);
     setView('discover');
     setSearch('');
+    syncTabUrl(next, 'discover');
   };
-  const selectView = (next: View) => { setView(next); setSearch(''); };
-
-  // Persist the active tab in the URL so it survives browser Back from a detail page.
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (section !== 'games' || view !== 'discover') {
-      params.set('section', section);
-      if (view !== 'discover') params.set('view', view);
-    }
-    const qs = params.toString();
-    const url = `/games${qs ? `?${qs}` : ''}`;
-    if (window.location.pathname + window.location.search !== url) {
-      window.history.replaceState({ ...window.history.state }, '', url);
-    }
-  }, [section, view]);
+  const selectView = (next: View) => { setView(next); setSearch(''); syncTabUrl(section, next); };
 
   const leaveOpenGame = async (g: ApiGame) => {
     if (!canLeaveLobby(g)) return;
@@ -301,8 +306,12 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     ? 'Tournaments, competitive matches, and organized events.'
     : 'Open play sessions, player-hosted games, and your court bookings.';
 
+  // The "Play" FAB navigates here (Open Play → Invites), so hide it while the
+  // user is already on that view — no point offering a jump to the current page.
+  const hideFab = section === 'open-play' && view === 'invites';
+
   return (
-    <V2Shell screen="v2-games" chrome={chrome}>
+    <V2Shell screen="v2-games" chrome={chrome} hideFab={hideFab}>
       <div className="page-content">
         <div className="games-intro">
           <h1 className="games-heading">Games</h1>

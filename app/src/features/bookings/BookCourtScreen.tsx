@@ -11,12 +11,13 @@ import { CourtPicker } from '../../shared/components/ui/CourtPicker';
 import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicker';
 import type { Navigate } from '../../shared/lib/navigation';
 import {
-  listAllVenues, createBooking, checkout, getSettings, listCourts, getVenueAvailabilityRange, getHours,
-  getVenue, listSlotOverrides, joinWaitlist, createGame,
-  type ApiVenue, type ApiCourt, type AppSettings, type CheckoutCard, type OwnerHourEntry, type PaymentOption,
-  type SlotPriceOverride,
+  listAllVenues, createBooking, checkout, getSettings, getVenueAvailabilityRange,
+  joinWaitlist, createGame,
+  type ApiVenue, type AppSettings, type CheckoutCard, type PaymentOption,
 } from '../../shared/lib/api';
-import { resolveHourlyRate, perPlayerSurcharge } from '../../shared/lib/pricing';
+import { useVenueBookingContext } from './useVenueBookingContext';
+import { useBookingPricing } from './useBookingPricing';
+import { mapBookingError } from './bookingErrors';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
@@ -37,7 +38,6 @@ interface BookCourtScreenProps {
   onBack: () => void;
 }
 
-const TITLE_BY_STEP = ['Court & time', 'Summary', 'Checkout'];
 type BookingMode = 'public_game' | 'open_play' | 'private_game';
 
 const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; desc: string }[] = [
@@ -75,12 +75,17 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [step, setStep] = useState(0);
   const [bookingMode, setBookingMode] = useState<BookingMode>(intent === 'lobby' ? 'public_game' : 'private_game');
 
-  // Bookable venues (priced only) for the picker.
+  // Bookable venues (priced only) for the picker. The full directory is pulled
+  // only when the picker is actually shown (no deep-linked venue, or the user taps
+  // "Change") — a deep link uses the venue-detail fetch instead (see #5).
   const [venues, setVenues] = useState<ApiVenue[]>([]);
-  const [venuesLoading, setVenuesLoading] = useState(true);
+  const [directoryLoaded, setDirectoryLoaded] = useState(false);
   const [selectedId, setSelectedId] = useState(venueId ?? '');
   const [picking, setPicking] = useState(!venueId); // show the list when nothing preselected
   const [query, setQuery] = useState('');
+  // The directory is "loading" whenever the picker is shown but hasn't loaded yet
+  // (derived, so the effect never has to synchronously setState a loading flag).
+  const directoryLoading = picking && !directoryLoaded;
 
   // Schedule — prefilled from the game's chosen date/time when present. The user
   // picks a start + end hour directly; the duration (hours) is derived from them.
@@ -95,23 +100,15 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     hoursProp && hoursProp > 0 ? addHours(initialStart, hoursProp) : '',
   );
 
-  // Courts at the selected venue. Each court is booked independently, so the
-  // booker picks one and it drives both availability and the booking. Venues
-  // with no defined courts fall back to a venue-level booking (no picker).
-  const [courts, setCourts] = useState<ApiCourt[]>([]);
+  // The booked court. Each court is booked independently, so the booker picks one
+  // and it drives both availability and the booking. Venues with no defined courts
+  // fall back to a venue-level booking (no picker). Courts + venue hours + slot
+  // overrides + membership all come from useVenueBookingContext (below).
   const [courtId, setCourtId] = useState(courtIdProp ?? '');
   // Half-court / split-court sub-unit: undefined = whole court, 0..N-1 = sub-unit.
   const [subUnitIndex, setSubUnitIndex] = useState<number | undefined>(undefined);
   // Equipment rental add-on (V2).
   const [includeEquipment, setIncludeEquipment] = useState(false);
-
-  // VenueHour pricing blocks — fetched when the venue is picked, so the rate shown
-  // to the booker reflects the actual time-block price (not just the flat venue rate).
-  const [venueHours, setVenueHours] = useState<OwnerHourEntry[]>([]);
-  // Manual surge / slot price overrides for the chosen date, and whether the booker
-  // is a member of this venue — both feed the pricing engine.
-  const [overrides, setOverrides] = useState<SlotPriceOverride[]>([]);
-  const [viewerIsMember, setViewerIsMember] = useState(false);
   // Party size — drives the per-player surcharge (and is stored on the booking).
   const [playerCount, setPlayerCount] = useState(1);
 
@@ -133,9 +130,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ confirmed: boolean; bookingId: string | null; gameId?: string | null } | null>(null);
 
+  // Load the full venue directory only when the picker is on screen (no deep-linked
+  // venue, or the user tapped "Change") and it hasn't loaded yet. A deep link
+  // (venueId set) skips this entirely — the selected venue comes from the context
+  // hook's single getVenue, not a whole-directory pull.
   useEffect(() => {
+    if (directoryLoaded || !picking) return;
     let alive = true;
-    // venuesLoading already starts true; the effect runs once on mount.
     listAllVenues()
       .then((items) => {
         if (!alive) return;
@@ -148,33 +149,37 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         setSelectedId((prev) => prev || (venueId ?? '') || list[0]?.id || '');
       })
       .catch(() => { /* picker shows an empty-state */ })
-      .finally(() => { if (alive) setVenuesLoading(false); });
+      .finally(() => { if (alive) setDirectoryLoaded(true); });
     return () => { alive = false; };
-  }, [venueId]);
+  }, [directoryLoaded, picking, venueId]);
 
-  // Load the selected venue's courts; default to the first so a court is always
-  // chosen (the booker can switch). Reset to none while a fresh venue loads.
+  // Per-venue (+ per-date override) data — courts, structured hours, slot overrides,
+  // and the viewer's membership — in one keyed hook (see #5/#6). Replaces four
+  // separate effects + their render-phase reset pairs.
+  const { detail, courts, venueHours, overrides, viewerIsMember } = useVenueBookingContext(selectedId, date);
+
+  // Reset the court pick when the venue changes; default to the first court (or the
+  // deep-linked courtId) once the new venue's courts load, so a court is always
+  // chosen for availability + booking.
   const [prevSelectedId_courts, setPrevSelectedId_courts] = useState(selectedId);
   if (selectedId !== prevSelectedId_courts) {
     setPrevSelectedId_courts(selectedId);
-    setCourts([]);
     setCourtId('');
   }
-  useEffect(() => {
-    if (!selectedId) return;
-    let alive = true;
-    listCourts(selectedId)
-      .then((rows) => { if (!alive) return; setCourts(rows); setCourtId(rows[0]?.id ?? ''); })
-      .catch(() => { if (alive) { setCourts([]); setCourtId(''); } });
-    return () => { alive = false; };
-  }, [selectedId]);
-
-  // When a courtId prop is passed (from the map filter), pre-select it once courts load.
-  useEffect(() => {
-    if (courtIdProp && courts.some((c) => c.id === courtIdProp)) {
-      setCourtId(courtIdProp);
+  // Once the venue's courts load (courtsKey changes), default the pick to the
+  // deep-linked court if valid, else keep a still-valid pick, else the first court —
+  // done during render (guarded on the courts set) to avoid a cascading effect.
+  const courtsKey = courts.map((c) => c.id).join(',');
+  const [prevCourtsKey, setPrevCourtsKey] = useState(courtsKey);
+  if (courtsKey !== prevCourtsKey) {
+    setPrevCourtsKey(courtsKey);
+    if (courts.length) {
+      const target = courtIdProp && courts.some((c) => c.id === courtIdProp)
+        ? courtIdProp
+        : (courtId && courts.some((c) => c.id === courtId) ? courtId : courts[0].id);
+      if (target !== courtId) setCourtId(target);
     }
-  }, [courtIdProp, courts]);
+  }
 
   // Reset sub-unit pick when changing courts (default to whole-court).
   const [prevCourtId, setPrevCourtId] = useState(courtId);
@@ -182,53 +187,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     setPrevCourtId(courtId);
     setSubUnitIndex(undefined);
   }
-
-  // Load the venue's hourly pricing blocks so the rate reflects time-based pricing.
-  const [prevSelectedId_hours, setPrevSelectedId_hours] = useState(selectedId);
-  if (selectedId !== prevSelectedId_hours) {
-    setPrevSelectedId_hours(selectedId);
-    setVenueHours([]);
-  }
-  useEffect(() => {
-    if (!selectedId) return;
-    let alive = true;
-    getHours(selectedId)
-      .then((rows) => { if (alive) setVenueHours(rows); })
-      .catch(() => { if (alive) setVenueHours([]); });
-    return () => { alive = false; };
-  }, [selectedId]);
-
-  // Membership status drives member pricing — fetched once per venue (the detail
-  // endpoint computes the viewer's membership server-side).
-  const [prevSelectedId_member, setPrevSelectedId_member] = useState(selectedId);
-  if (selectedId !== prevSelectedId_member) {
-    setPrevSelectedId_member(selectedId);
-    setViewerIsMember(false);
-  }
-  useEffect(() => {
-    if (!selectedId) return;
-    let alive = true;
-    getVenue(selectedId)
-      .then((v) => { if (alive) setViewerIsMember(!!v.viewerIsMember); })
-      .catch(() => { if (alive) setViewerIsMember(false); });
-    return () => { alive = false; };
-  }, [selectedId]);
-
-  // Manual surge / slot price overrides for the chosen date — re-fetched per date.
-  const [prevOverrideKey, setPrevOverrideKey] = useState(`${selectedId}|${date}`);
-  const overrideKey = `${selectedId}|${date}`;
-  if (overrideKey !== prevOverrideKey) {
-    setPrevOverrideKey(overrideKey);
-    setOverrides([]);
-  }
-  useEffect(() => {
-    if (!selectedId || !date) return;
-    let alive = true;
-    listSlotOverrides(selectedId, date)
-      .then((rows) => { if (alive) setOverrides(rows); })
-      .catch(() => { if (alive) setOverrides([]); });
-    return () => { alive = false; };
-  }, [selectedId, date]);
 
   // Load the payment mode once, before checkout, so we can pre-fill the demo card.
   useEffect(() => {
@@ -243,87 +201,24 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     return () => { alive = false; };
   }, []);
 
-  const selected = useMemo(() => venues.find((v) => v.id === selectedId) ?? null, [venues, selectedId]);
+  // The selected venue: the detail from the context hook (a superset with courts +
+  // membership), falling back to the picker's list item until it loads.
+  const selected = detail ?? venues.find((v) => v.id === selectedId) ?? null;
   const currency = selected?.pricingCurrency ?? 'PHP';
   // Price is tied to the chosen court when it has its own rate; otherwise the
   // venue's flat priceFrom applies (and when there are no courts at all).
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
-  // Effective hourly rate via the shared pricing engine: surge → time-block →
-  // holiday → weekend → sub-unit → court → venue, then the member discount.
-  const rateInfo = useMemo(() => resolveHourlyRate({
-    venue: selected, court: selectedCourt, subUnitIndex, hours: venueHours, overrides,
-    date, startTime, isMember: viewerIsMember,
-  }), [selected, selectedCourt, subUnitIndex, venueHours, overrides, date, startTime, viewerIsMember]);
-  const rate = rateInfo.rate;
-  const hours = hoursBetween(startTime, endTime);
 
-  // Pricing mode: 'start' = rate from booking start time × hours (default);
-  // 'blend' = resolve each clock hour independently (crosses override boundaries).
-  const blendMode = settings?.pricingMode === 'blend';
+  // All booking money math (rate → blended hours → per-player surcharge → service
+  // fee → grand total) lives in useBookingPricing — a pure function of the
+  // venue/court context + the chosen schedule + settings.
+  const pricing = useBookingPricing({
+    venue: selected, court: selectedCourt, subUnitIndex, venueHours, overrides,
+    date, startTime, endTime, isMember: viewerIsMember, playerCount, includeEquipment, settings,
+  });
+  const { rateInfo, rate, hours, hourlyBreakdown, equipAmount, surcharge, subtotal, serviceFeePercent, serviceFee, grandTotal } = pricing;
 
-  // Total court price: in blend mode, resolve per clock hour so bookings that cross
-  // override boundaries get the correct blended sum. In start mode (default), the
-  // start-time rate applies to every hour.
-  const hourlyTotal = useMemo(() => {
-    if (!blendMode) return rate * hours;
-    if (!startTime || !endTime) return rate * hours;
-    const startH = Number(startTime.split(':')[0]);
-    const endH = Number(endTime.split(':')[0]);
-    if (!(endH > startH)) return 0;
-    let sum = 0;
-    for (let h = startH; h < endH; h++) {
-      const hourStart = `${String(h).padStart(2, '0')}:00`;
-      const ri = resolveHourlyRate({
-        venue: selected, court: selectedCourt, subUnitIndex, hours: venueHours, overrides,
-        date, startTime: hourStart, isMember: viewerIsMember,
-      });
-      sum += ri.rate;
-    }
-    return Math.round(sum * 100) / 100;
-  }, [blendMode, startTime, endTime, rate, hours, selected, selectedCourt, subUnitIndex, venueHours, overrides, date, viewerIsMember]);
-
-  // Group consecutive hours by rate so the price card can show a line-item
-  // breakdown when the rate varies across the booking window (e.g. a surge
-  // override on the early hours, then the regular court rate afterwards).
-  const hourlyBreakdown = useMemo(() => {
-    if (!blendMode) return [];
-    if (!startTime || !endTime) return [];
-    const startH = Number(startTime.split(':')[0]);
-    const endH = Number(endTime.split(':')[0]);
-    if (!(endH > startH)) return [];
-    const rows: { hour: number; rate: number; source: string }[] = [];
-    for (let h = startH; h < endH; h++) {
-      const hourStart = `${String(h).padStart(2, '0')}:00`;
-      const ri = resolveHourlyRate({
-        venue: selected, court: selectedCourt, subUnitIndex, hours: venueHours, overrides,
-        date, startTime: hourStart, isMember: viewerIsMember,
-      });
-      rows.push({ hour: h, rate: ri.rate, source: ri.source });
-    }
-    const groups: { startHour: number; endHour: number; rate: number; source: string }[] = [];
-    for (const r of rows) {
-      const last = groups[groups.length - 1];
-      if (last && last.rate === r.rate && last.source === r.source) {
-        last.endHour = r.hour + 1;
-      } else {
-        groups.push({ startHour: r.hour, endHour: r.hour + 1, rate: r.rate, source: r.source });
-      }
-    }
-    return groups;
-  }, [blendMode, startTime, endTime, selected, selectedCourt, subUnitIndex, venueHours, overrides, date, viewerIsMember]);
-
-  const equipAmount = includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0;
-  const courtTotal = hourlyTotal;
-  // Per-player surcharge — ₱ per extra player beyond the venue's included headcount.
-  const surcharge = perPlayerSurcharge(selected, playerCount);
-  // `subtotal` is the venue's price (court + equipment + per-player surcharge) — what
-  // the venue earns and what's stored as the booking `amount`. The platform service
-  // fee is added on top to form the grand total the player pays.
-  const subtotal = Math.round((courtTotal + equipAmount + surcharge) * 100) / 100;
   const isTest = settings?.paymentTestMode ?? false;
-  const serviceFeePercent = settings?.serviceFeePercent ?? 7;
-  const serviceFee = Math.round(subtotal * (serviceFeePercent / 100) * 100) / 100;
-  const grandTotal = Math.round((subtotal + serviceFee) * 100) / 100;
   // Per-court approval — a court set to 'manual' requires owner approval before the
   // player pays; anything else confirms instantly.
   const requiresApproval = selectedCourt?.approvalMode === 'manual';
@@ -354,10 +249,17 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const balanceDue = Math.round((grandTotal - amountDueNow) * 100) / 100;
 
   // Live availability for the chosen court (or the venue pool when none) on this
-  // date → greys out hours that court is already taken.
-  const { availability, minBookableHour, endDisabledFor, rangeBlocked, firstFreeHour, isPast, isFull } = useVenueAvailability(selected?.id, date, courtId || undefined);
+  // date → greys out hours that court is already taken. `ready` gates the Step-0
+  // Continue so a slot is never waved through while the check is still loading (it
+  // otherwise reads as free — fail closed); `checkFailed` lets us fall back to
+  // server enforcement rather than trapping the user behind our own outage;
+  // `reloadAvailability` re-checks after a server-side slot conflict.
+  const { availability, ready, checkFailed, minBookableHour, endDisabledFor, rangeBlocked, firstFreeHour, isPast, isFull, reload: reloadAvailability } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
   const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
+  // A venue+date is chosen but availability hasn't resolved (and didn't error): the
+  // greying can't be trusted yet, so hold the user on Step 0 (fail closed).
+  const availabilityPending = !!selected?.id && !!date && !ready && !checkFailed;
 
   // Per-hour classification for the Start picker: hide past hours, but keep booked
   // ones visible-and-greyed with a "Booked" tag so it's clear *why* they're gone.
@@ -615,7 +517,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       setDone({ confirmed, bookingId, gameId });
       trackBookingCompleted(selected.id, courtId || undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not complete your booking. Please try again.');
+      // Map known server error codes to friendly copy; a slot/price change bounces
+      // the user back to Step 0 and re-checks availability so the taken hour greys.
+      const mapped = mapBookingError(e);
+      setError(mapped.message);
+      if (mapped.backToStep0) { setStep(0); reloadAvailability(); }
     } finally {
       setSubmitting(false);
     }
@@ -630,6 +536,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       if (!endTime) { setError('Please pick an end time.'); return; }
       if (!(hours > 0)) { setError('End time must be after the start time.'); return; }
       if (startInPast) { setError('That start time has already passed. Please pick a later time.'); return; }
+      // Don't advance while the availability check is still loading — it reads as
+      // "free" until then, so we'd wave a possibly-taken slot through (fail closed).
+      if (availabilityPending) { setError('Checking availability — one moment…'); return; }
       if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
     }
     setError(null);
@@ -773,14 +682,17 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               )}
             </div>
 
-            {venuesLoading ? (
+            {selected && !picking ? (
+              <SelectedVenueCard venue={selected} currency={currency} />
+            ) : !picking ? (
+              /* Deep-linked venue whose detail is still loading (picker not shown). */
+              <LoadingSkeleton variant="card" count={1} />
+            ) : directoryLoading ? (
               <LoadingSkeleton variant="card" count={3} />
             ) : venues.length === 0 ? (
               <div className="text-[13px] text-[var(--muted)] font-semibold py-2">
                 No bookable courts right now — only venues with published rates can be booked.
               </div>
-            ) : selected && !picking ? (
-              <SelectedVenueCard venue={selected} currency={currency} />
             ) : (
               <>
                 <div className="relative mb-3">
@@ -1341,7 +1253,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
       <div className="app-action-bar">
         {error && <div className="text-[13px] text-[var(--coral)] font-semibold mb-2 text-center">{error}</div>}
-        <Button fullWidth onClick={next} disabled={submitting || venuesLoading || venues.length === 0}>
+        <Button fullWidth onClick={next} disabled={submitting || !selected || (step === 0 && availabilityPending)}>
           {step === totalSteps - 1 ? (
             submitting ? (
               <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {requiresApproval ? 'Sending…' : payAtVenue ? 'Reserving…' : 'Processing…'}</>
@@ -1352,6 +1264,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             ) : (
               <><Icon name="lock" size={16} /> Pay {money(amountDueNow, currency)}</>
             )
+          ) : step === 0 && availabilityPending ? (
+            <><span className="inline-flex animate-spin"><Icon name="spinner" size={16} /></span> Checking availability…</>
           ) : (
             <>Continue <Icon name="forward" size={16} /></>
           )}

@@ -2590,6 +2590,10 @@ export interface ApiBooking {
   subUnitIndex?: number | null;
   courtNumber?: string | null;     // populated by the owner bookings endpoint
   courtName?: string | null;       // populated by the owner bookings endpoint
+  // Linked game metadata — only on bookingType 'game', from the owner bookings endpoint.
+  gameType?: string | null;        // 'singles' | 'doubles' | 'open'
+  gameVisibility?: string | null;  // 'public' | 'invite'
+  gameTitle?: string | null;
   date?: string | null;            // YYYY-MM-DD
   startTime?: string | null;       // "18:30"
   endTime?: string | null;

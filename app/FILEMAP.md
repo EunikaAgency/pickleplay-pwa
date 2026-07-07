@@ -76,7 +76,13 @@ src/
                        #   OpenPlayBook (V3 — courtless per-session drop-in: date+time+party →
                        #   createBooking{bookingType:'open_play'} priced from venue.openPlayPrice →
                        #   checkout; reached from the court page "Join open play" CTA),
-                       #   bookingDisplay (status chips incl. awaiting_payment "Pay to confirm")
+                       #   bookingDisplay (status chips incl. awaiting_payment "Pay to confirm"),
+                       #   useVenueBookingContext (one keyed hook: getVenue→courts+viewerIsMember +
+                       #   getHours + slot-overrides — replaces the old listCourts + getVenue-for-member;
+                       #   BookCourt no longer pulls the whole directory on a deep-link), useBookingPricing
+                       #   (pure rate/blend/surcharge/service-fee/grand-total math, extracted from BookCourt),
+                       #   bookingErrors (mapBookingError → friendly copy keyed on ApiError.code:
+                       #   SLOT_CONFLICT/PAST_SLOT/PRICE_MISMATCH bounce back to Step 0)
     venues/            # Nearby (the "Nearby" tab — player discover view; owners get owner/OwnerNearby instead via App.tsx), CourtDetails (+ "Join Membership"/"Renew Subscription" CTA beside "Book this court" → MembershipSheet; button hidden when membership is active per viewerMembershipExpiresAt), NearbyFilterSheet, venueFilters (filter model+predicate), MembershipSheet (subscription-plan picker BottomSheet; handles join, switch, and renewal) + membership.ts (default plans + helpers; join persists server-side as a VenueMember via joinVenueMembership/leaveVenueMembership, seeded from venue.viewerMembershipTier + viewerMembershipExpiresAt — surfaces in the owner Members tab + member pricing; expiry computed from plan cadence), v2/DateTimeFilterBar (date/time filter bar with calendar + hour picker — powers map availability filter via batchVenueAvailability)
     tournaments/       # Player Tournament tab (live): v2/TournamentsScreenV2 (role-aware tabs —
                        #   Open · Managing(organizer)/Joined(player) · Results), v2/TournamentDetailScreen
@@ -131,11 +137,16 @@ src/
                        # when multi-venue); "Add booking" records an off-platform
                        # phone/Messenger/IG/walk-in reservation, "Block slot" makes a time
                        # unavailable — both via createVenueBooking → POST /venues/:id/bookings,
-                       # double-booking-guarded, no payment flow), OwnerBookings (all-venues inbox: When tabs
-                       # upcoming/ongoing/past + OwnerBookingsFilterSheet for
-                       # status/sort/venue; tap a row → OwnerBookingDetailSheet:
-                       # full checkout-style breakdown + the player who booked +
-                       # confirm/decline/cancel) + OwnerInsights (all-venues
+                       # double-booking-guarded, no payment flow), OwnerBookings (titled
+                       # "Reports" — a pure analytics dashboard styled after a modern BI console:
+                       # Date-range/Venue/Status filters + CSV/PDF export, 8 KPI cards
+                       # (KpiCard), a Booking-trends line chart (Daily/Weekly/Monthly/Yearly),
+                       # Revenue/Bookings-by-venue bars, a status DonutChart, a Venue-performance
+                       # matrix (search/sort/paginate/sticky-header/score bars), Quick insights +
+                       # a read-only Recent-activity feed — tap a feed row → OwnerBookingDetailSheet,
+                       # which still carries confirm/decline/cancel (so per-booking management stays
+                       # reachable without the old all-venues inbox; approvals also live on
+                       # OwnerFrontDesk + the per-venue Bookings tab)) + OwnerInsights (all-venues
                        # analytics: combined trends + per-venue compare) — the Home Bookings/Insights
                        # buttons open these; OwnerGames (the Games tab for owners — "Your courts":
                        # Schedule agenda of bookings+games per day + Games list at their venues);
@@ -190,7 +201,8 @@ src/
                        # 9-signal summary grid, conversion + cancellation rate,
                        # demand-by-hour heatmap, supply summary with occupancy,
                        # quick link to the Leakage funnel + inline pricing suggestions.
-      components/      # reusable blocks: OwnerSection/OwnerStat/VenueCard/OwnerBookingRow/
+      components/      # reusable blocks: OwnerSection/OwnerStat/KpiCard (analytics summary tile
+                       # w/ trend delta, used by the Reports dashboard)/VenueCard/OwnerBookingRow/
                        # OwnerGameCard/CompletenessMeter/MapPinPicker (tap-to-drop-pin Leaflet
                        # map; new-venue form reverse-geocodes the pin to auto-fill the city)/
                        # AddressAutocomplete (true type-ahead address field — debounced
@@ -243,13 +255,15 @@ src/
                         #   variants, portalled so cards' overflow never clips it),
                         # HourSelect, CourtPicker (pick which court to book/host),
                         # CalendarDatePicker (month-grid date picker),
-                        # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap), … (see folder)
+                        # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap/DonutChart), … (see folder)
     components/layout/  # TabBar (mobile), Sidebar (desktop)
     components/forms/   # FormField, FormSelect (renders Dropdown), FormTierPicker
     hooks/              # useForm, useTheme, usePrefersReducedMotion, useDragScroll
                         #   (drag/wheel-pan a .scroll-x carousel on desktop), useVenueAvailability
                         #   (per-hour availability → greys out taken hours; pass a courtId to
-                        #    scope it to that court, else the whole-venue pool),
+                        #    scope it to that court, else the whole-venue pool; exposes
+                        #    ready/checkFailed/reload so the booking flow fails closed — holds
+                        #    "Continue" until the check loads instead of waving a taken slot through),
                         #   useDemandTracking (typed fire-and-forget demand-signal capture —
                         #    search, venue_view, booking_attempt/completed, checkout_started/
                         #    abandoned, booking_link_shared),

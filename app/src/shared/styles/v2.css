@@ -150,9 +150,36 @@
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg);
   z-index: 46; transition: transform 150ms var(--ease-spring), background 150ms;
 }
-.pb-v2 .v2c-fab-label { font-size: 11px; font-weight: 700; line-height: 1.15; text-align: center; }
-.pb-v2 .v2c-fab:hover { background: var(--lime-hover); transform: scale(1.08); }
-.pb-v2 .v2c-fab:active { transform: scale(0.95); }
+.pb-v2 .v2c-fab-ball { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.pb-v2 .v2c-fab-label { position: relative; z-index: 1; font-size: 11px; font-weight: 700; line-height: 1.15; text-align: center; }
+.pb-v2 .v2c-fab:hover { background: var(--lime-hover); transform: scale(1.08); animation: v2c-fab-pop 320ms ease-out; }
+.pb-v2 .v2c-fab:active { transform: scale(0.95); animation: none; }
+/* Pending-invites badge — coral pill on the FAB's top-right corner (matches the
+   Games "Invites" tab badge), telling the user they have invites to review. */
+.pb-v2 .v2c-fab-badge {
+  position: absolute; top: -3px; right: -3px; z-index: 2;
+  min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--coral); color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 1;
+  border: 2px solid var(--bg); box-shadow: var(--shadow-sm);
+}
+/* Springy "pop" on hover-in: overshoot past the resting hover size, then settle. */
+@keyframes v2c-fab-pop {
+  0%   { transform: scale(1); }
+  55%  { transform: scale(1.16); }
+  100% { transform: scale(1.08); }
+}
+/* Reduce-motion: don't kill the pop — just soften it (small, brief overshoot,
+   no big springy bounce) so it still respects the preference. */
+@media (prefers-reduced-motion: reduce) {
+  .pb-v2 .v2c-fab:hover { animation: v2c-fab-pop-soft 180ms ease-out; }
+}
+@keyframes v2c-fab-pop-soft {
+  0%   { transform: scale(1); }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1.08); }
+}
 
 /* When the app expands to a desktop frame it keeps its own sidebar for
    navigation, making the v2 bottom tab bar redundant — hide it there. Keyed off
