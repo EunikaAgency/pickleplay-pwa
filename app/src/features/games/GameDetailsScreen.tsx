@@ -363,8 +363,11 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </div>
             )}
 
-            {/* The Format tile was dropped — the hero tags already carry type/format. */}
             <div className="kv-grid">
+              <div className="kv">
+                <div className="eyebrow">Format</div>
+                <div className="val">{gameFormatLabel(game) || gameTypeLabel(game)}</div>
+              </div>
               <div className="kv">
                 <div className="eyebrow">Skill</div>
                 <div className="val">{game.skillLabel || 'Open'}</div>
@@ -450,7 +453,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               ) : (
                 <>
                   <p>
-                    {gameTypeLabel(game)} game{game.skillLabel ? ` · ${game.skillLabel}` : ''}, hosted by{' '}
+                    {gameTypeLabel(game)}{gameFormatLabel(game) ? ` · ${gameFormatLabel(game)}` : ''}{game.skillLabel ? ` · ${game.skillLabel}` : ''}, hosted by{' '}
                     {game.creator?.displayName || 'the host'}
                     {game.durationLabel ? ` · ${game.durationLabel}` : ''}.
                   </p>
