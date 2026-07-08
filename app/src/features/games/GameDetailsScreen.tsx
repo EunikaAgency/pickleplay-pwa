@@ -11,12 +11,12 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
-import { getGame, joinGame, leaveGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
+import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
-  dayParts, gameTitle, gameTypeLabel, gameFormatLabel, timeLine, gameLocation, spotsLabel,
-  LOBBY_LEAVE_GRACE_PERIOD_DAYS, isLobbyFull, isWithinGracePeriod, canLeaveLobby,
+  dayParts, gameTitle, gameTypeLabel, gameFormatLabel, gameVibeLabel, timeLine, gameLocation, spotsLabel,
+  isLobbyFull, freeLeaveMsLeft, canLeaveLobby,
 } from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -40,6 +40,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
 
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [approvingLeave, setApprovingLeave] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // Set once the host deletes the lobby — keeps the post-delete success view up
@@ -49,9 +50,6 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [actionError, setActionError] = useState<string | null>(null);
   const [duprOpen, setDuprOpen] = useState(false);
   const [messaging, setMessaging] = useState(false);
-  // Joining inside the grace window makes the joiner acknowledge the no-refund
-  // rule first; this gates the actual join behind a confirmation modal.
-  const [confirmJoinOpen, setConfirmJoinOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [saved, setSaved] = useState(() => {
     try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(gameId); } catch { return false; }
@@ -88,16 +86,18 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   // also releases the linked court reservation (handled server-side).
   const canManageGame = isHost && userHasPermission(me, 'player.games.manage');
 
-  // Lobby / grace-period state — all derived from the shared rules so the UI and
-  // the validation never drift apart.
+  // Lobby / leave-policy state — all derived from the shared rules so the UI and
+  // the validation never drift apart. A full lobby gives everyone a 1h window to
+  // leave freely; after that, leaving needs the host's approval.
   const lobbyFull = !!game && isLobbyFull(game);
-  const withinGrace = !!game && isWithinGracePeriod(game);
   const leaveAllowed = !!game && canLeaveLobby(game);
+  const leaveMinsLeft = game ? Math.ceil(freeLeaveMsLeft(game) / 60_000) : 0;
+  const pendingLeaves = game?.pendingLeaveUsers ?? [];
+  const viewerPendingLeave = !!(me && pendingLeaves.some((p) => p.id === me.id));
 
-  // Actually book the joiner in (skips the auth/grace gates, which handleJoin runs).
+  // Actually book the joiner in (the auth gate runs in handleJoin).
   const doJoin = async () => {
     if (!game) return;
-    setConfirmJoinOpen(false);
     setJoining(true);
     setActionError(null);
     try {
@@ -112,25 +112,41 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
 
   const handleJoin = () => {
     if (!game || isJoined || joining || lobbyFull) return;
-    // Browsing the game is free; committing to it requires an account.
+    // Browsing the game is free; committing to it requires an account. The server
+    // enforces the re-join cooldown (leave twice → wait 1h) and returns a clear
+    // message that lands in actionError.
     if (onRequireAuth && !onRequireAuth('join this game')) return;
-    // Joining within the grace window can lock the spot once the lobby fills, so
-    // make the joiner confirm the no-refund rule before we book them in.
-    if (withinGrace) { setConfirmJoinOpen(true); return; }
     void doJoin();
   };
 
+  // Leave directly while allowed (not full, or full within the 1h window); once
+  // the window closes the same button asks the host for permission instead.
   const handleLeave = async () => {
-    if (!game || leaving || !leaveAllowed) return;
+    if (!game || leaving || viewerPendingLeave) return;
     setLeaving(true);
     setActionError(null);
     try {
-      const updated = await leaveGame(game.id);
+      const updated = leaveAllowed ? await leaveGame(game.id) : await requestLeaveGame(game.id);
       setGame(updated);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Could not leave this game.');
     } finally {
       setLeaving(false);
+    }
+  };
+
+  // Host approves a pending leave request — the player drops off the roster.
+  const handleApproveLeave = async (userId: string) => {
+    if (!game || approvingLeave) return;
+    setApprovingLeave(userId);
+    setActionError(null);
+    try {
+      const updated = await approveLeaveGame(game.id, userId);
+      setGame(updated);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not approve the request.');
+    } finally {
+      setApprovingLeave(null);
     }
   };
 
@@ -180,18 +196,14 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
     } catch { /* ignore */ }
   };
 
-  // A single grace-period notice whose wording adapts to the viewer's state
+  // A single leave-policy notice whose wording adapts to the viewer's state
   // (host gets the "ready to play" banner instead, so they're excluded here).
   const graceNotice: string | null = (() => {
-    if (!game || isHost || !withinGrace) return null;
-    if (isJoined) {
-      return leaveAllowed
-        ? `This game is within ${LOBBY_LEAVE_GRACE_PERIOD_DAYS} days. You can still leave while the lobby has open spots — once it fills, your spot is final and non-refundable.`
-        : `The lobby is full and the game is within ${LOBBY_LEAVE_GRACE_PERIOD_DAYS} days, so your spot is locked in — this booking is final and non-refundable.`;
-    }
-    // Non-joined viewer: only relevant while there's still a spot to take.
-    if (lobbyFull) return null;
-    return `This game is within the ${LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period. You can leave only while the lobby isn't full — once it fills, your booking is final and non-refundable.`;
+    if (!game || isHost || !isJoined || !lobbyFull) return null;
+    if (viewerPendingLeave) return 'You asked to leave — waiting for the host to approve.';
+    return leaveAllowed
+      ? `The lobby is full. You have about ${leaveMinsLeft} min left to leave freely — after that, leaving needs the host's permission.`
+      : 'The lobby is full and the free-leave window has closed. To leave now, ask the host for permission.';
   })();
 
   return (
@@ -309,6 +321,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 )}
                 <span className="tag">{gameTypeLabel(game)}</span>
                 {gameFormatLabel(game) && <span className="tag lime">{gameFormatLabel(game)}</span>}
+                {gameVibeLabel(game) && <span className="tag">{game.vibe === 'competitive' ? '🔥' : '😎'} {gameVibeLabel(game)}</span>}
                 {game.visibility === 'invite' && <span className="tag">Invite only</span>}
               </div>
               <h1>{gameTitle(game)}</h1>
@@ -335,13 +348,13 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </div>
             )}
 
-            {/* Joiner-facing grace-period / no-refund notice. */}
+            {/* Joiner-facing leave-policy notice (free-leave window / host approval). */}
             {graceNotice && (
               <div className="rounded-2xl bg-[var(--coral-soft)] border-[0.5px] border-[var(--coral)]/30 px-4 py-3 flex items-start gap-3 mb-4">
                 <Icon name={leaveAllowed ? 'clock' : 'lock'} size={18} className="mt-0.5 shrink-0 text-[var(--coral)]" />
                 <div>
                   <div className="text-[13px] font-bold text-[var(--coral)]">
-                    {leaveAllowed ? `Within the ${LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period` : 'Spot locked in'}
+                    {viewerPendingLeave ? 'Leave requested' : leaveAllowed ? 'Free-leave window open' : 'Lobby locked'}
                   </div>
                   {/* Use --coral (fixed dark red in both themes) not --ink-2, which
                       flips light in dark mode → unreadable on the pale coral card. */}
@@ -350,11 +363,8 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </div>
             )}
 
+            {/* The Format tile was dropped — the hero tags already carry type/format. */}
             <div className="kv-grid">
-              <div className="kv">
-                <div className="eyebrow">Format</div>
-                <div className="val">{gameFormatLabel(game) || gameTypeLabel(game)}</div>
-              </div>
               <div className="kv">
                 <div className="eyebrow">Skill</div>
                 <div className="val">{game.skillLabel || 'Open'}</div>
@@ -408,12 +418,8 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </button>
             )}
 
+            {/* Location — venue name/area + directions (decorative map box dropped). */}
             <div className="location-card">
-              <div className="map-preview">
-                <div className="pin">
-                  <Icon name="location" size={16} />
-                </div>
-              </div>
               <div className="map-info">
                 <div className="text">
                   <div className="name">{game.venue?.displayName || game.venueName || 'Location TBD'}</div>
@@ -455,6 +461,26 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </>
               )}
             </div>
+
+            {/* Host-only: pending leave requests — approve to release the player. */}
+            {isHost && pendingLeaves.length > 0 && (
+              <div className="rounded-2xl bg-[var(--coral-soft)] border-[0.5px] border-[var(--coral)]/30 px-4 py-3.5 mb-4">
+                <div className="text-[13px] font-bold text-[var(--coral)] mb-2.5">
+                  {pendingLeaves.length === 1 ? 'A player wants to leave' : `${pendingLeaves.length} players want to leave`}
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {pendingLeaves.map((p) => (
+                    <div key={p.id} className="flex items-center gap-3">
+                      <Avatar src={p.avatarUrl} name={p.displayName} size={32} />
+                      <div className="flex-1 text-[13px] font-semibold text-[var(--ink)]">{p.displayName}</div>
+                      <Button variant="outline" onClick={() => handleApproveLeave(p.id)} disabled={approvingLeave === p.id}>
+                        {approvingLeave === p.id ? 'Releasing…' : 'Let them leave'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mb-[18px]">
               <div className="flex items-baseline justify-between mb-3">
@@ -517,24 +543,29 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </button>
               )
             ) : isJoined ? (
-              leaveAllowed ? (
+              viewerPendingLeave ? (
+                <button className="btn-join joined" disabled title="You asked to leave — waiting for the host to approve.">
+                  <Icon name="clock" size={16} />
+                  Leave requested
+                </button>
+              ) : (
                 <button className="btn-join btn-leave" onClick={handleLeave} disabled={leaving}>
                   {leaving ? (
                     <>
                       <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
-                      Leaving…
+                      {leaveAllowed ? 'Leaving…' : 'Asking…'}
                     </>
-                  ) : (
+                  ) : leaveAllowed ? (
                     <>
                       <Icon name="logout" size={16} />
                       Leave game
                     </>
+                  ) : (
+                    <>
+                      <Icon name="lock" size={16} />
+                      Ask to leave
+                    </>
                   )}
-                </button>
-              ) : (
-                <button className="btn-join joined" disabled title="The lobby is full and the game is within the grace period — your spot is final.">
-                  <Icon name="lock" size={16} />
-                  Spot locked
                 </button>
               )
             ) : (
@@ -561,32 +592,6 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               {actionError}
             </div>
           )}
-
-          {/* Booking-within-grace confirmation — explicit no-refund acknowledgement. */}
-          <BottomSheet open={confirmJoinOpen} onClose={() => setConfirmJoinOpen(false)} title="Confirm your booking">
-            <div className="px-1 pb-1">
-              <div className="rounded-2xl bg-[var(--coral-soft)] border-[0.5px] border-[var(--coral)]/30 px-4 py-3.5 flex items-start gap-3">
-                <Icon name="shield" size={20} className="mt-0.5 shrink-0 text-[var(--coral)]" />
-                <div>
-                  <div className="text-[14px] font-bold text-[var(--coral)] mb-0.5">Within the {LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period</div>
-                  <p className="text-[13px] font-semibold text-[var(--coral)] leading-snug">
-                    This game is within the {LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period. You may leave only while the
-                    lobby is not full. Once the lobby becomes full, your booking is final and non-refundable.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                <Button variant="outline" onClick={() => setConfirmJoinOpen(false)} disabled={joining}>Cancel</Button>
-                <Button variant="dark" onClick={doJoin} disabled={joining}>
-                  {joining ? (
-                    <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Booking…</>
-                  ) : (
-                    'Confirm Booking'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </BottomSheet>
 
           {/* Host delete-lobby confirmation — removes the lobby but keeps the court booked. */}
           <BottomSheet open={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)} title="Delete this lobby?">

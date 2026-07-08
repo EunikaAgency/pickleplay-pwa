@@ -281,8 +281,10 @@ export async function login(email: string, password: string): Promise<AppUser> {
   return user;
 }
 
-/** Roles a user can self-select at sign-up (admin/moderator are admin-assigned only). */
-export type RegisterRole = 'player' | 'owner' | 'organizer' | 'coach';
+/** Roles a user can self-select at sign-up. Only player and owner — coach and
+ *  organizer are earned per-venue via application/approval, not chosen here;
+ *  admin/moderator are admin-assigned. Mirrors the API's REGISTERABLE_ROLES. */
+export type RegisterRole = 'player' | 'owner';
 
 export interface RegisterPayload {
   email: string;
@@ -1575,6 +1577,8 @@ export interface ApiGame {
   gameType?: string | null;        // 'singles' | 'doubles' | 'open' | 'public'
   /** Competitive format for a public game (null otherwise). */
   format?: 'bracketing' | 'round_robin' | 'mini_tournament' | string | null;
+  /** Host-set vibe — casual drop-in or competitive session. */
+  vibe?: 'casual' | 'competitive' | string | null;
   skillLabel?: string | null;
   whenLabel?: string | null;
   timeLabel?: string | null;
@@ -1588,6 +1592,15 @@ export interface ApiGame {
    *  `viewerInterested` is derived client-side from `interestedUsers` vs the user id. */
   interestedUsers?: ApiGamePerson[];
   interestedCount?: number | null;
+  /** Soft headcount goal for open play ("aiming for 8"). Not a cap. */
+  targetPlayers?: number | null;
+  /** When the lobby became full (ISO) — starts the 1h free-leave window. */
+  fullAt?: string | null;
+  /** Players awaiting host approval to leave a locked (full, window-closed) lobby. */
+  pendingLeaveUsers?: ApiGamePerson[];
+  pendingLeaveCount?: number | null;
+  /** How many times the viewer has left this lobby (drives the re-join cooldown). */
+  viewerLeaves?: number | null;
   creator?: ApiGamePerson | null;
   creatorId?: string | null;
   venue?: ApiGameVenue | null;
@@ -1633,6 +1646,8 @@ export interface CreateGamePayload {
   gameType: 'singles' | 'doubles' | 'open' | 'public';
   /** Competitive format — required for a public game, ignored otherwise. */
   format?: 'bracketing' | 'round_robin' | 'mini_tournament';
+  /** Host-set vibe — casual or competitive (any type). */
+  vibe?: 'casual' | 'competitive';
   skillLabel?: string;
   whenLabel?: string;
   timeLabel?: string;
@@ -1641,6 +1656,8 @@ export interface CreateGamePayload {
   date?: string;
   /** Player cap. Optional — the server defaults it (4) for open/interest games. */
   capacity?: number;
+  /** Soft headcount goal for open play ("aiming for 8"). Not a cap. */
+  targetPlayers?: number;
   visibility: 'public' | 'invite';
   /** The host's court reservation (created + paid via the booking flow) to link. */
   bookingId?: string;
@@ -1701,6 +1718,17 @@ export async function leaveGame(id: string): Promise<ApiGame> {
  *  taps interest in if absent, out if present. Returns the updated game. */
 export async function toggleGameInterest(id: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/interest`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Ask the host for permission to leave a FULL lobby whose 1-hour free-leave
+ *  window has closed. Adds the caller to `pendingLeaveUsers` + notifies the host. */
+export async function requestLeaveGame(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/request-leave`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Host approves a pending leave request — removes that player from the roster. */
+export async function approveLeaveGame(id: string, userId: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/approve-leave`, { method: 'POST', body: { userId }, auth: true });
 }
 
 /** Host removes a player from the roster. */
@@ -2606,9 +2634,10 @@ export interface ApiBooking {
   courtNumber?: string | null;     // populated by the owner bookings endpoint
   courtName?: string | null;       // populated by the owner bookings endpoint
   // Linked game metadata — only on bookingType 'game', from the owner bookings endpoint.
-  gameType?: string | null;        // 'singles' | 'doubles' | 'open'
+  gameType?: string | null;        // 'singles' | 'doubles' | 'open' | 'public'
   gameVisibility?: string | null;  // 'public' | 'invite'
   gameTitle?: string | null;
+  gameFormat?: string | null;      // public game: 'bracketing' | 'round_robin' | 'mini_tournament'
   date?: string | null;            // YYYY-MM-DD
   startTime?: string | null;       // "18:30"
   endTime?: string | null;
@@ -3801,4 +3830,55 @@ export async function getReceipt(id: string): Promise<ApiOfficialReceipt> {
 /** Update a receipt (payor details, issue, or void). */
 export async function updateReceipt(id: string, body: UpdateReceiptPayload): Promise<ApiOfficialReceipt> {
   return request<ApiOfficialReceipt>(`/api/v1/payments/receipts/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
+}
+
+/* ─── Partners (owner ↔ coach/organizer applications) ───────────── */
+
+export type PartnerKind = 'coach' | 'organizer';
+export type PartnerApplicationStatus = 'pending' | 'approved' | 'rejected' | 'removed';
+
+/** One coach/organizer application row in the owner Partners feed. */
+export interface ApiPartnerApplication {
+  id: string;
+  kind: PartnerKind;
+  status: PartnerApplicationStatus;
+  createdAt: string;
+  decidedAt: string | null;
+  applicant: { userId: string; name: string; slug: string | null; avatar: string | null };
+  venue: { id: string; name: string; slug: string; location: string; image: string | null } | null;
+}
+
+/** KPI counts for the Partners screen's summary cards. `partnerRevenue` is a
+ *  v1 placeholder — no partner-payment rollup exists yet, so it's always null. */
+export interface OwnerPartnersKpis {
+  activeCoaches: number;
+  activeOrganizers: number;
+  pendingReview: number;
+  partnerRevenue: number | null;
+}
+
+export interface OwnerPartnersFeed {
+  partners: ApiPartnerApplication[];
+  kpis: OwnerPartnersKpis;
+}
+
+/** Coach + organizer applications across every venue the owner owns, tagged
+ *  `kind`, plus KPI counts (organizer rows arrive once that feature ships). */
+export async function getOwnerPartners(): Promise<OwnerPartnersFeed> {
+  return request<OwnerPartnersFeed>('/api/v1/partners/owner', { auth: true });
+}
+
+/** Approve a pending coach application at one of the owner's venues. */
+export async function approveCoachApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
+  return request(`/api/v1/coach-applications/${encodeURIComponent(id)}/approve`, { method: 'PATCH', auth: true });
+}
+
+/** Reject a pending coach application. */
+export async function rejectCoachApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
+  return request(`/api/v1/coach-applications/${encodeURIComponent(id)}/reject`, { method: 'PATCH', auth: true });
+}
+
+/** Remove an approved coach from the venue. */
+export async function removeCoachApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
+  return request(`/api/v1/coach-applications/${encodeURIComponent(id)}/remove`, { method: 'PATCH', auth: true });
 }

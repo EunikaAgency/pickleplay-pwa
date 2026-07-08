@@ -15,6 +15,8 @@ const gameSchema = new Schema({
   gameType:      { type: String, default: 'doubles' },   // 'singles' | 'doubles' | 'open' | 'public'
   // Competitive format for a 'public' game (null otherwise): how the session is run.
   format:        { type: String },                        // 'bracketing' | 'round_robin' | 'mini_tournament' | null
+  // The vibe the host set — casual drop-in or competitive session.
+  vibe:          { type: String },                        // 'casual' | 'competitive' | null
   skillLabel:    { type: String, maxlength: 30 },         // verbatim, e.g. '3.0–3.5'
   skillMin:      Number,                                  // best-effort parse of skillLabel
   skillMax:      Number,
@@ -27,6 +29,16 @@ const gameSchema = new Schema({
   // Open Play interest: players who tapped "I'm Interested" (a soft signal, not a
   // committed roster). Only meaningful for gameType 'open'; capacity does not apply.
   interestedUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  // Soft headcount target for open play ("aiming for 8"). Not a cap — interest
+  // board shows progress toward this goal but anyone can still show interest.
+  targetPlayers:  { type: Number },
+  // Leave / join timing policy — per-lobby state machine (applies to lobby games:
+  // singles/doubles/public; open play uses interest, not roster).
+  fullAt:         { type: Date },                         // when the lobby became full (starts the 1h free-leave window)
+  pendingLeaveUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }], // players awaiting host approval to leave
+  // A rolling log of leaves this lobby has seen: { user, leftAt }. The most recent
+  // two entries per user drive the 1h re-join cooldown.
+  leaveLog:       [{ user: { type: Schema.Types.ObjectId, ref: 'User' }, leftAt: { type: Date, default: Date.now } }],
   // Players who have been invited. Each entry records who was invited and who
   // sent the invite, so the invitee can see the inviter's name and re-invites
   // (same user by same inviter) dedupe. Joining is still via the normal flow.

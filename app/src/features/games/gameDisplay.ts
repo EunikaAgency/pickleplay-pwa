@@ -104,6 +104,13 @@ export function gameFormatLabel(g: Pick<ApiGame, 'format'>): string {
   }
 }
 
+/** The host-set vibe label ("Casual" / "Competitive"). Empty when unset. */
+export function gameVibeLabel(g: Pick<ApiGame, 'vibe'>): string {
+  if (g.vibe === 'casual') return 'Casual';
+  if (g.vibe === 'competitive') return 'Competitive';
+  return '';
+}
+
 /** True for an interest-based Open Play game (gameType 'open', incl. the untyped default). */
 export function isOpenPlayGame(g: Pick<ApiGame, 'gameType'>): boolean {
   return ((g.gameType || '').toLowerCase() || 'open') === 'open';
@@ -124,45 +131,40 @@ export function interestLabel(g: Pick<ApiGame, 'interestedCount' | 'interestedUs
   return n > 0 ? `${n} interested` : 'No interest yet';
 }
 
-/* ─── Lobby leave / grace-period rules ───────────────────────── */
-//
-// A game's roster is its "lobby". Joiners can drop out freely until the lobby
-// fills up; once it's FULL their spot is only refundable (i.e. leaveable) while
-// the game is still comfortably in the future. Inside the grace window a full
-// lobby is locked in — the host's court is committed, so the booking is final.
-// Change this one constant to retune the window everywhere it's enforced.
-export const LOBBY_LEAVE_GRACE_PERIOD_DAYS = 3;
-
-/** Whole days from today (local midnight) until the game date; null when undated. */
-export function daysUntilGame(g: Pick<ApiGame, 'date'>): number | null {
-  if (!g.date) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(`${g.date}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
+/** "5 interested · aiming for 8" when the host set a headcount target. */
+export function interestWithTarget(g: Pick<ApiGame, 'interestedCount' | 'interestedUsers' | 'targetPlayers'>): string {
+  const base = interestLabel(g);
+  return g.targetPlayers ? `${base} · aiming for ${g.targetPlayers}` : base;
 }
+
+/* ─── Lobby leave / join timing rules ────────────────────────── */
+//
+// A game's roster is its "lobby". Not-full lobbies are freely leaveable, but a
+// player who leaves TWICE gets a 1h re-join cooldown (server-enforced; the app
+// mirrors it for UX copy). Once a lobby fills (`fullAt`), everyone gets a 1h
+// window to leave freely; after it closes, leaving needs the host's approval
+// (request-leave → approve-leave).
+export const FULL_LOBBY_LEAVE_GRACE_MS = 3_600_000; // 1 hour
 
 /** True once every spot is taken (the lobby is full). */
 export function isLobbyFull(g: Pick<ApiGame, 'spotsLeft'>): boolean {
   return (g.spotsLeft ?? 0) <= 0;
 }
 
-/** The game date is inside the no-refund window — within the grace period (≤ N
- *  days away, including today/overdue). An undated game can't be locked in, so
- *  it's treated as outside the window. */
-export function isWithinGracePeriod(g: Pick<ApiGame, 'date'>): boolean {
-  const days = daysUntilGame(g);
-  return days != null && days <= LOBBY_LEAVE_GRACE_PERIOD_DAYS;
+/** Milliseconds left in the full lobby's free-leave window; 0 when closed/not full. */
+export function freeLeaveMsLeft(g: Pick<ApiGame, 'spotsLeft' | 'fullAt'>): number {
+  if (!isLobbyFull(g) || !g.fullAt) return 0;
+  const elapsed = Date.now() - new Date(g.fullAt).getTime();
+  return Math.max(0, FULL_LOBBY_LEAVE_GRACE_MS - elapsed);
 }
 
-/** Whether a joiner may still leave the lobby:
- *  - lobby not full → always leaveable (even within the grace period)
- *  - lobby full but the game is still more than N days away → leaveable
- *  - lobby full AND within the grace period → locked in (final, non-refundable). */
-export function canLeaveLobby(g: Pick<ApiGame, 'spotsLeft' | 'date'>): boolean {
+/** Whether a joiner may still leave the lobby directly:
+ *  - lobby not full → always leaveable (the server tracks the re-join cooldown)
+ *  - lobby full and the 1h free-leave window is still open → leaveable
+ *  - lobby full and the window closed → must ask the host (request-leave). */
+export function canLeaveLobby(g: Pick<ApiGame, 'spotsLeft' | 'fullAt'>): boolean {
   if (!isLobbyFull(g)) return true;
-  return !isWithinGracePeriod(g);
+  return freeLeaveMsLeft(g) > 0;
 }
 
 /* ─── Status display ─────────────────────────────────────────── */

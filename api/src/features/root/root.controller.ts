@@ -165,6 +165,13 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/coach-applications/venue/:venueId', methods: ['GET'], description: 'Applications for one owned venue; ?status=pending|approved|rejected filters (owner.coaches.manage)', auth: 'user' },
         { path: '/api/v1/coach-applications/:id/approve', methods: ['PATCH'], description: 'Approve a coach application (venue owner or admin)', auth: 'user' },
         { path: '/api/v1/coach-applications/:id/reject', methods: ['PATCH'], description: 'Reject a coach application (venue owner or admin)', auth: 'user' },
+        { path: '/api/v1/coach-applications/:id/remove', methods: ['PATCH'], description: 'Remove an approved coach from the venue (venue owner or admin)', auth: 'user' },
+      ],
+    },
+    {
+      name: 'Partners',
+      endpoints: [
+        { path: '/api/v1/partners/owner', methods: ['GET'], description: "Combined coach + organizer partner applications across the current owner's venues, tagged kind, with KPI counts (owner.coaches.manage or owner.tournaments.manage; organizer applications pending — coach-only for now)", auth: 'user' },
       ],
     },
     {
@@ -236,6 +243,8 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/games/:id/join', methods: ['POST'], description: 'Join a game — enforces capacity + one-per-player (rejected for Open Play, which uses interest)', auth: 'user' },
         { path: '/api/v1/games/:id/leave', methods: ['POST'], description: 'Leave a game (re-opens it if it was full)', auth: 'user' },
         { path: '/api/v1/games/:id/interest', methods: ['POST'], description: 'Toggle "I\'m Interested" on an Open Play game (gameType open) — a soft signal, no capacity/roster', auth: 'user' },
+        { path: '/api/v1/games/:id/request-leave', methods: ['POST'], description: 'Ask the host for permission to leave a FULL lobby whose 1h free-leave window has closed (adds you to pendingLeaveUsers + notifies the host)', auth: 'user' },
+        { path: '/api/v1/games/:id/approve-leave', methods: ['POST'], description: 'Host approves a pending leave request — body { userId }; removes the player from the roster + notifies them', auth: 'user' },
         { path: '/api/v1/games/:id/kick', methods: ['POST'], description: 'Host removes a player from the roster — body { userId } (auth, host)', auth: 'user' },
         { path: '/api/v1/games/:id/invite', methods: ['POST'], description: 'Host invites players — body { userIds } — notifies each + records them on the game (auth, host, player.games.invite)', auth: 'user' },
         { path: '/api/v1/games/:id/messages', methods: ['GET', 'POST'], description: 'Game group chat — GET lists messages (roster only); POST sends one (body { body }; roster + player.games.chat) and realtime-fans-out game.message.created to the other roster members', auth: 'user' },

@@ -10,6 +10,13 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 
 // Competitive format for a public game — how the session is run.
 const gameFormat = z.enum(['bracketing', 'round_robin', 'mini_tournament']);
+const vibeEnum = z.enum(['casual', 'competitive']);
+// When a full lobby fills, the player has this many ms to leave freely.
+// After that window closes, the player must request host permission to leave.
+const FULL_LOBBY_LEAVE_GRACE_MS = 3_600_000; // 1 hour
+// When a player leaves twice from the same not-full lobby, they can't re-join for
+// this many ms (prevents join/leave spam).
+const LEAVE_COOLDOWN_MS = 3_600_000; // 1 hour
 
 const createSchema = z.object({
   title: z.string().max(120).optional(),
@@ -20,6 +27,7 @@ const createSchema = z.object({
   // game with a lobby; 'singles'/'doubles' = classic fixed-seat lobbies.
   gameType: z.enum(['singles', 'doubles', 'open', 'public']).default('doubles'),
   format: gameFormat.optional(),
+  vibe: vibeEnum.optional(),
   skillLabel: z.string().max(30).optional(),
   whenLabel: z.string().max(30).optional(),
   timeLabel: z.string().max(20).optional(),
@@ -28,6 +36,8 @@ const createSchema = z.object({
   // best-effort date derived from whenLabel.
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   capacity: z.number().int().min(2).max(16).default(4),
+  // Soft headcount goal for open play ("aiming for 8"). Not a hard cap.
+  targetPlayers: z.number().int().min(2).max(64).optional(),
   visibility: z.enum(['public', 'invite']).default('public'),
   // The host's court reservation, created + paid via the book-a-court flow before
   // the game is posted. Links the game to its booked court.
@@ -48,8 +58,10 @@ const updateSchema = z.object({
   description: z.string().max(500).optional(),
   gameType: z.enum(['singles', 'doubles', 'open', 'public']).optional(),
   format: gameFormat.optional(),
+  vibe: vibeEnum.optional(),
   skillLabel: z.string().max(30).optional(),
   capacity: z.number().int().min(2).max(16).optional(),
+  targetPlayers: z.number().int().min(2).max(64).optional(),
   visibility: z.enum(['public', 'invite']).optional(),
 });
 
@@ -67,6 +79,7 @@ const POPULATE = [
   { path: 'creatorId', select: 'displayName avatarUrl' },
   { path: 'participantIds', select: 'displayName avatarUrl' },
   { path: 'interestedUserIds', select: 'displayName avatarUrl' },
+  { path: 'pendingLeaveUserIds', select: 'displayName avatarUrl' },
   { path: 'venueId', select: VENUE_SELECT },
   { path: 'invitedUserIds.invitedBy', select: 'displayName avatarUrl' },
   // over the venue image (falls back to the venue image when the court has none).
@@ -81,30 +94,10 @@ function parseSkill(label?: string): { skillMin?: number; skillMax?: number } {
   return { skillMin: nums[0], skillMax: nums[1] };
 }
 
-// ── Lobby leave / grace-period rule (single source of truth for the API) ──
-//
-// A game's roster is its "lobby". Joiners can drop out freely until it fills;
-// once a lobby is FULL their spot is only leaveable (refundable) while the game
-// is still more than this many days away. Inside the window a full lobby is
-// locked in — the host's court is committed, so the booking is final. Change
-// this one constant to retune the window across the API.
-export const LOBBY_LEAVE_GRACE_PERIOD_DAYS = 3;
-
-/** Whole days from today (local midnight) to a YYYY-MM-DD game date; null if undated/unparsable. */
-function daysUntilGame(date?: string | null): number | null {
-  if (!date) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return null;
-  return Math.round((d.getTime() - today.getTime()) / 86_400_000);
-}
-
-/** The game date is inside the no-refund window (≤ grace period away). Undated → outside. */
-function isWithinGracePeriod(date?: string | null): boolean {
-  const days = daysUntilGame(date);
-  return days != null && days <= LOBBY_LEAVE_GRACE_PERIOD_DAYS;
-}
+// The old day-based grace-period lock (LOBBY_LEAVE_GRACE_PERIOD_DAYS) is
+// superseded by the time-based policy above: not-full lobbies are freely
+// leaveable (with a 1h re-join cooldown after a 2nd leave), and a full lobby
+// gives each player a 1h window to leave before requiring host permission.
 
 /** Best-effort YYYY-MM-DD from a fuzzy "when" label so the calendar/sort works. */
 function computeDate(whenLabel?: string): string {
@@ -142,7 +135,7 @@ function todayDate(): string {
 }
 
 /** Map a populated, lean Game doc onto the shape the app consumes. */
-function serialize(r: any) {
+function serialize(r: any, viewerUserId?: string) {
   const refPerson = (p: any) =>
     p && typeof p === 'object'
       ? { id: String(p._id), displayName: p.displayName, avatarUrl: p.avatarUrl ?? null }
@@ -164,6 +157,7 @@ function serialize(r: any) {
       : null;
   const participants = (r.participantIds ?? []).map(refPerson);
   const interestedUsers = (r.interestedUserIds ?? []).map(refPerson);
+  const pendingLeaveUsers = (r.pendingLeaveUserIds ?? []).map(refPerson);
   const capacity = r.capacity ?? 4;
   const creator = r.creatorId && typeof r.creatorId === 'object' ? refPerson(r.creatorId) : null;
   const venue = refVenue(r.venueId);
@@ -186,6 +180,18 @@ function serialize(r: any) {
     participants,
     participantCount: participants.length,
     spotsLeft: Math.max(0, capacity - participants.length),
+    // Host-set vibe (casual or competitive) — surfaces on the lobby + cards.
+    vibe: r.vibe ?? null,
+    // Soft headcount goal for open play ("aiming for 8"). Not a cap.
+    targetPlayers: r.targetPlayers ?? null,
+    // Leave / join timing state (lobby games only).
+    fullAt: r.fullAt ? (r.fullAt instanceof Date ? r.fullAt.toISOString() : r.fullAt) : null,
+    pendingLeaveUsers,
+    pendingLeaveCount: pendingLeaveUsers.length,
+    // How many times has the viewer left this lobby (for the 1h cooldown check).
+    viewerLeaves: viewerUserId
+      ? (r.leaveLog ?? []).filter((e: any) => String(e.user ?? e.userId) === viewerUserId).length
+      : 0,
     // Open Play interest (soft signal). The client derives `viewerInterested` by
     // checking its own id against this list, mirroring how it derives isJoined.
     interestedUsers,
@@ -251,7 +257,7 @@ export async function listGames(c: any) {
     .sort({ date: 1, createdAt: -1 })
     .limit(50)
     .lean();
-  return c.json({ data: rows.map(serialize) });
+  return c.json({ data: rows.map((r: any) => serialize(r)) });
 }
 
 export async function createGame(c: any) {
@@ -273,6 +279,8 @@ export async function createGame(c: any) {
     gameType: body.gameType,
     // Format only applies to public games; ignore it for other types.
     format: body.gameType === 'public' ? (body.format || null) : null,
+    // Vibe applies to any type (host picks casual or competitive at creation).
+    vibe: body.vibe || null,
     skillLabel: body.skillLabel || null,
     skillMin,
     skillMax,
@@ -281,6 +289,7 @@ export async function createGame(c: any) {
     durationLabel: body.durationLabel || null,
     date: body.date || computeDate(body.whenLabel),
     capacity,
+    targetPlayers: body.targetPlayers || null,
     participantIds: [user.sub],
     visibility: body.visibility,
     status: 'published',
@@ -370,6 +379,18 @@ export async function joinGame(c: any) {
   if (String(game.gameType) === 'open') {
     return c.json({ error: { code: 'INVALID_STATE', message: 'Open Play uses "I\'m Interested", not join.' } }, 400);
   }
+  // Cooldown: second+ leave in the leaveLog that's still within LEAVE_COOLDOWN_MS
+  // blocks re-join for that lobby. Filter history for just this user.
+  const log = ((game as any).leaveLog ?? []) as any[];
+  const myLog = log.filter((e: any) => String(e.user) === user.sub).sort((a: any, b: any) => new Date(b.leftAt).getTime() - new Date(a.leftAt).getTime());
+  if (myLog.length >= 2) {
+    const lastLeft = new Date(myLog[0].leftAt).getTime();
+    const since = Date.now() - lastLeft;
+    if (since < LEAVE_COOLDOWN_MS) {
+      const mins = Math.ceil((LEAVE_COOLDOWN_MS - since) / 60_000);
+      return c.json({ error: { code: 'COOLDOWN', message: `You left and rejoined — you can join this lobby again in ${mins} min.` } }, 409);
+    }
+  }
   const already = game.participantIds.some((p: any) => String(p) === user.sub);
   if (!already) {
     if (game.participantIds.length >= (game.capacity ?? 0)) {
@@ -383,7 +404,10 @@ export async function joinGame(c: any) {
       return uid !== user.sub;
     }) as any;
     const nowFull = game.participantIds.length >= (game.capacity ?? 0);
-    if (nowFull) game.status = 'full';
+    if (nowFull) {
+      game.status = 'full';
+      (game as any).fullAt = new Date(); // start the 1h free-leave countdown
+    }
     await game.save();
     // Notify the host when someone other than them joins: the richer "lobby full"
     // message on the transition into full, otherwise a plain "player joined".
@@ -393,7 +417,7 @@ export async function joinGame(c: any) {
     }
   }
   const populated = await Game.findById(id).populate(POPULATE).lean();
-  return c.json({ data: serialize(populated) });
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
 }
 
 export async function leaveGame(c: any) {
@@ -402,39 +426,49 @@ export async function leaveGame(c: any) {
   const game = await Game.findById(id);
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
 
-  // Grace-period lock: a joiner can't leave once the lobby is FULL and the game
-  // is within the grace window — their spot is final/non-refundable. The host is
-  // exempt (they manage/cancel the game instead of "leaving" it).
   const isMember = game.participantIds.some((p: any) => String(p) === user.sub);
   const isHost = String(game.creatorId) === user.sub;
   const isFull = game.participantIds.length >= (game.capacity ?? 0);
-  if (isMember && !isHost && isFull && isWithinGracePeriod(game.date)) {
-    return c.json({
-      error: {
-        code: 'LOBBY_LOCKED',
-        message: `You can no longer leave this lobby because the game is within the ${LOBBY_LEAVE_GRACE_PERIOD_DAYS}-day grace period and the lobby is already full.`,
-      },
-    }, 409);
-  }
 
-  game.participantIds = game.participantIds.filter((p: any) => String(p) !== user.sub) as any;
-  // A game that dropped below capacity re-opens.
-  if (game.status === 'full') game.status = 'published';
-  await game.save();
-  // Tell the host a spot opened up (only when a non-host member actually left).
-  if (isMember && !isHost) {
-    const name = await actorName(user.sub);
-    await notifyUser(game.creatorId, {
-      type: 'game_leave',
-      title: 'A player left',
-      body: `${name} left ${gameLabel(game)} — a spot is open again.`,
-      icon: 'group_remove',
-      linkUrl: `/games/${String(game._id)}`,
-      tag: `game-leave-${String(game._id)}`,
-    });
+  if (!isMember) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'You are not in this lobby.' } }, 404);
   }
-  const populated = await Game.findById(id).populate(POPULATE).lean();
-  return c.json({ data: serialize(populated) });
+  // The host "leaves" as cancel+delete, not this endpoint.
+  if (isHost) {
+    return c.json({ error: { code: 'CONFLICT', message: 'As the host, cancel the game instead of leaving.' } }, 409);
+  }
+  // Not full (or not yet full): leave freely — but track the leave for cooldown.
+  if (!isFull) {
+    game.participantIds = game.participantIds.filter((p: any) => String(p) !== user.sub) as any;
+    // Record this leave for the 1h-rejoin cooldown.
+    if (!(game as any).leaveLog) (game as any).leaveLog = [];
+    (game as any).leaveLog.push({ user: user.sub, leftAt: new Date() });
+    await game.save();
+    const name = await actorName(user.sub);
+    await notifyUser(game.creatorId, { type: 'game_leave', title: 'A player left', body: `${name} left ${gameLabel(game)} — a spot is open again.`, icon: 'group_remove', linkUrl: `/games/${String(game._id)}`, tag: `game-leave-${String(game._id)}` });
+    const populated = await Game.findById(id).populate(POPULATE).lean();
+    return c.json({ data: serialize(populated, c.get('user')?.sub) });
+  }
+  // Lobby is FULL — check if still within the 1h free-leave window.
+  const fullTime = (game as any).fullAt ? new Date((game as any).fullAt).getTime() : 0;
+  const windowOpen = fullTime > 0 && (Date.now() - fullTime) < FULL_LOBBY_LEAVE_GRACE_MS;
+  if (windowOpen) {
+    game.participantIds = game.participantIds.filter((p: any) => String(p) !== user.sub) as any;
+    if (game.participantIds.length < (game.capacity ?? 0)) {
+      game.status = 'published';
+      (game as any).fullAt = undefined; // no longer full — reset the clock
+    }
+    if (!(game as any).leaveLog) (game as any).leaveLog = [];
+    (game as any).leaveLog.push({ user: user.sub, leftAt: new Date() });
+    await game.save();
+    const name = await actorName(user.sub);
+    await notifyUser(game.creatorId, { type: 'game_leave', title: 'A player left', body: `${name} left ${gameLabel(game)} — a spot is open again.`, icon: 'group_remove', linkUrl: `/games/${String(game._id)}`, tag: `game-leave-${String(game._id)}` });
+    const populated = await Game.findById(id).populate(POPULATE).lean();
+    return c.json({ data: serialize(populated, c.get('user')?.sub) });
+  }
+  // Lobby is full AND the 1h window has closed — the player must request host
+  // permission to leave. Redirect them to the request endpoint.
+  return c.json({ error: { code: 'LOBBY_LOCKED', message: 'This lobby is locked. Ask the host for permission to leave.' } }, 409);
 }
 
 /** Toggle the caller's "I'm Interested" on an Open Play game. Idempotent: taps in
@@ -458,7 +492,69 @@ export async function toggleGameInterest(c: any) {
     : [...list, user.sub];
   await game.save();
   const populated = await Game.findById(id).populate(POPULATE).lean();
-  return c.json({ data: serialize(populated) });
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
+}
+
+/** A player in a FULL+LOCKED lobby asks the host for permission to leave. The
+ *  player is added to pendingLeaveUserIds; the host must approve for them to
+ *  actually leave. Reject if the lobby isn't full or the 1h window is still open
+ *  (they can just `leaveGame` directly). */
+export async function requestLeave(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  const isMember = game.participantIds.some((p: any) => String(p) === user.sub);
+  if (!isMember) return c.json({ error: { code: 'NOT_FOUND', message: 'You are not in this lobby.' } }, 404);
+  const isFull = game.participantIds.length >= (game.capacity ?? 0);
+  if (!isFull) {
+    return c.json({ error: { code: 'INVALID_STATE', message: 'The lobby is not full — you can leave directly.' } }, 400);
+  }
+  const fullTime = (game as any).fullAt ? new Date((game as any).fullAt).getTime() : 0;
+  const windowOpen = fullTime > 0 && (Date.now() - fullTime) < FULL_LOBBY_LEAVE_GRACE_MS;
+  if (windowOpen) {
+    return c.json({ error: { code: 'INVALID_STATE', message: 'You can still leave directly — the 1-hour free-leave window is still open.' } }, 400);
+  }
+  const pend = ((game as any).pendingLeaveUserIds ?? []) as any[];
+  const already = pend.some((p: any) => String(p) === user.sub);
+  if (already) {
+    return c.json({ error: { code: 'CONFLICT', message: 'You already requested to leave — the host will review it.' } }, 409);
+  }
+  (game as any).pendingLeaveUserIds = [...pend, user.sub];
+  await game.save();
+  // Tell the host someone wants to leave.
+  const name = await actorName(user.sub);
+  await notifyUser(game.creatorId, { type: 'game_leave_request', title: `${name} wants to leave`, body: `${name} is asking to leave ${gameLabel(game)}.`, icon: 'person_off', linkUrl: `/games/${String(game._id)}`, tag: `game-leave-req-${String(game._id)}` });
+  const populated = await Game.findById(id).populate(POPULATE).lean();
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
+}
+
+/** Host approves a pending leave request — removes the player from the roster and
+ *  the pending list. Body: { userId }. The host is the only one who can approve. */
+export async function approveLeave(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  if (String(game.creatorId) !== user.sub) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can approve a leave request.' } }, 403);
+  }
+  const { userId } = kickSchema.parse(await c.req.json());
+  const pend = ((game as any).pendingLeaveUserIds ?? []) as any[];
+  if (!pend.some((p: any) => String(p) === userId)) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'That player did not request to leave.' } }, 404);
+  }
+  // Remove from both.
+  (game as any).pendingLeaveUserIds = pend.filter((p: any) => String(p) !== userId);
+  game.participantIds = game.participantIds.filter((p: any) => String(p) !== userId) as any;
+  if (game.participantIds.length < (game.capacity ?? 0)) {
+    game.status = 'published';
+    (game as any).fullAt = undefined;
+  }
+  await game.save();
+  await notifyUser(userId, { type: 'game_leave_approved', title: 'Leave approved', body: `The host approved your request — you've left ${gameLabel(game)}.`, icon: 'check', linkUrl: `/games/${String(game._id)}`, tag: `game-leave-ok-${String(game._id)}` });
+  const populated = await Game.findById(id).populate(POPULATE).lean();
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
 }
 
 /** Host removes a player from the roster (can't kick yourself — use leave). */
@@ -490,7 +586,7 @@ export async function kickPlayer(c: any) {
     });
   }
   const populated = await Game.findById(id).populate(POPULATE).lean();
-  return c.json({ data: serialize(populated) });
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
 }
 
 /** Anyone on the roster (host or participant) can invite other players to their
@@ -671,7 +767,7 @@ export async function updateGame(c: any) {
     tag: `game-update-${String(game._id)}`,
   });
   const populated = await Game.findById(id).populate(POPULATE).lean();
-  return c.json({ data: serialize(populated) });
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
 }
 
 /** Host deletes a game. By default the host's court reservation is released with

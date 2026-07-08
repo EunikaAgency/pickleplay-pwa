@@ -126,10 +126,15 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [opSkill, setOpSkill] = useState('3.0–3.5');
   const [opName, setOpName] = useState('');
   const [opDesc, setOpDesc] = useState('');
+  // Soft headcount goal for open play ("aiming for 8") — not a cap.
+  const [opTarget, setOpTarget] = useState(8);
   // Public-game details (collected in step 1 when bookingMode === 'public_game').
   // Name/description reuse opName/opDesc (only one mode is active at a time).
   const [pgFormat, setPgFormat] = useState<GameFormat | null>(null);
   const [pgSlots, setPgSlots] = useState(4);
+  const [pgSkill, setPgSkill] = useState('Open');
+  // Vibe applies to both open play and public games.
+  const [gameVibe, setGameVibe] = useState<'casual' | 'competitive'>('casual');
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -447,7 +452,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         description: opDesc.trim() || undefined,
         venueId: selected?.id,
         gameType: 'open',
+        vibe: gameVibe,
         skillLabel: opSkill,
+        targetPlayers: opTarget,
         timeLabel: to12h(startTime),
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
         date,
@@ -471,8 +478,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         venueId: selected?.id,
         gameType: 'public',
         format: pgFormat ?? undefined,
+        vibe: gameVibe,
         capacity: pgSlots,
-        skillLabel: 'All levels',
+        skillLabel: pgSkill,
         timeLabel: to12h(startTime),
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
         date,
@@ -1008,6 +1016,30 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           </div>
 
           <div className="field mt-4">
+            <div className="lbl">Vibe</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className={`time-pick ${gameVibe === 'casual' ? 'active' : ''}`} onClick={() => setGameVibe('casual')}>😎 Casual</button>
+              <button type="button" className={`time-pick ${gameVibe === 'competitive' ? 'active' : ''}`} onClick={() => setGameVibe('competitive')}>🔥 Competitive</button>
+            </div>
+          </div>
+
+          <div className="field">
+            <div className="lbl">Aiming for · {opTarget} players</div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+                <button type="button" aria-label="Lower target" onClick={() => setOpTarget((n) => Math.max(2, n - 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget <= 2}>
+                  <Icon name="minus" size={18} />
+                </button>
+                <div className="w-12 text-center font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums">{opTarget}</div>
+                <button type="button" aria-label="Raise target" onClick={() => setOpTarget((n) => Math.min(64, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget >= 64}>
+                  <Icon name="plus" size={18} />
+                </button>
+              </div>
+              <div className="text-[12px] font-semibold text-[var(--muted)]">A goal, not a cap — anyone can still show interest.</div>
+            </div>
+          </div>
+
+          <div className="field mt-4">
             <div className="lbl">Game name (optional)</div>
             <input
               className="control"
@@ -1094,6 +1126,30 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             </div>
           </div>
 
+          <div className="field">
+            <div className="lbl">Skill level</div>
+            <div className="time-grid">
+              {SKILLS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`time-pick ${pgSkill === s ? 'active' : ''}`}
+                  onClick={() => setPgSkill(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <div className="lbl">Vibe</div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" className={`time-pick ${gameVibe === 'casual' ? 'active' : ''}`} onClick={() => setGameVibe('casual')}>😎 Casual</button>
+              <button type="button" className={`time-pick ${gameVibe === 'competitive' ? 'active' : ''}`} onClick={() => setGameVibe('competitive')}>🔥 Competitive</button>
+            </div>
+          </div>
+
           <div className="field mt-4">
             <div className="lbl">Game name (optional)</div>
             <input
@@ -1167,6 +1223,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           <div className="field">
             <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
               <ReviewRow label="Skill level" value={opSkill} />
+              <ReviewRow label="Vibe" value={gameVibe === 'casual' ? 'Casual' : 'Competitive'} />
+              <ReviewRow label="Aiming for" value={`${opTarget} players`} />
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
                 <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">
@@ -1184,6 +1242,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
               <ReviewRow label="Format" value={FORMAT_OPTIONS.find((f) => f.v === pgFormat)?.label ?? '—'} />
               <ReviewRow label="Player slots" value={String(pgSlots)} />
+              <ReviewRow label="Skill level" value={pgSkill} />
+              <ReviewRow label="Vibe" value={gameVibe === 'casual' ? 'Casual' : 'Competitive'} />
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
                 <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">

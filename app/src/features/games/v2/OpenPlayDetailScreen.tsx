@@ -15,7 +15,7 @@ import {
 } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
-import { dayParts, gameTitle, gameTypeLabel, gameLocation, interestLabel, timeLine } from '../gameDisplay';
+import { dayParts, gameTitle, gameTypeLabel, gameVibeLabel, gameLocation, interestLabel, interestWithTarget, timeLine } from '../gameDisplay';
 
 interface Props {
   source: 'auto' | 'game' | 'session';
@@ -195,6 +195,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           <div className="tag-row">
             {level !== 'All levels' && <span className="tag lime">{level}</span>}
             <span className="tag">Open Play</span>
+            {gameVibeLabel(game) && <span className="tag">{game.vibe === 'competitive' ? '🔥' : '😎'} {gameVibeLabel(game)}</span>}
           </div>
           <h1>{title}</h1>
           <div className="mt-2.5 flex items-center gap-3 text-[13px] opacity-95">
@@ -209,6 +210,8 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
       </div>
 
       {/* ── Body ── */}
+      {/* The "Type" tile was dropped — this screen only ever shows Open Play, and the
+          hero already carries the Open Play tag. */}
       <div className="detail-body">
         <div className="kv-grid">
           <div className="kv">
@@ -216,12 +219,10 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             <div className="val">{level}</div>
           </div>
           <div className="kv">
-            <div className="eyebrow">Type</div>
-            <div className="val">{gameTypeLabel(game)}</div>
-          </div>
-          <div className="kv">
             <div className="eyebrow">Interested</div>
-            <div className={`val ${interestedCount > 0 ? 'lime' : ''}`}>{interestedCount}</div>
+            <div className={`val ${interestedCount > 0 ? 'lime' : ''}`}>
+              {game.targetPlayers ? `${interestedCount} / ${game.targetPlayers}` : interestedCount}
+            </div>
           </div>
         </div>
 
@@ -233,11 +234,9 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           </div>
         </div>
 
-        {/* Location card */}
+        {/* Location card — venue name + directions (the decorative map box was
+            dropped: it never rendered a real map). */}
         <div className="location-card">
-          <div className="map-preview">
-            <div className="pin"><Icon name="location" size={16} /></div>
-          </div>
           <div className="map-info">
             <div className="text">
               <div className="name">{venue}</div>
@@ -274,7 +273,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           <div className="flex items-baseline justify-between mb-3">
             <div>
               <div className="t-eyebrow">Interested</div>
-              <div className="hd-3 mt-1">{interestLabel(game)}</div>
+              <div className="hd-3 mt-1">{interestWithTarget(game)}</div>
             </div>
           </div>
           {interested.length > 0 ? (
@@ -491,13 +490,8 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           </div>
         )}
 
-        {/* Location card */}
+        {/* Location card — venue name + directions (decorative map box dropped). */}
         <div className="location-card">
-          <div className="map-preview">
-            <div className="pin">
-              <Icon name="location" size={16} />
-            </div>
-          </div>
           <div className="map-info">
             <div className="text">
               <div className="name">{session.venueName || 'Venue TBA'}</div>

@@ -11,7 +11,7 @@ import { useAuthStore } from '../../../shared/lib/authStore';
 import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
-import { canLeaveLobby, gameFormatLabel, interestLabel } from '../gameDisplay';
+import { canLeaveLobby, gameFormatLabel, interestWithTarget } from '../gameDisplay';
 
 type Section = 'games' | 'open-play';
 type View = 'discover' | 'joined' | 'invites' | 'manage';
@@ -483,7 +483,7 @@ function SessionCard({ session, onClick }: { session: ApiOpenPlaySession; onClic
           <div className="game-meta-row">{CLOCK_SVG}{sessionWhen(session)}</div>
           <div className="game-meta-row">{PIN_SVG}{sessionMeta(session)}</div>
         </div>
-        <div className="vis-indicator public">Public</div>
+        <div className="vis-indicator public">Open Play</div>
         {s.cap > 0 && (
           <div className="players-row">
             <div className="fill-track"><div className="fill-bar" style={{ width: `${s.pct}%` }} /></div>
@@ -512,10 +512,10 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
           <div className="game-meta-row">{PIN_SVG}{gameVenue(game)}</div>
           {gameVenueLoc(game) && <div className="game-meta-loc">{gameVenueLoc(game)}</div>}
         </div>
-        {showVisibility && <div className="vis-indicator public">Public</div>}
+        {showVisibility && <div className="vis-indicator public">Open Play</div>}
         {isOpenPlayGame(game) ? (
           <div className="players-row">
-            <span className="players-label">{interestLabel(game)}</span>
+            <span className="players-label">{interestWithTarget(game)}</span>
           </div>
         ) : s.cap > 0 ? (
           <div className="players-row">
@@ -593,10 +593,10 @@ function BookingCard({ b, mineGames, onNavigate, onTogglePublish, busyId, isPast
             disabled={isBusy}
             onClick={(e) => { e.stopPropagation(); onTogglePublish(b); }}
           >
-            {isBusy ? '…' : isPublished ? 'Public' : 'Private'}
+            {isBusy ? '…' : isPublished ? 'Open Play' : 'Private game'}
           </button>
         ) : (
-          <div className={`vis-indicator ${isPublished ? 'public' : 'private'}`}>{isPublished ? 'Public' : 'Private'}</div>
+          <div className={`vis-indicator ${isPublished ? 'public' : 'private'}`}>{isPublished ? 'Open Play' : 'Private game'}</div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
           <span style={{

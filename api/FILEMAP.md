@@ -93,9 +93,14 @@ src/
                              #     no capacity/waitlist; getOpenPlaySession returns interestedUsers)
                              #     + roster + reg mgmt.
     games/                   # player games: gameType open=INTEREST-only Open Play (interestedUserIds
-                             #   + POST /:id/interest toggle, no roster/capacity; join/leave rejected),
-                             #   public=format-driven capped game (format bracketing|round_robin|
-                             #   mini_tournament + roster), singles/doubles=classic lobby. Per-game GROUP CHAT
+                             #   + POST /:id/interest toggle, no roster/capacity; join/leave rejected;
+                             #   targetPlayers = soft headcount goal), public=format-driven capped game
+                             #   (format bracketing|round_robin|mini_tournament + roster),
+                             #   singles/doubles=classic lobby; vibe casual|competitive on any type.
+                             #   Lobby leave/join policy: not-full = free leave w/ 1h re-join cooldown
+                             #   after a 2nd leave (leaveLog); full = fullAt starts a 1h free-leave
+                             #   window, after it POST /:id/request-leave → host POST /:id/approve-leave
+                             #   (pendingLeaveUserIds). Per-game GROUP CHAT
                              #   (GameMessage model; GET/POST /:id/messages, roster-only, gated by
                              #   player.games.chat; POST realtime-fans-out game.message.created via
                              #   shared/lib/userEvents.ts). create (POST takes

@@ -18,6 +18,8 @@ const FORMAT_OPTIONS: { v: GameFormat; label: string; icon: string; hint: string
   { v: 'mini_tournament', label: 'Mini-tournament', icon: '🎯', hint: 'A short, multi-round event wrapped up in one session.' },
 ];
 
+const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
+
 const STEP_TITLES = ['Format', 'Slots', 'Details', 'Review'];
 const STEP_COUNT = STEP_TITLES.length;
 const MIN_SLOTS = 2;
@@ -39,6 +41,8 @@ export function CreateGameV2(props: Props) {
   const [step, setStep] = useState(0);
   const [format, setFormat] = useState<GameFormat | null>(null);
   const [slots, setSlots] = useState(4);
+  const [skill, setSkill] = useState('Open');
+  const [vibe, setVibe] = useState<'casual' | 'competitive'>('casual');
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -86,8 +90,9 @@ export function CreateGameV2(props: Props) {
         venueName: booking.venueName ?? undefined,
         gameType: 'public',
         format,
+        vibe,
         capacity: slots,
-        skillLabel: 'All levels',
+        skillLabel: skill,
         timeLabel: booking.startTime ? to12h(booking.startTime) : undefined,
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
         date: booking.date ?? undefined,
@@ -213,6 +218,23 @@ export function CreateGameV2(props: Props) {
                 <div className="char-count">{name.length} / 60</div>
               </div>
               <div className="field-group">
+                <div className="field-label"><span className="field-label-text">Skill level</span></div>
+                <div className="type-grid">
+                  {SKILLS.map((s) => (
+                    <button key={s} type="button" className={`type-option ${skill === s ? 'active' : ''}`} aria-pressed={skill === s} onClick={() => setSkill(s)}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field-group">
+                <div className="field-label"><span className="field-label-text">Vibe</span></div>
+                <div className="yn-toggle">
+                  <button type="button" className={`yn-btn ${vibe === 'casual' ? 'active-yes' : ''}`} aria-pressed={vibe === 'casual'} onClick={() => setVibe('casual')}>😎 Casual</button>
+                  <button type="button" className={`yn-btn ${vibe === 'competitive' ? 'active-no' : ''}`} aria-pressed={vibe === 'competitive'} onClick={() => setVibe('competitive')}>🔥 Competitive</button>
+                </div>
+              </div>
+              <div className="field-group">
                 <div className="field-label"><span className="field-label-text">Description (optional)</span></div>
                 <div className="input-wrap">
                   <textarea className="field-textarea" maxLength={500} rows={3} placeholder="Tell players what to expect — rules, vibe, what to bring…" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Game description" />
@@ -246,6 +268,8 @@ export function CreateGameV2(props: Props) {
               <div className="wiz-summary">
                 <div className="wiz-summary-row"><span>Format</span><strong>{formatLabel}</strong></div>
                 <div className="wiz-summary-row"><span>Player slots</span><strong>{slots}</strong></div>
+                <div className="wiz-summary-row"><span>Skill level</span><strong>{skill}</strong></div>
+                <div className="wiz-summary-row"><span>Vibe</span><strong>{vibe === 'casual' ? 'Casual' : 'Competitive'}</strong></div>
                 <div className="wiz-summary-row"><span>Name</span><strong>{name.trim() || 'Untitled game'}</strong></div>
               </div>
             </>
