@@ -1583,10 +1583,18 @@ export interface ApiGame {
   /** Host-set vibe — casual drop-in or competitive session. */
   vibe?: 'casual' | 'competitive' | string | null;
   skillLabel?: string | null;
+  /** Numeric band parsed from `skillLabel` ('3.0–3.5' → 3.0 / 3.5). `skillMax` is
+   *  absent for open-ended labels like '4.0+'. Drives skill-match ranking. */
+  skillMin?: number | null;
+  skillMax?: number | null;
   whenLabel?: string | null;
   timeLabel?: string | null;
   durationLabel?: string | null;
   date?: string | null;            // YYYY-MM-DD (best-effort)
+  /** Sortable 24h 'HH:MM', materialized from the linked booking (or parsed from
+   *  `timeLabel`). Null when the game carries no knowable start time. */
+  startTime?: string | null;
+  createdAt?: string | null;
   capacity?: number | null;
   spotsLeft?: number | null;
   participantCount?: number | null;
@@ -3351,6 +3359,16 @@ export interface ApiOpenPlaySession {
   venueId?: string | null;
   venueName?: string;
   venueSlug?: string;
+  /** Venue location + pricing, mirroring ApiGame.venue so the Play feed can rank
+   *  and render sessions and games alike. Null when the session came from a
+   *  surface that populates a narrower venue select (e.g. the organizer console). */
+  venueArea?: string | null;
+  venueCity?: string | null;
+  venueLat?: number | null;
+  venueLng?: number | null;
+  venueImage?: string | null;
+  priceFrom?: number | null;
+  priceFromLabel?: string | null;
   date?: string;
   startTime?: string;
   endTime?: string;
@@ -3359,9 +3377,13 @@ export interface ApiOpenPlaySession {
   joinedCount?: number;
   price?: number;
   levelLabel?: string;
+  /** Numeric skill band, the session-side counterpart of ApiGame.skillMin/Max. */
+  skillLevelMin?: number | null;
+  skillLevelMax?: number | null;
   status?: string;
   organizerName?: string;
   description?: string;
+  createdAt?: string | null;
   /** Present on the detail (getOpenPlaySession): who tapped "I'm Interested" + the count. */
   interestedUsers?: ApiGamePerson[];
   interestedCount?: number;

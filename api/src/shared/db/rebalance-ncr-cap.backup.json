@@ -1,0 +1,470 @@
+[
+  {
+    "id": "6a4f11a1a63522a6e14a4510",
+    "lat": 14.543025,
+    "lng": 121.058862,
+    "region": "Metro Manila",
+    "cityName": "Pateros",
+    "area": "Pateros",
+    "fullAddress": "Pateros, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a4426",
+    "lat": 14.571312,
+    "lng": 121.039273,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4370",
+    "lat": 14.709792,
+    "lng": 120.982723,
+    "region": "Metro Manila",
+    "cityName": "Valenzuela",
+    "area": "Valenzuela",
+    "fullAddress": "Valenzuela, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a456b",
+    "lat": 14.656601,
+    "lng": 120.964365,
+    "region": "Metro Manila",
+    "cityName": "Malabon",
+    "area": "Malabon",
+    "fullAddress": "Malabon, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a4500",
+    "lat": 14.412445,
+    "lng": 121.050904,
+    "region": "Metro Manila",
+    "cityName": "Muntinlupa",
+    "area": "Muntinlupa",
+    "fullAddress": "Muntinlupa, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a439d",
+    "lat": 14.610327,
+    "lng": 121.041519,
+    "region": "Metro Manila",
+    "cityName": "San Juan",
+    "area": "San Juan",
+    "fullAddress": "San Juan, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42d3",
+    "lat": 14.654548,
+    "lng": 120.974864,
+    "region": "Metro Manila",
+    "cityName": "Caloocan",
+    "area": "Caloocan",
+    "fullAddress": "Caloocan, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4295",
+    "lat": 14.514171,
+    "lng": 121.055317,
+    "region": "Metro Manila",
+    "cityName": "Taguig",
+    "area": "Taguig",
+    "fullAddress": "Taguig, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4252",
+    "lat": 14.677998,
+    "lng": 121.050626,
+    "region": "Metro Manila",
+    "cityName": "Quezon City",
+    "area": "Quezon City",
+    "fullAddress": "Quezon City, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42a1",
+    "lat": 14.669882,
+    "lng": 120.958136,
+    "region": "Metro Manila",
+    "cityName": "Malabon",
+    "area": "Malabon",
+    "fullAddress": "Malabon, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a45a5",
+    "lat": 14.707783,
+    "lng": 120.980207,
+    "region": "Metro Manila",
+    "cityName": "Valenzuela",
+    "area": "Valenzuela",
+    "fullAddress": "Valenzuela, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4342",
+    "lat": 14.550942,
+    "lng": 121.074576,
+    "region": "Metro Manila",
+    "cityName": "Pateros",
+    "area": "Pateros",
+    "fullAddress": "Pateros, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4273",
+    "lat": 14.57399,
+    "lng": 121.039242,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a41e3",
+    "lat": 14.519372,
+    "lng": 121.058828,
+    "region": "Metro Manila",
+    "cityName": "Taguig",
+    "area": "Taguig",
+    "fullAddress": "Taguig, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42ba",
+    "lat": 14.443022,
+    "lng": 120.980636,
+    "region": "Metro Manila",
+    "cityName": "Las Piñas",
+    "area": "Las Piñas",
+    "fullAddress": "Las Piñas, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a43be",
+    "lat": 14.543449,
+    "lng": 121.00697,
+    "region": "Metro Manila",
+    "cityName": "Pasay",
+    "area": "Pasay",
+    "fullAddress": "Pasay, Metro Manila"
+  },
+  {
+    "id": "6a4f4e2e4baf32705bd76640",
+    "lat": 14.668074,
+    "lng": 120.938139,
+    "region": "Metro Manila",
+    "cityName": "Navotas",
+    "area": "Navotas",
+    "fullAddress": "Navotas, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a41e5",
+    "lat": 14.575164,
+    "lng": 121.040492,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a43e6",
+    "lat": 14.535092,
+    "lng": 121.063557,
+    "region": "Metro Manila",
+    "cityName": "Pateros",
+    "area": "Pateros",
+    "fullAddress": "Pateros, Metro Manila"
+  },
+  {
+    "id": "6a4f4e2e4baf32705bd76637",
+    "lat": 14.668947,
+    "lng": 121.045779,
+    "region": "Metro Manila",
+    "cityName": "Quezon City",
+    "area": "Quezon City",
+    "fullAddress": "Quezon City, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4316",
+    "lat": 14.542476,
+    "lng": 121.075824,
+    "region": "Metro Manila",
+    "cityName": "Pateros",
+    "area": "Pateros",
+    "fullAddress": "Pateros, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a447e",
+    "lat": 14.576807,
+    "lng": 121.038738,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a4540",
+    "lat": 14.650685,
+    "lng": 121.10982,
+    "region": "Metro Manila",
+    "cityName": "Marikina",
+    "area": "Marikina",
+    "fullAddress": "Marikina, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a44f8",
+    "lat": 14.672837,
+    "lng": 120.93575,
+    "region": "Metro Manila",
+    "cityName": "Navotas",
+    "area": "Navotas",
+    "fullAddress": "Navotas, Metro Manila"
+  },
+  {
+    "id": "6a4f4e2e4baf32705bd76643",
+    "lat": 14.60548,
+    "lng": 120.988942,
+    "region": "Metro Manila",
+    "cityName": "Manila",
+    "area": "Manila",
+    "fullAddress": "Manila, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a4528",
+    "lat": 14.571308,
+    "lng": 121.029308,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4274",
+    "lat": 14.519011,
+    "lng": 121.043214,
+    "region": "Metro Manila",
+    "cityName": "Taguig",
+    "area": "Taguig",
+    "fullAddress": "Taguig, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a45af",
+    "lat": 14.656777,
+    "lng": 121.109664,
+    "region": "Metro Manila",
+    "cityName": "Marikina",
+    "area": "Marikina",
+    "fullAddress": "Marikina, Metro Manila"
+  },
+  {
+    "id": "6a4f4e2e4baf32705bd76634",
+    "lat": 14.597521,
+    "lng": 120.993355,
+    "region": "Metro Manila",
+    "cityName": "Manila",
+    "area": "Manila",
+    "fullAddress": "Manila, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a442e",
+    "lat": 14.698584,
+    "lng": 120.989734,
+    "region": "Metro Manila",
+    "cityName": "Valenzuela",
+    "area": "Valenzuela",
+    "fullAddress": "Valenzuela, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4294",
+    "lat": 14.558978,
+    "lng": 121.027456,
+    "region": "Metro Manila",
+    "cityName": "Makati",
+    "area": "Makati",
+    "fullAddress": "Makati, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42e7",
+    "lat": 14.674735,
+    "lng": 120.944069,
+    "region": "Metro Manila",
+    "cityName": "Navotas",
+    "area": "Navotas",
+    "fullAddress": "Navotas, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42e4",
+    "lat": 14.573542,
+    "lng": 121.045105,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42d2",
+    "lat": 14.547547,
+    "lng": 120.997211,
+    "region": "Metro Manila",
+    "cityName": "Pasay",
+    "area": "Pasay",
+    "fullAddress": "Pasay, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4363",
+    "lat": 14.524254,
+    "lng": 121.057219,
+    "region": "Metro Manila",
+    "cityName": "Taguig",
+    "area": "Taguig",
+    "fullAddress": "Taguig, Metro Manila"
+  },
+  {
+    "id": "6a4f4e2e4baf32705bd7663d",
+    "lat": 14.580531,
+    "lng": 121.040054,
+    "region": "Metro Manila",
+    "cityName": "Mandaluyong",
+    "area": "Mandaluyong",
+    "fullAddress": "Mandaluyong, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a43ae",
+    "lat": 14.658513,
+    "lng": 120.935877,
+    "region": "Metro Manila",
+    "cityName": "Navotas",
+    "area": "Navotas",
+    "fullAddress": "Navotas, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a41f5",
+    "lat": 14.408829,
+    "lng": 121.038514,
+    "region": "Metro Manila",
+    "cityName": "Muntinlupa",
+    "area": "Muntinlupa",
+    "fullAddress": "Muntinlupa, Metro Manila"
+  },
+  {
+    "id": "6a4f4e2e4baf32705bd76649",
+    "lat": 14.459324,
+    "lng": 120.981096,
+    "region": "Metro Manila",
+    "cityName": "Las Piñas",
+    "area": "Las Piñas",
+    "fullAddress": "Las Piñas, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42e3",
+    "lat": 14.572328,
+    "lng": 121.093725,
+    "region": "Metro Manila",
+    "cityName": "Pasig",
+    "area": "Pasig",
+    "fullAddress": "Pasig, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4360",
+    "lat": 14.52798,
+    "lng": 120.994606,
+    "region": "Metro Manila",
+    "cityName": "Pasay",
+    "area": "Pasay",
+    "fullAddress": "Pasay, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a43fe",
+    "lat": 14.475178,
+    "lng": 121.01399,
+    "region": "Metro Manila",
+    "cityName": "Parañaque",
+    "area": "Parañaque",
+    "fullAddress": "Parañaque, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a42b9",
+    "lat": 14.648079,
+    "lng": 121.101732,
+    "region": "Metro Manila",
+    "cityName": "Marikina",
+    "area": "Marikina",
+    "fullAddress": "Marikina, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a4476",
+    "lat": 14.604998,
+    "lng": 120.982159,
+    "region": "Metro Manila",
+    "cityName": "Manila",
+    "area": "Manila",
+    "fullAddress": "Manila, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a4446",
+    "lat": 14.560333,
+    "lng": 121.030637,
+    "region": "Metro Manila",
+    "cityName": "Makati",
+    "area": "Makati",
+    "fullAddress": "Makati, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a44ae",
+    "lat": 14.671877,
+    "lng": 121.039038,
+    "region": "Metro Manila",
+    "cityName": "Quezon City",
+    "area": "Quezon City",
+    "fullAddress": "Quezon City, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a439f",
+    "lat": 14.517246,
+    "lng": 121.051224,
+    "region": "Metro Manila",
+    "cityName": "Taguig",
+    "area": "Taguig",
+    "fullAddress": "Taguig, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a437f",
+    "lat": 14.664486,
+    "lng": 120.948403,
+    "region": "Metro Manila",
+    "cityName": "Navotas",
+    "area": "Navotas",
+    "fullAddress": "Navotas, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a438c",
+    "lat": 14.648741,
+    "lng": 121.100318,
+    "region": "Metro Manila",
+    "cityName": "Marikina",
+    "area": "Marikina",
+    "fullAddress": "Marikina, Metro Manila"
+  },
+  {
+    "id": "6a4f11a1a63522a6e14a457b",
+    "lat": 14.408916,
+    "lng": 121.042444,
+    "region": "Metro Manila",
+    "cityName": "Muntinlupa",
+    "area": "Muntinlupa",
+    "fullAddress": "Muntinlupa, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4301",
+    "lat": 14.694836,
+    "lng": 120.981023,
+    "region": "Metro Manila",
+    "cityName": "Valenzuela",
+    "area": "Valenzuela",
+    "fullAddress": "Valenzuela, Metro Manila"
+  },
+  {
+    "id": "6a4f11a0a63522a6e14a4214",
+    "lat": 14.547724,
+    "lng": 121.003132,
+    "region": "Metro Manila",
+    "cityName": "Pasay",
+    "area": "Pasay",
+    "fullAddress": "Pasay, Metro Manila"
+  }
+]

@@ -72,7 +72,10 @@ export function V2TopNav({ onNavigate, isLoggedIn, onBack, title }: TopNavProps)
   );
 }
 
-const TAB_ICONS: Record<TabId, ReactNode> = {
+// Partial, not Record<TabId, …>: `tabScreens` (the TabId source) also carries
+// screen ids that are not bottom-nav destinations — `booking`, for one. A tab
+// without an entry here is not renderable, and V2TabBar skips it.
+const TAB_ICONS: Partial<Record<TabId, ReactNode>> = {
   home: (<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg>),
   nearby: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>),
   games: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>),
@@ -81,7 +84,7 @@ const TAB_ICONS: Record<TabId, ReactNode> = {
   messages: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>),
   profile: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
 };
-const TAB_LABELS: Record<TabId, string> = { home: 'Home', nearby: 'Map', games: 'Play', tournaments: 'Tournament', clubs: 'Clubs', messages: 'Messages', profile: 'Profile' };
+const TAB_LABELS: Partial<Record<TabId, string>> = { home: 'Home', nearby: 'Map', games: 'Play', tournaments: 'Tournament', clubs: 'Clubs', messages: 'Messages', profile: 'Profile' };
 
 // The full tab order. `tabIds` (from App, role-derived) may drop some — e.g.
 // owners/admins don't get the player Tournament tab.
@@ -92,7 +95,11 @@ const DEFAULT_TAB_ORDER: TabId[] = ['home', 'nearby', 'games', 'tournaments', 'c
 export function V2TabBar({ activeTab, onTabPress, tabIds = DEFAULT_TAB_ORDER }: { activeTab: TabId; onTabPress: (tab: TabId) => void; tabIds?: TabId[] }) {
   return (
     <nav className="v2c-tabbar" aria-label="Primary navigation">
-      {tabIds.map((id) => {
+      {/* Skip ids with no icon/label. Each tab is `flex: 1`, so an unrenderable
+          id (e.g. `booking`, which is in `tabScreens` but is not a nav
+          destination) would otherwise claim an equal, blank slot and shove the
+          real tabs off-centre. */}
+      {tabIds.filter((id) => TAB_LABELS[id]).map((id) => {
         const isActive = id === activeTab;
         return (
           <button

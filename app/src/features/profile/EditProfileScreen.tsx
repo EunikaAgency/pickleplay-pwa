@@ -128,14 +128,6 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
           ) : (
             <div>{getInitials(currentUser?.displayName) || '··'}</div>
           )}
-          <button
-            type="button"
-            aria-label="Change photo"
-            onClick={pickPhoto}
-            className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-[var(--ink)] text-white flex items-center justify-center border-[3px] border-[var(--surface)]"
-          >
-            <Icon name="camera" size={16} />
-          </button>
         </div>
         <button type="button" onClick={pickPhoto} disabled={photoBusy} className="mt-2.5 text-[12px] font-bold text-[var(--primary)] disabled:opacity-50">
           {photoBusy ? 'Updating…' : 'Change photo'}

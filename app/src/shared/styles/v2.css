@@ -1056,16 +1056,21 @@
 }
 /* Sort control — a custom dropdown (not a native <select>, whose popup escaped
    the device-preview frame). The menu anchors to .sort-row and opens downward
-   into the sheet, so it stays inside the app. */
-.pb-v2.v2-nearby .sort-row { position: relative; display: flex; align-items: center; gap: 8px; }
-.pb-v2.v2-nearby .sort-label { font-size: 12px; color: var(--slate); font-weight: 500; }
-.pb-v2.v2-nearby .sort-btn {
+   into the sheet, so it stays inside the app. Scoped to .pb-v2 (not a single
+   screen) because both the Nearby and Play tabs use it.
+
+   Uses only the `.pb-v2` fallback tokens — NOT --bg-white / --bg-wash / --slate /
+   --blue-dark, which `.v2-nearby` declares privately. Those resolve to nothing on
+   any other screen, which made the menu background transparent on the Play tab. */
+.pb-v2 .sort-row { position: relative; display: flex; align-items: center; gap: 8px; }
+.pb-v2 .sort-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.pb-v2 .sort-btn {
   height: 32px;
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   color: var(--blue);
-  background: var(--bg-white);
+  background: var(--surface);
   border: 1.5px solid var(--blue);
   border-radius: var(--r-pill);
   padding: 0 10px;
@@ -1074,29 +1079,30 @@
   align-items: center;
   gap: 6px;
 }
-.pb-v2.v2-nearby .sort-btn:focus-visible { border-color: var(--blue-dark); }
-.pb-v2.v2-nearby .sort-caret { width: 12px; height: 12px; transition: transform 150ms; }
-.pb-v2.v2-nearby .sort-btn[aria-expanded="true"] .sort-caret { transform: rotate(180deg); }
-.pb-v2.v2-nearby .sort-menu {
+.pb-v2 .sort-btn:focus-visible { border-color: var(--blue-hover); }
+.pb-v2 .sort-caret { width: 12px; height: 12px; transition: transform 150ms; }
+.pb-v2 .sort-btn[aria-expanded="true"] .sort-caret { transform: rotate(180deg); }
+.pb-v2 .sort-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
+  /* Above the cards below it, which carry their own shadow/stacking. */
   z-index: 40;
   min-width: 168px;
   margin: 0;
   padding: 6px;
   list-style: none;
-  background: var(--bg-white);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
 }
-.pb-v2.v2-nearby .sort-menu-item {
+.pb-v2 .sort-menu-item {
   width: 100%;
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 600;
-  color: var(--navy);
+  color: var(--ink);
   background: none;
   border: none;
   border-radius: 9px;
@@ -1108,8 +1114,8 @@
   gap: 8px;
   text-align: left;
 }
-.pb-v2.v2-nearby .sort-menu-item:hover { background: var(--bg-wash); }
-.pb-v2.v2-nearby .sort-menu-item.active { background: var(--blue); color: #fff; }
+.pb-v2 .sort-menu-item:hover { background: var(--bg-page); }
+.pb-v2 .sort-menu-item.active { background: var(--blue); color: #fff; }
 .pb-v2.v2-nearby .court-card {
   background: var(--bg-white);
   border-radius: var(--r-card);

@@ -20,13 +20,21 @@ const listQuery = z.object({
   status: z.string().optional(), pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
 });
 
+/** Venue fields a session carries for the Play feed — coordinates drive distance
+ *  ranking, price drives the card. Kept in sync with VENUE_SELECT in games.controller. */
+const SESSION_VENUE_SELECT = 'displayName slug area city lat lng priceFrom priceFromLabel mainImageUrl';
+
 export async function listOpenPlay(c: any) {
   const filters = listQuery.parse(c.req.query());
   const filter: Record<string, any> = { status: 'published' };
   if (filters.venueId) filter.venueId = filters.venueId;
   if (filters.date) filter.date = filters.date;
   else filter.date = { $gte: new Date().toISOString().slice(0, 10) };
-  const rows = await OpenPlaySession.find(filter).populate('venueId', 'displayName slug').sort({ date: 1 }).limit(filters.pageSize).lean();
+  const rows = await OpenPlaySession.find(filter)
+    .populate('venueId', SESSION_VENUE_SELECT)
+    .sort({ date: 1, startTime: 1 })
+    .limit(filters.pageSize)
+    .lean();
   return c.json({ data: rows.map(sessionView) });
 }
 
@@ -45,7 +53,7 @@ export async function getMyOpenPlayRegistrations(c: any) {
 // included when authenticated so the app can render Join/Leave correctly.
 export async function getOpenPlaySession(c: any) {
   const id = c.req.param('id');
-  const sess = await OpenPlaySession.findById(id).populate('venueId', 'displayName slug').lean();
+  const sess = await OpenPlaySession.findById(id).populate('venueId', SESSION_VENUE_SELECT).lean();
   if (!sess) return c.json({ error: { code: 'NOT_FOUND', message: 'Open Play session not found' } }, 404);
   const user = c.get('user');
   const reg = user
@@ -702,7 +710,24 @@ function seriesView(s: any) {
 function sessionView(s: any) {
   if (!s) return null;
   const { _id, ...rest } = s;
-  return { id: _id, ...rest, venueName: s.venueId?.displayName, venueSlug: s.venueId?.slug };
+  const v = s.venueId && typeof s.venueId === 'object' ? s.venueId : null;
+  return {
+    id: _id,
+    ...rest,
+    venueId: v ? String(v._id) : (s.venueId ? String(s.venueId) : null),
+    venueName: v?.displayName,
+    venueSlug: v?.slug,
+    // Venue location + pricing, mirroring the game serializer's `venue` block so
+    // the Play feed can rank and render sessions and games the same way. Null
+    // whenever the caller populated a narrower select.
+    venueArea: v?.area ?? null,
+    venueCity: v?.city ?? null,
+    venueLat: v?.lat ?? null,
+    venueLng: v?.lng ?? null,
+    venueImage: v?.mainImageUrl ?? null,
+    priceFrom: v?.priceFrom ?? null,
+    priceFromLabel: v?.priceFromLabel ?? null,
+  };
 }
 
 // Map registration rows → player cards (shared shape with tournaments).

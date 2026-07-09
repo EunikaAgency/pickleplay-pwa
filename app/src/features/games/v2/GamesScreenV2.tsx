@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import {
@@ -10,8 +10,16 @@ import {
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
+import { formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
-import { canLeaveLobby, gameFormatLabel, interestWithTarget } from '../gameDisplay';
+import { canLeaveLobby, dateSectionHeader, gameFormatLabel, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
+import { GameFilterSheet } from '../GameFilterSheet';
+import {
+  countActiveGameFilters, makeDefaultGameFilters, matchesPlayFilters, TYPE_OPTIONS, type GameFilters,
+} from '../gameFilters';
+import {
+  rankPlayFeed, SORT_LABELS, type ScoredPlayItem, type SortKey,
+} from '../playRanking';
 
 type Section = 'games' | 'open-play';
 type View = 'discover' | 'joined' | 'invites' | 'manage';
@@ -23,6 +31,10 @@ interface GamesScreenV2Props extends V2ScreenChrome {
 
 const FALLBACK_GAME_IMG = '/fallback-game.png';
 
+/** Stable empty array — the Events feed has no sessions, and a fresh `[]` each
+ *  render would invalidate the ranking memo on every keystroke. */
+const EMPTY_SESSIONS: ApiOpenPlaySession[] = [];
+
 function gameImage(g: ApiGame): string {
   return apiImageUrl(g.courtImage) || apiImageUrl(g.venue?.image) || '';
 }
@@ -31,6 +43,8 @@ function gameImage(g: ApiGame): string {
 function gameThumbBg(g: ApiGame): string {
   return `url(${gameImage(g) || FALLBACK_GAME_IMG})`;
 }
+/** The card's title. Unlike gameDisplay.gameTitle (which derives "Doubles · 3.0–3.5"
+ *  for untitled games), the Play cards fall back to a plain "Open Play". */
 function gameTitle(g: ApiGame): string { return (g.title && g.title.trim()) || 'Open Play'; }
 function gameVenue(g: ApiGame): string { return g.venue?.displayName || g.venueName || 'Venue TBA'; }
 function gameWhen(g: ApiGame): string {
@@ -54,12 +68,6 @@ function slots(g: ApiGame): { joined: number; cap: number; pct: number; almost: 
   return { joined, cap, pct, almost: cap > 0 && g.spotsLeft != null && g.spotsLeft <= 1 };
 }
 
-/** Open Play games have gameType 'open' (player-published bookings, no lobby).
- *  Public Games have gameType 'singles' or 'doubles' (organizer-created, has lobby).
- *  Games with no gameType default to 'open'. */
-function isOpenPlayGame(g: ApiGame): boolean {
-  return ((g.gameType || '').toLowerCase() || 'open') === 'open';
-}
 function tournamentTitle(t: ApiTournament): string { return t.name || 'Organizer game'; }
 function tournamentWhen(t: ApiTournament): string {
   return [prettyDate(t.startDate), t.startTime ? to12h(t.startTime) : null].filter(Boolean).join(' · ') || 'Schedule TBA';
@@ -106,6 +114,20 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
+  // Discover controls. Radius seeds from the user's saved preference; the rest
+  // start unfiltered. Sort defaults to the relevance score.
+  const [filters, setFilters] = useState<GameFilters>(() =>
+    makeDefaultGameFilters(me?.preferences?.searchRadiusKm ?? null));
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sort, setSort] = useState<SortKey>('best');
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement | null>(null);
+
+  // The viewer's location, for distance ranking + the card's distance line. There
+  // is no shared geolocation hook; this mirrors NearbyScreenV2's local state.
+  // A denial is not an error here — proximity simply scores neutral.
+  const [userLoc, setUserLoc] = useState<LatLng | null>(null);
+
   const [tournaments, setTournaments] = useState<ApiTournament[]>([]);
   const [tournamentRegs, setTournamentRegs] = useState<Set<string>>(new Set());
   const [openSessions, setOpenSessions] = useState<ApiOpenPlaySession[]>([]);
@@ -120,6 +142,26 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setSection(initialSection);
     setView(initialView);
   }, [initialSection, initialView]);
+
+  // Ask once on mount. Denied or unavailable → userLoc stays null and every
+  // listing scores NEUTRAL_PROXIMITY, so the feed still ranks and renders.
+  useEffect(() => {
+    let alive = true;
+    getCurrentLocation().then((loc) => { if (alive) setUserLoc(loc); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Close the sort menu on an outside click or Escape, matching NearbyScreenV2.
+  useEffect(() => {
+    if (!sortOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSortOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [sortOpen]);
 
   useEffect(() => {
     let alive = true;
@@ -206,8 +248,10 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
   const q = search.trim().toLowerCase();
   const matchText = (haystack: string) => !q || haystack.toLowerCase().includes(q);
-  const filterGames = (list: ApiGame[]) => !q ? list : list.filter((g) => matchText(gameTitle(g)) || matchText(gameVenue(g)) || matchText(gameVenueLoc(g) || ''));
-  const filterSessions = (list: ApiOpenPlaySession[]) => !q ? list : list.filter((s) => matchText(s.title || '') || matchText(s.venueName || '') || matchText(s.levelLabel || ''));
+  // Host / organizer names are searchable: "is Marco hosting anything?" is a
+  // natural query, and both names are already in the payload.
+  const filterGames = (list: ApiGame[]) => !q ? list : list.filter((g) => matchText(gameTitle(g)) || matchText(gameVenue(g)) || matchText(gameVenueLoc(g) || '') || matchText(g.creator?.displayName || ''));
+  const filterSessions = (list: ApiOpenPlaySession[]) => !q ? list : list.filter((s) => matchText(s.title || '') || matchText(s.venueName || '') || matchText(s.levelLabel || '') || matchText(s.organizerName || ''));
   const filterBookings = (list: ApiBooking[]) => !q ? list : list.filter((b) => matchText(b.venueName || '') || matchText(b.courtName || ''));
 
   const gamesDiscoverFiltered = useMemo(() => filterGames(gamesDiscover), [gamesDiscover, q]);
@@ -220,6 +264,42 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const openManageGamesF = useMemo(() => filterGames(openManageGames), [openManageGames, q]);
   const openInvitedGamesF = useMemo(() => filterGames(openInvitedGames), [openInvitedGames, q]);
   const bookedFiltered = useMemo(() => filterBookings(privateBookings), [privateBookings, q]);
+
+  /* ── Discover: one merged, ranked, filtered feed (both sections) ───────────
+   * Open Play mixes sessions and games, which used to render as two concatenated
+   * blocks — a session weeks away sat above a game tonight. Events is games only
+   * (singles/doubles/public lobbies). Both are scored by the same ranker.
+   *
+   * Caveat, by design: the server hands back at most 50 of each, ordered by date,
+   * so this ranks a truncated candidate set. "Nearest" means nearest among the
+   * soonest — a later server-side feed fixes that. Don't imply otherwise in copy. */
+  const userSkill = me?.skillLevel ?? null;
+  const isOpenPlaySection = section === 'open-play';
+  const discoverGames = isOpenPlaySection ? openDiscoverGamesF : gamesDiscoverFiltered;
+  const discoverSessions = isOpenPlaySection ? openDiscoverSessionsF : EMPTY_SESSIONS;
+  const discoverUnfiltered = isOpenPlaySection
+    ? openDiscoverGames.length + openDiscoverSessions.length
+    : gamesDiscover.length;
+
+  const rankedDiscover = useMemo(
+    () => rankPlayFeed(discoverGames, discoverSessions, { now: new Date(), userLoc, userSkill }, sort),
+    [discoverGames, discoverSessions, userLoc, userSkill, sort],
+  );
+  const discoverFiltered = useMemo(
+    () => rankedDiscover.filter((i) => matchesPlayFilters(i, filters)),
+    [rankedDiscover, filters],
+  );
+  const activeFilterCount = countActiveGameFilters(filters);
+  // Distance controls are only meaningful once we know where the user is.
+  const canFilterByDistance = userLoc != null;
+  const isDiscoverFeed = view === 'discover';
+  // Events never contains open-type games, so offering "Open Play" as a type
+  // filter there would be a guaranteed empty result.
+  const typeOptions = isOpenPlaySection ? TYPE_OPTIONS : TYPE_OPTIONS.filter((t) => t.value !== 'open');
+  // Hide "Nearest" rather than offer a sort that would silently do nothing.
+  const SORT_KEYS: SortKey[] = canFilterByDistance
+    ? ['best', 'soonest', 'nearest', 'fill', 'newest']
+    : ['best', 'soonest', 'fill', 'newest'];
 
   // Reflect the active tab into the URL *through the router* (onNavigate), not a
   // raw history.replaceState. The rendered screen is derived from the URL, and
@@ -234,13 +314,23 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       view: nextView === 'discover' ? undefined : nextView,
     }, { replace: true });
   };
+  // The search query deliberately survives a section/view switch: clearing it
+  // silently discarded what the user typed the moment they checked another tab.
   const selectSection = (next: Section) => {
     setSection(next);
     setView('discover');
-    setSearch('');
+    // The two sections offer different play types (Events has no open play), so a
+    // carried-over type filter could strand the user on a guaranteed-empty list.
+    // The radius is a persisted preference, not a per-section choice — keep it.
+    setFilters((f) => makeDefaultGameFilters(f.radiusKm));
     syncTabUrl(next, 'discover');
   };
-  const selectView = (next: View) => { setView(next); setSearch(''); syncTabUrl(section, next); };
+  const selectView = (next: View) => { setView(next); syncTabUrl(section, next); };
+
+  const clearDiscoverControls = () => {
+    setSearch('');
+    setFilters((f) => makeDefaultGameFilters(f.radiusKm));
+  };
 
   const leaveOpenGame = async (g: ApiGame) => {
     if (!canLeaveLobby(g)) return;
@@ -378,7 +468,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
             <input
               className="search-input"
               type="search"
-              placeholder={view === 'discover' ? 'Search by name or venue…' : view === 'joined' ? 'Search your list…' : view === 'invites' ? 'Search invitations…' : 'Search your plays…'}
+              placeholder={view === 'discover' ? 'Search by name, venue, or host…' : view === 'joined' ? 'Search your list…' : view === 'invites' ? 'Search invitations…' : 'Search your plays…'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -388,16 +478,73 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               </button>
             )}
           </div>
+
+          {/* Filter + sort belong to the merged Discover feed only — the other
+              views are small, already-scoped lists. */}
+          {isDiscoverFeed && (
+            <div className="flex items-center justify-between gap-2 mt-3">
+              <button
+                type="button"
+                className="sort-btn"
+                onClick={() => setFilterOpen(true)}
+                aria-label={`Filter plays${activeFilterCount ? `, ${activeFilterCount} active` : ''}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="4" y1="6" x2="20" y2="6" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="10" y1="18" x2="14" y2="18" /></svg>
+                Filter
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-[var(--coral)] text-white text-[10px] font-bold px-1">{activeFilterCount}</span>
+                )}
+              </button>
+
+              <div className="sort-row" ref={sortRef}>
+                <span className="sort-label">Sort:</span>
+                <button
+                  type="button"
+                  className="sort-btn"
+                  aria-haspopup="listbox"
+                  aria-expanded={sortOpen}
+                  aria-label={`Sort plays: ${SORT_LABELS[sort]}`}
+                  onClick={() => setSortOpen((o) => !o)}
+                >
+                  {SORT_LABELS[sort]}
+                  <svg className="sort-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+                </button>
+                {sortOpen && (
+                  <ul className="sort-menu" role="listbox" aria-label="Sort plays">
+                    {SORT_KEYS.map((key) => (
+                      <li key={key} role="option" aria-selected={sort === key}>
+                        <button
+                          type="button"
+                          className={`sort-menu-item${sort === key ? ' active' : ''}`}
+                          onClick={() => { setSort(key); setSortOpen(false); }}
+                        >
+                          {SORT_LABELS[key]}
+                          {sort === key && (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="games-list-scroll">
           {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
           {!loading && section === 'games' && view === 'discover' && (
-            gamesDiscover.length === 0
-              ? <Empty text="No open plays available." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
-              : gamesDiscoverFiltered.length === 0
-                ? <Empty text={`No results for "${search}"`} />
-                : gamesDiscoverFiltered.map((g) => <GameCard key={'discover-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} />)
+            <DiscoverFeed
+              items={discoverFiltered}
+              onOpen={(i) => onNavigate('game-details', { id: i.id })}
+              showDateHeaders={sort === 'soonest'}
+              unfilteredCount={discoverUnfiltered}
+              emptyText="No events available yet. Book a court and host one."
+              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
+              narrowedByControls={q.length > 0 || activeFilterCount > 0}
+              onClearControls={clearDiscoverControls}
+            />
           )}
           {!loading && section === 'games' && view === 'joined' && (
             gamesJoined.length === 0
@@ -414,7 +561,16 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
                 : gamesManageFiltered.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
           )}
           {!loading && section === 'open-play' && view === 'discover' && (
-            <OpenPlayDiscover games={openDiscoverGamesF} sessions={openDiscoverSessionsF} onNavigate={onNavigate} emptyWithData={q && (openDiscoverGames.length + openDiscoverSessions.length) > 0 ? `No results for "${search}"` : ''} unfilteredCount={openDiscoverGames.length + openDiscoverSessions.length} />
+            <DiscoverFeed
+              items={discoverFiltered}
+              onOpen={(i) => onNavigate('open-play-detail', { source: i.kind, id: i.id })}
+              showDateHeaders={sort === 'soonest'}
+              unfilteredCount={discoverUnfiltered}
+              emptyText="No open plays available yet. Book a court and publish one."
+              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
+              narrowedByControls={q.length > 0 || activeFilterCount > 0}
+              onClearControls={clearDiscoverControls}
+            />
           )}
           {!loading && section === 'open-play' && view === 'joined' && (
             <OpenPlayJoined games={openJoinedGamesF} sessions={openJoinedSessionsF} onNavigate={onNavigate} onLeave={leaveOpenGame} busyId={actionId} emptyWithData={q && (openJoinedGames.length + openJoinedSessions.length) > 0 ? `No results for "${search}"` : ''} unfilteredCount={openJoinedGames.length + openJoinedSessions.length} />
@@ -442,6 +598,18 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           {actionError && <div className="vis-help" style={{ color: 'var(--warning)' }} role="alert">{actionError}</div>}
         </div>
       </div>
+
+      {isDiscoverFeed && (
+        <GameFilterSheet
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          value={filters}
+          onChange={setFilters}
+          resultCount={discoverFiltered.length}
+          showRadius={canFilterByDistance}
+          typeOptions={typeOptions}
+        />
+      )}
     </V2Shell>
   );
 }
@@ -537,7 +705,14 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
         </div>
         {showVisibility && <div className="vis-indicator public">Open Play</div>}
         {isOpenPlayGame(game) ? (
+          // Interest-based open play has no capacity — the bar tracks the host's
+          // soft target when they set one, so momentum is visible either way.
           <div className="players-row">
+            {game.targetPlayers ? (
+              <div className="fill-track">
+                <div className="fill-bar" style={{ width: `${Math.min(100, Math.round((interestCount(game) / game.targetPlayers) * 100))}%` }} />
+              </div>
+            ) : null}
             <span className="players-label">{interestWithTarget(game)}</span>
           </div>
         ) : s.cap > 0 ? (
@@ -557,10 +732,108 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
   );
 }
 
-function OpenPlayDiscover({ games, sessions, onNavigate, emptyWithData, unfilteredCount }: { games: ApiGame[]; sessions: ApiOpenPlaySession[]; onNavigate: V2ScreenChrome['onNavigate']; emptyWithData: string; unfilteredCount: number }) {
-  if (unfilteredCount > 0 && (!games.length && !sessions.length)) return <Empty text={emptyWithData} />;
-  if (!unfilteredCount) return <Empty text="No Open Play sessions available." />;
-  return <>{sessions.map((s) => <SessionCard key={'session-' + s.id} session={s} onClick={() => onNavigate('open-play-detail', { source: 'session', id: s.id })} />)}{games.map((g) => <GameCard key={'game-' + g.id} game={g} showVisibility onClick={() => onNavigate('open-play-detail', { source: 'game', id: g.id })} />)}</>;
+/** Discover: one ranked list. Shared by both sections — Open Play mixes sessions
+ *  and games, Events is games only — since the only differences are the detail
+ *  route and the empty copy. Date headers only make sense under the chronological
+ *  sort; over a relevance ranking they'd be noise. */
+function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyText, emptyAction, narrowedByControls, onClearControls }: {
+  items: ScoredPlayItem[];
+  onOpen: (item: ScoredPlayItem) => void;
+  showDateHeaders: boolean;
+  unfilteredCount: number;
+  emptyText: string;
+  emptyAction?: { label: string; onClick: () => void };
+  narrowedByControls: boolean;
+  onClearControls: () => void;
+}) {
+  // Nothing on the platform vs. nothing matching *your* search+filters are
+  // different problems and deserve different exits.
+  if (!unfilteredCount) return <Empty text={emptyText} action={emptyAction} />;
+  if (!items.length) {
+    return narrowedByControls
+      ? <Empty text="No plays match your search and filters." action={{ label: 'Clear search & filters', onClick: onClearControls }} />
+      : <Empty text={emptyText} action={emptyAction} />;
+  }
+
+  const open = (i: ScoredPlayItem) => onOpen(i);
+  if (!showDateHeaders) {
+    return <>{items.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} onClick={() => open(i)} />)}</>;
+  }
+
+  // Group consecutive runs — the list is already date-ordered under this sort.
+  const groups: { header: string; rows: ScoredPlayItem[] }[] = [];
+  for (const i of items) {
+    const { header } = dateSectionHeader(i.date);
+    const last = groups[groups.length - 1];
+    if (last && last.header === header) last.rows.push(i);
+    else groups.push({ header, rows: [i] });
+  }
+  return <>{groups.map((g) => (
+    <div key={g.header}>
+      <div className="flex items-center gap-3 mb-3 mt-4 first:mt-0">
+        <div className="text-[12px] font-extrabold tracking-[0.08em] text-[var(--muted)] uppercase">{g.header}</div>
+        <div className="flex-1 h-px bg-[var(--hairline)]" />
+      </div>
+      {g.rows.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} onClick={() => open(i)} />)}
+    </div>
+  ))}</>;
+}
+
+/** The unified Discover card. Sessions and games render alike — a `kind` badge and
+ *  the "why" chips are what distinguish them — so a player can judge skill,
+ *  distance, price, and host without tapping through. */
+function PlayCard({ item, onClick }: { item: ScoredPlayItem; onClick: () => void }) {
+  const badge = item.kind === 'session'
+    ? { cls: 'badge-open', label: 'Open Play' }
+    : typeBadge(item.source as ApiGame);
+  const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
+  const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
+  const dist = item.distanceKm != null ? formatDistance(item.distanceKm) : '';
+
+  const f = item.fill;
+  // Interest-based listings have no capacity, so the bar tracks progress toward
+  // the host's soft target; with no target there's nothing to fill toward.
+  const pct = f.mode === 'capacity'
+    ? (f.cap > 0 ? Math.min(100, Math.round((f.joined / f.cap) * 100)) : 0)
+    : (f.target ? Math.min(100, Math.round((f.count / f.target) * 100)) : 0);
+  const fillLabel = f.mode === 'capacity'
+    ? (f.cap > 0 ? `${f.joined}/${f.cap}` : '')
+    : (f.target ? `${f.count}/${f.target} interested` : `${f.count} interested`);
+  const nearFull = f.mode === 'capacity' && f.cap > 0 && f.cap - f.joined <= 1;
+  const showBar = f.mode === 'capacity' ? f.cap > 0 : !!f.target;
+
+  return (
+    <article className="game-card" role="button" tabIndex={0} onClick={onClick}>
+      <div className="game-thumb" style={{ backgroundImage: `url(${apiImageUrl(item.image) || FALLBACK_GAME_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+        <span className={`game-type-badge ${badge.cls}`}>{badge.label}</span>
+      </div>
+      <div className="game-body">
+        <div className="game-title">{item.title}</div>
+        <div className="game-meta">
+          <div className="game-meta-row">{CLOCK_SVG}{when}</div>
+          <div className="game-meta-row">{PIN_SVG}{item.venueName}{dist && <span className="text-[var(--primary)] font-bold ml-1">· {dist}</span>}</div>
+          {(meta || item.venueLoc) && <div className="game-meta-loc">{meta || item.venueLoc}</div>}
+        </div>
+
+        {item.why.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap mt-1.5">
+            {item.why.map((w) => (
+              <span key={w} className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--lime)] text-[var(--ink)]">{w}</span>
+            ))}
+          </div>
+        )}
+
+        {showBar ? (
+          <div className="players-row">
+            <div className="fill-track"><div className={`fill-bar${nearFull ? ' near-full' : ''}`} style={{ width: `${pct}%` }} /></div>
+            <span className={`players-label${nearFull ? ' near-full' : ''}`}>{fillLabel}</span>
+          </div>
+        ) : fillLabel ? (
+          <div className="players-row"><span className="players-label">{fillLabel}</span></div>
+        ) : null}
+      </div>
+    </article>
+  );
 }
 function OpenPlayJoined({ games, sessions, onNavigate, onLeave, busyId, emptyWithData, unfilteredCount }: { games: ApiGame[]; sessions: ApiOpenPlaySession[]; onNavigate: V2ScreenChrome['onNavigate']; onLeave: (g: ApiGame) => void; busyId: string | null; emptyWithData: string; unfilteredCount: number }) {
   if (unfilteredCount > 0 && (!games.length && !sessions.length)) return <Empty text={emptyWithData} />;
@@ -607,7 +880,7 @@ function BookingCard({ b, mineGames, onNavigate, onTogglePublish, busyId, isPast
         <div className="game-title">{bookingTitle(b)}</div>
         <div className="game-meta">
           <div className="game-meta-row">{CLOCK_SVG}{[prettyDate(b.date), bookingTimeRange(b)].filter(Boolean).join(' · ')}</div>
-          {court && <div className="game-meta-row">{PIN_SVG}{court}</div>}
+          <div className="game-meta-row">{PIN_SVG}{[b.venueName, court].filter(Boolean).join(' · ') || 'Venue TBA'}</div>
         </div>
         {!isPast && canPublishBooking(b) ? (
           <button

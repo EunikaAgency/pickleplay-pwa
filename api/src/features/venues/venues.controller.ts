@@ -1516,6 +1516,7 @@ export async function getVenueBookings(c: any) {
   const rows = await Booking.find(filter)
     .populate('userId', 'displayName avatarUrl')
     .populate('courtId', 'courtNumber courtName')
+    .populate('venueId', 'displayName slug')
     // Cap raised from 50 → 200 so the app has the full per-venue history to
     // filter client-side (When: upcoming/ongoing/past) and sort (play date vs
     // recently booked). Sorted by _id desc so if a venue ever exceeds the cap,
@@ -1548,6 +1549,10 @@ export async function getVenueBookings(c: any) {
       courtId: r.courtId?._id ?? r.courtId,
       courtNumber: r.courtId?.courtNumber,
       courtName: r.courtId?.courtName,
+      // venueId was populated — flatten and surface displayName/slug.
+      venueId: r.venueId?._id ? String(r.venueId._id) : String(r.venueId ?? venueId),
+      venueName: r.venueId?.displayName,
+      venueSlug: r.venueId?.slug,
       // Game metadata (only present on bookingType 'game').
       gameType: g?.gameType,
       gameVisibility: g?.visibility,

@@ -15,6 +15,7 @@ import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
   listCourts, getHours, listSlotOverrides, createVenueBooking, createSlotOverride, getVenueBookings,
+  updateBookingStatus,
   type ApiBooking, type ApiVenue, type OwnerCourt, type VenueBookingPayload,
   type OwnerHourEntry, type SlotPriceOverride,
 } from '../../shared/lib/api';
@@ -43,6 +44,15 @@ const PAY_METHODS: { id: string; label: string }[] = [
   { id: 'transfer', label: 'Transfer' },
   { id: 'card', label: 'Card' },
 ];
+
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function fmtDate(ymd: string | null | undefined): string {
+  if (!ymd) return '';
+  const d = new Date(ymd + 'T00:00:00');
+  return `${DOW[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}`;
+}
 
 function personName(b: ApiBooking): string {
   return b.customerName || b.userName || (b.bookingType === 'manual' ? 'Walk-in' : b.bookingType === 'blocked' ? 'Blocked' : 'Player');
@@ -98,8 +108,23 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2600); };
+
+  const cancelReservation = async (b: ApiBooking) => {
+    if (!b.venueId) return;
+    setCancelingId(b.id);
+    try {
+      await updateBookingStatus(b.venueId, b.id, { status: 'cancelled', cancellationReason: 'Removed by owner' });
+      refreshBookings();
+      flash('Reservation cancelled');
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not cancel');
+    } finally {
+      setCancelingId(null);
+    }
+  };
 
   // Load the venue's courts, hours (rate engine), overrides, and bookings. Each
   // falls back to an empty resolve when there's no venue so no setState runs
@@ -128,15 +153,19 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
 
   useEffect(() => {
     let alive = true;
-    const p = vref ? getVenueBookings(vref) : Promise.resolve([] as ApiBooking[]);
-    p.then((rows) => { if (alive) { setBookings(rows); setBkStatus('ready'); } })
+    if (!venues.length) { setBookings([]); setBkStatus('ready'); return; }
+    setBkStatus('loading');
+    Promise.all(venues.map((v) => getVenueBookings(v.slug || v.id).catch(() => [] as ApiBooking[])))
+      .then((batches) => { if (alive) { setBookings(batches.flat()); setBkStatus('ready'); } })
       .catch(() => { if (alive) { setBookings([]); setBkStatus('error'); } });
     return () => { alive = false; };
-  }, [vref]);
+  }, [venues]);
 
   const refreshBookings = () => {
-    if (!vref) return;
-    getVenueBookings(vref).then((rows) => { setBookings(rows); setBkStatus('ready'); }).catch(() => { /* keep prior list */ });
+    if (!venues.length) return;
+    Promise.all(venues.map((v) => getVenueBookings(v.slug || v.id).catch(() => [] as ApiBooking[])))
+      .then((batches) => { setBookings(batches.flat()); setBkStatus('ready'); })
+      .catch(() => { /* keep prior list */ });
   };
 
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
@@ -357,7 +386,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
                 </span>
                 <div className="min-w-0">
                   <div className="font-heading font-extrabold text-[14px] text-[var(--ink)] leading-tight">Reservations</div>
-                  <div className="text-[11px] text-[var(--muted)] leading-tight">Upcoming at this venue</div>
+                  <div className="text-[11px] text-[var(--muted)] leading-tight">Across all your venues</div>
                 </div>
               </div>
               <button type="button" onClick={() => onNavigate('owner-pricing')} className="text-[11px] font-extrabold text-[#f59e0b] shrink-0">Pricing grid</button>
@@ -373,18 +402,38 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
               <ul className="flex-1 min-h-0 overflow-y-auto">
                 {upcoming.map((b) => {
                   const tag = b.bookingType === 'manual' ? 'Manual' : b.bookingType === 'blocked' ? 'Blocked' : null;
+                  const day = fmtDate(b.date);
+                  const time = `${to12h(b.startTime || '')}–${to12h(b.endTime || '')}`;
+                  const amountStr = money(b.amount || 0, currency);
                   return (
-                    <li key={b.id} className="flex items-center gap-3 px-4 py-3 border-b border-[var(--hairline)] last:border-b-0">
+                    <li key={b.id} className="flex items-start gap-3 px-4 py-3 border-b border-[var(--hairline)] last:border-b-0">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[13px] font-extrabold text-[var(--ink)] truncate">{personName(b)}</span>
-                          {tag && <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)] shrink-0">{tag}</span>}
+                          {tag && <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)] shrink-0">{tag}</span>}
                         </div>
-                        <div className="text-[12px] text-[var(--muted)] truncate">
-                          {prettyDate(b.date || '')} · {to12h(b.startTime || '')}–{to12h(b.endTime || '')} · {courtLabel(b)}
+                        {b.venueName && (
+                          <div className="text-[12px] font-semibold text-[var(--ink-2)] truncate mt-0.5">{b.venueName}</div>
+                        )}
+                        <div className="text-[12px] text-[var(--muted)] mt-0.5">
+                          {day}{time ? ` · ${time}` : ''}{b.courtNumber ? ` · Court ${b.courtNumber}` : b.courtName ? ` · ${b.courtName}` : ''}
                         </div>
                       </div>
-                      <div className="text-[13px] font-extrabold text-[var(--ink)] shrink-0 tabular-nums">{money(b.amount || 0, currency)}</div>
+                      <div className="text-[13px] font-extrabold text-[var(--ink)] shrink-0 tabular-nums mt-0.5">{amountStr}</div>
+                      <button
+                        type="button"
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] hover:bg-[#FFF0ED] transition-colors mt-0.5"
+                        disabled={cancelingId === b.id}
+                        onClick={(e) => { e.stopPropagation(); cancelReservation(b); }}
+                        aria-label="Cancel reservation"
+                        title="Cancel reservation"
+                      >
+                        {cancelingId === b.id ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="animate-spin"><circle cx="12" cy="12" r="10" strokeOpacity="0.3" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                        ) : (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                        )}
+                      </button>
                     </li>
                   );
                 })}

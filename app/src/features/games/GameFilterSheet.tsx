@@ -3,7 +3,7 @@ import { Button } from '../../shared/components/ui/Button';
 import { Chip } from '../../shared/components/ui/Chip';
 import {
   type GameFilters, makeDefaultGameFilters,
-  WHEN_OPTIONS, SKILL_OPTIONS, TYPE_OPTIONS,
+  WHEN_OPTIONS, SKILL_OPTIONS, TYPE_OPTIONS, RADIUS_OPTIONS,
 } from './gameFilters';
 
 interface GameFilterSheetProps {
@@ -11,27 +11,33 @@ interface GameFilterSheetProps {
   onClose: () => void;
   value: GameFilters;
   onChange: (next: GameFilters) => void;
-  /** How many games currently match — shown on the apply button. */
+  /** How many plays currently match — shown on the apply button. */
   resultCount: number;
+  /** Offer the distance filter. Off for surfaces with no location (the legacy v1
+   *  screen), on for the Play tab once the user has shared theirs. */
+  showRadius?: boolean;
+  /** Narrow the play-type choices — the Events section holds no open-play games,
+   *  so offering that option there guarantees an empty result. */
+  typeOptions?: typeof TYPE_OPTIONS;
 }
 
-export function GameFilterSheet({ open, onClose, value, onChange, resultCount }: GameFilterSheetProps) {
+export function GameFilterSheet({ open, onClose, value, onChange, resultCount, showRadius = false, typeOptions = TYPE_OPTIONS }: GameFilterSheetProps) {
   const set = (patch: Partial<GameFilters>) => onChange({ ...value, ...patch });
 
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
-      title="Filter games"
+      title="Filter plays"
       subtitle="Find your perfect match"
       height="74dvh"
       footer={
         <div className="flex gap-2.5">
-          <Button variant="outline" fullWidth className="flex-1" onClick={() => onChange(makeDefaultGameFilters())}>
+          <Button variant="outline" fullWidth className="flex-1" onClick={() => onChange(makeDefaultGameFilters(value.radiusKm))}>
             Reset
           </Button>
           <Button variant="dark" fullWidth className="flex-[2]" onClick={onClose}>
-            Show {resultCount} {resultCount === 1 ? 'game' : 'games'}
+            Show {resultCount} {resultCount === 1 ? 'play' : 'plays'}
           </Button>
         </div>
       }
@@ -59,15 +65,28 @@ export function GameFilterSheet({ open, onClose, value, onChange, resultCount }:
       </div>
 
       <div className="field mt-[18px]">
-        <div className="lbl">Game type</div>
+        <div className="lbl">Play type</div>
         <div className="flex gap-2 flex-wrap">
-          {TYPE_OPTIONS.map((t) => (
+          {typeOptions.map((t) => (
             <Chip key={t.value} selected={value.gameType === t.value} onClick={() => set({ gameType: t.value })}>
               {t.label}
             </Chip>
           ))}
         </div>
       </div>
+
+      {showRadius && (
+        <div className="field">
+          <div className="lbl">Distance</div>
+          <div className="flex gap-2 flex-wrap">
+            {RADIUS_OPTIONS.map((r) => (
+              <Chip key={r.label} selected={value.radiusKm === r.value} onClick={() => set({ radiusKm: r.value })}>
+                {r.label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="field">
         <div className="lbl">Availability</div>

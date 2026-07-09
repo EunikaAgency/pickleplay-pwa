@@ -24,6 +24,11 @@ const gameSchema = new Schema({
   timeLabel:     { type: String, maxlength: 20 },         // '6:30 PM'
   durationLabel: { type: String, maxlength: 20 },         // '2 hr'
   date:          { type: String },                        // computed YYYY-MM-DD (best-effort)
+  // Sortable 24h 'HH:MM', materialized from the linked Booking (or parsed from
+  // timeLabel when there's none). Mirrors OpenPlaySession.startTime so the two
+  // collections share one {date, startTime} sort shape. Null when unknowable —
+  // such games sort last within their date.
+  startTime:     { type: String, maxlength: 5 },
   capacity:      { type: Number, default: 4 },
   participantIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   // Open Play interest: players who tapped "I'm Interested" (a soft signal, not a
@@ -54,6 +59,7 @@ const gameSchema = new Schema({
 }, { timestamps: true });
 
 gameSchema.index({ status: 1, date: 1 });
+gameSchema.index({ status: 1, date: 1, startTime: 1 });
 gameSchema.index({ creatorId: 1 });
 gameSchema.index({ participantIds: 1 });
 gameSchema.index({ interestedUserIds: 1 });

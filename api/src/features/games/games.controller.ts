@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Types } from 'mongoose';
 import { Game, GameMessage } from './games.model.js';
+import { parseTimeLabel } from './gameTime.js';
 import { Booking } from '../bookings/bookings.model.js';
 import { User } from '../auth/auth.model.js';
 import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
@@ -274,6 +275,13 @@ export async function createGame(c: any) {
   // Singles 1v1 and Doubles 2v2 have a fixed seat count; Open (interest-only) and
   // Public (format-driven) use the custom capacity the host set.
   const capacity = body.gameType === 'singles' ? 2 : body.gameType === 'doubles' ? 4 : body.capacity;
+  // The linked reservation's slot is the authoritative start time; a game posted
+  // without a booking can only offer its free-text timeLabel. Scoped by userId so
+  // a caller can't read a slot off someone else's booking.
+  const booking: any = body.bookingId
+    ? await Booking.findOne({ _id: body.bookingId, userId: user.sub }).select('startTime').lean()
+    : null;
+  const startTime = booking?.startTime ?? parseTimeLabel(body.timeLabel);
   const game = await Game.create({
     creatorId: user.sub,
     title: body.title || null,
@@ -292,6 +300,7 @@ export async function createGame(c: any) {
     timeLabel: body.timeLabel || null,
     durationLabel: body.durationLabel || null,
     date: body.date || computeDate(body.whenLabel),
+    startTime,
     capacity,
     targetPlayers: body.targetPlayers || null,
     participantIds: [user.sub],
