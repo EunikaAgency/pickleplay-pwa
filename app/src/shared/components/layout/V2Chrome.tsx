@@ -81,7 +81,7 @@ const TAB_ICONS: Record<TabId, ReactNode> = {
   messages: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>),
   profile: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
 };
-const TAB_LABELS: Record<TabId, string> = { home: 'Home', nearby: 'Map', games: 'Games', tournaments: 'Tournament', clubs: 'Clubs', messages: 'Messages', profile: 'Profile' };
+const TAB_LABELS: Record<TabId, string> = { home: 'Home', nearby: 'Map', games: 'Play', tournaments: 'Tournament', clubs: 'Clubs', messages: 'Messages', profile: 'Profile' };
 
 // The full tab order. `tabIds` (from App, role-derived) may drop some — e.g.
 // owners/admins don't get the player Tournament tab.

@@ -338,7 +338,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     <V2Shell screen="v2-games" chrome={chrome} hideFab={hideFab}>
       <div className="page-content">
         <div className="games-intro">
-          <h1 className="games-heading">Games</h1>
+          <h1 className="games-heading">Play</h1>
           <p className="games-subheading">{subheading}</p>
         </div>
 

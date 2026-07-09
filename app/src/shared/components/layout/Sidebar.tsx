@@ -63,7 +63,7 @@ interface SideTab {
 
 const tabs: SideTab[] = [
   { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
-  { id: 'games',   label: 'Games',  icon: 'calendar', iconFill: 'calendar_fill' },
+  { id: 'games',   label: 'Play',   icon: 'calendar', iconFill: 'calendar_fill' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'clubs',   label: 'Clubs',  icon: 'groups' },
@@ -128,7 +128,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
 
       <nav className="flex flex-col gap-1">
         {visibleTabs.map((t) => {
-          const isActive = activeTab === t.id && !(t.id === 'nearby' && pricingActive) && !(t.id === 'nearby' && manualReservationActive) && !(t.id === 'profile' && calendarActive) && !(t.id === 'profile' && partnersActive);
+          const isActive = activeTab === t.id && !(t.id === 'nearby' && pricingActive) && !(t.id === 'nearby' && manualReservationActive) && !(t.id === 'nearby' && calendarActive) && !(t.id === 'nearby' && partnersActive);
           // Guests see the "Profile" tab as "Login" - tapping it sends them to sign in.
           const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
           return (
@@ -222,9 +222,9 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
         )}
         {/* Profile — placed last (very bottom of the nav) for every role. */}
         <button
-          className={`side-tab ${activeTab === 'profile' && !calendarActive && !partnersActive ? 'active' : ''}`}
+          className={`side-tab ${activeTab === 'profile' ? 'active' : ''}`}
           onClick={() => onTabPress('profile')}
-          aria-current={activeTab === 'profile' && !calendarActive && !partnersActive ? 'page' : undefined}
+          aria-current={activeTab === 'profile' ? 'page' : undefined}
         >
           <span className="ico">
             <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' ? 'user_fill' : 'user'} size={20} />

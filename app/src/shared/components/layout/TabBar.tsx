@@ -22,7 +22,7 @@ type Tab = { id: TabId; label: string; icon: string; iconFill?: string };
 
 const tabs: Tab[] = [
   { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
-  { id: 'games',   label: 'Games',  icon: 'calendar', iconFill: 'calendar_fill' },
+  { id: 'games',   label: 'Play',   icon: 'calendar', iconFill: 'calendar_fill' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'clubs',   label: 'Clubs',  icon: 'groups',   iconFill: 'groups_fill' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
