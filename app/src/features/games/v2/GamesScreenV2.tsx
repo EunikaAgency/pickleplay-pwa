@@ -333,6 +333,21 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   };
 
   const leaveOpenGame = async (g: ApiGame) => {
+    // Open Play uses interest-based — toggle off interest, don't call leaveGame.
+    if (isOpenPlayGame(g)) {
+      setActionId(g.id);
+      setActionError(null);
+      try {
+        await toggleGameInterest(g.id);
+        setMineGames((prev) => prev.filter((x) => x.id !== g.id));
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : 'Could not remove your interest.');
+      } finally {
+        setActionId(null);
+      }
+      return;
+    }
+    // Regular lobby games
     if (!canLeaveLobby(g)) return;
     setActionId(g.id);
     setActionError(null);
@@ -340,7 +355,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       await leaveGame(g.id);
       setMineGames((prev) => prev.filter((x) => x.id !== g.id));
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Could not leave this Open Play.');
+      setActionError(e instanceof Error ? e.message : 'Could not leave this play.');
     } finally {
       setActionId(null);
     }
@@ -843,7 +858,7 @@ function PlayCard({ item, onClick }: { item: ScoredPlayItem; onClick: () => void
 function OpenPlayJoined({ games, sessions, onNavigate, onLeave, busyId, emptyWithData, unfilteredCount }: { games: ApiGame[]; sessions: ApiOpenPlaySession[]; onNavigate: V2ScreenChrome['onNavigate']; onLeave: (g: ApiGame) => void; busyId: string | null; emptyWithData: string; unfilteredCount: number }) {
   if (unfilteredCount > 0 && (!games.length && !sessions.length)) return <Empty text={emptyWithData} />;
   if (!unfilteredCount) return <Empty text="Open Play sessions you join show up here." />;
-  return <>{sessions.map((s) => <SessionCard key={'joined-session-' + s.id} session={s} onClick={() => onNavigate('open-play-detail', { source: 'session', id: s.id })} />)}{games.map((g) => <GameCard key={'joined-game-' + g.id} game={g} showVisibility onClick={() => onNavigate('open-play-detail', { source: 'game', id: g.id })} action={canLeaveLobby(g) ? { label: busyId === g.id ? 'Leaving...' : 'Leave', onClick: () => onLeave(g) } : { label: 'Spot locked', onClick: () => undefined }} />)}</>;
+  return <>{sessions.map((s) => <SessionCard key={'joined-session-' + s.id} session={s} onClick={() => onNavigate('open-play-detail', { source: 'session', id: s.id })} />)}{games.map((g) => <GameCard key={'joined-game-' + g.id} game={g} showVisibility onClick={() => onNavigate('open-play-detail', { source: 'game', id: g.id })} action={{ label: busyId === g.id ? 'Leaving...' : 'Leave', onClick: () => onLeave(g) }} />)}</>;
 }
 function OpenPlayManage({ games, bookings, mineGames, onNavigate, onDelete, onTogglePublish, busyId, emptyWithData, unfilteredCount }: { games: ApiGame[]; bookings: ApiBooking[]; mineGames: ApiGame[]; onNavigate: V2ScreenChrome['onNavigate']; onDelete: (g: ApiGame) => void; onTogglePublish: (b: ApiBooking) => void; busyId: string | null; emptyWithData: string; unfilteredCount: number }) {
   const totalItems = games.length + bookings.length;
