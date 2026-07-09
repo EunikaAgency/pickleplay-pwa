@@ -4,7 +4,7 @@ import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import {
   apiImageUrl, createGame, declineGameInvite, deleteGame, joinGame, leaveGame, listBookings, listGames,
   listMyOpenPlayRegistrations, listMyTournamentRegistrations,
-  listOpenPlaySessions, listPublicTournaments,
+  listOpenPlaySessions, listPublicTournaments, toggleGameInterest,
   type ApiBooking, type ApiGame, type ApiOpenPlaySession, type ApiTournament,
 } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
@@ -362,7 +362,12 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setJoinBusy(g.id);
     setActionError(null);
     try {
-      await joinGame(g.id);
+      // Open Play uses interest-based model ("I'm Interested"), not lobby join.
+      if (isOpenPlayGame(g)) {
+        await toggleGameInterest(g.id);
+      } else {
+        await joinGame(g.id);
+      }
       setInvitedGames((prev) => prev.filter((x) => x.id !== g.id));
       setMineGames((prev) => [...prev, g]);
     } catch (e) {
