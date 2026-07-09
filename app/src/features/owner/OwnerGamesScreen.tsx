@@ -133,20 +133,18 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
               ))}
             </div>
 
+            <div className="scroll-x flex gap-2 mt-2">
+              {([['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved']] as const).map(([f, label]) => (
+                <Chip key={f} className="chip-tab" selected={bookingFilter === f} onClick={() => setBookingFilter(f)}>{label}</Chip>
+              ))}
+            </div>
             {filteredDayBookings.length === 0 ? (
               <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm">No {bookingFilter} bookings {selISO ? 'on this day' : 'coming up'}.</div>
             ) : (
-              <div className="space-y-2.5 mt-2">
-                <div className="scroll-x flex gap-2">
-                  {([['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved']] as const).map(([f, label]) => (
-                    <Chip key={f} className="chip-tab" selected={bookingFilter === f} onClick={() => setBookingFilter(f)}>{label}</Chip>
-                  ))}
-                </div>
-                <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-4 lg:gap-3">
-                  {filteredDayBookings.map((b) => (
-                    <OwnerBookingRow key={b.id} booking={b} canManage={canBookings} showVenue onChanged={onBookingChanged} onOpen={setDetail} onNavigate={onNavigate} />
-                  ))}
-                </div>
+              <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-4 lg:gap-3">
+                {filteredDayBookings.map((b) => (
+                  <OwnerBookingRow key={b.id} booking={b} canManage={canBookings} showVenue onChanged={onBookingChanged} onOpen={setDetail} onNavigate={onNavigate} />
+                ))}
               </div>
             )}
 
