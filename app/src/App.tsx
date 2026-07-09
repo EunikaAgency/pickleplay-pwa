@@ -461,7 +461,7 @@ function AppInner() {
   const roleAttr = isAdmin ? 'admin' : isOwner ? 'owner' : isOrganizer ? 'organizer' : undefined;
 
   const handleCreate = () => {
-    navigate('games', { section: 'games', view: 'discover' });
+    navigate('games', { section: 'open-play', view: 'discover' });
   };
   const handleHost = () => {
     navigate('nearby');
