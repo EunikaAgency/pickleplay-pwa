@@ -225,6 +225,8 @@ src/
                              #   backfill-user-location-avatars.ts (player lat/lng
                              #     in Cavite→Manila box + randomuser.me avatars),
                              #   fix-avatar-gender.ts (match avatar gender to name),
+                             #   backfill-venue-court-images.ts (stock photos for
+                             #     venues/courts missing a mainImageUrl),
                              #   link-owner-venues.ts, download-images.ts, index.ts
     lib/                     # framework-agnostic helpers: jwt.ts, permissions.ts,
                              #   cursor.ts (compound createdAt|_id keyset pagination),

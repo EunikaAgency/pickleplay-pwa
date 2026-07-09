@@ -220,14 +220,16 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
             Shop/Rental
           </button>
         )}
-        {/* Profile — placed last (very bottom of the nav) for every role. */}
+        {/* Profile — placed last (very bottom of the nav) for every role. On the
+            owner Shop screen the dedicated Shop item above is the active one, so
+            don't also light up Profile (Shop maps to the profile tab). */}
         <button
-          className={`side-tab ${activeTab === 'profile' ? 'active' : ''}`}
+          className={`side-tab ${activeTab === 'profile' && !shopActive ? 'active' : ''}`}
           onClick={() => onTabPress('profile')}
-          aria-current={activeTab === 'profile' ? 'page' : undefined}
+          aria-current={activeTab === 'profile' && !shopActive ? 'page' : undefined}
         >
           <span className="ico">
-            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' ? 'user_fill' : 'user'} size={20} />
+            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive ? 'user_fill' : 'user'} size={20} />
           </span>
           {isLoggedIn ? 'Profile' : 'Login'}
         </button>

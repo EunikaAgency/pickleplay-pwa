@@ -44,7 +44,7 @@ function typeBadge(g: ApiGame): { cls: string; label: string } {
   const t = (g.gameType || '').toLowerCase();
   if (t === 'doubles') return { cls: 'badge-competitive', label: 'Doubles' };
   if (t === 'singles') return { cls: 'badge-social', label: 'Singles' };
-  if (t === 'public') return { cls: 'badge-competitive', label: gameFormatLabel(g) || 'Public game' };
+  if (t === 'public') return { cls: 'badge-competitive', label: gameFormatLabel(g) || 'Public play' };
   return { cls: 'badge-open', label: 'Open Play' };
 }
 function slots(g: ApiGame): { joined: number; cap: number; pct: number; almost: boolean } {
@@ -276,7 +276,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       setInvitedGames((prev) => prev.filter((x) => x.id !== g.id));
       setMineGames((prev) => [...prev, g]);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Could not join this game.');
+      setActionError(e instanceof Error ? e.message : 'Could not join this play.');
     } finally {
       setJoinBusy(null);
     }
@@ -328,7 +328,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
   const subheading = section === 'games'
     ? 'Tournaments, competitive matches, and organized events.'
-    : 'Open play sessions, player-hosted games, and your court bookings.';
+    : 'Open play sessions, player-hosted plays, and your court bookings.';
 
   // The "Play" FAB navigates here (Open Play → Invites), so hide it while the
   // user is already on that view — no point offering a jump to the current page.
@@ -348,7 +348,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               className="section-dropdown"
               value={section}
               onChange={(e) => selectSection(e.target.value as Section)}
-              aria-label="Games section"
+              aria-label="Play section"
             >
               <option value="games">Events</option>
               <option value="open-play">Open Play</option>
@@ -358,7 +358,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
         </div>
 
         <div className="tab-group-row">
-          <div className="tab-group" role="tablist" aria-label="Games view">
+          <div className="tab-group" role="tablist" aria-label="Play view">
             {(section === 'open-play'
               ? (['discover', 'joined', 'invites', 'manage'] as View[]).filter(k => (k !== 'joined' || loading || hasOpenPlayJoined) && (k !== 'invites' || loading || hasOpenPlayInvites))
               : (['discover', 'joined', 'manage'] as View[]).filter(k => k !== 'joined' || loading || hasGamesJoined)
@@ -378,7 +378,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
             <input
               className="search-input"
               type="search"
-              placeholder={view === 'discover' ? 'Search by name or venue…' : view === 'joined' ? 'Search your list…' : view === 'invites' ? 'Search invitations…' : 'Search your games…'}
+              placeholder={view === 'discover' ? 'Search by name or venue…' : view === 'joined' ? 'Search your list…' : view === 'invites' ? 'Search invitations…' : 'Search your plays…'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -394,21 +394,21 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
           {!loading && section === 'games' && view === 'discover' && (
             gamesDiscover.length === 0
-              ? <Empty text="No open games available." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
+              ? <Empty text="No open plays available." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
               : gamesDiscoverFiltered.length === 0
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesDiscoverFiltered.map((g) => <GameCard key={'discover-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} />)
           )}
           {!loading && section === 'games' && view === 'joined' && (
             gamesJoined.length === 0
-              ? <Empty text="Games you join show up here." />
+              ? <Empty text="Plays you join show up here." />
               : gamesJoinedFiltered.length === 0
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesJoinedFiltered.map((g) => <GameCard key={'joined-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={canLeaveLobby(g) ? { label: actionId === g.id ? 'Leaving...' : 'Leave', onClick: () => leaveOpenGame(g) } : { label: 'Spot locked', onClick: () => undefined }} />)
           )}
           {!loading && section === 'games' && view === 'manage' && (
             gamesManage.length === 0
-              ? <Empty text="Games you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
+              ? <Empty text="Plays you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
               : gamesManageFiltered.length === 0
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesManageFiltered.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
@@ -616,10 +616,10 @@ function BookingCard({ b, mineGames, onNavigate, onTogglePublish, busyId, isPast
             disabled={isBusy}
             onClick={(e) => { e.stopPropagation(); onTogglePublish(b); }}
           >
-            {isBusy ? '…' : isPublished ? 'Open Play' : 'Private game'}
+            {isBusy ? '…' : isPublished ? 'Open Play' : 'Private play'}
           </button>
         ) : (
-          <div className={`vis-indicator ${isPublished ? 'public' : 'private'}`}>{isPublished ? 'Open Play' : 'Private game'}</div>
+          <div className={`vis-indicator ${isPublished ? 'public' : 'private'}`}>{isPublished ? 'Open Play' : 'Private play'}</div>
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
           <span style={{

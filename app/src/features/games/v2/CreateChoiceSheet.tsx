@@ -93,14 +93,14 @@ export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'ch
   const pickBooking = (b: ApiBooking) => { close(); onNavigate('create-game', { bookingId: b.id }); };
 
   const subtitle = step === 'choice'
-    ? 'Jump into an open game, or host your own on a court you’ve booked.'
+    ? 'Jump into an open play, or host your own on a court you’ve booked.'
     : 'Pick the court you’ve booked to host your lobby on.';
 
   return (
     <BottomSheet
       open={open}
       onClose={close}
-      title={step === 'choice' ? 'Game on!' : 'Host a lobby'}
+      title={step === 'choice' ? 'Play on!' : 'Host a lobby'}
       subtitle={subtitle}
     >
       <div className="px-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
@@ -109,15 +109,15 @@ export function CreateChoiceSheet({ open, onClose, onNavigate, initialStep = 'ch
             <ChoiceCard
               icon="groups"
               tone="lime"
-              title="Join a game"
-              desc="Browse open games near you and grab a spot."
+              title="Join a play"
+              desc="Browse open plays near you and grab a spot."
               onClick={goJoin}
             />
             <ChoiceCard
               icon="plus"
               tone="primary"
               title="Host a lobby"
-              desc="Open a game on a court you’ve booked."
+              desc="Open a play on a court you’ve booked."
               onClick={goHost}
             />
           </div>
