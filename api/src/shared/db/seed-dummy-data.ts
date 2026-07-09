@@ -505,11 +505,19 @@ async function seed() {
   );
 
   await ensure(UserRole, 'userroles', () => {
-    // one extra role per distinct user (compound-unique on userId+role+scope)
-    const roles = ['player', 'coach', 'owner', 'organizer', 'moderator', 'contributor'];
-    return Array.from({ length: Math.min(N, users.length) }, (_, i) => ({
-      userId: users[i]!._id, role: pick(roles), scopeType: 'global', isPrimary: chance(0.5),
-    }));
+    // Per-venue partner grants: seed a few coach & organizer grants scoped to
+    // real venues so the Partners surface + badges aren't empty in dev. Only
+    // the first few users get them; the rest stay plain players.
+    const rows: any[] = [];
+    const venueIds = (venues as any[]).map((v: any) => v._id);
+    for (let i = 0; i < Math.min(4, users.length); i++) {
+      const role = i % 2 === 0 ? 'coach' : 'organizer';
+      const venueId = venueIds[i % venueIds.length];
+      if (venueId) {
+        rows.push({ userId: users[i]!._id, role, scopeType: 'venue', scopeId: venueId, isPrimary: false });
+      }
+    }
+    return rows;
   });
 
   await ensure(EmailVerificationToken, 'emailverificationtokens', () =>
@@ -586,6 +594,22 @@ async function seed() {
       };
     }),
   );
+
+  /* ── Rental Inventory (6 sample items for the first owner) ─────── */
+  const { RentalInventoryItem } = await import('../../features/rental-inventory/rental-inventory.model.js');
+  const ownerUser = users.find((u: any) => u.roleDefault === 'owner') ?? users[0]!;
+  const sampleVenue = venues[0];
+  await ensure(RentalInventoryItem, 'rentalinventoryitems', () => {
+    const now = new Date();
+    return [
+      { ownerId: ownerUser._id, venueId: sampleVenue?._id ?? null, name: 'Selkirk Amped S2', brand: 'Selkirk', sku: 'PAD-SEL-001', category: 'paddle', rentalPricePerHour: 150, totalStock: 12, availableStock: 7, rentedCount: 5, lowStockThreshold: 3, condition: 'excellent', status: 'partially_rented', createdAt: now, updatedAt: now },
+      { ownerId: ownerUser._id, venueId: sampleVenue?._id ?? null, name: 'Engage Encore Pro', brand: 'Engage', sku: 'PAD-ENG-002', category: 'paddle', rentalPricePerHour: 180, totalStock: 8, availableStock: 3, rentedCount: 5, lowStockThreshold: 3, condition: 'excellent', status: 'partially_rented', createdAt: now, updatedAt: now },
+      { ownerId: ownerUser._id, venueId: null, name: 'Franklin X-40 Outdoor', brand: 'Franklin', sku: 'BAL-FRA-003', category: 'ball', rentalPricePerHour: 30, totalStock: 60, availableStock: 38, rentedCount: 22, lowStockThreshold: 10, condition: 'good', status: 'partially_rented', createdAt: now, updatedAt: now },
+      { ownerId: ownerUser._id, venueId: null, name: 'Dura Fast 40', brand: 'Dura', sku: 'BAL-DUR-004', category: 'ball', rentalPricePerHour: 30, totalStock: 45, availableStock: 30, rentedCount: 15, lowStockThreshold: 10, condition: 'good', status: 'partially_rented', createdAt: now, updatedAt: now },
+      { ownerId: ownerUser._id, venueId: sampleVenue?._id ?? null, name: 'Pickle Bag Pro', brand: 'VenueOS', sku: 'GEA-VEN-005', category: 'gear', rentalPricePerHour: 80, totalStock: 20, availableStock: 14, rentedCount: 6, lowStockThreshold: 5, condition: 'excellent', status: 'partially_rented', createdAt: now, updatedAt: now },
+      { ownerId: ownerUser._id, venueId: sampleVenue?._id ?? null, name: 'Court Shoes — Court King', brand: 'K-Swiss', sku: 'GEA-KSW-006', category: 'gear', rentalPricePerHour: 120, totalStock: 16, availableStock: 9, rentedCount: 7, lowStockThreshold: 5, condition: 'good', status: 'partially_rented', createdAt: now, updatedAt: now },
+    ];
+  });
 
   /* ── Posts + relations ───────────────────────────────────────── */
   const posts = await ensure(Post, 'posts', () => {

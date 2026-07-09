@@ -140,6 +140,12 @@ src/
                              #   userEvents.ts for realtime chat), unread-count. Gated by
                              #   user.messages.send.
     payments/                # payments.model.ts = Payment + VenuePricing; POST /checkout (test-mode pay)
+    rental-inventory/        # owner-only equipment rental inventory (Shop):
+                             #   RentalInventoryItem model (venueId?/ownerId/name/
+                             #   brand/sku/category/rentalPricePerHour/stock counts/
+                             #   condition/status/isArchived + ecommerce-ready fields),
+                             #   CRUD + soft-delete (archive) + stats + CSV export,
+                             #   all scoped by ownerId; mounted at /api/v1/rental-inventory
     push/                    # Web Push (OS notifications): PushSubscription model + GET /push/public-key
                              #   (VAPID) + POST /push/{subscribe,unsubscribe}. Low-level send lives in
                              #   shared/lib/push.ts (sendPushToUser, VAPID via VAPID_* env); most callers
@@ -210,6 +216,14 @@ src/
                              #   import-real-data.ts  (npm run db:import — drops & reloads CSVs)
                              #   seed.ts, seed-dummy-data.ts, seed-dummy-users.ts,
                              #   generate-courts.ts, assign-venue-owners.ts,
+                             #   assign-two-owners-test-venues.ts (Garrido+Walker
+                             #     each get 20 NCR/CALABARZON venues, 6-12 courts),
+                             #   seed-owner-pricing-overrides.ts (Dink-Lab-style
+                             #     SlotPriceOverrides for those owners' 40 venues),
+                             #   seed-owner-shop-partners.ts (rental inventory +
+                             #     coach/organizer applications for those owners),
+                             #   backfill-user-location-avatars.ts (player lat/lng
+                             #     in Cavite→Manila box + randomuser.me avatars),
                              #   link-owner-venues.ts, download-images.ts, index.ts
     lib/                     # framework-agnostic helpers: jwt.ts, permissions.ts,
                              #   cursor.ts (compound createdAt|_id keyset pagination),

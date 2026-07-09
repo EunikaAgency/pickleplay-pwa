@@ -1256,6 +1256,29 @@
    (translateY(100%)); its upward shadow would otherwise bleed up into the page
    on screens with no bottom bar to cover it (e.g. the club detail). */
 .sheet.open { transform: translateY(0); box-shadow: 0 -8px 40px rgba(0,0,0,0.25); }
+/* On desktop the sheet pops up centered (not a bottom drawer).
+   vh units bypass the transformed .app containing block so vertical
+   centering works; horizontal reuse the base left:0/right:0 + margin:auto.
+   The base .sheet already transitions transform, so the 24px → -50%
+   shift animates smoothly. */
+@media (min-width: 768px) {
+  .sheet {
+    top: 50vh !important;
+    bottom: auto !important;
+    border-radius: 24px;
+    transform: translateY(24px);
+    opacity: 0;
+    max-height: 85dvh;
+    transition:
+      transform .3s cubic-bezier(0.4, 0.0, 0.2, 1),
+      opacity .25s ease;
+  }
+  .sheet.open {
+    transform: translateY(-50%);
+    opacity: 1;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.25);
+  }
+}
 /* Opt-in: animate height changes too, matching the map-sheet's easing/duration
    (the slide transform is preserved). Used by the Nearby filter sheet. */
 .sheet.sheet-anim-height {
@@ -1963,12 +1986,14 @@
 /* Explicit pricing override: the pricing grid is a workspace, not a centered
    reading column. Keep it owner desktop only so mobile still uses bottom nav. */
 @media (min-width: 1024px) {
-  .app[data-role="owner"] .owner-pricing-screen {
+  .app[data-role="owner"] .owner-pricing-screen,
+  .app[data-role="owner"] .owner-calendar-screen {
     padding-left: 32px !important;
     padding-right: 32px !important;
   }
 
-  .app[data-role="owner"] .owner-pricing-screen > .owner-pricing-content {
+  .app[data-role="owner"] .owner-pricing-screen > .owner-pricing-content,
+  .app[data-role="owner"] .owner-calendar-screen > .owner-calendar-content {
     width: 100%;
     max-width: none;
     padding-left: 0 !important;
@@ -1992,12 +2017,22 @@
   flex-direction: column;
   width: var(--sidebar-w);
   flex-shrink: 0;
-  background: var(--surface);
+  /* Brand-tinted panel so it separates from the white content area. */
+  background: linear-gradient(180deg, #dfe4fb 0%, #cdd4f2 100%);
   border-right: 0.5px solid var(--hairline);
   padding: 24px 16px 20px;
   gap: 6px;
   position: relative;
   z-index: 5;
+}
+/* Dark theme: keep the panel tinted but dark, not the light gradient. */
+[data-theme="dark"] .sidebar {
+  background: linear-gradient(180deg, #23272f 0%, #1a1d24 100%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sidebar {
+    background: linear-gradient(180deg, #23272f 0%, #1a1d24 100%);
+  }
 }
 .sidebar .sidebar-brand {
   display: flex;
@@ -2171,6 +2206,314 @@
    let it become scrollable). Overrides the global `.sheet-body { flex: 1 }`. */
 .obook-sheet .sheet-body { flex: 0 1 auto; min-height: 0; }
 
+/* On desktop the booking-detail sheet gets more width and the body doesn't
+   shrink, so the full breakdown is readable without scrolling. */
+@media (min-width: 1024px) {
+  .sheet.obook-sheet { max-width: 600px; width: 600px; left: calc(var(--sidebar-w) + (100vw - var(--sidebar-w) - 600px) / 2); margin-left: 0; max-height: 50dvh; }
+}
+
 /* Membership sheet: same content-hugging body so the sheet shows all plans
    without a forced scroll (it only scrolls if the plans overflow a small screen). */
 .membership-sheet .sheet-body { flex: 0 1 auto; min-height: 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Flowchart page (/flowchart)
+   Scoped under .fc-root — no collision with app chrome.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.fc-root {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100%;
+  background: #fff;
+  color: #1e293b;
+  font-family: 'Nunito Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.fc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  gap: 16px;
+  background: #fff;
+  z-index: 10;
+}
+
+.fc-title {
+  font-family: 'Fredoka', 'Nunito Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.fc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fc-perspective-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  background: #f8fafc;
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 100px;
+}
+.fc-perspective-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0,64,224,0.12);
+}
+
+/* ── Legend ──────────────────────────────────────────────────────────────── */
+.fc-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fc-legend-chip {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .fc-legend { display: none; }
+  .fc-header { padding: 0 16px; }
+  .fc-title { font-size: 17px; }
+}
+
+/* ── Canvas ──────────────────────────────────────────────────────────────── */
+.fc-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #fafaf9;
+  background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+  background-size: 20px 20px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── World transform container ───────────────────────────────────────────── */
+.fc-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+/* ── SVG layer ───────────────────────────────────────────────────────────── */
+.fc-svg-layer {
+  pointer-events: none;
+}
+
+/* ── Edge labels — mini cards sitting on the connector ───────────────────── */
+.fc-edge-labelwrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 34px;
+  pointer-events: none;
+}
+.fc-edge-label {
+  display: inline-block;
+  max-width: 200px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #334155;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9px;
+  padding: 6px 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+  pointer-events: none;
+}
+
+/* ── Connector points (A → … → A jump markers for long edges) ──────────────
+   Clickable: tapping a chip pans the view to its matching letter. */
+.fc-portwrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: inherit;
+}
+.fc-portwrap .fc-edge-label {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.fc-portwrap:hover .fc-port-letter {
+  transform: scale(1.18);
+  box-shadow: 0 2px 8px rgba(0, 64, 224, 0.45);
+}
+.fc-portwrap:hover .fc-edge-label {
+  border-color: #0040e0;
+  color: #0040e0;
+}
+.fc-portwrap-r {
+  flex-direction: row-reverse;
+}
+.fc-port-letter {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0040e0;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 64, 224, 0.3);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+/* ── Node card ───────────────────────────────────────────────────────────── */
+.fc-node {
+  position: absolute;
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  cursor: default;
+  overflow: hidden;
+}
+.fc-node:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  z-index: 5;
+}
+
+.fc-node-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.fc-node-title {
+  font-family: 'Fredoka', 'Nunito Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  flex: 1;
+}
+
+.fc-node-type {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fc-node-module {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.fc-node-desc {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.45;
+}
+
+/* ── Zoom controls ───────────────────────────────────────────────────────── */
+.fc-zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  z-index: 20;
+}
+
+.fc-zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.fc-zoom-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.fc-recenter {
+  width: auto;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.fc-zoom-pct {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .fc-root { font-size: 13px; }
+  .fc-header { height: 50px; padding: 0 12px; }
+  .fc-title { font-size: 16px; }
+  .fc-perspective-select { font-size: 13px; padding: 6px 10px; }
+  .fc-zoom-controls { bottom: 12px; right: 12px; }
+  .fc-node { padding: 8px 10px; border-radius: 10px; }
+}

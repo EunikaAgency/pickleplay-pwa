@@ -92,8 +92,8 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   // Friends
   const friendsLink = linkUrl.match(/^\/friends/);
   if (friendsLink) { onNavigate('friends'); return true; }
-  // Owner bookings inbox (e.g. /owner/bookings?status=pending_approval).
-  const ownerBookings = linkUrl.match(/^\/owner\/bookings(\?.*)?$/);
+  // Owner Reports dashboard (e.g. /owner/reports?status=pending_approval; /owner/bookings is the legacy alias).
+  const ownerBookings = linkUrl.match(/^\/owner\/(?:reports|bookings)(\?.*)?$/);
   if (ownerBookings) {
     const sp = new URLSearchParams(linkUrl.includes('?') ? linkUrl.slice(linkUrl.indexOf('?')) : '');
     onNavigate('owner-bookings', sp.get('status') ? { status: sp.get('status')! } : {});

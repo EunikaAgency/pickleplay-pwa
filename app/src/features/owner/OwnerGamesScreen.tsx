@@ -39,8 +39,10 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
   const { venues, status, retry, bookings, games, updateBookingRow } = useOwnerDashboard({ withGames: true, withBookings: true, withAnalytics: false });
   const [mode, setMode] = useState<Mode>('schedule');
-  const [dayIdx, setDayIdx] = useState(0);
+  // -1 = the "All" tile (every upcoming day) — the default view.
+  const [dayIdx, setDayIdx] = useState(-1);
   const [venueFilter, setVenueFilter] = useState<string>('all');
+  const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [detail, setDetail] = useState<ApiBooking | null>(null);
   const [toast, setToast] = useState(false);
 
@@ -55,15 +57,21 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
   const today = todayYMD();
   const weekEnd = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 7); return ymd(d); }, []);
 
-  const selISO = CALENDAR[dayIdx].iso;
+  // dayIdx === -1 means "All": every upcoming day, not one strip day.
+  const selISO = dayIdx === -1 ? null : CALENDAR[dayIdx].iso;
   const dayBookings = useMemo(
-    () => (canBookings ? bookings.filter((b) => b.date === selISO && b.status !== 'cancelled' && matchesVenue(b.venueId)).sort((a, b) => (a.startTime || '').localeCompare(b.startTime || '')) : []),
-    [bookings, selISO, canBookings, matchesVenue],
+    () => (canBookings ? bookings
+      .filter((b) => (selISO ? b.date === selISO : (b.date || '') >= today) && b.status !== 'cancelled' && matchesVenue(b.venueId))
+      .sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.startTime || '').localeCompare(b.startTime || '')) : []),
+    [bookings, selISO, today, canBookings, matchesVenue],
   );
-  const dayGames = useMemo(
-    () => games.filter((g) => g.date === selISO && matchesVenue(g.venueId)),
-    [games, selISO, matchesVenue],
-  );
+  // Pending = still needs a decision / payment; Approved = confirmed (cancelled
+  // is already filtered out of dayBookings).
+  const filteredDayBookings = useMemo(() => {
+    if (bookingFilter === 'all') return dayBookings;
+    const isPending = (s?: string | null) => s === 'pending_approval' || s === 'awaiting_payment';
+    return dayBookings.filter((b) => (bookingFilter === 'pending' ? isPending(b.status) : !isPending(b.status)));
+  }, [dayBookings, bookingFilter]);
 
   const upcomingGames = useMemo(
     () => games.filter((g) => (g.date || '') >= today && matchesVenue(g.venueId)),
@@ -113,6 +121,10 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
         {mode === 'schedule' ? (
           <>
             <div className="cal-strip">
+              <button className={`day ${dayIdx === -1 ? 'active' : ''}`} onClick={() => setDayIdx(-1)}>
+                <span className="wd">All</span>
+                <span className="dn"><Icon name="calendar" size={20} /></span>
+              </button>
               {CALENDAR.map((d, i) => (
                 <button key={d.key} className={`day ${dayIdx === i ? 'active' : ''}`} onClick={() => setDayIdx(i)}>
                   <span className="wd">{d.wd}</span>
@@ -121,26 +133,23 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
               ))}
             </div>
 
-            {dayBookings.length === 0 && dayGames.length === 0 ? (
-              <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm">Nothing scheduled on this day.</div>
+            {filteredDayBookings.length === 0 ? (
+              <div className="rounded-xl bg-[var(--surface-2)] px-4 py-3 t-sm">No {bookingFilter} bookings {selISO ? 'on this day' : 'coming up'}.</div>
             ) : (
-              <div className="space-y-4">
-                {dayBookings.length > 0 && (
-                  <section className="space-y-2.5">
-                    <div className="t-eyebrow flex items-center gap-1.5"><Icon name="calendar" size={13} /> Bookings</div>
-                    {dayBookings.map((b) => (
-                      <OwnerBookingRow key={b.id} booking={b} canManage={canBookings} showVenue onChanged={onBookingChanged} onOpen={setDetail} />
-                    ))}
-                  </section>
-                )}
-                {dayGames.length > 0 && (
-                  <section className="space-y-2.5">
-                    <div className="t-eyebrow flex items-center gap-1.5"><Icon name="paddle" size={13} /> Games</div>
-                    {dayGames.map((g) => <OwnerGameCard key={g.id} game={g} onOpen={() => onNavigate('game-details', { id: g.id })} />)}
-                  </section>
-                )}
+              <div className="space-y-2.5 mt-2">
+                <div className="scroll-x flex gap-2">
+                  {([['all', 'All'], ['pending', 'Pending'], ['approved', 'Approved']] as const).map(([f, label]) => (
+                    <Chip key={f} className="chip-tab" selected={bookingFilter === f} onClick={() => setBookingFilter(f)}>{label}</Chip>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-4 lg:gap-3">
+                  {filteredDayBookings.map((b) => (
+                    <OwnerBookingRow key={b.id} booking={b} canManage={canBookings} showVenue onChanged={onBookingChanged} onOpen={setDetail} onNavigate={onNavigate} />
+                  ))}
+                </div>
               </div>
             )}
+
           </>
         ) : (
           <>
@@ -154,7 +163,9 @@ export function OwnerGamesScreen({ onNavigate }: OwnerGamesScreenProps) {
               gameGroups.map((grp) => (
                 <section key={grp.label} className="space-y-2.5">
                   <div className="hd-3">{grp.label}</div>
-                  {grp.items.map((g) => <OwnerGameCard key={g.id} game={g} onOpen={() => onNavigate('game-details', { id: g.id })} />)}
+                  <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-4 lg:gap-3">
+                    {grp.items.map((g) => <OwnerGameCard key={g.id} game={g} onOpen={() => onNavigate('game-details', { id: g.id })} />)}
+                  </div>
                 </section>
               ))
             )}

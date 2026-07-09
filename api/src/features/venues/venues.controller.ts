@@ -17,6 +17,7 @@ import { Coach } from '../coaches/coaches.model.js';
 import { CoachApplication } from '../coach-applications/coach-applications.model.js';
 import { User } from '../auth/auth.model.js';
 import { Booking } from '../bookings/bookings.model.js';
+import { Game } from '../games/games.model.js';
 import { resolveVenueCapacity, freeCourtsByHour, courtFreeHoursWithTurnover, hoursTouched, activeBookingsForDate, expireOverdueBookings, findSlotConflict } from '../bookings/bookings.controller.js';
 import { hasPermission, effectiveOwnerId } from '../../shared/lib/permissions.js';
 import { notifyUser } from '../../shared/lib/notify.js';
@@ -1009,6 +1010,21 @@ export async function deleteCourt(c: any) {
   const court = await Court.findById(courtId);
   if (!court) return c.json({ error: { code: 'NOT_FOUND', message: 'Court not found' } }, 404);
   if (!(await requireVenueOwner(c, court.venueId.toString()))) return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner can delete courts' } }, 403);
+  // Guard: deleting a court that still has bookings would dangle their courtId —
+  // the populate in getVenueBookings then resolves it to null and they surface as
+  // "Unassigned / Venue-wide" on the owner calendar. Block the delete while the
+  // court has any current-or-upcoming (today-or-later) non-cancelled booking, so
+  // the owner reassigns or cancels them first. Past bookings are history and don't
+  // block. (Dates are stored zero-padded YYYY-MM-DD, so a lexical $gte is chronological.)
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = await Booking.countDocuments({
+    courtId,
+    status: { $ne: 'cancelled' },
+    date: { $gte: today },
+  });
+  if (upcoming > 0) {
+    return c.json({ error: { code: 'COURT_HAS_BOOKINGS', message: `This court has ${upcoming} current or upcoming booking${upcoming === 1 ? '' : 's'}. Reassign or cancel ${upcoming === 1 ? 'it' : 'them'} before deleting the court.` } }, 409);
+  }
   await Court.findByIdAndDelete(courtId);
   await recomputeCourtCount(court.venueId);
   return c.json({ data: { message: 'Court deleted' } });
@@ -1506,20 +1522,40 @@ export async function getVenueBookings(c: any) {
     // the most recently *created* bookings are the ones kept.
     .sort({ _id: -1 }).limit(200).lean();
   await expireOverdueBookings(rows);
-  return c.json({ data: rows.map((r: any) => ({
-    ...r,
-    id: r._id,
-    // Flatten the populated booker back to a plain id (the Members tab groups by
-    // it); displayName/avatar are surfaced alongside for the booking card.
-    userId: r.userId?._id ?? r.userId,
-    userName: r.userId?.displayName,
-    userAvatarUrl: r.userId?.avatarUrl,
-    // courtId was populated to a doc above — flatten back to its id and surface
-    // the court's number/name for the booking card.
-    courtId: r.courtId?._id ?? r.courtId,
-    courtNumber: r.courtId?.courtNumber,
-    courtName: r.courtId?.courtName,
-  })) });
+  // For game-type bookings, attach the linked game's type/visibility/title so the
+  // owner calendar can label them (e.g. "Doubles game · public"). One batched
+  // query keyed by the game's bookingId → booking._id.
+  const gameBookingIds = rows.filter((r: any) => r.bookingType === 'game').map((r: any) => r._id);
+  const gameByBooking = new Map<string, any>();
+  if (gameBookingIds.length > 0) {
+    const games = await Game.find({ bookingId: { $in: gameBookingIds } })
+      .select('bookingId gameType visibility title format')
+      .lean<{ bookingId?: any; gameType?: string; visibility?: string; title?: string; format?: string }[]>();
+    for (const g of games) if (g.bookingId) gameByBooking.set(String(g.bookingId), g);
+  }
+  return c.json({ data: rows.map((r: any) => {
+    const g = r.bookingType === 'game' ? gameByBooking.get(String(r._id)) : undefined;
+    return {
+      ...r,
+      id: r._id,
+      // Flatten the populated booker back to a plain id (the Members tab groups by
+      // it); displayName/avatar are surfaced alongside for the booking card.
+      userId: r.userId?._id ?? r.userId,
+      userName: r.userId?.displayName,
+      userAvatarUrl: r.userId?.avatarUrl,
+      // courtId was populated to a doc above — flatten back to its id and surface
+      // the court's number/name for the booking card.
+      courtId: r.courtId?._id ?? r.courtId,
+      courtNumber: r.courtId?.courtNumber,
+      courtName: r.courtId?.courtName,
+      // Game metadata (only present on bookingType 'game').
+      gameType: g?.gameType,
+      gameVisibility: g?.visibility,
+      gameTitle: g?.title,
+      // Competitive format for a public game (bracketing / round_robin / mini_tournament).
+      gameFormat: g?.format,
+    };
+  }) });
 }
 
 // Owner/staff create a booking directly — a 'manual' off-platform reservation

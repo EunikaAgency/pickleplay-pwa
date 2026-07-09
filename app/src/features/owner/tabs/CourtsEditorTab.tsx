@@ -38,7 +38,10 @@ const BALL_TYPES = ['Indoor', 'Outdoor'];
 const toMode = (on: boolean) => on ? 'manual' : 'auto';
 const fromMode = (m?: string | null) => m === 'manual';
 
-function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (c: OwnerCourt) => void; onDeleted: (id: string) => void }) {
+// `flat` renders the editor always-expanded with no collapse header (used when
+// the row is embedded on its own, e.g. inside the court detail popup) — Delete
+// moves into the footer since the header (which normally holds it) is gone.
+export function CourtRow({ court, onSaved, onDeleted, flat = false }: { court: OwnerCourt; onSaved: (c: OwnerCourt) => void; onDeleted: (id: string) => void; flat?: boolean }) {
   const id = entityId(court);
   // The court number is auto-assigned and never edited here — it's only the
   // stable id bookings reference + the fallback label for an unnamed court.
@@ -66,10 +69,13 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
   const [gallery, setGallery] = useState<string[]>(court.galleryImageUrls ?? []);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [busy, setBusy] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
   const [photoStatus, setPhotoStatus] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [photoErr, setPhotoErr] = useState('');
   const [galleryBusy, setGalleryBusy] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // In `flat` mode the editor is always open (no collapse header).
+  const isOpen = flat || expanded;
   // Which tab of the expanded editor is showing. Defaults to the details form;
   // the Hours tab mounts its editor lazily (see below).
   const [tab, setTab] = useState<'info' | 'gallery'>('info');
@@ -152,10 +158,17 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
 
   const remove = async () => {
     setBusy(true);
+    setDeleteErr('');
     try {
       await deleteCourt(id);
       onDeleted(id);
-    } catch {
+    } catch (err) {
+      // The API blocks deleting a court that still has current/upcoming bookings
+      // (409 COURT_HAS_BOOKINGS) so they aren't orphaned — surface that message
+      // instead of silently no-op'ing.
+      setDeleteErr(
+        err instanceof ApiError && err.message ? err.message : 'Could not delete this court. Try again.',
+      );
       setBusy(false);
     }
   };
@@ -186,10 +199,12 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
 
   return (
     <>
-    <div className="card">
+    <div className={flat ? '' : 'card'}>
       {/* Header — always visible; tap to expand the editor (accordion). Uses the
           shared .card style (visible border + shadow) so each court reads as a
-          clearly separate card, matching the "Add a court" card above. */}
+          clearly separate card, matching the "Add a court" card above. Hidden in
+          `flat` mode (the embedding surface provides its own title/close). */}
+      {!flat && (
       <div className="flex items-center">
         <button
           type="button"
@@ -228,9 +243,10 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
           </button>
         )}
       </div>
+      )}
 
-      {expanded && (
-      <div className="px-3 pb-3 pt-3 space-y-3 border-t-[0.5px] border-[var(--hairline)]">
+      {isOpen && (
+      <div className={`pb-3 pt-3 space-y-3 ${flat ? '' : 'px-3 border-t-[0.5px] border-[var(--hairline)]'}`}>
       <Segmented
         options={[
           { value: 'info', label: 'Court Info' },
@@ -456,16 +472,31 @@ function CourtRow({ court, onSaved, onDeleted }: { court: OwnerCourt; onSaved: (
       )}
 
       {/* Card-level Save — shown on any tab whenever there are unsaved changes.
-          (Delete moved to the card header above.) */}
-      {dirty && (
+          (Delete lives in the card header, except in `flat` mode where the header
+          is hidden, so Delete is added to this footer instead.) */}
+      {(dirty || flat) && (
         <div className="flex items-center gap-2 border-t-[0.5px] border-[var(--hairline)] pt-3">
+          {flat && (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={busy}
+              aria-label={`Delete court ${courtNumber}`}
+              className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-2xl text-[13px] font-bold text-[var(--coral)] border-[0.5px] border-[var(--hairline)] hover:border-[var(--coral)] disabled:opacity-50"
+            >
+              <Icon name="trash" size={15} /> {busy ? 'Deleting…' : 'Delete'}
+            </button>
+          )}
           <div className="flex-1" />
-          <button type="button" onClick={save} disabled={status === 'saving'} className="h-10 px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60">
-            {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save'}
-          </button>
+          {dirty && (
+            <button type="button" onClick={save} disabled={status === 'saving'} className="h-10 px-4 rounded-2xl bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60">
+              {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save'}
+            </button>
+          )}
         </div>
       )}
       {status === 'error' && <div className="t-sm text-[var(--coral)] font-bold">Couldn't save. Try again.</div>}
+      {deleteErr && <div role="alert" className="t-sm text-[var(--coral)] font-bold mt-2">{deleteErr}</div>}
       </div>
       )}
     </div>

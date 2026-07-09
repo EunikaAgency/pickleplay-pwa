@@ -37,6 +37,7 @@ import { OwnerSettlementsScreen } from './features/owner/OwnerSettlementsScreen'
 import { SubscriptionPlansScreen } from './features/owner/SubscriptionPlansScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
 import { OwnerFrontDeskScreen } from './features/owner/OwnerFrontDeskScreen';
+import { OwnerManualReservationScreen } from './features/owner/OwnerManualReservationScreen';
 import { OwnerPricingScreen } from './features/owner/OwnerPricingScreen';
 import { OwnerInsightsScreen } from './features/owner/OwnerInsightsScreen';
 import { OwnerGamesScreen } from './features/owner/OwnerGamesScreen';
@@ -44,6 +45,11 @@ import { OwnerNearbyScreen } from './features/owner/OwnerNearbyScreen';
 import { OwnerVenueScreen } from './features/owner/OwnerVenueScreen';
 import { OwnerNewVenueScreen } from './features/owner/OwnerNewVenueScreen';
 import { ClaimVenueScreen } from './features/owner/ClaimVenueScreen';
+import { OwnerShopScreen } from './features/owner/OwnerShopScreen';
+import { OwnerCalendarScreen } from './features/owner/OwnerCalendarScreen';
+import { OwnerPartnersScreen } from './features/owner/OwnerPartnersScreen';
+import { OwnerVenuesScreenV2 } from './features/owner/OwnerVenuesScreenV2';
+import { MembersScreen } from './features/profile/MembersScreen';
 import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
 import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
 import FlowchartPage from './features/flowchart/FlowchartPage';
@@ -68,6 +74,8 @@ import { userHasPermission, type Permission } from './shared/lib/permissions';
 import { useAuthStore } from './shared/lib/authStore';
 import { useNotificationPolling } from './shared/hooks/useNotificationPolling';
 import { useMessagePolling } from './shared/hooks/useMessagePolling';
+import { useInvitePolling } from './shared/hooks/useInvitePolling';
+import { useInviteStore } from './shared/lib/inviteStore';
 import { useRealtimeStream } from './shared/hooks/useRealtimeStream';
 import { useTheme } from './shared/hooks/useTheme';
 import { tabScreens, pathFromScreen, screenFromLocation, deepLinkParent, type Navigate, type Screen, type ScreenId, type TabId } from './shared/lib/navigation';
@@ -114,6 +122,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'claim-venue': 'owner.venues.claim',
   'owner-bookings': 'owner.bookings.manage',
   'owner-front-desk': 'owner.bookings.manage',
+  'owner-manual-reservation': 'owner.bookings.manage',
   'owner-pricing': 'owner.access',
   'owner-insights': 'owner.analytics.view',
   'owner-notifications': 'user.notifications.manage',
@@ -132,6 +141,11 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'organizer-venue-requests': 'organizer.tournaments.manage',
   'admin-claims': 'admin.moderation.manage',
   'open-play-book': 'player.bookings.create',
+  'owner-shop': 'owner.access',
+  'owner-venues-v2': 'owner.access',
+  'owner-calendar': 'owner.bookings.manage',
+  'owner-partners': 'owner.access',
+  'members': 'owner.access',
 };
 
 // Human-readable verb phrases for the guest auth prompt ("You'll need an
@@ -164,6 +178,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'claim-venue': 'claim a venue',
   'owner-bookings': 'see your bookings',
   'owner-front-desk': 'run the front desk',
+  'owner-manual-reservation': 'add a manual reservation',
   'owner-pricing': 'manage venue pricing',
   'owner-insights': 'see your insights',
   'owner-staff': 'manage your staff',
@@ -171,6 +186,11 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-subscription-plans': 'manage subscription plans',
   'admin-claims': 'review venue claims',
   'open-play-book': 'join open play',
+  'owner-shop': 'manage rental inventory',
+  'owner-venues-v2': 'manage your venues',
+  'owner-calendar': 'see your booking calendar',
+  'owner-partners': 'manage your partners',
+  'members': 'manage your members',
 };
 
 function isTabScreen(id: ScreenId): id is TabId {
@@ -245,7 +265,7 @@ function tabForScreen(id: ScreenId): TabId {
   if (id === 'court-details' || id === 'book-court' || id === 'open-play-book') return 'nearby';
   // Owner venue screens live under the "Venues" tab (which itself opens
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
-  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans') return 'nearby';
+  if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans' || id === 'owner-venues-v2' || id === 'owner-calendar' || id === 'owner-partners' || id === 'owner-manual-reservation') return 'nearby';
   if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
   if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
@@ -265,6 +285,9 @@ function AppInner() {
   useNotificationPolling(isLoggedIn);
   // Keep the unread-message badge on the sidebar/tab-bar Messages button live.
   useMessagePolling(isLoggedIn);
+  // Keep the "Invites" FAB badge (pending Open Play invites) live.
+  useInvitePolling(isLoggedIn);
+  const inviteCount = useInviteStore((s) => s.count);
   // Realtime push of new notifications + incoming messages over one SSE stream
   // (the 30s poll above stays as a fallback if the stream drops).
   useRealtimeStream(isLoggedIn);
@@ -277,9 +300,9 @@ function AppInner() {
   // state — the browser owns history now.
   const screen = useCurrentScreen();
   const activeTab = tabForScreen(screen.id);
-  // `owner-venues` is the owner "Venues" tab destination (a tab root), so it
-  // behaves like a tab screen for chrome (bottom nav shown, no forced back).
-  const isTabRoot = isTabScreen(screen.id) || screen.id === 'owner-venues';
+  // `owner-venues`/`owner-venues-v2` is the owner "Venues" tab destination (a tab
+  // root), so it behaves like a tab screen for chrome (bottom nav shown, no forced back).
+  const isTabRoot = isTabScreen(screen.id) || screen.id === 'owner-venues' || screen.id === 'owner-venues-v2';
   const canGoBack = !isTabRoot || historyIndex() > 0;
   // When set, the soft auth-gate sheet is shown; the string is the verb phrase
   // describing the action the guest tried to take ("join this game", …).
@@ -340,10 +363,10 @@ function AppInner() {
       goToLogin();
       return;
     }
-    // Owners' "Venues" tab lives under the owner console (/owner/venues) — the
-    // same venues screen, but a clearer URL than the player-facing /nearby slug.
+    // Owners' "Venues" tab lives under the owner console (/owner/venues/v2) — the
+    // v2 venues screen (new design), not the legacy /nearby or /owner/venues one.
     if (isOwner && tab === 'nearby') {
-      routerNavigate(pathFromScreen({ id: 'owner-venues' }));
+      routerNavigate(pathFromScreen({ id: 'owner-venues-v2' }));
       return;
     }
     routerNavigate(pathFromScreen({ id: tab } as Screen));
@@ -443,6 +466,9 @@ function AppInner() {
   const handleHost = () => {
     navigate('nearby');
   };
+  const handleInvites = () => {
+    navigate('games', { section: 'open-play', view: 'invites' });
+  };
   const canShowCreate = true;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
@@ -458,8 +484,8 @@ function AppInner() {
   // and the universal header back button — bound to the app's absolute history).
   const v2Chrome: V2ScreenChrome = {
     activeTab, onNavigate: navigate, onTabPress: handleTabPress,
-    onCreate: handleCreate, onHost: handleHost, isLoggedIn, requireAuth,
-    onBack: goBack, canGoBack,
+    onCreate: handleCreate, onHost: handleHost, onInvites: handleInvites, isLoggedIn, requireAuth,
+    onBack: goBack, canGoBack, inviteCount,
     tabIds: (canSeeTournaments ? [...tabScreens] : tabScreens.filter((t) => t !== 'tournaments')).filter((t) => t !== 'messages'),
     suppressTabBar: isOrganizer,
   };
@@ -501,6 +527,14 @@ function AppInner() {
         // get the normal browse/join games view.
         if (userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
         return <GamesScreenV2 {...v2Chrome} initialSection={screen.params?.section} initialView={screen.params?.view} />;
+      case 'booking':
+        // Owner "Bookings" tab (ownerTabs in TabBar/Sidebar → /booking) — the
+        // cross-venue bookings + lobbies agenda ("Your courts", default
+        // "Bookings" view). Only owners can reach this tab; a direct URL from a
+        // non-owner falls back to their normal home.
+        return isOwner
+          ? <OwnerGamesScreen onNavigate={navigate} />
+          : playerV2 ? <HomeScreenV2 {...v2Chrome} /> : <OwnerHomeScreen onNavigate={navigate} />;
       case 'tournaments':
         // Player-only surface; owners/admins don't get it (deep-link safety —
         // the tab is already hidden from their nav).
@@ -597,6 +631,8 @@ function AppInner() {
         return <OwnerBookingsScreen initialStatus={screen.params?.status as 'all' | 'pending_approval' | 'confirmed' | 'cancelled' | undefined} onNavigate={navigate} onBack={goBack} />;
       case 'owner-front-desk':
         return <OwnerFrontDeskScreen venueId={screen.params?.venueId} onNavigate={navigate} onBack={goBack} />;
+      case 'owner-manual-reservation':
+        return <OwnerManualReservationScreen venueId={screen.params?.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'owner-pricing':
         return <OwnerPricingScreen onBack={goBack} onNavigate={navigate} />;
       case 'owner-insights':
@@ -616,6 +652,16 @@ function AppInner() {
             onBack={goBack}
           />
         );
+      case 'owner-shop':
+        return <OwnerShopScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-venues-v2':
+        return <OwnerVenuesScreenV2 onNavigate={navigate} onBack={goBack} />;
+      case 'owner-calendar':
+        return <OwnerCalendarScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-partners':
+        return <OwnerPartnersScreen onNavigate={navigate} onBack={goBack} />;
+      case 'members':
+        return <MembersScreen onNavigate={navigate} onBack={goBack} />;
       case 'organizer-hub':
         return <OrganizerHubScreen onNavigate={navigate} onBack={goBack} />;
       case 'organizer-tournaments':
@@ -657,7 +703,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} showTournaments={canSeeTournaments} isOwner={isOwner} isOrganizer={isOrganizer} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} showTournaments={canSeeTournaments} isOwner={isOwner} isOrganizer={isOrganizer} />
       )}
 
       <main className="app-main">{renderScreen()}</main>

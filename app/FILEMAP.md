@@ -117,6 +117,10 @@ src/
                        #   /clubs — name/description/visibility + cover-photo upload
                        #   + member limit). All via the clubs client in api.ts.
     profile/           # Profile, EditProfile, Settings, Notifications, PaymentHistory,
+                       #   MembersScreen (player-facing community dashboard: clubs + venue
+                       #   memberships in a searchable, filterable table with KPI cards,
+                       #   status badges, loading skeletons, and empty state; reachable
+                       #   from ProfileScreenV2's Account section),
                        #   TestEmail (admin tool: send sample transactional emails to preview
                        #   templates in an inbox; gated by admin.access, reachable from Settings)
                        #   (player spend report: KPIs + 6-month BarChart + receipts,
@@ -175,12 +179,21 @@ src/
                        # (match the player MembershipSheet design); versioning:
                        # structural edits (price/billing/benefits) create a new version
                        # so existing subscribers stay on their version until renewal.
+                       # OwnerShop (owner-shop, route /shop, gated by owner.access) —
+                       # rental-inventory management: KPI grid (total/rented/available/
+                       # low-stock), venue filter, category/search, table (desktop) +
+                       # cards (mobile), add/edit via InventoryItemForm, detail via
+                       # InventoryItemDetail, CSV export.
       components/      # BookingLinkShare (copy/share the auto-generated booking link +
+
                        # optional custom slug; rendered on the Overview tab + Listing
                        # editor), AddressAutocomplete (live type-ahead geocode search),
                        # CreateEditPlanSheet (owner creates/edits subscription plans —
                        # name/price/billing-cycle/benefits/status/settings; BottomSheet
                        # matching the player MembershipSheet design).
+                       # InventoryItemForm (add/edit rental inventory item form as a
+                       # BottomSheet — name/SKU/category/price/stock/condition/status),
+                       # InventoryItemDetail (read-only rental item detail as a BottomSheet).
       tabs/            # the OwnerVenue panels: Overview (business dashboard: revenue/bookings/
                        # occupancy KPIs + revenue trend chart), Insights (per-venue segmented
                        # analytics), Bookings (per-venue inbox — Approve a request-to-book →
@@ -512,6 +525,7 @@ src/
 | Owner subscription plans (membership tiers) | `features/owner/SubscriptionPlansScreen.tsx` (`owner-subscription-plans`, from Members tab "Manage Subscription"), `features/owner/components/CreateEditPlanSheet.tsx` (create/edit form), `shared/lib/api.ts` → `listSubscriptionPlans`/`createSubscriptionPlan`/`updateSubscriptionPlan`(versioning)/`deleteSubscriptionPlan`/`duplicateSubscriptionPlan`/`toggleSubscriptionPlan`/`listPublicPlans`/`subscribeToPlan`; player-side: `MembershipSheet.tsx` uses `listPublicPlans` when the owner has active plans (falls back to hardcoded defaults); backed by `SubscriptionPlan`/`SubscriptionPlanVersion`/`VenueSubscription` models in `api/src/features/venues/` |
 | Demand data capture (searches, views, bookings funnel, empty slots) | `shared/hooks/useDemandTracking.ts` (client-side signals); `shared/lib/api.ts` → `recordDemandEvent` / `getVenueDemand` / `getVenueLeakageReport` / `getSuggestedPricing`; owner Demand/Leakage/Insights tabs; backed by `api/src/features/demand/` |
 | Front desk — manual/walk-in booking + slot blocking + today's schedule | `features/owner/OwnerFrontDeskScreen.tsx` (`owner-front-desk`, from OwnerHome quick action); `createVenueBooking` in `shared/lib/api.ts` → `POST /venues/:id/bookings` |
+| Manual reservation (dedicated screen; paints the pricing grid) | `features/owner/OwnerManualReservationScreen.tsx` (`owner-manual-reservation`; desktop 2-col: form + venue's upcoming reservations list). Save = `createVenueBooking({ bookingType: 'manual' })` **and** `createSlotOverride({ price: 0, note: 'Reserved' })` so the hours show green on `OwnerPricingScreen`. Entry: Sidebar item on desktop (≥1024px), owner Profile → Manage row on mobile/tablet (`.mtonly` in `v2.css`). Gated by `owner.bookings.manage` |
 | Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
 | Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |

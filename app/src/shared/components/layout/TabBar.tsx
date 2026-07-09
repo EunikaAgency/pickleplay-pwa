@@ -27,14 +27,14 @@ const tabs: Tab[] = [
   { id: 'clubs',   label: 'Clubs',  icon: 'groups',   iconFill: 'groups_fill' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'messages', label: 'Messages', icon: 'chat' },
-  { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
+  { id: 'profile', label: 'Profile', icon: 'user',     iconFill: 'user_fill' },
 ];
 
 // Owner labels track the owner screen each tab opens (App.tsx): home → the
 // owner dashboard, games → "Your courts", nearby → "Your venues" ops map.
 const ownerTabs: Tab[] = [
   { id: 'home',    label: 'Home',     icon: 'home' },
-  { id: 'games',   label: 'Bookings', icon: 'calendar' },
+  { id: 'booking', label: 'Bookings', icon: 'calendar' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
   { id: 'nearby',  label: 'Venues',   icon: 'map_pin' },
@@ -59,7 +59,7 @@ export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, isO
     <nav className={`tabbar${isOwner || isOrganizer ? ' tabbar--owner' : ''}`} aria-label="Primary navigation">
       {items.map((t) => {
         const isActive = activeTab === t.id;
-        // Guests see the "You" and "Messages" tabs as "Login" — tapping sends them to sign in.
+        // Guests see the "Profile" and "Messages" tabs as "Login" — tapping sends them to sign in.
         const label = (t.id === 'profile' || t.id === 'messages') && !isLoggedIn ? 'Login' : t.label;
         // Owner bar follows the v2.1 design: outline icons + colour/dot for the
         // active tab (no filled-icon swap).

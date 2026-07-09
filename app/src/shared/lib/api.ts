@@ -225,6 +225,8 @@ export interface ApiUser {
   hasOnboarded?: boolean | null;
   preferences?: UserPreferences | null;
   privacySetting?: string | null;
+  /** Per-venue partner badges ("Coach at <venue>", "Organiser at <venue>"). */
+  partnerRoles?: Array<{ role: string; venueId: string; venueName: string }>;
 }
 
 interface AuthTokens {
@@ -264,6 +266,7 @@ export function toAppUser(api: ApiUser): AppUser {
     roleDefault: normalizeRole(api.roleDefault ?? api.role),
     roles,
     permissions: resolveRolePermissions(roles),
+    partnerRoles: api.partnerRoles ?? [],
   };
 }
 
@@ -3860,12 +3863,14 @@ export interface OwnerPartnersKpis {
 export interface OwnerPartnersFeed {
   partners: ApiPartnerApplication[];
   kpis: OwnerPartnersKpis;
+  venues: Array<{ id: string; name: string; slug: string }>;
 }
 
 /** Coach + organizer applications across every venue the owner owns, tagged
- *  `kind`, plus KPI counts (organizer rows arrive once that feature ships). */
-export async function getOwnerPartners(): Promise<OwnerPartnersFeed> {
-  return request<OwnerPartnersFeed>('/api/v1/partners/owner', { auth: true });
+ *  `kind`, plus KPI counts. Pass `venueId` to filter to one venue. */
+export async function getOwnerPartners(venueId?: string): Promise<OwnerPartnersFeed> {
+  const qs = venueId ? `?venueId=${encodeURIComponent(venueId)}` : '';
+  return request<OwnerPartnersFeed>('/api/v1/partners/owner' + qs, { auth: true });
 }
 
 /** Approve a pending coach application at one of the owner's venues. */
@@ -3881,4 +3886,157 @@ export async function rejectCoachApplication(id: string): Promise<{ id: string; 
 /** Remove an approved coach from the venue. */
 export async function removeCoachApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
   return request(`/api/v1/coach-applications/${encodeURIComponent(id)}/remove`, { method: 'PATCH', auth: true });
+}
+
+/** Apply to coach at a venue (player-only gate — requires player.dashboard.access). */
+export async function submitCoachApplication(venueId: string, message?: string): Promise<{ id: string; status: string; venueId: string; createdAt: string }> {
+  return request('/api/v1/coach-applications', { method: 'POST', body: { venueId, message }, auth: true });
+}
+
+/** The current player's coach application for one venue (or null) — drives the Apply button state. */
+export async function getMyCoachApplicationForVenue(venueId: string): Promise<{ id: string; status: string; createdAt: string; decidedAt: string | null } | null> {
+  const res = await rawRequest<{ id: string; status: string; createdAt: string; decidedAt: string | null } | null>(
+    '/api/v1/coach-applications/for-venue/' + encodeURIComponent(venueId), { auth: true },
+  );
+  return res.data ?? null;
+}
+
+/** Withdraw the current player's own pending coach application. */
+export async function cancelCoachApplication(id: string): Promise<{ id: string; cancelled: boolean }> {
+  return request(`/api/v1/coach-applications/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Organizer applications (player ↔ venue owner) ──────────────── */
+
+/** Apply to organise at a venue (player-only gate — requires player.dashboard.access). */
+export async function submitOrganizerApplication(venueId: string, message?: string): Promise<{ id: string; status: string; venueId: string; createdAt: string }> {
+  return request('/api/v1/organizer-applications', { method: 'POST', body: { venueId, message }, auth: true });
+}
+
+/** The current player's own organiser applications, newest first. */
+export async function getMyOrganizerApplications(): Promise<Array<{ id: string; status: string; createdAt: string; decidedAt: string | null; venue: { id: string; name: string; slug: string; location: string; image: string | null } | null }>> {
+  return request('/api/v1/organizer-applications/mine', { auth: true });
+}
+
+/** The current player's organiser application for one venue (or null). */
+export async function getMyOrganizerApplicationForVenue(venueId: string): Promise<{ id: string; status: string; createdAt: string; decidedAt: string | null } | null> {
+  const res = await rawRequest<{ id: string; status: string; createdAt: string; decidedAt: string | null } | null>(
+    '/api/v1/organizer-applications/for-venue/' + encodeURIComponent(venueId), { auth: true },
+  );
+  return res.data ?? null;
+}
+
+/** Withdraw the current player's own pending organiser application. */
+export async function cancelOrganizerApplication(id: string): Promise<{ id: string; cancelled: boolean }> {
+  return request(`/api/v1/organizer-applications/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+/** Approve a pending organiser application at one of the owner's venues. */
+export async function approveOrganizerApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
+  return request(`/api/v1/organizer-applications/${encodeURIComponent(id)}/approve`, { method: 'PATCH', auth: true });
+}
+
+/** Reject a pending organiser application. */
+export async function rejectOrganizerApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
+  return request(`/api/v1/organizer-applications/${encodeURIComponent(id)}/reject`, { method: 'PATCH', auth: true });
+}
+
+/** Remove an approved organiser from the venue. */
+export async function removeOrganizerApplication(id: string): Promise<{ id: string; status: string; decidedAt: string }> {
+  return request(`/api/v1/organizer-applications/${encodeURIComponent(id)}/remove`, { method: 'PATCH', auth: true });
+}
+
+// ── Rental Inventory ────────────────────────────────────────────────────────
+
+export interface ApiRentalInventoryItem {
+  id: string;
+  venueId?: string | null;
+  ownerId: string;
+  name: string;
+  brand?: string;
+  sku: string;
+  category: 'paddle' | 'ball' | 'gear' | 'apparel' | 'other';
+  description?: string;
+  imageUrl?: string;
+  rentalPricePerHour: number;
+  totalStock: number;
+  availableStock: number;
+  rentedCount: number;
+  lowStockThreshold: number;
+  condition: 'excellent' | 'good' | 'fair' | 'needs_repair' | 'retired';
+  status: 'available' | 'partially_rented' | 'fully_rented' | 'maintenance' | 'retired';
+  notes?: string;
+  isArchived: boolean;
+  salePrice?: number | null;
+  isForSale?: boolean;
+  ecommerceEnabled?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RentalInventoryStats {
+  totalStock: number;
+  availableStock: number;
+  rentedCount: number;
+  lowStockCount: number;
+}
+
+export interface RentalInventoryFilters {
+  category?: string;
+  status?: string;
+  search?: string;
+  archived?: boolean;
+  venueId?: string;
+}
+
+export async function listRentalInventory(filters?: RentalInventoryFilters): Promise<ApiRentalInventoryItem[]> {
+  const sp = new URLSearchParams();
+  if (filters?.category) sp.set('category', filters.category);
+  if (filters?.status) sp.set('status', filters.status);
+  if (filters?.search) sp.set('search', filters.search);
+  if (filters?.archived) sp.set('archived', '1');
+  if (filters?.venueId) sp.set('venueId', filters.venueId);
+  const qs = sp.toString();
+  return request<ApiRentalInventoryItem[]>(`/api/v1/rental-inventory${qs ? `?${qs}` : ''}`, { auth: true });
+}
+
+export async function getRentalInventoryItem(id: string): Promise<ApiRentalInventoryItem> {
+  return request<ApiRentalInventoryItem>(`/api/v1/rental-inventory/${encodeURIComponent(id)}`, { auth: true });
+}
+
+export async function createRentalInventoryItem(data: Record<string, unknown>): Promise<ApiRentalInventoryItem> {
+  return request<ApiRentalInventoryItem>('/api/v1/rental-inventory', { method: 'POST', body: JSON.stringify(data), auth: true });
+}
+
+export async function updateRentalInventoryItem(id: string, data: Record<string, unknown>): Promise<ApiRentalInventoryItem> {
+  return request<ApiRentalInventoryItem>(`/api/v1/rental-inventory/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(data), auth: true });
+}
+
+export async function archiveRentalInventoryItem(id: string): Promise<ApiRentalInventoryItem> {
+  return request<ApiRentalInventoryItem>(`/api/v1/rental-inventory/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+export async function getRentalInventoryStats(filters?: { venueId?: string }): Promise<RentalInventoryStats> {
+  const sp = new URLSearchParams();
+  if (filters?.venueId) sp.set('venueId', filters.venueId);
+  const qs = sp.toString();
+  return request<RentalInventoryStats>(`/api/v1/rental-inventory/stats${qs ? `?${qs}` : ''}`, { auth: true });
+}
+
+export async function exportRentalInventoryCsv(filters?: RentalInventoryFilters): Promise<string> {
+  const sp = new URLSearchParams();
+  if (filters?.category) sp.set('category', filters.category);
+  if (filters?.status) sp.set('status', filters.status);
+  if (filters?.search) sp.set('search', filters.search);
+  if (filters?.venueId) sp.set('venueId', filters.venueId);
+  const qs = sp.toString();
+  const url = apiUrl(`/api/v1/rental-inventory/export/csv${qs ? `?${qs}` : ''}`);
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${getAccessToken()}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: 'Export failed' } }));
+    throw err;
+  }
+  return res.text();
 }

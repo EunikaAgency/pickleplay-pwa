@@ -172,8 +172,31 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const openJoinedSessions = useMemo(() => openSessions.filter((s) => openSessionRegs.has(s.id)), [openSessions, openSessionRegs]);
   const openManageGames = useMemo(() => createdOpenGames.filter((g) => isOpenPlayGame(g)), [createdOpenGames]);
 
+  // Hide the "Joined" tab when there's nothing joined yet (after data loads).
+  const hasOpenPlayJoined = openJoinedGames.length > 0 || openJoinedSessions.length > 0;
+  const hasGamesJoined = gamesJoined.length > 0;
+
+  // When the "Joined" tab has nothing to show, redirect to Discover.
+  useEffect(() => {
+    if (loading || view !== 'joined') return;
+    const empty = section === 'open-play'
+      ? (openJoinedGames.length === 0 && openJoinedSessions.length === 0)
+      : gamesJoined.length === 0;
+    if (empty) selectView('discover');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, view, section, openJoinedGames.length, openJoinedSessions.length, gamesJoined.length]);
+
   // Invited games — only the Open Play section has an invites tab
   const openInvitedGames = useMemo(() => invitedGames.filter((g) => isOpenPlayGame(g)), [invitedGames]);
+
+  const hasOpenPlayInvites = openInvitedGames.length > 0;
+
+  // When the "Invites" tab has nothing to show, redirect to Discover.
+  useEffect(() => {
+    if (loading || view !== 'invites') return;
+    if (openInvitedGames.length === 0) selectView('discover');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, view, openInvitedGames.length]);
   // Keep the FAB's invite badge in sync with this screen's live set, so an
   // accept/decline here clears it immediately (not just on the next poll).
   const setInviteCount = useInviteStore((s) => s.setCount);
@@ -337,8 +360,8 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
         <div className="tab-group-row">
           <div className="tab-group" role="tablist" aria-label="Games view">
             {(section === 'open-play'
-              ? (['discover', 'joined', 'invites', 'manage'] as View[])
-              : (['discover', 'joined', 'manage'] as View[])
+              ? (['discover', 'joined', 'invites', 'manage'] as View[]).filter(k => (k !== 'joined' || loading || hasOpenPlayJoined) && (k !== 'invites' || loading || hasOpenPlayInvites))
+              : (['discover', 'joined', 'manage'] as View[]).filter(k => k !== 'joined' || loading || hasGamesJoined)
             ).map((key) => (
                 <button key={key} className={'seg-btn' + (view === key ? ' active' : '')} role="tab" aria-selected={view === key} onClick={() => selectView(key as View)}>
                   {key === 'discover' ? 'Discover' : key === 'joined' ? 'Joined' : key === 'invites' ? (

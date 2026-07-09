@@ -4042,6 +4042,14 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   }
 .pb-v2.v2-profile .settings-item:last-child { border-bottom: none; }
 .pb-v2.v2-profile .settings-item:hover { opacity: 0.75; }
+
+/* Owner Profile rows whose desktop home is the Sidebar (e.g. Manual reservation):
+   show on mobile/tablet, hide on desktop (>=1024px, where the Sidebar appears).
+   The base .settings-item is display:flex at higher specificity than Tailwind's
+   lg:hidden, so this scoped rule is what actually hides them. */
+@media (min-width: 1024px) {
+  .pb-v2.v2-profile .settings-item.mtonly { display: none; }
+}
 .pb-v2.v2-profile .settings-icon {
     width: 40px;
     height: 40px;

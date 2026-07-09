@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Types } from 'mongoose';
 import { Game, GameMessage } from './games.model.js';
 import { Booking } from '../bookings/bookings.model.js';
 import { User } from '../auth/auth.model.js';
@@ -217,13 +218,16 @@ export async function listGames(c: any) {
   const filter: Record<string, any> = {};
 
   if (q.invited) {
-    // "My Invites" = games where the current user is in invitedUserIds.user.
+    // "My Invites" = games where the current user is in invitedUserIds,
+    // matching both the new format ({user, invitedBy}) and the old (raw ObjectId).
+    // Use explicit ObjectId — Mongoose auto-cast doesn't always reach into $or dot-notation paths.
     if (!user) return c.json({ data: [] });
-    filter['invitedUserIds.user'] = user.sub;
+    const uid = new Types.ObjectId(user.sub);
+    filter.$or = [{ 'invitedUserIds.user': uid }, { invitedUserIds: uid }];
   } else if (q.mine) {
-    // "My Games" = games I created OR joined. Requires a signed-in user.
+    // "My Games" = games I created, joined, OR showed interest in (open play).
     if (!user) return c.json({ data: [] });
-    filter.$or = [{ creatorId: user.sub }, { participantIds: user.sub }];
+    filter.$or = [{ creatorId: user.sub }, { participantIds: user.sub }, { interestedUserIds: user.sub }];
     if (q.venueId) filter.venueId = q.venueId;
   } else if (q.creator) {
     filter.creatorId = q.creator;
@@ -605,8 +609,11 @@ export async function inviteToGame(c: any) {
   const game = await Game.findById(id);
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
   const isParticipant = game.participantIds.some((p: any) => String(p) === user.sub);
-  if (String(game.creatorId) !== user.sub && !isParticipant) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Only participants can invite players to this game' } }, 403);
+  // Open Play games use interest, not a roster — interested players can also invite.
+  const isInterested = (game.gameType === 'open' || game.gameType === 'public') &&
+    ((game.interestedUserIds ?? []) as any[]).some((p: any) => String(p) === user.sub);
+  if (String(game.creatorId) !== user.sub && !isParticipant && !isInterested) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only participants or interested players can invite to this game' } }, 403);
   }
   if (game.status === 'cancelled') {
     return c.json({ error: { code: 'CONFLICT', message: "Can't invite to a cancelled game" } }, 409);

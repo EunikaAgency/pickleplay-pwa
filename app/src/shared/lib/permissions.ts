@@ -19,6 +19,11 @@ export const ALL_PERMISSIONS = [
   'owner.tournaments.manage',
   'owner.notifications.view',
   'owner.staff.manage',
+  'owner.inventory.view',
+  'owner.inventory.create',
+  'owner.inventory.update',
+  'owner.inventory.archive',
+  'owner.inventory.export',
   'organizer.access',
   'organizer.games.manage',
   'organizer.events.manage',
@@ -95,6 +100,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.tournaments.manage',
     'owner.notifications.view',
     'owner.staff.manage',
+    'owner.inventory.view',
+    'owner.inventory.create',
+    'owner.inventory.update',
+    'owner.inventory.archive',
+    'owner.inventory.export',
   ],
   // A delegated sub-account an owner (or admin) creates — runs the owner console
   // for ALL of that owner's venues, bookings, and clubs (scoped server-side by
@@ -113,6 +123,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.coaches.manage',
     'owner.tournaments.manage',
     'owner.notifications.view',
+    'owner.inventory.view',
+    'owner.inventory.create',
+    'owner.inventory.update',
+    'owner.inventory.archive',
+    'owner.inventory.export',
   ],
   organizer: [
     ...PLAYER_PERMISSIONS,
@@ -171,6 +186,8 @@ export interface AppUser {
   roleDefault: Role;
   roles: Role[];
   permissions: Permission[];
+  /** Per-venue partner badges ("Coach at <venue>", "Organiser at <venue>"). */
+  partnerRoles: Array<{ role: string; venueId: string; venueName: string }>;
 }
 
 /** First name for greetings; falls back to the first word of displayName.

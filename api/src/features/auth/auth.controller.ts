@@ -1,17 +1,19 @@
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { User, PasswordResetToken, EmailVerificationToken } from './auth.model.js';
+import { User, UserRole, PasswordResetToken, EmailVerificationToken } from './auth.model.js';
 import { Venue, VenueStaff } from '../venues/venues.model.js';
 import { signAccessToken, signRefreshToken, verifyToken } from '../../shared/lib/jwt.js';
 import { resolveRolePermissions } from '../../shared/lib/permissions.js';
 import { getOAuthUrl, exchangeCode, isGmailConfigured, hasValidTokens, sendEmail, getStoredTokens } from '../../shared/lib/gmail.js';
 import { passwordChangedEmail, passwordResetEmail, welcomeEmail } from '../../shared/lib/email-templates.js';
 
-// Public self-registration is limited to these four roles. admin/moderator are
-// assigned only by an existing admin and are intentionally NOT accepted here —
-// the enum rejects them with a 400 before any user is created.
-export const REGISTERABLE_ROLES = ['player', 'coach', 'owner', 'organizer'] as const;
+// Public self-registration is limited to player and owner. Everyone signs up as
+// a player (or an owner); coach and organizer are NOT sign-up roles — they are
+// earned per-venue by applying and being approved by that venue's owner (which
+// grants the role via a UserRole record). admin/moderator remain admin-assigned.
+// The enum rejects anything else with a 400 before any user is created.
+export const REGISTERABLE_ROLES = ['player', 'owner'] as const;
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -61,9 +63,16 @@ const updateProfileSchema = z.object({
   }).optional(),
 });
 
-function getUserRoles(user: { roleDefault?: string | null }) {
+async function getUserRoles(user: { _id: any; roleDefault?: string | null }) {
   const roles = new Set<string>();
   if (user.roleDefault) roles.add(user.roleDefault);
+  // Merge roles granted via per-venue partner applications (coach/organizer at a
+  // venue). The UserRole table stores one row per grant; the unique index on
+  // (userId, role, scopeType, scopeId) prevents duplicates.
+  const grants = await UserRole.find({ userId: user._id }).select('role').lean();
+  for (const g of grants as any[]) {
+    if (g.role) roles.add(g.role);
+  }
   if (!roles.size) roles.add('player');
   return [...roles];
 }
@@ -79,8 +88,27 @@ async function userManagesVenues(userId: any): Promise<boolean> {
 }
 
 async function authUserPayload(user: any) {
-  const roles = getUserRoles(user);
+  const roles = await getUserRoles(user);
   const permissions = resolveRolePermissions(roles);
+  // Build per-venue partner badges from venue-scoped UserRole grants (e.g.
+  // "Coach at Quezon Smash Club"). These are what the app renders as role chips
+  // on the player/owner profile.
+  const venueGrants = (await UserRole.find({
+    userId: user._id,
+    scopeType: 'venue',
+    scopeId: { $exists: true, $ne: null },
+  }).select('role scopeId').lean()) as any[];
+  const venueIds = [...new Set(venueGrants.map((g: any) => g.scopeId?.toString()).filter(Boolean))];
+  const venueRows = venueIds.length
+    ? await Venue.find({ _id: { $in: venueIds } }).select('displayName').lean()
+    : [];
+  const venueById = new Map((venueRows as any[]).map((v: any) => [v._id.toString(), v.displayName]));
+  const partnerRoles = venueGrants.map((g: any) => ({
+    role: g.role,
+    venueId: g.scopeId?.toString(),
+    venueName: venueById.get(g.scopeId?.toString()) || 'Unknown venue',
+  }));
+
   return {
     id: user._id,
     email: user.email,
@@ -92,6 +120,7 @@ async function authUserPayload(user: any) {
     role: user.roleDefault || 'player',
     roles,
     permissions,
+    partnerRoles,
     coachId: user.coachId,
     managedCoachId: user.managedCoachId,
     parentOwnerUserId: user.parentOwnerUserId ?? null,
@@ -121,8 +150,8 @@ async function authUserPayload(user: any) {
   };
 }
 
-function tokenPayloadFor(user: any) {
-  const roles = getUserRoles(user);
+async function tokenPayloadFor(user: any) {
+  const roles = await getUserRoles(user);
   return {
     sub: user._id.toString(),
     email: user.email,
@@ -155,7 +184,7 @@ export async function register(c: any) {
     bio: body.bio || undefined,
     isVerified: false,
   });
-  const tokenPayload = tokenPayloadFor(user);
+  const tokenPayload = await tokenPayloadFor(user);
   const [accessToken, refreshToken] = await Promise.all([
     signAccessToken(tokenPayload), signRefreshToken(tokenPayload),
   ]);
@@ -186,7 +215,7 @@ export async function login(c: any) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'This account has been deactivated' } }, 403);
   }
   await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() });
-  const tokenPayload = tokenPayloadFor(user);
+  const tokenPayload = await tokenPayloadFor(user);
   const [accessToken, refreshToken] = await Promise.all([
     signAccessToken(tokenPayload), signRefreshToken(tokenPayload),
   ]);
@@ -206,7 +235,7 @@ export async function refresh(c: any) {
   if (!user) {
     return c.json({ error: { code: 'UNAUTHORIZED', message: 'User not found' } }, 401);
   }
-  const tokenPayload = tokenPayloadFor(user);
+  const tokenPayload = await tokenPayloadFor(user);
   const [accessToken, refreshToken] = await Promise.all([
     signAccessToken(tokenPayload), signRefreshToken(tokenPayload),
   ]);

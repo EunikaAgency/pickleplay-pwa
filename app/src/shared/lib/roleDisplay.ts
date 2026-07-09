@@ -21,3 +21,22 @@ export function primaryRole(user: AppUser): Role {
   const roles = user.roles?.length ? user.roles : [user.roleDefault];
   return ROLE_RANK.find((r) => roles.includes(r)) ?? 'player';
 }
+
+/** Per-venue partner badge chips — "Coach at Quezon Smash Club", "Organiser at
+ *  Makati Sports Hub". Duplicates (same role + venue) are collapsed. */
+export function partnerBadges(user: AppUser): Array<{ role: string; venueName: string; color: string }> {
+  const seen = new Set<string>();
+  const badges: Array<{ role: string; venueName: string; color: string }> = [];
+  for (const p of user.partnerRoles ?? []) {
+    const key = `${p.role}|${p.venueId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const meta = ROLE_META[p.role as Role];
+    badges.push({
+      role: p.role,
+      venueName: p.venueName,
+      color: meta?.color ?? '#6B7280',
+    });
+  }
+  return badges;
+}

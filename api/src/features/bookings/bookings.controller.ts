@@ -450,6 +450,14 @@ export async function createBooking(c: any) {
     }
   }
 
+  // Service fee is server-authoritative — recompute it from the (already
+  // amount-validated) stored total × the platform fee %, ignoring whatever the
+  // client sent, so a crafted client can't under-report the platform's fee.
+  const storedAmount = typeof body.amount === 'number' ? body.amount : parseFloat(String(body.amount));
+  const { getServiceFeePercent } = await import('../settings/settings.controller.js');
+  const serviceFeePercent = await getServiceFeePercent();
+  const serviceFeeAmount = Math.round((storedAmount || 0) * (serviceFeePercent / 100) * 100) / 100;
+
   const result = await Booking.create({
     userId: user.sub, venueId: body.venueId, courtId: body.courtId || null,
     subUnitIndex: body.subUnitIndex ?? null,
@@ -465,9 +473,10 @@ export async function createBooking(c: any) {
     equipmentRentalAmount: body.equipmentRentalAmount != null
       ? (typeof body.equipmentRentalAmount === 'number' ? body.equipmentRentalAmount : parseFloat(body.equipmentRentalAmount))
       : null,
-    // Payment breakdown (service fee + deposit/full/pay-at-venue).
+    // Payment breakdown (service fee + deposit/full/pay-at-venue). The service fee
+    // is recomputed server-side above (not trusted from the client).
     notes: body.notes || null,
-    serviceFeeAmount: num(body.serviceFeeAmount),
+    serviceFeeAmount,
     paymentOption: body.paymentOption || null,
     amountPaid: num(body.amountPaid),
     balanceDue: num(body.balanceDue),

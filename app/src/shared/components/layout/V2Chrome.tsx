@@ -110,12 +110,26 @@ export function V2TabBar({ activeTab, onTabPress, tabIds = DEFAULT_TAB_ORDER }: 
   );
 }
 
-// The floating green FAB is the "Game On" action. It opens the Games section
-// directly. Booking a venue is still reachable from the Nearby tab.
-export function V2Fab({ onClick, label = 'Game On' }: { onClick: () => void; label?: string }) {
+// The floating green FAB shows pending Open Play invites. It opens the invites
+// view in the Games tab so the user can accept/decline them. Hidden when there
+// are no pending invites.
+export function V2Fab({ onClick, count = 0 }: { onClick: () => void; count?: number }) {
+  const label = count > 0 ? `Invites (${count})` : 'Invites';
   return (
     <button className="v2c-fab" aria-label={label} onClick={onClick}>
-      <span className="v2c-fab-label">Game<br />On</span>
+      {/* Pickleball backdrop — lime ball with holes + a soft highlight. */}
+      <svg className="v2c-fab-ball" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="46" fill="var(--lime)" stroke="#20243A" strokeWidth="3" />
+        <circle cx="36" cy="50" r="2.6" fill="#20243A" opacity=".5" />
+        <circle cx="50" cy="36" r="2.6" fill="#20243A" opacity=".5" />
+        <circle cx="64" cy="50" r="2.6" fill="#20243A" opacity=".5" />
+        <circle cx="50" cy="64" r="2.6" fill="#20243A" opacity=".5" />
+        <ellipse cx="36" cy="33" rx="12" ry="7" fill="#fff" opacity=".35" />
+      </svg>
+      <span className="v2c-fab-label">Invites</span>
+      {count > 0 && (
+        <span className="v2c-fab-badge" aria-hidden="true">{count > 9 ? '9+' : count}</span>
+      )}
     </button>
   );
 }
@@ -128,6 +142,8 @@ export interface V2ScreenChrome {
   onCreate: () => void;
   /** Opens the booking-first Open Play flow for explicit host/create CTAs. */
   onHost: () => void;
+  /** Opens the Open Play invites view (the floating "Invites" FAB target). */
+  onInvites: () => void;
   isLoggedIn: boolean;
   /** Soft auth gate for inline commit actions (join game/club); returns true if allowed. */
   requireAuth: (intent: string) => boolean;
@@ -135,6 +151,8 @@ export interface V2ScreenChrome {
   onBack: () => void;
   /** True when there's a recorded previous screen — drives the header back arrow's visibility. */
   canGoBack: boolean;
+  /** Pending Open Play invites — badges the floating "Invites" FAB when &gt; 0. */
+  inviteCount?: number;
   /** Which bottom-nav tabs to show (role-derived in App — e.g. owners/admins
    *  don't get the player Tournament tab). Defaults to all when omitted. */
   tabIds?: TabId[];
@@ -173,7 +191,7 @@ export function V2Shell({ screen, chrome, onBack, title, hideTabBar, hideFab, hi
     <div className={`pb-v2 ${screen}`}>
       <V2TopNav onNavigate={chrome.onNavigate} isLoggedIn={chrome.isLoggedIn} onBack={back} title={title} />
       <main>{children}</main>
-      {!hideFab && !chrome.suppressTabBar && <V2Fab onClick={chrome.onCreate} />}
+      {!hideFab && !chrome.suppressTabBar && (chrome.inviteCount ?? 0) > 0 && <V2Fab onClick={chrome.onInvites} count={chrome.inviteCount} />}
       {!hideTabBar && !chrome.suppressTabBar && <V2TabBar activeTab={chrome.activeTab} onTabPress={chrome.onTabPress} tabIds={chrome.tabIds} />}
     </div>
   );

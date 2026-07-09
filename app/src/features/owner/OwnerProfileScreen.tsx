@@ -36,11 +36,11 @@ const LogOut = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none
 const Trophy = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>);
 const Shield = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>);
 
-type Row = { key: string; icon: ReactNode; label: string; sub: string; onClick: () => void; badge?: number; danger?: boolean };
+type Row = { key: string; icon: ReactNode; label: string; sub: string; onClick: () => void; badge?: number; danger?: boolean; className?: string };
 
 function SettingsRow({ r }: { r: Row }) {
   return (
-    <li className="settings-item" role="button" tabIndex={0} onClick={r.onClick}
+    <li className={r.className ? 'settings-item ' + r.className : 'settings-item'} role="button" tabIndex={0} onClick={r.onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); r.onClick(); } }}>
       <div className={`settings-icon${r.danger ? ' danger' : ''}`}>{r.icon}</div>
       <div className="settings-label">
@@ -86,8 +86,12 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
 
   const manageRows: Row[] = [
     { key: 'venues', icon: <Storefront />, label: 'My venues', sub: `${venues.length} listed · ${structural.courts} courts`, onClick: () => onNavigate('owner-venues') },
-    ...(canBookings ? [{ key: 'bookings', icon: <CalendarIco />, label: 'Bookings', sub: 'Confirm, decline & review', onClick: () => onNavigate('owner-bookings', {}), badge: pendingCount } as Row] : []),
-    ...(canAnalytics ? [{ key: 'insights', icon: <TrendUp />, label: 'Insights', sub: 'Revenue & occupancy trends', onClick: () => onNavigate('owner-insights') } as Row] : []),
+    { key: 'shop', icon: <Storefront />, label: 'Shop/Rental', sub: 'Rental inventory & equipment', onClick: () => onNavigate('owner-shop') },
+    { key: 'members', icon: <UsersIco />, label: 'Members', sub: 'Your community & memberships', onClick: () => onNavigate('members') },
+    { key: 'calendar', icon: <CalendarIco />, label: 'Calendar', sub: 'Court-by-court booking schedule', onClick: () => onNavigate('owner-calendar'), className: 'sm:hidden' },
+    ...(canBookings ? [{ key: 'manual-reservation', icon: <Plus />, label: 'Manual reservation', sub: 'Record a phone / walk-in booking', onClick: () => onNavigate('owner-manual-reservation', {}), className: 'mtonly' } as Row] : []),
+    { key: 'partners', icon: <UsersIco />, label: 'Partners', sub: 'Coaches & organisers at your venues', onClick: () => onNavigate('owner-partners'), className: 'sm:hidden' },
+    ...(canBookings ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
     ...(canStaff ? [{ key: 'staff', icon: <UsersIco />, label: 'Staff', sub: 'Accounts that manage your venues, bookings & clubs', onClick: () => onNavigate('owner-staff') } as Row] : []),
     ...(canCreate ? [{ key: 'new-venue', icon: <Plus />, label: 'New venue', sub: 'List another court', onClick: () => onNavigate('owner-new-venue') } as Row] : []),
   ];

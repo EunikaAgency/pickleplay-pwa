@@ -4,6 +4,7 @@ import {
   submitCoachApplication,
   getMyCoachApplications,
   getMyApplicationForVenue,
+  cancelCoachApplication,
   getOwnerCoachApplications,
   getVenueCoachApplications,
   approveCoachApplication,
@@ -17,6 +18,7 @@ const coachApplicationsRoutes = new Hono();
 coachApplicationsRoutes.post('/', requireAuth, submitCoachApplication);
 coachApplicationsRoutes.get('/mine', requireAuth, getMyCoachApplications);
 coachApplicationsRoutes.get('/for-venue/:venueId', requireAuth, getMyApplicationForVenue);
+coachApplicationsRoutes.delete('/:id', requireAuth, cancelCoachApplication);
 
 /* ─── Owner side ──────────────────────────────────────────────────── */
 coachApplicationsRoutes.get('/owner', requireAuth, getOwnerCoachApplications);

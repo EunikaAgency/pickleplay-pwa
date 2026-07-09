@@ -9,9 +9,10 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { MembershipSheet } from './MembershipSheet';
 import type { Navigate } from '../../shared/lib/navigation';
-import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
+import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, submitCoachApplication, getMyCoachApplicationForVenue, cancelCoachApplication, submitOrganizerApplication, getMyOrganizerApplicationForVenue, cancelOrganizerApplication, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { userHasPermission } from '../../shared/lib/permissions';
 import { onRealtime } from '../../shared/lib/realtimeBus';
 import {
   indoorLabel, priceRangeLabel, currencySymbol, locationLine, venueAmenities,
@@ -417,6 +418,75 @@ function CourtDetail({
   // raw ref when apiPlans hasn't loaded yet.
   const planByRef = (ref: string | null | undefined) =>
     apiPlans?.find((p) => p.id === ref || p.name === ref);
+
+  // ── Partner applications (become a coach / organiser here) ──────────
+  // Player-only: owners/staff lack player.dashboard.access and never see the
+  // section. Statuses drive the button state (apply → pending → approved).
+  const canApplyPartner = isLoggedIn && userHasPermission(currentUser, 'player.dashboard.access');
+  const [coachApp, setCoachApp] = useState<{ id: string; status: string } | null>(null);
+  const [orgApp, setOrgApp] = useState<{ id: string; status: string } | null>(null);
+  const [applyBusy, setApplyBusy] = useState<'' | 'coach' | 'organizer'>('');
+  useEffect(() => {
+    if (!canApplyPartner) return;
+    let cancelled = false;
+    getMyCoachApplicationForVenue(venue.id)
+      .then((a) => { if (!cancelled) setCoachApp(a ? { id: a.id, status: a.status } : null); })
+      .catch(() => { /* section still renders with Apply enabled */ });
+    getMyOrganizerApplicationForVenue(venue.id)
+      .then((a) => { if (!cancelled) setOrgApp(a ? { id: a.id, status: a.status } : null); })
+      .catch(() => { /* ditto */ });
+    return () => { cancelled = true; };
+  }, [venue.id, canApplyPartner]);
+
+  const applyPartner = async (kind: 'coach' | 'organizer') => {
+    setApplyBusy(kind);
+    try {
+      if (kind === 'coach') {
+        const res = await submitCoachApplication(venue.id);
+        setCoachApp({ id: res.id, status: 'pending' });
+      } else {
+        const res = await submitOrganizerApplication(venue.id);
+        setOrgApp({ id: res.id, status: 'pending' });
+      }
+    } catch (e) {
+      // Already applied (409) — reflect the existing application instead of erroring.
+      if (e instanceof ApiError && e.code === 'CONFLICT') {
+        const refresh = kind === 'coach' ? getMyCoachApplicationForVenue : getMyOrganizerApplicationForVenue;
+        const set = kind === 'coach' ? setCoachApp : setOrgApp;
+        refresh(venue.id).then((a) => set(a ? { id: a.id, status: a.status } : null)).catch(() => {});
+      }
+    } finally {
+      setApplyBusy('');
+    }
+  };
+
+  // Withdraw a pending application (tap the pending row).
+  const cancelPartner = async (kind: 'coach' | 'organizer') => {
+    const app = kind === 'coach' ? coachApp : orgApp;
+    if (!app || app.status !== 'pending') return;
+    if (!window.confirm(`Cancel your ${kind === 'coach' ? 'coach' : 'organiser'} application?`)) return;
+    setApplyBusy(kind);
+    try {
+      if (kind === 'coach') { await cancelCoachApplication(app.id); setCoachApp(null); }
+      else { await cancelOrganizerApplication(app.id); setOrgApp(null); }
+    } catch {
+      // ApiError (already decided / gone) — refresh the real state.
+      const refresh = kind === 'coach' ? getMyCoachApplicationForVenue : getMyOrganizerApplicationForVenue;
+      const set = kind === 'coach' ? setCoachApp : setOrgApp;
+      refresh(venue.id).then((a) => set(a ? { id: a.id, status: a.status } : null)).catch(() => {});
+    } finally {
+      setApplyBusy('');
+    }
+  };
+
+  // Button copy per application status. removed/rejected stay tappable —
+  // the player can re-apply (the API re-opens the same application row) — and
+  // pending stays tappable to CANCEL the application.
+  const partnerReapplySub = (status: string | null) => {
+    if (status === 'rejected') return "Your last application wasn't approved — apply again anytime";
+    if (status === 'removed') return 'Partnership ended — you can re-apply';
+    return null;
+  };
 
   // Best-effort distance: if the device already granted location (or grants it
   // now), show how far the venue is. Silent on denial — it's a nicety.
@@ -1010,6 +1080,66 @@ function CourtDetail({
                   <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />
                 </a>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Partner with this venue — player-only apply entries (coach / organiser).
+            Owners/staff lack player.dashboard.access and never see this. */}
+        {canApplyPartner && (
+          <div className="section p-0!">
+            <div className="section-head px-0">
+              <div>
+                <div className="t-eyebrow">Partner with this venue</div>
+                <div className="hd-2 mt-1">Coach or organise here</div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {([
+                { kind: 'coach' as const, icon: 'school', label: 'Become a coach', sub: 'Run clinics & lessons at this venue', status: coachApp?.status ?? null, noun: 'a coach' },
+                { kind: 'organizer' as const, icon: 'trophy', label: 'Become an organizer', sub: 'Host tournaments & events here', status: orgApp?.status ?? null, noun: 'an organiser' },
+              ]).map((row) => {
+                const isPending = row.status === 'pending';
+                const isApproved = row.status === 'approved';
+                const reapplySub = partnerReapplySub(row.status);
+                const disabled = isApproved || applyBusy !== '';
+                const mainLabel = applyBusy === row.kind
+                  ? (isPending ? 'Cancelling…' : 'Sending application…')
+                  : isPending ? row.label
+                  : isApproved ? `You're ${row.noun} here`
+                  : reapplySub ? 'Apply again'
+                  : row.label;
+                const subLabel = isPending ? 'Application pending — tap to cancel'
+                  : isApproved ? 'Partnership active'
+                  : reapplySub ?? row.sub;
+                return (
+                  <button
+                    key={row.kind}
+                    className="flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)] disabled:opacity-60"
+                    onClick={() => {
+                      if (disabled) return;
+                      if (isPending) { void cancelPartner(row.kind); return; }
+                      void applyPartner(row.kind);
+                    }}
+                    disabled={disabled}
+                  >
+                    <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center">
+                      <Icon name={row.icon} size={15} />
+                    </span>
+                    <span className="min-w-0 text-left">
+                      <span className="block">{mainLabel}</span>
+                      <span className="block text-[12px] font-medium text-[var(--muted)]">{subLabel}</span>
+                    </span>
+                    {isPending && (
+                      <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF3E0] text-[#E65100] border border-[#FFB74D] whitespace-nowrap">Pending</span>
+                    )}
+                    {isApproved && (
+                      <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#81C784] whitespace-nowrap">Approved</span>
+                    )}
+                    {!isPending && !isApproved && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

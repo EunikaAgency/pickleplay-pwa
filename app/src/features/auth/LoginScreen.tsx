@@ -16,24 +16,23 @@ interface LoginScreenProps {
 }
 
 // Roles a new account can pick at sign-up. Mirrors the API's REGISTERABLE_ROLES
-// (player/owner/organizer/coach); admin/moderator are assigned by an admin only.
+// (player/owner only). Coach and organizer are earned per-venue via application +
+// owner approval — not chosen here; admin/moderator are assigned by an admin only.
 const ROLE_OPTIONS: { value: RegisterRole; label: string; icon: string; iconColor: string }[] = [
   { value: 'player',    label: 'Player',    icon: 'paddle',   iconColor: ROLE_META.player.color },
   { value: 'owner',     label: 'Owner',     icon: 'location', iconColor: ROLE_META.owner.color },
-  { value: 'organizer', label: 'Organizer', icon: 'trophy',   iconColor: ROLE_META.organizer.color },
-  { value: 'coach',     label: 'Coach',     icon: 'star',     iconColor: ROLE_META.coach.color },
 ];
 
 // Dev-only one-tap logins, one per role, so any role's surfaces can be reviewed
 // fast. Seeded emails (password123) except admin; re-running the user seed
 // regenerates the random ones — refresh these from web/TEST_CREDENTIALS.txt.
 const TEST_ACCOUNTS: { label: string; email: string; password: string }[] = [
-  { label: 'Player 1',    email: '05fd2f8f.wang@example.com',        password: 'password123' },
-  { label: 'Player 2',    email: '0c37a4ae.carrasco@example.com',    password: 'password123' },
-  { label: 'Owner 1',     email: '037de3f0.gardner@example.com',     password: 'password123' },
-  { label: 'Owner 2',     email: '082126c2.miller@example.com',      password: 'password123' },
-  { label: 'Organizer 1', email: '1a8a7872.martin@example.com',      password: 'password123' },
-  { label: 'Organizer 2', email: '24545751.mckinney@example.com',    password: 'password123' },
+  { label: 'Player 1',    email: '84a3be4a.hernandez@example.com',   password: 'password123' },
+  { label: 'Player 2',    email: '389b0d83.fuentes@example.com',     password: 'password123' },
+  { label: 'Owner 1',     email: 'ccdfa3b7.walker@example.com',      password: 'password123' },
+  { label: 'Owner 2',     email: 'a15e6e3e.garrido@example.com',     password: 'password123' },
+  { label: 'Organizer 1', email: '556b9e79.matthews@example.com',    password: 'password123' },
+  { label: 'Organizer 2', email: '637fa51b.reyes@example.com',       password: 'password123' },
 ];
 
 export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenProps) {

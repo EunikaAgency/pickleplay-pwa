@@ -8,6 +8,8 @@ interface CourtPickerProps {
   /** Optional per-court price label (e.g. "₱250/hr"). The owning screen formats
    *  it so this shared control stays free of currency/feature logic. */
   priceFor?: (court: ApiCourt) => string | undefined;
+  /** Override the responsive column layout (default "grid-cols-2"). */
+  gridClassName?: string;
 }
 
 /** Human label for a court: its name, else "Court <number>". */
@@ -27,9 +29,9 @@ function courtMeta(court: ApiCourt): string {
  * court drives both the time picker's availability and the booking it creates.
  * Presentational: the screen owns fetching the venue's courts and the selection.
  */
-export function CourtPicker({ courts, value, onChange, priceFor }: CourtPickerProps) {
+export function CourtPicker({ courts, value, onChange, priceFor, gridClassName = 'grid-cols-2' }: CourtPickerProps) {
   return (
-    <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Choose a court">
+    <div className={`grid ${gridClassName} gap-2`} role="radiogroup" aria-label="Choose a court">
       {courts.map((court) => {
         const sel = court.id === value;
         const meta = courtMeta(court);

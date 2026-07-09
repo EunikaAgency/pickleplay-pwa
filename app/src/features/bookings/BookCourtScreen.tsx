@@ -38,12 +38,11 @@ interface BookCourtScreenProps {
   onBack: () => void;
 }
 
-type BookingMode = 'public_game' | 'open_play' | 'private_game';
+type BookingMode = 'public_game' | 'open_play';
 
 const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; desc: string }[] = [
-  { value: 'public_game', label: 'Public game', icon: 'globe', desc: 'Book a court, then publish a game players can join.' },
-  { value: 'open_play', label: 'Open play', icon: 'groups', desc: 'Book this court for open-play style drop-ins.' },
-  { value: 'private_game', label: 'Private game', icon: 'lock', desc: 'Reserve the court for your own group.' },
+  { value: 'public_game', label: 'Hosted game', icon: 'globe', desc: 'Book the court, then publish a game with set slots players can join.' },
+  { value: 'open_play', label: 'Open play session', icon: 'groups', desc: 'Book the court for drop-in play — open to everyone, or private for your group.' },
 ];
 
 // ── Open-play game details (step 1 when bookingMode === 'open_play') ──
@@ -83,7 +82,7 @@ function maskCard(card: CheckoutCard): { brand: string; last4: string } | undefi
 export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours: hoursProp, courtId: courtIdProp, intent, onNavigate, onBack }: BookCourtScreenProps) {
   const { trackBookingAttempt, trackBookingCompleted, trackCheckoutStarted, trackCheckoutAbandoned } = useDemandTracking();
   const [step, setStep] = useState(0);
-  const [bookingMode, setBookingMode] = useState<BookingMode>(intent === 'lobby' ? 'public_game' : 'private_game');
+  const [bookingMode, setBookingMode] = useState<BookingMode>(intent === 'lobby' ? 'public_game' : 'open_play');
 
   // Bookable venues (priced only) for the picker. The full directory is pulled
   // only when the picker is actually shown (no deep-linked venue, or the user taps
@@ -123,6 +122,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [playerCount, setPlayerCount] = useState(1);
 
   // Open-play game details (collected in step 1 when bookingMode === 'open_play').
+  // The details step carries an open/private toggle: private = a plain court
+  // reservation for the host's own group — no game is published.
+  const [opPrivate, setOpPrivate] = useState(false);
   const [opSkill, setOpSkill] = useState('3.0–3.5');
   const [opName, setOpName] = useState('');
   const [opDesc, setOpDesc] = useState('');
@@ -385,11 +387,22 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // so the end picker isn't entirely blocked. End resets to empty for the user.
   // Keep the start on a valid hour: prefer the first free + future hour when
   // availability is loaded; otherwise just bump off an already-passed hour today.
+  // A date switch instead re-anchors the start to the new day's EARLIEST free
+  // hour (not just off an invalid one). `anchoredDate` records which date the
+  // start time was picked for; availability nulls out while a new date's check
+  // is in flight, so the anchor only advances when the new data actually lands.
+  const [anchoredDate, setAnchoredDate] = useState(date);
   const prevAvailabilityRef = useRef(availability);
   if (availability !== prevAvailabilityRef.current) {
     prevAvailabilityRef.current = availability;
     const cur = Number(startTime.split(':')[0]);
-    const target = firstFreeHour(cur) ?? (cur < minBookableHour && minBookableHour <= 23 ? minBookableHour : null);
+    let target: number | null;
+    if (date !== anchoredDate) {
+      target = availability ? firstFreeHour(0) : null;
+      if (availability) setAnchoredDate(date);
+    } else {
+      target = firstFreeHour(cur) ?? (cur < minBookableHour && minBookableHour <= 23 ? minBookableHour : null);
+    }
     if (target != null && target !== cur) { setStartTime(`${String(target).padStart(2, '0')}:00`); setEndTime(''); }
   }
 
@@ -405,21 +418,17 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     return venues.filter((v) => `${v.displayName} ${locationLine(v)}`.toLowerCase().includes(q));
   }, [venues, query]);
 
-  // Open play AND public game both insert a "game details" step (index 1), so
-  // they're 4-step flows; a plain private booking stays 3 steps.
-  const hasDetailsStep = bookingMode === 'open_play' || bookingMode === 'public_game';
-  const totalSteps = hasDetailsStep ? 4 : 3;
+  // Both modes carry a "details" step (index 1): a hosted game collects
+  // format + slots; an open play session collects session details — or flips
+  // to a plain private reservation via its open/private toggle.
+  // 0=court, 1=details, 2=summary, 3=checkout.
+  const totalSteps = 4;
   const stepTitles = bookingMode === 'open_play'
-    ? ['Court & time', 'Open play details', 'Summary', 'Checkout']
-    : bookingMode === 'public_game'
-    ? ['Court & time', 'Public game details', 'Summary', 'Checkout']
-    : ['Court & time', 'Summary', 'Checkout'];
+    ? ['Court & time', opPrivate ? 'Private game details' : 'Open play details', 'Summary', 'Checkout']
+    : ['Court & time', 'Game details', 'Summary', 'Checkout'];
 
-  // Map the visual step index to the logical step for rendering.
-  // With a details step: 0=court, 1=game details, 2=summary, 3=checkout.
-  // Without (private):   0=court, 1=summary, 2=checkout.
-  const summaryStep = hasDetailsStep ? 2 : 1;
-  const checkoutStep = hasDetailsStep ? 3 : 2;
+  const summaryStep = 2;
+  const checkoutStep = 3;
   const back = () => {
     if (step > 0) {
       // Demand signal: user left checkout without completing.
@@ -494,11 +503,12 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   };
 
   /** Create the game that goes with a confirmed booking, per booking mode
-   *  (open play → interest game, public game → format game, else none). */
+   *  (hosted game → format game; open play → interest game, unless the host
+   *  flipped the session private — a private game publishes nothing). */
   const createGameForMode = (bookingId: string) =>
-    bookingMode === 'open_play' ? createOpenPlayGame(bookingId)
-      : bookingMode === 'public_game' ? createPublicGame(bookingId)
-      : Promise.resolve(null);
+    bookingMode === 'public_game' ? createPublicGame(bookingId)
+      : opPrivate ? Promise.resolve(null)
+      : createOpenPlayGame(bookingId);
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
@@ -549,12 +559,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       // Pay-at-venue: the booking is already confirmed at creation and nothing is
       // charged online, so skip checkout entirely.
       if (payAtVenue) {
-        if (hasDetailsStep) {
-          const game = await createGameForMode(booking.id);
-          setDone({ confirmed: true, bookingId: booking.id, gameId: game?.id ?? null });
-        } else {
-          setDone({ confirmed: true, bookingId: booking.id });
-        }
+        const game = await createGameForMode(booking.id);
+        setDone({ confirmed: true, bookingId: booking.id, gameId: game?.id ?? null });
         trackBookingCompleted(selected.id, courtId || undefined);
         return;
       }
@@ -568,7 +574,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       const confirmed = result.booking?.status === 'confirmed';
       const bookingId = result.booking?.id ?? booking.id;
       let gameId: string | null = null;
-      if (hasDetailsStep && confirmed) {
+      if (confirmed) {
         const game = await createGameForMode(bookingId);
         gameId = game?.id ?? null;
       }
@@ -643,10 +649,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     // Open play + public game create their game inline during the booking flow, so
     // the confirmation offers to view the live game (interest board / lobby).
     const isPublic = bookingMode === 'public_game';
-    const gameDone = hasDetailsStep && done.confirmed && !!done.gameId;
+    const gameDone = done.confirmed && !!done.gameId;
     const viewGameAction = gameDone
       ? [{
-          label: isPublic ? 'View public game' : 'View open play',
+          label: isPublic ? 'View your game' : 'View open play',
           variant: 'dark' as const,
           onClick: () => (isPublic
             ? onNavigate('game-details', { id: done.gameId! }, { replace: true })
@@ -657,14 +663,14 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       <CompletionScreen
         icon={done.confirmed ? 'check' : 'clock'}
         title={
-          gameDone ? (isPublic ? 'Public game created!' : 'Open play created!')
+          gameDone ? (isPublic ? 'Game created!' : 'Open play created!')
             : done.confirmed ? 'Booking confirmed!'
             : 'Booking requested'
         }
         description={
           gameDone
             ? (isPublic
-              ? 'Your court is booked and your public game is live. Players can join up to your slot cap.'
+              ? 'Your court is booked and your game is live. Players can join up to your slot cap.'
               : 'Your court is booked and your open play is live. Players can show interest now.')
             : done.confirmed
             ? 'Your court is booked. You can see it under My bookings.'
@@ -704,7 +710,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         <>
           <div className="field">
             <div className="lbl">Booking type</div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {BOOKING_MODE_OPTIONS.map((opt) => {
                 const active = bookingMode === opt.value;
                 return (
@@ -996,72 +1002,90 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         </>
       )}
 
-      {/* ─── Step 1 (open play): game details ──────────────────── */}
+      {/* ─── Step 1 (open play): open/private toggle + game details ── */}
       {bookingMode === 'open_play' && step === 1 && (
         <>
           <div className="field">
-            <div className="lbl">Skill level</div>
-          </div>
-          <div className="time-grid">
-            {SKILLS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`time-pick ${opSkill === s ? 'active' : ''}`}
-                onClick={() => setOpSkill(s)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          <div className="field mt-4">
-            <div className="lbl">Vibe</div>
+            <div className="lbl">Who can join</div>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" className={`time-pick ${gameVibe === 'casual' ? 'active' : ''}`} onClick={() => setGameVibe('casual')}>😎 Casual</button>
-              <button type="button" className={`time-pick ${gameVibe === 'competitive' ? 'active' : ''}`} onClick={() => setGameVibe('competitive')}>🔥 Competitive</button>
+              <button type="button" className={`time-pick ${!opPrivate ? 'active' : ''}`} onClick={() => setOpPrivate(false)}>🌐 Open play</button>
+              <button type="button" className={`time-pick ${opPrivate ? 'active' : ''}`} onClick={() => setOpPrivate(true)}>🔒 Private game</button>
             </div>
           </div>
 
-          <div className="field">
-            <div className="lbl">Aiming for · {opTarget} players</div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
-                <button type="button" aria-label="Lower target" onClick={() => setOpTarget((n) => Math.max(2, n - 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget <= 2}>
-                  <Icon name="minus" size={18} />
-                </button>
-                <div className="w-12 text-center font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums">{opTarget}</div>
-                <button type="button" aria-label="Raise target" onClick={() => setOpTarget((n) => Math.min(64, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget >= 64}>
-                  <Icon name="plus" size={18} />
-                </button>
+          {opPrivate ? (
+            <div className="field">
+              <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] px-4 py-3.5 text-[13px] font-semibold text-[var(--muted)]">
+                The court is reserved for your own group — nothing is published and other players can't join.
               </div>
-              <div className="text-[12px] font-semibold text-[var(--muted)]">A goal, not a cap — anyone can still show interest.</div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="field">
+                <div className="lbl">Skill level</div>
+              </div>
+              <div className="time-grid">
+                {SKILLS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`time-pick ${opSkill === s ? 'active' : ''}`}
+                    onClick={() => setOpSkill(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
 
-          <div className="field mt-4">
-            <div className="lbl">Game name (optional)</div>
-            <input
-              className="control"
-              placeholder="e.g. Friday Night Dinks"
-              value={opName}
-              onChange={(e) => setOpName(e.target.value)}
-              maxLength={120}
-            />
-          </div>
+              <div className="field mt-4">
+                <div className="lbl">Vibe</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" className={`time-pick ${gameVibe === 'casual' ? 'active' : ''}`} onClick={() => setGameVibe('casual')}>😎 Casual</button>
+                  <button type="button" className={`time-pick ${gameVibe === 'competitive' ? 'active' : ''}`} onClick={() => setGameVibe('competitive')}>🔥 Competitive</button>
+                </div>
+              </div>
 
-          <div className="field">
-            <div className="lbl">Description (optional)</div>
-            <textarea
-              className="control"
-              placeholder="Tell players what to expect — rules, vibe, what to bring…"
-              value={opDesc}
-              onChange={(e) => setOpDesc(e.target.value)}
-              maxLength={500}
-              rows={3}
-            />
-            <div className="text-[11px] font-semibold text-[var(--muted)] mt-1 text-right">{opDesc.length} / 500</div>
-          </div>
+              <div className="field">
+                <div className="lbl">Aiming for · {opTarget} players</div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
+                    <button type="button" aria-label="Lower target" onClick={() => setOpTarget((n) => Math.max(2, n - 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget <= 2}>
+                      <Icon name="minus" size={18} />
+                    </button>
+                    <div className="w-12 text-center font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums">{opTarget}</div>
+                    <button type="button" aria-label="Raise target" onClick={() => setOpTarget((n) => Math.min(64, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget >= 64}>
+                      <Icon name="plus" size={18} />
+                    </button>
+                  </div>
+                  <div className="text-[12px] font-semibold text-[var(--muted)]">A goal, not a cap — anyone can still show interest.</div>
+                </div>
+              </div>
+
+              <div className="field mt-4">
+                <div className="lbl">Game name (optional)</div>
+                <input
+                  className="control"
+                  placeholder="e.g. Friday Night Dinks"
+                  value={opName}
+                  onChange={(e) => setOpName(e.target.value)}
+                  maxLength={120}
+                />
+              </div>
+
+              <div className="field">
+                <div className="lbl">Description (optional)</div>
+                <textarea
+                  className="control"
+                  placeholder="Tell players what to expect — rules, vibe, what to bring…"
+                  value={opDesc}
+                  onChange={(e) => setOpDesc(e.target.value)}
+                  maxLength={500}
+                  rows={3}
+                />
+                <div className="text-[11px] font-semibold text-[var(--muted)] mt-1 text-right">{opDesc.length} / 500</div>
+              </div>
+            </>
+          )}
 
           {/* Summary card: court + time recap so the host sees what they're publishing on. */}
           {selected && (
@@ -1218,8 +1242,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           </div>
         )}
 
-        {/* Open-play game recap — shown on the summary step so the host can review. */}
-        {bookingMode === 'open_play' && (
+        {/* Open-play game recap — shown on the summary step so the host can
+            review (a private session publishes nothing, so there's no recap). */}
+        {bookingMode === 'open_play' && !opPrivate && (
           <div className="field">
             <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
               <ReviewRow label="Skill level" value={opSkill} />

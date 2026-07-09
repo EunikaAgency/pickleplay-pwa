@@ -26,13 +26,29 @@ interface SidebarProps {
   canGoBack: boolean;
   /** Open the direct-messages screen (shown only when signed in). */
   onOpenMessages?: () => void;
+  /** Open the standalone owner calendar screen. */
+  onOpenCalendar?: () => void;
+  /** Whether the standalone owner calendar screen is active. */
+  calendarActive?: boolean;
   /** Open the standalone owner pricing screen. */
   onOpenPricing?: () => void;
   /** Whether the standalone owner pricing screen is active. */
   pricingActive?: boolean;
+  /** Open the manual-reservation screen (record a phone / walk-in booking). */
+  onOpenManualReservation?: () => void;
+  /** Whether the manual-reservation screen is active. */
+  manualReservationActive?: boolean;
+  /** Open the standalone owner partners screen. */
+  onOpenPartners?: () => void;
+  /** Whether the standalone owner partners screen is active. */
+  partnersActive?: boolean;
+  /** Open the rental inventory (Shop) screen. */
+  onOpenShop?: () => void;
+  /** Whether the shop screen is active. */
+  shopActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
-  /** Owners get owner-specific labels (Profile instead of You, Venues instead of Nearby, etc.). */
+  /** Owners get owner-specific labels (Venues instead of Nearby, Bookings instead of Games, etc.). */
   isOwner?: boolean;
   /** Organizers get organizer-specific labels (Organize instead of Today, etc.). */
   isOrganizer?: boolean;
@@ -51,18 +67,18 @@ const tabs: SideTab[] = [
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'clubs',   label: 'Clubs',  icon: 'groups' },
-  { id: 'profile', label: 'You',    icon: 'user',     iconFill: 'user_fill' },
+  // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
 // Owner labels track the owner screen each tab opens (App.tsx): home → the
 // owner dashboard, games → "Bookings", nearby → "Venues" ops map.
 const ownerTabs: SideTab[] = [
   { id: 'home',    label: 'Home',     icon: 'home' },
-  { id: 'games',   label: 'Bookings', icon: 'calendar' },
+  { id: 'booking', label: 'Bookings', icon: 'calendar' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'nearby',  label: 'Venues',   icon: 'map_pin' },
   { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
-  { id: 'profile', label: 'Profile',  icon: 'user' },
+  // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
 // Organizer tabs — the organizer console home lives on the "Organize" tab.
@@ -71,15 +87,18 @@ const organizerTabs: SideTab[] = [
   { id: 'games',   label: 'Games',    icon: 'calendar' },
   { id: 'nearby',  label: 'Nearby',   icon: 'map_pin' },
   { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
-  { id: 'profile', label: 'Profile',  icon: 'user' },
+  // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenPricing, pricingActive = false, showTournaments = true, isOwner = false, isOrganizer = false }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, isOwner = false, isOrganizer = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
   const visibleTabs = roleTabs.filter((t) => t.id !== 'tournaments' || showTournaments);
+  const showOwnerCalendar = userHasPermission(currentUser, 'owner.access') && onOpenCalendar;
   const showOwnerPricing = userHasPermission(currentUser, 'owner.access') && onOpenPricing;
+  const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;
+  const showOwnerPartners = userHasPermission(currentUser, 'owner.access') && onOpenPartners;
   const footName = currentUser?.displayName ?? 'Guest';
   const footSub = currentUser
     ? currentUser.skillLevel != null
@@ -109,8 +128,8 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
 
       <nav className="flex flex-col gap-1">
         {visibleTabs.map((t) => {
-          const isActive = activeTab === t.id && !(t.id === 'nearby' && pricingActive);
-          // Guests see the "You" tab as "Login" - tapping it sends them to sign in.
+          const isActive = activeTab === t.id && !(t.id === 'nearby' && pricingActive) && !(t.id === 'nearby' && manualReservationActive) && !(t.id === 'profile' && calendarActive) && !(t.id === 'profile' && partnersActive);
+          // Guests see the "Profile" tab as "Login" - tapping it sends them to sign in.
           const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
           return (
             <div key={t.id} className="contents">
@@ -124,6 +143,18 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
                 </span>
                 {label}
               </button>
+              {t.id === 'nearby' && showOwnerCalendar && (
+                <button
+                  className={'side-tab ' + (calendarActive ? 'active' : '')}
+                  onClick={onOpenCalendar}
+                  aria-current={calendarActive ? 'page' : undefined}
+                >
+                  <span className="ico">
+                    <Icon name="calendar" size={20} />
+                  </span>
+                  Calendar
+                </button>
+              )}
               {t.id === 'nearby' && showOwnerPricing && (
                 <button
                   className={`side-tab ${pricingActive ? 'active' : ''}`}
@@ -134,6 +165,30 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
                     <Icon name="bolt" size={20} />
                   </span>
                   Pricing
+                </button>
+              )}
+              {t.id === 'nearby' && showOwnerManualReservation && (
+                <button
+                  className={`side-tab ${manualReservationActive ? 'active' : ''}`}
+                  onClick={onOpenManualReservation}
+                  aria-current={manualReservationActive ? 'page' : undefined}
+                >
+                  <span className="ico">
+                    <Icon name="add" size={20} />
+                  </span>
+                  Reservation
+                </button>
+              )}
+              {t.id === 'nearby' && showOwnerPartners && (
+                <button
+                  className={`side-tab ${partnersActive ? 'active' : ''}`}
+                  onClick={onOpenPartners}
+                  aria-current={partnersActive ? 'page' : undefined}
+                >
+                  <span className="ico">
+                    <Icon name="groups" size={20} />
+                  </span>
+                  Partners
                 </button>
               )}
             </div>
@@ -152,6 +207,30 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
             )}
           </button>
         )}
+        {/* Shop — owner only */}
+        {isOwner && onOpenShop && (
+          <button
+            className={`side-tab ${shopActive ? 'active' : ''}`}
+            onClick={onOpenShop}
+            aria-current={shopActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name="storefront" size={20} />
+            </span>
+            Shop/Rental
+          </button>
+        )}
+        {/* Profile — placed last (very bottom of the nav) for every role. */}
+        <button
+          className={`side-tab ${activeTab === 'profile' && !calendarActive && !partnersActive ? 'active' : ''}`}
+          onClick={() => onTabPress('profile')}
+          aria-current={activeTab === 'profile' && !calendarActive && !partnersActive ? 'page' : undefined}
+        >
+          <span className="ico">
+            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' ? 'user_fill' : 'user'} size={20} />
+          </span>
+          {isLoggedIn ? 'Profile' : 'Login'}
+        </button>
       </nav>
 
       <button className="side-create disabled:cursor-not-allowed disabled:opacity-50" onClick={onCreate} disabled={!canCreate}>

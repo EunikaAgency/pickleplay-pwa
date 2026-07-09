@@ -1,0 +1,594 @@
+<title>PickleBallers — How It Works</title>
+<style>
+  :root{
+    --bg:#F3F6EC; --surface:#FFFFFF; --surface-2:#EDF1E6; --screen:#F2F4EC;
+    --ink:#151B2C; --muted:#69728A; --line:#E2E7D9;
+    --lime:#AEDD1B; --lime-deep:#8FBE00; --lime-ink:#26340A; --lime-soft:#EEF7CE;
+    --amber:#F39A18; --amber-soft:#FCEBCF; --amber-ink:#5A3705;
+    --blue:#3B6FF6; --blue-soft:#E6EDFF; --blue-ink:#12296E;
+    --coral:#FB5A3F; --coral-soft:#FFE6E0; --coral-ink:#6E1808;
+    --shadow:0 14px 30px -18px rgba(20,26,44,.32);
+    --shadow-sm:0 6px 16px -10px rgba(20,26,44,.4);
+    --radius:20px;
+    --disp:800 1em/1.05 "SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;
+    --body:400 1em/1.55 "SF Pro Text",-apple-system,"Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0E121C; --surface:#161C2A; --surface-2:#1E2536; --screen:#111726;
+      --ink:#EDF1F8; --muted:#96A0B6; --line:#28303F;
+      --lime-soft:#243014; --amber-soft:#3A2A10; --blue-soft:#1A2542; --coral-soft:#3A1912;
+      --shadow:0 18px 40px -20px rgba(0,0,0,.7);
+      --shadow-sm:0 8px 20px -12px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E121C; --surface:#161C2A; --surface-2:#1E2536; --screen:#111726;
+    --ink:#EDF1F8; --muted:#96A0B6; --line:#28303F;
+    --lime-soft:#243014; --amber-soft:#3A2A10; --blue-soft:#1A2542; --coral-soft:#3A1912;
+    --shadow:0 18px 40px -20px rgba(0,0,0,.7); --shadow-sm:0 8px 20px -12px rgba(0,0,0,.7);
+  }
+  :root[data-theme="light"]{
+    --bg:#F3F6EC; --surface:#FFFFFF; --surface-2:#EDF1E6; --screen:#F2F4EC;
+    --ink:#151B2C; --muted:#69728A; --line:#E2E7D9;
+    --lime-soft:#EEF7CE; --amber-soft:#FCEBCF; --blue-soft:#E6EDFF; --coral-soft:#FFE6E0;
+    --shadow:0 14px 30px -18px rgba(20,26,44,.32); --shadow-sm:0 6px 16px -10px rgba(20,26,44,.4);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .wrap{
+    background:var(--bg); color:var(--ink); font:var(--body);
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+    padding:clamp(20px,4vw,56px) clamp(14px,4vw,40px) 72px;
+  }
+  .inner{max-width:1080px;margin:0 auto}
+
+  h1,h2,h3{font-family:"SF Pro Display",-apple-system,"Segoe UI",system-ui,sans-serif;text-wrap:balance;margin:0}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+  .mast{
+    background:var(--surface);border:1px solid var(--line);border-radius:26px;
+    padding:clamp(20px,3.5vw,34px);box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+  }
+  .mast::before{
+    content:"";position:absolute;right:-60px;top:-60px;width:230px;height:230px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,var(--lime),transparent 70%);opacity:.35;
+  }
+  .mast .kicker{display:flex;align-items:center;gap:10px}
+  .ball{width:26px;height:26px;border-radius:50%;background:var(--lime);
+    box-shadow:inset -3px -3px 0 rgba(0,0,0,.08);position:relative;flex:0 0 auto}
+  .ball::after{content:"";position:absolute;inset:6px;border-radius:50%;
+    border:1.5px dashed rgba(38,52,10,.55)}
+  .mast h1{font-size:clamp(28px,5.4vw,50px);font-weight:800;letter-spacing:-.02em;margin:16px 0 10px;max-width:16ch}
+  .mast p{margin:0;max-width:60ch;color:var(--muted);font-size:clamp(14px,1.7vw,17px)}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .tag{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;
+    padding:7px 13px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2)}
+  .tag i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .swatch-amber{background:var(--amber)} .swatch-lime{background:var(--lime)}
+  .swatch-blue{background:var(--blue)} .swatch-coral{background:var(--coral)}
+  .howto{margin-top:16px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .howto b{color:var(--ink)}
+
+  .bigpic{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;margin:26px 0 8px}
+  .bp-node{flex:1 1 220px;min-width:200px;background:var(--surface);border:1px solid var(--line);
+    border-radius:18px;padding:18px 18px 16px;box-shadow:var(--shadow-sm);display:flex;gap:13px;align-items:flex-start}
+  .bp-emoji{font-size:26px;line-height:1}
+  .bp-node b{display:block;font-size:15px;margin-bottom:3px}
+  .bp-node span{font-size:12.5px;color:var(--muted);line-height:1.45}
+  .bp-arrow{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:26px;font-weight:800}
+  @media(max-width:640px){.bp-arrow{transform:rotate(90deg);width:100%;height:14px}}
+
+  .journey{margin-top:44px}
+  .j-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;
+    border-left:5px solid var(--accent);padding-left:16px;margin-bottom:6px}
+  .j-head .role{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+    color:#fff;background:var(--accent);padding:5px 10px;border-radius:999px;margin-top:4px;white-space:nowrap}
+  .j-head h2{font-size:clamp(21px,3.2vw,30px);font-weight:800;letter-spacing:-.015em;line-height:1.12}
+  .j-head .breath{font-size:14px;color:var(--muted);margin-top:6px;max-width:64ch}
+  .j-head .breath b{color:var(--ink)}
+  .journey[data-accent="amber"]{--accent:var(--amber)}
+  .journey[data-accent="lime"]{--accent:var(--lime-deep)}
+  .journey[data-accent="blue"]{--accent:var(--blue)}
+
+  .flowwrap{margin-top:22px;overflow-x:auto;overflow-y:hidden;padding:6px 2px 18px;
+    -webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .flow{display:flex;align-items:flex-start;gap:6px;width:max-content;min-width:100%}
+  .step{width:186px;flex:0 0 auto;display:flex;flex-direction:column;gap:10px}
+  .arrow{flex:0 0 auto;align-self:center;margin-top:130px;color:var(--muted);opacity:.75}
+  .arrow svg{display:block}
+  .cap{display:flex;flex-direction:column;gap:3px;padding:0 3px}
+  .cap .num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+    border-radius:7px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;margin-bottom:2px}
+  .journey[data-accent="lime"] .cap .num{color:var(--lime-ink)}
+  .cap b{font-size:13.5px;font-weight:700;line-height:1.2}
+  .cap p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+
+  .phone{width:186px;height:322px;border-radius:26px;background:var(--surface);border:1px solid var(--line);
+    box-shadow:var(--shadow);padding:8px;flex:0 0 auto}
+  .screen{position:relative;height:100%;border-radius:19px;background:var(--screen);
+    overflow:hidden;display:flex;flex-direction:column;padding:12px 11px}
+  .screen::before{content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
+    width:40px;height:4px;border-radius:3px;background:var(--line)}
+  .sc-top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 10px}
+  .sc-top .t{font-size:12px;font-weight:800}
+  .sc-top .av{width:20px;height:20px;border-radius:50%;background:var(--lime)}
+  .sc-eyebrow{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+
+  .m-tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:9px 10px;box-shadow:var(--shadow-sm)}
+  .m-tile+.m-tile{margin-top:7px}
+  .m-tile .lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .m-tile .big{font-size:15px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums}
+  .m-tile .mid{font-size:11.5px;font-weight:700}
+  .m-tile .sub{font-size:10px;color:var(--muted);margin-top:1px}
+
+  .m-btn{border-radius:10px;padding:9px 10px;font-size:11.5px;font-weight:800;text-align:center;border:1px solid transparent}
+  .m-btn.lime{background:var(--lime);color:var(--lime-ink)}
+  .m-btn.blue{background:var(--blue);color:#fff}
+  .m-btn.amber{background:var(--amber);color:#fff}
+  .m-btn.dark{background:var(--ink);color:var(--bg)}
+  .m-btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+  .m-btn.hl{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:2px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .stackbtn{display:flex;flex-direction:column;gap:6px;margin-top:auto}
+
+  .m-field{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-top:6px}
+  .m-field .fl{font-size:8.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  .m-field .fv{font-size:11px;font-weight:600;margin-top:2px}
+  .m-field.pin .fv{color:var(--blue)}
+
+  .m-row{display:flex;align-items:center;gap:7px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-top:7px}
+  .m-row .ico{width:22px;height:22px;border-radius:7px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:12px;flex:0 0 auto}
+  .m-row .rt{font-size:11px;font-weight:700;line-height:1.15}
+  .m-row .rs{font-size:9.5px;color:var(--muted)}
+  .m-row .rr{margin-left:auto;font-size:10.5px;font-weight:800}
+
+  .m-choice{border:1px solid var(--line);border-radius:11px;padding:8px 9px;margin-top:7px;display:flex;gap:8px;align-items:center;background:var(--surface)}
+  .m-choice.on{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+  .m-choice .ce{font-size:14px}
+  .m-choice .ct{font-size:11px;font-weight:800}
+  .m-choice .cd{font-size:9px;opacity:.75;line-height:1.3;margin-top:1px}
+
+  .m-cal{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:9px;margin-top:4px}
+  .m-cal .cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:5px}
+  .m-cal .cd{aspect-ratio:1;border-radius:5px;background:var(--surface-2);font-size:8px;
+    display:flex;align-items:center;justify-content:center;color:var(--muted);position:relative;font-weight:700}
+  .m-cal .cd.sel{background:var(--blue);color:#fff}
+  .m-cal .cd.dot::after{content:"";position:absolute;bottom:2px;width:3px;height:3px;border-radius:50%;background:var(--coral)}
+  .m-caltitle{font-size:10px;font-weight:800;text-align:center}
+  .pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .pill{font-size:9.5px;font-weight:800;padding:5px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+  .pill.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .pill.mut{color:var(--muted);text-decoration:line-through;opacity:.7}
+  .pill.mut b{color:var(--coral);text-decoration:none;font-size:8px;margin-left:3px}
+  .totrow{display:flex;justify-content:space-between;align-items:baseline;margin-top:auto;
+    padding-top:8px;border-top:1px dashed var(--line)}
+  .totrow .tl{font-size:10px;color:var(--muted);font-weight:700}
+  .totrow .tv{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+
+  .m-grid{margin-top:4px}
+  .rulechips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+  .rc{font-size:8.5px;font-weight:800;padding:3px 6px;border-radius:6px;color:#fff;display:inline-flex;gap:4px;align-items:center}
+  .rc i{width:6px;height:6px;border-radius:2px;background:rgba(255,255,255,.85)}
+  .paint{display:grid;grid-template-columns:16px repeat(7,1fr);gap:3px}
+  .paint .hd{font-size:7px;color:var(--muted);text-align:center;font-weight:700}
+  .paint .rl{font-size:7px;color:var(--muted);display:flex;align-items:center;font-weight:700}
+  .cell{aspect-ratio:1;border-radius:3px;background:var(--surface-2)}
+  .cell.a{background:var(--amber)} .cell.p{background:#8b5cf6} .cell.n{background:#3f6383}
+  .cell.g{background:#22c55e} .cell.e{background:#f59e0b}
+
+  .result{display:flex;flex-direction:column;gap:6px;margin-top:auto}
+  .result .rline{display:flex;gap:8px;align-items:center;font-size:11px;font-weight:700}
+  .result .rline .rk{width:20px;height:20px;border-radius:6px;background:var(--lime-soft);
+    display:flex;align-items:center;justify-content:center;font-size:11px}
+
+  /* ---------- fork cards (2-up now) ---------- */
+  .fork{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px}
+  @media(max-width:580px){.fork{grid-template-columns:1fr}}
+  .oc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);
+    border-top:4px solid var(--oc)}
+  .oc[data-c="hosted"]{--oc:var(--lime-deep)} .oc[data-c="openplay"]{--oc:var(--blue)}
+  .oc .oh{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .oc .oe{font-size:20px}
+  .oc .otag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--oc)}
+  .oc b{font-size:15px;display:block;margin-bottom:5px}
+  .oc p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
+
+  /* detail-step fork: open vs private inside open play */
+  .detail-fork{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .dfork{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;background:var(--surface)}
+  .dfork.on{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+  .dfork b{display:block;font-size:11px;margin-bottom:3px}
+  .dfork p{margin:0;font-size:9px;opacity:.7;line-height:1.35}
+
+  .note{margin-top:22px;background:var(--coral-soft);border:1px solid color-mix(in srgb,var(--coral) 30%,transparent);
+    border-radius:14px;padding:15px 17px;display:flex;gap:12px;align-items:flex-start}
+  .note .ne{font-size:20px;flex:0 0 auto}
+  .note .nt{font-size:13px;line-height:1.5}
+  .note .nt b{color:var(--ink)}
+
+  .recap{margin-top:52px;background:var(--surface);border:1px solid var(--line);border-radius:22px;
+    padding:clamp(20px,3vw,32px);box-shadow:var(--shadow-sm)}
+  .recap h2{font-size:22px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px}
+  .recap .rsub{font-size:13.5px;color:var(--muted);margin-bottom:20px}
+  .rgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+  .rcard{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--bg)}
+  .rcard .rh{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .rcard .rh i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .rcard .rh b{font-size:13.5px}
+  .rcard ol{margin:0;padding-left:18px;font-size:12.5px;color:var(--muted);line-height:1.6}
+  .rcard ol b{color:var(--ink);font-weight:700}
+
+  .foot{margin-top:32px;text-align:center;font-size:12px;color:var(--muted)}
+  .foot .ball{display:inline-block;vertical-align:middle;margin-right:6px;width:16px;height:16px}
+  .foot .ball::after{inset:3px}
+
+  @media (prefers-reduced-motion:no-preference){
+    .step .phone{transition:transform .2s ease}
+    .step:hover .phone{transform:translateY(-4px)}
+  }
+  a:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:6px}
+</style>
+
+<div class="wrap">
+<div class="inner">
+
+  <!-- ============ MASTHEAD ============ -->
+  <header class="mast">
+    <div class="kicker">
+      <span class="ball" aria-hidden="true"></span>
+      <span class="eyebrow">PickleBallers · Visual guide</span>
+    </div>
+    <h1>How the app works, one screen at a time.</h1>
+    <p>Four short journeys — follow the phones left to right. Each phone is a screen; each arrow is a tap. No jargon, no scrolling walls of text.</p>
+    <div class="legend" role="list">
+      <span class="tag" role="listitem"><i class="swatch-amber"></i>Owner — sets up courts &amp; prices</span>
+      <span class="tag" role="listitem"><i class="swatch-lime"></i>Player — plays &amp; joins</span>
+      <span class="tag" role="listitem"><i class="swatch-blue"></i>Booking a court</span>
+      <span class="tag" role="listitem"><i class="swatch-coral"></i>Pay / needs attention</span>
+    </div>
+    <p class="howto">📱 <span><b>Read it like a comic strip.</b> Phone → arrow → next phone. Rows scroll sideways on small screens.</span></p>
+  </header>
+
+  <!-- ============ BIG PICTURE ============ -->
+  <div class="bigpic" aria-label="The big picture">
+    <div class="bp-node"><span class="bp-emoji">🏟️</span><div><b>Owner lists a court</b><span>Adds a venue and paints in the prices for each hour.</span></div></div>
+    <div class="bp-arrow" aria-hidden="true">→</div>
+    <div class="bp-node"><span class="bp-emoji">🎾</span><div><b>Player books or joins</b><span>Reserves a court, or hops into a game other people started.</span></div></div>
+    <div class="bp-arrow" aria-hidden="true">→</div>
+    <div class="bp-node"><span class="bp-emoji">🏓</span><div><b>Everybody plays</b><span>Confirmed booking, a lobby chat, and they show up to play.</span></div></div>
+  </div>
+
+  <!-- ============ JOURNEY A — OWNER ============ -->
+  <section class="journey" data-accent="amber">
+    <div class="j-head">
+      <span class="role">Owner</span>
+      <div>
+        <h2>List a venue &amp; set the price</h2>
+        <p class="breath"><b>In one breath:</b> add your venue → add a court → open the pricing page and “paint” each hour with a price. Now players can book it.</p>
+      </div>
+    </div>
+
+    <div class="flowwrap">
+      <div class="flow">
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-top"><span class="t">Good morning 👋</span><span class="av"></span></div>
+            <div class="m-tile"><span class="lbl">Revenue today</span><span class="big">₱4,250</span></div>
+            <div class="m-row"><span class="ico">🏟️</span><div><div class="rt">Riverside Courts</div><div class="rs">3 courts · 2 pending</div></div></div>
+            <div class="stackbtn"><div class="m-btn amber hl">+ Add venue</div></div>
+          </div></div>
+          <div class="cap"><span class="num">1</span><b>Owner home</b><p>Your dashboard. Tap <b>Add venue</b> to list a new place.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">New venue</div>
+            <div class="m-field"><div class="fl">Venue name</div><div class="fv">Riverside Courts</div></div>
+            <div class="m-field pin"><div class="fl">Address</div><div class="fv">📍 12 River Rd, Tanza</div></div>
+            <div class="m-field"><div class="fl">Contact</div><div class="fv">0917 555 0134</div></div>
+            <div class="stackbtn"><div class="m-btn amber">Create venue</div></div>
+          </div></div>
+          <div class="cap"><span class="num">2</span><b>Create the venue</b><p>Name, address (drop a map pin), contact. That's it.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Riverside · Courts tab</div>
+            <div class="m-row"><span class="ico">🎾</span><div><div class="rt">Court 1</div><div class="rs">Hard · outdoor</div></div><span class="rr">₱300/hr</span></div>
+            <div class="m-row"><span class="ico">🎾</span><div><div class="rt">Court 2</div><div class="rs">Hard · lighted</div></div><span class="rr">₱300/hr</span></div>
+            <div class="stackbtn"><div class="m-btn ghost">+ Add court</div></div>
+          </div></div>
+          <div class="cap"><span class="num">3</span><b>Add courts</b><p>Give each court a surface and a base hourly rate.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Pricing · paint the week</div>
+            <div class="m-grid">
+              <div class="rulechips">
+                <span class="rc" style="background:#f59e0b"><i></i>Peak ₱350</span>
+                <span class="rc" style="background:#8b5cf6"><i></i>Wknd ₱450</span>
+                <span class="rc" style="background:#3f6383"><i></i>Early ₱150</span>
+              </div>
+              <div class="paint">
+                <span class="hd"></span><span class="hd">6</span><span class="hd">9</span><span class="hd">12</span><span class="hd">3</span><span class="hd">6</span><span class="hd">8</span><span class="hd">10</span>
+                <span class="rl">M</span><span class="cell"></span><span class="cell n"></span><span class="cell"></span><span class="cell"></span><span class="cell a"></span><span class="cell a"></span><span class="cell"></span>
+                <span class="rl">W</span><span class="cell"></span><span class="cell n"></span><span class="cell"></span><span class="cell"></span><span class="cell a"></span><span class="cell a"></span><span class="cell"></span>
+                <span class="rl">F</span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell"></span><span class="cell a"></span><span class="cell a"></span><span class="cell g"></span>
+                <span class="rl">S</span><span class="cell"></span><span class="cell p"></span><span class="cell p"></span><span class="cell p"></span><span class="cell p"></span><span class="cell p"></span><span class="cell"></span>
+              </div>
+            </div>
+            <div class="stackbtn"><div class="m-btn amber hl">Save schedule</div></div>
+          </div></div>
+          <div class="cap"><span class="num">4</span><b>Set the price</b><p>On <b>/owner/pricing</b>, make rules (Peak, Weekend…) and swipe them across the hours. <b>Save</b>.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">You're live</div>
+            <div class="m-tile"><span class="lbl">Riverside Courts</span><span class="mid">Now bookable ✅</span><span class="sub">Prices apply per hour, per court.</span></div>
+            <div class="result">
+              <div class="rline"><span class="rk">🕕</span>Weeknights = ₱350 (Peak)</div>
+              <div class="rline"><span class="rk">🎉</span>Weekends = ₱450 (Prime)</div>
+              <div class="rline"><span class="rk">🌅</span>Early hours = ₱150</div>
+            </div>
+          </div></div>
+          <div class="cap"><span class="num">✓</span><b>Result</b><p>Players see these prices the moment they open your court.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JOURNEY B — BOOK ============ -->
+  <section class="journey" data-accent="blue">
+    <div class="j-head">
+      <span class="role">Player · Book</span>
+      <div>
+        <h2>Book a court — from the homepage</h2>
+        <p class="breath"><b>In one breath:</b> tap <b>Book Court</b> → pick a place on the map → choose a booking type → details → date &amp; time → pay. Two types, two outcomes.</p>
+      </div>
+    </div>
+
+    <div class="flowwrap">
+      <div class="flow">
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-top"><span class="t">Ready to play?</span><span class="av"></span></div>
+            <div class="duo" style="margin-top:4px">
+              <div class="m-btn lime" style="padding:16px 8px">▶ Play</div>
+              <div class="m-btn blue hl" style="padding:16px 8px">📅 Book Court</div>
+            </div>
+            <div class="sc-eyebrow" style="margin-top:12px">Featured today</div>
+            <div class="m-tile"><span class="mid">Sunset Doubles</span><span class="sub">Today · 6:00 PM · Riverside</span></div>
+          </div></div>
+          <div class="cap"><span class="num">1</span><b>Home</b><p>Two big buttons. Tap the blue <b>Book Court</b>.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Map · near you</div>
+            <div class="m-tile" style="background:linear-gradient(135deg,var(--lime-soft),var(--blue-soft));border:none;height:96px;position:relative">
+              <span style="position:absolute;top:20px;left:26px;font-size:18px">📍</span>
+              <span style="position:absolute;top:48px;right:34px;font-size:18px">📍</span>
+              <span style="position:absolute;bottom:14px;left:60px;font-size:14px">🔵</span>
+            </div>
+            <div class="m-row"><span class="ico">🎾</span><div><div class="rt">Riverside Courts</div><div class="rs">1.2 km · from ₱300/hr</div></div></div>
+          </div></div>
+          <div class="cap"><span class="num">2</span><b>Pick a place</b><p>Map of nearby courts. Tap one to open it.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Step 1 · Booking type</div>
+            <div class="m-choice on"><span class="ce">🎾</span><div><span class="ct">Hosted game</span><span class="cd">Publish a game with set slots</span></div></div>
+            <div class="m-choice"><span class="ce">👥</span><div><span class="ct">Open play session</span><span class="cd">Drop-in play — open or private</span></div></div>
+          </div></div>
+          <div class="cap"><span class="num">3</span><b>Choose the type</b><p><b>Hosted game</b> or <b>Open play session</b> — two paths.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <!-- step 4: details (open-play branch shown -- has the private toggle) -->
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Step 2 · Open play details</div>
+            <div style="font-size:8.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Who can join</div>
+            <div class="detail-fork">
+              <div class="dfork on"><b>🌐 Open play</b><p>Session is published — players show interest</p></div>
+              <div class="dfork"><b>🔒 Private game</b><p>Your own group only — nothing published</p></div>
+            </div>
+            <div style="font-size:8.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:7px 0 3px">Vibe</div>
+            <div class="detail-fork" style="margin-top:0">
+              <div class="dfork on"><b>😎 Casual</b></div>
+              <div class="dfork"><b>🔥 Competitive</b></div>
+            </div>
+            <div class="m-field"><div class="fl">Skill level</div><div class="fv">3.0–3.5</div></div>
+          </div></div>
+          <div class="cap"><span class="num">4</span><b>Game details</b><p>Toggle <b>Open play</b> or <b>Private game</b>. Vibe, skill, name.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="m-caltitle">July 2026</div>
+            <div class="m-cal"><div class="cgrid">
+              <span class="cd">7</span><span class="cd sel">8</span><span class="cd">9</span><span class="cd dot">10</span><span class="cd">11</span><span class="cd">12</span><span class="cd">13</span>
+              <span class="cd">14</span><span class="cd">15</span><span class="cd dot">16</span><span class="cd">17</span><span class="cd">18</span><span class="cd">19</span><span class="cd">20</span>
+            </div></div>
+            <div class="pills">
+              <span class="pill on">6 PM</span><span class="pill">7 PM</span><span class="pill mut">8 PM<b>booked</b></span><span class="pill">9 PM</span>
+            </div>
+            <div class="totrow"><span class="tl">2 hrs · Court 1</span><span class="tv">₱700</span></div>
+          </div></div>
+          <div class="cap"><span class="num">5</span><b>Date &amp; time</b><p>Dotted days &amp; “booked” hours are taken. Price updates live.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Review</div>
+            <div class="m-tile"><span class="lbl">Court</span><span class="mid">Riverside · Court 1</span></div>
+            <div class="m-tile"><span class="lbl">When</span><span class="mid">Jul 8 · 6–8 PM</span></div>
+            <div class="m-tile"><span class="lbl">Cancellation</span><span class="sub">Free up to 24h before</span></div>
+            <div class="totrow"><span class="tl">Total + fee</span><span class="tv">₱749</span></div>
+          </div></div>
+          <div class="cap"><span class="num">6</span><b>Review</b><p>Tidy recap: court, time, price, cancellation policy.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Checkout</div>
+            <div class="pills" style="margin-top:0"><span class="pill on">Pay full</span><span class="pill">Deposit</span><span class="pill">At venue</span></div>
+            <div class="m-field"><div class="fl">Card</div><div class="fv">•••• 4242 &nbsp;<span style="color:var(--lime-deep);font-size:9px;font-weight:800">TEST</span></div></div>
+            <div class="stackbtn"><div class="m-btn blue hl">Pay ₱749</div><div style="text-align:center;font-size:10px;color:var(--lime-deep);font-weight:800">✅ Booking confirmed!</div></div>
+          </div></div>
+          <div class="cap"><span class="num">7</span><b>Pay</b><p>Full, deposit, or pay-at-venue. <b>Confirmed</b>.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- fork: what each type becomes (now 2 outcomes) -->
+    <p class="lane-label" style="--accent:var(--blue)">Then, depending on the type and the open/private toggle…</p>
+    <div class="fork">
+      <div class="oc" data-c="hosted">
+        <div class="oh"><span class="oe">🎾</span><span class="otag">Hosted game</span></div>
+        <b>Game posted with a lobby</b>
+        <p>After paying, tap <b>View your game</b>. Others find it and join up to your slot cap; everyone shares a group chat.</p>
+      </div>
+      <div class="oc" data-c="openplay">
+        <div class="oh"><span class="oe">👥</span><span class="otag">Open play session</span></div>
+        <b>Opens as a drop-in <i>or</i> stays private</b>
+        <p>The <b>Who can join</b> toggle decides: <b>🌐 Open play</b> publishes the session for drop-ins; <b>🔒 Private game</b> keeps it as a plain court reservation — nothing is published, nobody else can join.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="ne">⏳</span>
+      <div class="nt"><b>Some venues approve first.</b> If the owner requires it, the last step becomes <b>Request booking</b> — your card is saved but <b>not charged</b>. The owner approves, you get a notification, then you pay within the time window to lock it in.</div>
+    </div>
+  </section>
+
+  <!-- ============ JOURNEY C — JOIN ============ -->
+  <section class="journey" data-accent="lime">
+    <div class="j-head">
+      <span class="role">Player · Join</span>
+      <div>
+        <h2>Join a game or open play — from the homepage</h2>
+        <p class="breath"><b>In one breath:</b> tap <b>Play</b> → land in <b>Games</b> → switch between <b>Events</b> and <b>Open Play</b> → open one → tap <b>Join</b>. No booking, no payment to jump into most sessions.</p>
+      </div>
+    </div>
+
+    <p class="lane-label">A · Join a hosted game</p>
+    <div class="flowwrap">
+      <div class="flow">
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-top"><span class="t">Ready to play?</span><span class="av"></span></div>
+            <div class="duo" style="margin-top:4px">
+              <div class="m-btn lime hl" style="padding:16px 8px">▶ Play</div>
+              <div class="m-btn blue" style="padding:16px 8px">📅 Book Court</div>
+            </div>
+            <div class="sc-eyebrow" style="margin-top:12px">Discover games</div>
+            <div class="m-tile"><span class="mid">3 open near you</span><span class="sub">Tap Play to see them all</span></div>
+          </div></div>
+          <div class="cap"><span class="num">1</span><b>Home</b><p>Tap the green <b>Play</b> button.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Games</div>
+            <div class="pills" style="margin-top:0"><span class="pill on" style="background:var(--lime);color:var(--lime-ink);border-color:var(--lime)">Events</span><span class="pill">Open Play</span></div>
+            <div class="m-row"><span class="ico">🏆</span><div><div class="rt">Sunset Doubles</div><div class="rs">Today 6 PM · 2/4</div></div></div>
+            <div class="m-row"><span class="ico">🎾</span><div><div class="rt">Friday Dinks</div><div class="rs">Fri 7 PM · 3/4</div></div></div>
+          </div></div>
+          <div class="cap"><span class="num">2</span><b>Events tab</b><p>Browse hosted games. Tap one.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Sunset Doubles</div>
+            <div class="m-tile"><span class="mid">Today · 6:00 PM</span><span class="sub">Riverside · Court 2 · Intermediate</span></div>
+            <div class="m-row"><span class="ico">👤</span><div><div class="rt">2 of 4 joined</div><div class="rs">Host: Mia</div></div></div>
+            <div class="stackbtn"><div class="m-btn lime hl">Join game</div></div>
+          </div></div>
+          <div class="cap"><span class="num">3</span><b>Game details</b><p>See who's in, then tap <b>Join</b>.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">You're in 🎉</div>
+            <div class="m-tile"><span class="lbl">Lobby · 3 of 4</span><span class="mid">Sunset Doubles</span><span class="sub">One spot left</span></div>
+            <div class="m-row"><span class="ico">💬</span><div><div class="rt">Group chat</div><div class="rs">"See you at 6!"</div></div></div>
+          </div></div>
+          <div class="cap"><span class="num">✓</span><b>In the lobby</b><p>You join the roster + chat. When it fills, the host is pinged.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="lane-label">B · Join open play</p>
+    <div class="flowwrap">
+      <div class="flow">
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Games</div>
+            <div class="pills" style="margin-top:0"><span class="pill">Events</span><span class="pill on" style="background:var(--lime);color:var(--lime-ink);border-color:var(--lime)">Open Play</span></div>
+            <div class="m-row"><span class="ico">👥</span><div><div class="rt">Morning Social</div><div class="rs">Sat 8 AM · ₱150</div></div></div>
+            <div class="m-row"><span class="ico">👥</span><div><div class="rt">Dink &amp; Drills</div><div class="rs">Sun 9 AM · 6/12</div></div></div>
+          </div></div>
+          <div class="cap"><span class="num">1</span><b>Open Play tab</b><p>From <b>Play</b>, switch to Open Play.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">Morning Social</div>
+            <div class="m-tile"><span class="mid">Sat · 8:00 AM</span><span class="sub">Riverside · All levels · ₱150/head</span></div>
+            <div class="m-row"><span class="ico">👥</span><div><div class="rt">Drop-in session</div><div class="rs">No fixed roster</div></div></div>
+            <div class="stackbtn"><div class="m-btn lime hl">Join open play</div></div>
+          </div></div>
+          <div class="cap"><span class="num">2</span><b>Session details</b><p>Casual, come-as-you-are. Tap <b>Join</b>.</p></div>
+        </div>
+        <div class="arrow" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></svg></div>
+        <div class="step">
+          <div class="phone"><div class="screen">
+            <div class="sc-eyebrow">You're in 🎉</div>
+            <div class="m-tile"><span class="lbl">Saturday 8:00 AM</span><span class="mid">Morning Social</span><span class="sub">Just show up &amp; play</span></div>
+            <div class="result"><div class="rline"><span class="rk">🎾</span>Added to “Joined”</div><div class="rline"><span class="rk">🔔</span>Reminder before it starts</div></div>
+          </div></div>
+          <div class="cap"><span class="num">✓</span><b>Joined</b><p>No lobby to manage — turn up at the time and play.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="background:var(--lime-soft);border-color:color-mix(in srgb,var(--lime-deep) 35%,transparent)">
+      <span class="ne">💌</span>
+      <div class="nt"><b>Got invited?</b> Open Play has an <b>Invites</b> tab — friends can invite you straight to a session, and you just tap <b>Accept</b>.</div>
+    </div>
+  </section>
+
+  <!-- ============ RECAP ============ -->
+  <section class="recap">
+    <h2>The whole thing, in four lines</h2>
+    <p class="rsub">If you remember nothing else, remember this.</p>
+    <div class="rgrid">
+      <div class="rcard">
+        <div class="rh"><i class="swatch-amber"></i><b>Owner setup</b></div>
+        <ol><li><b>Add venue</b> (name + map pin)</li><li><b>Add courts</b> + base rate</li><li><b>Paint prices</b> on /owner/pricing</li><li><b>Save</b> → it's bookable</li></ol>
+      </div>
+      <div class="rcard">
+        <div class="rh"><i class="swatch-blue"></i><b>Book a court</b></div>
+        <ol><li>Home → <b>Book Court</b></li><li>Pick a place → <b>booking type</b></li><li><b>Details</b> (open/private toggle)</li><li>Date, time, <b>pay</b> → confirmed</li></ol>
+      </div>
+      <div class="rcard">
+        <div class="rh"><i class="swatch-lime"></i><b>Join a hosted game</b></div>
+        <ol><li>Home → <b>Play</b></li><li><b>Events</b> tab → open a game</li><li><b>Join</b> the lobby</li><li>Chat + show up</li></ol>
+      </div>
+      <div class="rcard">
+        <div class="rh"><i class="swatch-lime"></i><b>Join open play</b></div>
+        <ol><li>Home → <b>Play</b></li><li><b>Open Play</b> tab → a session</li><li><b>Join</b> (or accept an invite)</li><li>Just show up</li></ol>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot"><span class="ball" aria-hidden="true"></span>PickleBallers — owners fill their courts, players find their game.</p>
+
+</div>
+</div>

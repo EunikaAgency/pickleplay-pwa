@@ -194,6 +194,66 @@ function Row({ r, cols, grid, max, fmtRow, fmtCol }: { r: number; cols: number; 
   );
 }
 
+/* ─── Donut / ring chart (SVG) ────────────────────────────────────── */
+
+export interface DonutSegment {
+  label: string;
+  value: number;
+  /** Any CSS colour — usually a token, e.g. "var(--primary)". */
+  color: string;
+}
+
+interface DonutChartProps {
+  segments: DonutSegment[];
+  size?: number;
+  thickness?: number;
+  /** Big number shown in the middle (defaults to the summed total). */
+  centerValue?: string;
+  centerLabel?: string;
+}
+
+// A dependency-free ring chart for the status breakdown. Arcs are drawn with
+// stroke-dasharray on stacked circles (the SVG is rotated -90° so the first arc
+// starts at 12 o'clock); the hollow centre carries a total.
+export function DonutChart({ segments, size = 168, thickness = 20, centerValue, centerLabel }: DonutChartProps) {
+  const total = segments.reduce((t, s) => t + s.value, 0);
+  const r = (size - thickness) / 2;
+  const circ = 2 * Math.PI * r;
+  let acc = 0;
+  return (
+    <div className="relative mx-auto" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90" role="img" aria-label="Breakdown">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={thickness} />
+        {total > 0 && segments.map((s, i) => {
+          if (s.value <= 0) return null;
+          const len = (s.value / total) * circ;
+          const node = (
+            <circle
+              key={i}
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={thickness}
+              strokeDasharray={`${len.toFixed(2)} ${(circ - len).toFixed(2)}`}
+              strokeDashoffset={(-acc).toFixed(2)}
+            />
+          );
+          acc += len;
+          return node;
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="font-heading font-bold text-[26px] leading-none text-[var(--ink)] tabular-nums">
+          {total > 0 ? (centerValue ?? String(total)) : '—'}
+        </div>
+        {centerLabel && <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)] mt-1">{centerLabel}</div>}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Legend ──────────────────────────────────────────────────────── */
 
 export function ChartLegend({ items }: { items: { label: string; color: string }[] }) {

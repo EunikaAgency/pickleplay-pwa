@@ -24,6 +24,14 @@ function hoursTouched(start: string, end: string): number[] {
 
 export interface VenueAvailabilityState {
   availability: VenueAvailability | null;
+  /** True once availability has loaded for the *current* venue/date/court — i.e. the
+   *  greying predicates can be trusted. Until then the booking flow must not treat a
+   *  slot as free (fail closed), because everything reads as "allowed" while null. */
+  ready: boolean;
+  /** True when the availability fetch *failed* for the current inputs (server/network
+   *  error, not just still-loading). Lets the caller fall back to server enforcement
+   *  instead of trapping the user behind our own outage. */
+  checkFailed: boolean;
   /**
    * Earliest still-bookable hour on the selected date: 0 for a future date, or
    * the next whole hour from now when the date is today (so a slot that has
@@ -47,6 +55,9 @@ export interface VenueAvailabilityState {
    * already-booked or elapsed hour.
    */
   firstFreeHour: (from: number) => number | null;
+  /** Re-fetch availability for the current venue/date/court (same key) — e.g. after a
+   *  server-side slot conflict, to reflect that the slot is now taken. */
+  reload: () => void;
 }
 
 /** Local YYYY-MM-DD for "today" (matches how dates are stored/compared). */
@@ -61,19 +72,26 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
   // previous selection is ignored the instant the inputs change (no stale greying
   // while the next fetch is in flight) — and no synchronous reset in the effect.
   const [loaded, setLoaded] = useState<{ key: string; data: VenueAvailability } | null>(null);
+  // The key whose fetch failed — compared against the current key so a stale
+  // failure from a previous selection never reads as "failed" for the new one.
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  // Manual refetch nonce (reload()) — in the effect deps but NOT the key, so a
+  // reload re-fetches the same venue/date/court without invalidating the guard.
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     if (!venueId || !date) return;
     const key = `${venueId}|${date}|${courtId ?? ''}`;
     let alive = true;
     getVenueAvailability(venueId, date, courtId)
-      .then((a) => { if (alive) setLoaded({ key, data: a }); })
-      .catch(() => { if (alive) setLoaded(null); });
+      .then((a) => { if (alive) { setLoaded({ key, data: a }); setFailedKey((k) => (k === key ? null : k)); } })
+      .catch(() => { if (alive) setFailedKey(key); });
     return () => { alive = false; };
-  }, [venueId, date, courtId]);
+  }, [venueId, date, courtId, nonce]);
 
   const currentKey = venueId && date ? `${venueId}|${date}|${courtId ?? ''}` : '';
   const availability = loaded && loaded.key === currentKey ? loaded.data : null;
+  const checkFailed = currentKey !== '' && failedKey === currentKey && availability == null;
 
   // On today, you can't book an hour that has already begun: the floor is the
   // next whole hour from now (or now's hour exactly on the hour). Future dates
@@ -103,6 +121,8 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
 
   return {
     availability,
+    ready: availability != null,
+    checkFailed,
     minBookableHour,
     isPast: isPastHour,
     // Only meaningful once availability has loaded; before that, nothing is "full".
@@ -115,5 +135,6 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
       (isToday && Number(start.split(':')[0]) < minBookableHour) ||
       (availability != null && hoursTouched(start, end).some(isFull)),
     firstFreeHour,
+    reload: () => setNonce((n) => n + 1),
   };
 }

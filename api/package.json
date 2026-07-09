@@ -5,7 +5,7 @@
   "description": "Pickleballers API — Hono + MongoDB + Mongoose",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "TZ=Asia/Manila tsx watch src/index.ts",
     "db:seed": "tsx src/shared/db/seed.ts",
     "db:seed:users": "tsx src/shared/db/seed-dummy-users.ts",
     "db:seed:dummy": "tsx src/shared/db/seed-dummy-data.ts",

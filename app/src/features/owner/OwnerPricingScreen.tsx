@@ -21,10 +21,12 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = ['12AM', '1AM', '2AM', '3AM', '4AM', '5AM', '6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM', '10PM', '11PM'];
 const COLOR_SWATCHES = ['#f59e0b', '#f97316', '#eab308', '#14b8a6', '#06b6d4', '#3b82f6', '#426383', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#64748b', '#4b5b70'];
-const CLOSED_COLOR = '#94a3b8';
-const CLOSED_TOOL_ID = 'closed';
+const CLOSED_COLOR = '#94a3b8';       // "Clear" — default open, no pricing rule
+const CLEAR_TOOL_ID = 'available';
 const RESERVED_COLOR = '#22c55e';
 const RESERVED_TOOL_ID = 'reserved';
+const MAINTENANCE_COLOR = '#d63c43';  // "Maintenance" — blocked slot (calendar counterpart)
+const MAINTENANCE_TOOL_ID = 'maintenance';
 const SELECTED_VENUE_STORAGE_KEY = 'pb-owner-pricing-selected-venue';
 
 const INITIAL_RULES: PricingRule[] = [
@@ -43,10 +45,13 @@ const blankRule = (): PricingRule => ({
 });
 
 const cellKey = (day: string, hour: string) => `${day}:${hour}`;
+/** Local YYYY-MM-DD — avoids toISOString()'s UTC shift (saves July 7 as July 6 in PH). */
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-function cellLabel(rule: PricingRule | null, isReserved: boolean) {
+function cellLabel(rule: PricingRule | null, isReserved: boolean, isMaintenance: boolean) {
   if (isReserved) return 'Reserved · Paid';
-  return rule ? `${rule.shortName} · ₱${rule.price}` : 'Closed · ₱0';
+  if (isMaintenance) return 'Maintenance · Blocked';
+  return rule ? `${rule.shortName} · ₱${rule.price}` : 'Clear · ₱0';
 }
 
 function peso(n: number) {
@@ -102,28 +107,37 @@ function monthWeekNums(month: string, year: number): number[] {
 }
 
 /** Contiguous time blocks for a single day from painted cells. */
-function dayBlocks(day: string, cells: Record<string, string>, rules: PricingRule[]): { openTime: string; closeTime: string; price: number; ruleId: string }[] {
-  const blocks: { openTime: string; closeTime: string; price: number; ruleId: string }[] = [];
+function dayBlocks(day: string, cells: Record<string, string>, rules: PricingRule[]): { openTime: string; closeTime: string; price: number; ruleId?: string; note?: string }[] {
+  const blocks: { openTime: string; closeTime: string; price: number; ruleId?: string; note?: string }[] = [];
   const ruleMap = new Map(rules.map((r) => [r.id, r]));
-  const ruleForHour = (hour: number) => {
-    const ruleId = cells[cellKey(day, HOURS[hour])];
-    if (!ruleId) return null;
-    const rule = ruleMap.get(ruleId);
-    if (!rule) return null;
-    return { ruleId, price: Number(rule.price) || 0 };
-  };
+  const cellVal = (hour: number) => cells[cellKey(day, HOURS[hour])] ?? '';
   let hour = 0;
   while (hour < 24) {
-    const blockRule = ruleForHour(hour);
-    if (!blockRule) { hour++; continue; }
+    const val = cellVal(hour);
+    if (!val) { hour++; continue; }
+    // Maintenance = red cells, saved with price 0 + note "Maintenance".
+    if (val === MAINTENANCE_TOOL_ID) {
+      let endHour = hour + 1;
+      while (endHour < 24 && cellVal(endHour) === MAINTENANCE_TOOL_ID) endHour++;
+      blocks.push({ openTime: `${String(hour).padStart(2, '0')}:00`, closeTime: `${String(endHour).padStart(2, '0')}:00`, price: 0, note: 'Maintenance' });
+      hour = endHour;
+      continue;
+    }
+    // Reserved — saved with price 0 + note "Reserved".
+    if (val === RESERVED_TOOL_ID) {
+      let endHour = hour + 1;
+      while (endHour < 24 && cellVal(endHour) === RESERVED_TOOL_ID) endHour++;
+      blocks.push({ openTime: `${String(hour).padStart(2, '0')}:00`, closeTime: `${String(endHour).padStart(2, '0')}:00`, price: 0, note: 'Reserved' });
+      hour = endHour;
+      continue;
+    }
+    // Pricing rule
+    const rule = ruleMap.get(val);
+    if (!rule) { hour++; continue; }
+    const price = Number(rule.price) || 0;
     let endHour = hour + 1;
-    while (endHour < 24 && ruleForHour(endHour)?.price === blockRule.price) endHour++;
-    blocks.push({
-      openTime: `${String(hour).padStart(2, '0')}:00`,
-      closeTime: `${String(endHour).padStart(2, '0')}:00`,
-      price: blockRule.price,
-      ruleId: blockRule.ruleId,
-    });
+    while (endHour < 24 && cellVal(endHour) === val) endHour++;
+    blocks.push({ openTime: `${String(hour).padStart(2, '0')}:00`, closeTime: `${String(endHour).padStart(2, '0')}:00`, price, ruleId: val });
     hour = endHour;
   }
   return blocks;
@@ -139,7 +153,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const [rules, setRules] = useState<PricingRule[]>(INITIAL_RULES);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PricingRule>(blankRule());
-  const [activeRuleId, setActiveRuleId] = useState(INITIAL_RULES[0]?.id ?? CLOSED_TOOL_ID);
+  const [activeRuleId, setActiveRuleId] = useState(INITIAL_RULES[0]?.id ?? CLEAR_TOOL_ID);
   // Per‑week painted cells, keyed by the week's Monday date (YYYY‑MM‑DD).
   const [cellsByWeek, setCellsByWeek] = useState<Record<string, Record<string, string>>>({});
   const [month, setMonth] = useState(() => MONTHS[new Date().getMonth()]);
@@ -189,7 +203,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   }, [venue, venues]);
 
   useEffect(() => {
-    if (activeRuleId !== CLOSED_TOOL_ID && activeRuleId !== RESERVED_TOOL_ID && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLOSED_TOOL_ID);
+    const SPECIALS = new Set([CLEAR_TOOL_ID, RESERVED_TOOL_ID, MAINTENANCE_TOOL_ID]);
+    if (!SPECIALS.has(activeRuleId) && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLEAR_TOOL_ID);
   }, [activeRuleId, rules]);
 
   useEffect(() => {
@@ -241,7 +256,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     Promise.all(Array.from({ length: 7 }, (_, d) => {
       const date = new Date(monday);
       date.setDate(monday.getDate() + d);
-      return listSlotOverrides(venue, date.toISOString().slice(0, 10));
+      return listSlotOverrides(venue, ymd(date));
     })).then((results) => {
       if (cancelled) return;
       const updates: Record<string, Record<string, string>> = {};
@@ -259,6 +274,12 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             const startH = parseInt(ov.startTime.slice(0, 2), 10);
             const endH = parseInt(ov.endTime.slice(0, 2), 10);
             if (isNaN(startH) || isNaN(endH)) continue;
+            // Maintenance / Reserved overrides → paint red/green, not pricing rules.
+            if (ov.note === 'Maintenance' || ov.note === 'Reserved') {
+              const toolId = ov.note === 'Reserved' ? RESERVED_TOOL_ID : MAINTENANCE_TOOL_ID;
+              for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = toolId;
+              continue;
+            }
             let rule = rules.find((r) => Number(r.price) === ov.price) ?? newRuleMap.get(ov.price);
             if (!rule) {
               ruleIdx++;
@@ -293,8 +314,10 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
   const paintCellKey = (key: string, toolId = activeRuleId) => {
     const sk = scopeKey;
-    if (toolId !== CLOSED_TOOL_ID && toolId !== RESERVED_TOOL_ID && !rules.some((rule) => rule.id === toolId)) return;
-    if (toolId === CLOSED_TOOL_ID) {
+    const SPECIALS = new Set([CLEAR_TOOL_ID, RESERVED_TOOL_ID, MAINTENANCE_TOOL_ID]);
+    if (!SPECIALS.has(toolId) && !rules.some((rule) => rule.id === toolId)) return;
+    // Available = clear the cell back to default (no rule, no special marker).
+    if (toolId === CLEAR_TOOL_ID) {
       setCellsByWeek((prev) => {
         const cur = { ...(prev[sk] || {}) };
         delete cur[key];
@@ -353,8 +376,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
   const paintKeys = (keys: string[]) => {
     const sk = scopeKey;
-    const allActive = activeRuleId !== CLOSED_TOOL_ID && keys.every((key) => (paintedCells[key] ?? '') === activeRuleId);
-    const shouldClear = activeRuleId === CLOSED_TOOL_ID || allActive;
+    const allActive = activeRuleId !== CLEAR_TOOL_ID && keys.every((key) => (paintedCells[key] ?? '') === activeRuleId);
+    const shouldClear = activeRuleId === CLEAR_TOOL_ID || allActive;
     setCellsByWeek((prev) => {
       const cur = { ...(prev[sk] || {}) };
       for (const key of keys) {
@@ -374,7 +397,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     paintKeys(DAYS.map((day) => cellKey(day, hour)));
   };
 
-  const paintedRuleIds = Object.values(paintedCells).filter((id) => id !== RESERVED_TOOL_ID);
+  const paintedRuleIds = Object.values(paintedCells).filter((id) => id !== RESERVED_TOOL_ID && id !== MAINTENANCE_TOOL_ID);
   const paidHours = paintedRuleIds.length;
   const weeklyRevenueEstimate = paintedRuleIds.reduce((sum, ruleId) => {
     const rule = rules.find((r) => r.id === ruleId);
@@ -430,12 +453,12 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
       ));
     }
     setRules((list) => list.filter((rule) => rule.id !== id));
-    if (activeRuleId === id) setActiveRuleId(replacement?.id ?? CLOSED_TOOL_ID);
+    if (activeRuleId === id) setActiveRuleId(replacement?.id ?? CLEAR_TOOL_ID);
     if (editingId === id) closeForm();
   };
 
   const handleSave = async () => {
-    if (!venue || saveStatus === 'saving') return;
+    if (!venue || saveStatus === 'saving' || courts.length === 0) return;
     setSaveStatus('saving');
     setSaveError('');
     try {
@@ -449,7 +472,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
         for (let d = 0; d < 7; d++) {
           const date = new Date(monday);
           date.setDate(monday.getDate() + d);
-          const dateStr = date.toISOString().slice(0, 10);
+          const dateStr = ymd(date);
           // Delete only overrides matching this court scope.
           const existing = await listSlotOverrides(venue, dateStr);
           const toDelete = existing.filter((ov) => scopeCourtId ? ov.courtId === scopeCourtId : ov.courtId == null);
@@ -462,6 +485,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               startTime: block.openTime,
               endTime: block.closeTime,
               price: block.price,
+              note: block.note,
             });
           }
         }
@@ -544,7 +568,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saveStatus === 'saving' || !venue || !hasVenues}
+                disabled={saveStatus === 'saving' || !venue || !hasVenues || courts.length === 0}
                 style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
                 className={`h-9 w-full sm:w-auto px-4 rounded-[4px] text-[12px] font-extrabold shadow-sm active:scale-[0.98] shrink-0 disabled:opacity-60 ${
                   saveStatus === 'error' ? 'bg-[var(--coral)] text-white' : 'bg-[#f59e0b] text-[#111827]'
@@ -643,16 +667,30 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               );
             })()}
             {(() => {
-              const active = activeRuleId === CLOSED_TOOL_ID;
+              const active = activeRuleId === MAINTENANCE_TOOL_ID;
               return (
                 <button
                   type="button"
-                  onClick={() => setActiveRuleId(CLOSED_TOOL_ID)}
+                  onClick={() => setActiveRuleId(MAINTENANCE_TOOL_ID)}
+                  aria-pressed={active}
+                  className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
+                  style={{ borderColor: active ? MAINTENANCE_COLOR : 'transparent', color: active ? MAINTENANCE_COLOR : 'var(--muted)' }}
+                >
+                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: MAINTENANCE_COLOR }} /> Maintenance
+                </button>
+              );
+            })()}
+            {(() => {
+              const active = activeRuleId === CLEAR_TOOL_ID;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setActiveRuleId(CLEAR_TOOL_ID)}
                   aria-pressed={active}
                   className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
                   style={{ borderColor: active ? CLOSED_COLOR : 'transparent', color: active ? CLOSED_COLOR : 'var(--muted)' }}
                 >
-                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: CLOSED_COLOR }} /> Closed/Clear
+                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: CLOSED_COLOR }} /> Clear
                 </button>
               );
             })()}
@@ -715,10 +753,12 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                     {day}
                   </button>
                   {HOURS.map((hour) => {
-                    const isReserved = (paintedCells[cellKey(day, hour)] ?? '') === RESERVED_TOOL_ID;
+                    const cellVal = paintedCells[cellKey(day, hour)] ?? '';
+                    const isReserved = cellVal === RESERVED_TOOL_ID;
+                    const isMaintenance = cellVal === MAINTENANCE_TOOL_ID;
                     const rule = ruleForCell(day, hour);
-                    const label = cellLabel(rule, isReserved);
-                    const bg = isReserved ? RESERVED_COLOR : (rule?.color ?? CLOSED_COLOR);
+                    const label = cellLabel(rule, isReserved, isMaintenance);
+                    const bg = isReserved ? RESERVED_COLOR : isMaintenance ? MAINTENANCE_COLOR : (rule?.color ?? CLOSED_COLOR);
                     return (
                       <button
                         key={`${day}-${hour}`}
@@ -746,8 +786,9 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
             {rules.map((rule) => <Legend key={rule.id} color={rule.color} label={`${rule.shortName} - ₱${rule.price}/hr`} />)}
-            <Legend color={RESERVED_COLOR} label="Reserved - Paid" />
-            <Legend color={CLOSED_COLOR} label="Closed - No charge" />
+            <Legend color={RESERVED_COLOR} label="Reserved · Paid" />
+            <Legend color={MAINTENANCE_COLOR} label="Maintenance · Blocked" />
+            <Legend color={CLOSED_COLOR} label="Clear · Open (default)" />
           </div>
 
           <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface)] overflow-hidden">

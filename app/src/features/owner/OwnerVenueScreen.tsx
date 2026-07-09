@@ -12,7 +12,6 @@ import { getOwnerVenue, entityId, type OwnerVenueDetail } from '../../shared/lib
 import type { Navigate } from '../../shared/lib/navigation';
 import { VenueOverviewTab } from './tabs/VenueOverviewTab';
 import { InsightsTab } from './tabs/InsightsTab';
-import { BookingsInboxTab } from './tabs/BookingsInboxTab';
 import { MembersTab } from './tabs/MembersTab';
 import { ListingEditorTab } from './tabs/ListingEditorTab';
 import { LocationEditorTab } from './tabs/LocationEditorTab';
@@ -28,7 +27,7 @@ interface OwnerVenueScreenProps {
   onBack: () => void;
 }
 
-type TabId = 'overview' | 'insights' | 'bookings' | 'members' | 'listing' | 'location' | 'courts' | 'faqs' | 'photos' | 'staff';
+type TabId = 'overview' | 'insights' | 'members' | 'listing' | 'location' | 'courts' | 'faqs' | 'photos' | 'staff';
 
 // `perm` gates a tab behind a permission; tabs without one are always shown.
 // Structural-edit tabs are hidden for front-desk staff (they can only operate,
@@ -38,8 +37,7 @@ const STRUCTURAL_TABS: TabId[] = ['listing', 'location', 'courts', 'faqs', 'phot
 const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
   { id: 'overview', label: 'Overview', icon: 'home' },
   { id: 'insights', label: 'Insights', icon: 'bar_chart', perm: 'owner.analytics.view' },
-  { id: 'bookings', label: 'Bookings', icon: 'calendar', perm: 'owner.bookings.manage' },
-  { id: 'members', label: 'Membership', icon: 'group', perm: 'owner.bookings.manage' },
+{ id: 'members', label: 'Membership', icon: 'group', perm: 'owner.bookings.manage' },
   { id: 'listing', label: 'Listing', icon: 'storefront' },
   { id: 'location', label: 'Location', icon: 'location' },
   { id: 'courts', label: 'Courts', icon: 'sports_tennis' },
@@ -52,8 +50,7 @@ const TABS: { id: TabId; label: string; icon: string; perm?: Permission }[] = [
 const TAB_TITLE: Record<TabId, string> = {
   overview: 'Overview',
   insights: 'Insights',
-  bookings: 'Bookings',
-  members: 'Membership',
+members: 'Membership',
   listing: 'Listing',
   location: 'Location',
   courts: 'Courts',
@@ -186,8 +183,7 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
       <div className="px-5 pt-4">
         {tab === 'overview' && <VenueOverviewTab venue={venue} venueId={vid} onOpenTab={(t) => goTab(t as TabId)} />}
         {tab === 'insights' && <InsightsTab venueId={vid} />}
-        {tab === 'bookings' && <BookingsInboxTab venueId={vid} onNavigate={onNavigate} />}
-        {tab === 'members' && <MembersTab venueId={vid} venue={venue} onNavigate={onNavigate} />}
+{tab === 'members' && <MembersTab venueId={vid} venue={venue} onNavigate={onNavigate} />}
         {tab === 'listing' && <ListingEditorTab venue={venue} venueId={vid} reload={reload} onDeleted={() => onNavigate('owner-venues', undefined, { replace: true })} />}
         {tab === 'location' && <LocationEditorTab venue={venue} venueId={vid} reload={reload} />}
         {tab === 'courts' && <CourtsEditorTab venueId={vid} reload={reload} />}

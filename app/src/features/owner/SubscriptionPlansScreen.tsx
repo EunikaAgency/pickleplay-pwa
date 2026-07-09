@@ -56,6 +56,8 @@ export function SubscriptionPlansScreen({ venueId, venueName, onBack }: Subscrip
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<ApiSubscriptionPlan | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  // Error popup (replaces the old blocking alert() on a failed delete).
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const loadPlans = () => {
     setLoading(true);
@@ -111,7 +113,7 @@ export function SubscriptionPlansScreen({ venueId, venueName, onBack }: Subscrip
       await deleteSubscriptionPlan(plan.id);
       setPlans((prev) => prev.filter((p) => p.id !== plan.id));
     } catch (e: any) {
-      alert(e?.message ?? e?.error?.message ?? 'Could not delete this plan.');
+      setErrorMsg(e?.message ?? e?.error?.message ?? 'Could not delete this plan.');
     }
     finally { setPending(null); }
   };
@@ -283,6 +285,35 @@ export function SubscriptionPlansScreen({ venueId, venueName, onBack }: Subscrip
         plan={editingPlan}
         onSaved={onSaved}
       />
+
+      {/* ── Error popup (replaces the old blocking alert) ───────────── */}
+      {errorMsg && (
+        <div
+          className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/45 px-6"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Couldn't delete plan"
+          onClick={() => setErrorMsg(null)}
+        >
+          <div
+            className="w-full max-w-[360px] rounded-[18px] bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] shadow-xl p-5 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--coral-soft)] text-[var(--coral)] mb-3">
+              <Icon name="error" size={22} />
+            </span>
+            <div className="font-heading font-semibold text-[16px] text-[var(--ink)]">Couldn't delete plan</div>
+            <p className="t-sm text-[var(--muted)] mt-1">{errorMsg}</p>
+            <button
+              type="button"
+              onClick={() => setErrorMsg(null)}
+              className="mt-4 w-full h-10 rounded-full bg-[var(--primary)] text-white font-bold text-[13px]"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

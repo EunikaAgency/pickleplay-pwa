@@ -158,20 +158,35 @@ export function listEndpoints(c: any) {
     {
       name: 'Coach applications',
       endpoints: [
-        { path: '/api/v1/coach-applications', methods: ['POST'], description: 'Apply to coach at a venue — body { venueId } (slug or _id); one per coach+venue (requires coach.applications.manage)', auth: 'user' },
-        { path: '/api/v1/coach-applications/mine', methods: ['GET'], description: "Current coach's own applications, with venue info", auth: 'user' },
-        { path: '/api/v1/coach-applications/for-venue/:venueId', methods: ['GET'], description: "Current coach's application for one venue (or null) — drives the Apply button state", auth: 'user' },
+        { path: '/api/v1/coach-applications', methods: ['POST'], description: 'Apply to coach at a venue — body { venueId } (slug or _id); one per player+venue (requires player.dashboard.access — player-only gate)', auth: 'user' },
+        { path: '/api/v1/coach-applications/mine', methods: ['GET'], description: "Current player's own coach applications, with venue info (player-only)", auth: 'user' },
+        { path: '/api/v1/coach-applications/for-venue/:venueId', methods: ['GET'], description: "Current player's coach application for one venue (or null) — drives the Apply button state (player-only)", auth: 'user' },
+        { path: '/api/v1/coach-applications/:id', methods: ['DELETE'], description: 'Applicant withdraws their own pending coach application (deletes the row)', auth: 'user' },
         { path: '/api/v1/coach-applications/owner', methods: ['GET'], description: "Applications across all of the current owner's venues (requires owner.coaches.manage)", auth: 'user' },
         { path: '/api/v1/coach-applications/venue/:venueId', methods: ['GET'], description: 'Applications for one owned venue; ?status=pending|approved|rejected filters (owner.coaches.manage)', auth: 'user' },
-        { path: '/api/v1/coach-applications/:id/approve', methods: ['PATCH'], description: 'Approve a coach application (venue owner or admin)', auth: 'user' },
-        { path: '/api/v1/coach-applications/:id/reject', methods: ['PATCH'], description: 'Reject a coach application (venue owner or admin)', auth: 'user' },
-        { path: '/api/v1/coach-applications/:id/remove', methods: ['PATCH'], description: 'Remove an approved coach from the venue (venue owner or admin)', auth: 'user' },
+        { path: '/api/v1/coach-applications/:id/approve', methods: ['PATCH'], description: 'Approve a coach application — grants the coach role + UserRole for that venue (venue owner or admin)', auth: 'user' },
+        { path: '/api/v1/coach-applications/:id/reject', methods: ['PATCH'], description: 'Reject a coach application — revokes any existing grant (venue owner or admin)', auth: 'user' },
+        { path: '/api/v1/coach-applications/:id/remove', methods: ['PATCH'], description: 'Remove an approved coach from the venue — revokes the grant (venue owner or admin)', auth: 'user' },
+      ],
+    },
+    {
+      name: 'Organizer applications',
+      endpoints: [
+        { path: '/api/v1/organizer-applications', methods: ['POST'], description: 'Apply to organise at a venue — body { venueId, message? } (requires player.dashboard.access — player-only gate)', auth: 'user' },
+        { path: '/api/v1/organizer-applications/mine', methods: ['GET'], description: "Current player's own organiser applications, with venue info (player-only)", auth: 'user' },
+        { path: '/api/v1/organizer-applications/for-venue/:venueId', methods: ['GET'], description: "Current player's organiser application for one venue (or null) — drives the Apply button state (player-only)", auth: 'user' },
+        { path: '/api/v1/organizer-applications/:id', methods: ['DELETE'], description: 'Applicant withdraws their own pending organiser application (deletes the row)', auth: 'user' },
+        { path: '/api/v1/organizer-applications/owner', methods: ['GET'], description: "Applications across all of the current owner's venues (requires owner.tournaments.manage)", auth: 'user' },
+        { path: '/api/v1/organizer-applications/venue/:venueId', methods: ['GET'], description: 'Applications for one owned venue; ?status=pending|approved|rejected filters (owner.tournaments.manage)', auth: 'user' },
+        { path: '/api/v1/organizer-applications/:id/approve', methods: ['PATCH'], description: 'Approve an organiser application — grants the organizer role + UserRole for that venue (venue owner or admin)', auth: 'user' },
+        { path: '/api/v1/organizer-applications/:id/reject', methods: ['PATCH'], description: 'Reject an organiser application — revokes any existing grant (venue owner or admin)', auth: 'user' },
+        { path: '/api/v1/organizer-applications/:id/remove', methods: ['PATCH'], description: 'Remove an approved organiser from the venue — revokes the grant (venue owner or admin)', auth: 'user' },
       ],
     },
     {
       name: 'Partners',
       endpoints: [
-        { path: '/api/v1/partners/owner', methods: ['GET'], description: "Combined coach + organizer partner applications across the current owner's venues, tagged kind, with KPI counts (owner.coaches.manage or owner.tournaments.manage; organizer applications pending — coach-only for now)", auth: 'user' },
+        { path: '/api/v1/partners/owner', methods: ['GET'], description: "Combined coach + organizer partner applications across the current owner's venues, tagged kind, with KPI counts (owner.coaches.manage or owner.tournaments.manage)", auth: 'user' },
       ],
     },
     {
@@ -359,6 +374,16 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/demand/venues/:id/suggested-pricing', methods: ['GET'], description: 'Demand-based pricing suggestions per day×hour — adjustments with confidence levels. Owner/manager only', auth: 'user' },
         { path: '/api/v1/demand/venues/:id/suggested-pricing/apply', methods: ['POST'], description: 'Apply selected pricing suggestions as SlotPriceOverrides for N weeks — body { suggestions: [{dow,hour,price}], weeks? }', auth: 'user' },
         { path: '/api/v1/demand/auto-dynamic-pricing', methods: ['POST'], description: 'Cron endpoint — runs the suggestion engine for all venues opted into autoDynamicPricing, applies high-confidence suggestions automatically. Admin only', auth: 'user' },
+      ],
+    },
+    {
+      name: 'Rental Inventory (Owner)',
+      endpoints: [
+        { path: '/api/v1/rental-inventory', methods: ['GET'], description: 'List rental inventory items (?category=&status=&search=&archived=&venueId=) — auth, owner.inventory.view (owner-scoped)', auth: 'user' },
+        { path: '/api/v1/rental-inventory/stats', methods: ['GET'], description: 'Inventory summary stats (total/available/rented/lowStock) — auth, owner.inventory.view', auth: 'user' },
+        { path: '/api/v1/rental-inventory/export/csv', methods: ['GET'], description: 'Export inventory CSV — auth, owner.inventory.export', auth: 'user' },
+        { path: '/api/v1/rental-inventory', methods: ['POST'], description: 'Create rental inventory item — auth, owner.inventory.create', auth: 'user' },
+        { path: '/api/v1/rental-inventory/:id', methods: ['GET', 'PATCH', 'DELETE'], description: 'Single item — GET (owner.inventory.view), PATCH (owner.inventory.update), DELETE (archive, owner.inventory.archive), owner-scoped', auth: 'user' },
       ],
     },
     {

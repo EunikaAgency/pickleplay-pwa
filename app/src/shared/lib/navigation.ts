@@ -10,6 +10,7 @@ export type Screen =
   // to create-game on completion.
   | { id: 'nearby'; params?: { intent?: 'lobby' } }
   | { id: 'games'; params?: { section?: 'games' | 'open-play'; view?: 'discover' | 'joined' | 'invites' | 'manage' } }
+  | { id: 'booking' }
   | { id: 'tournaments' }
   | { id: 'tournament'; params: { id: string } }
   | { id: 'tournament-chat'; params: { id: string; name?: string } }
@@ -42,20 +43,26 @@ export type Screen =
   | { id: 'invite-players'; params: { id: string } }
   | { id: 'notifications' }
   | { id: 'friends' }
+  | { id: 'members' }
   | { id: 'messages' }
   | { id: 'chat'; params: { id: string; name?: string } }
   | { id: 'game-chat'; params: { id: string; name?: string } }
   | { id: 'owner-venues' }
+  | { id: 'owner-venues-v2' }
   | { id: 'owner-venue'; params: { id: string; tab?: string } }
   | { id: 'owner-new-venue' }
   | { id: 'claim-venue' }
   | { id: 'owner-bookings'; params: { status?: string } }
   | { id: 'owner-front-desk'; params?: { venueId?: string } }
+  | { id: 'owner-manual-reservation'; params?: { venueId?: string } }
+  | { id: 'owner-calendar' }
   | { id: 'owner-pricing' }
+  | { id: 'owner-partners' }
   | { id: 'owner-insights' }
   | { id: 'owner-notifications' }
   | { id: 'owner-staff' }
   | { id: 'owner-settlements' }
+  | { id: 'owner-shop' }
   | { id: 'owner-subscription-plans'; params: { venueId: string; venueName?: string } }
   | { id: 'organizer-hub' }
   | { id: 'organizer-tournaments' }
@@ -75,7 +82,7 @@ export type Screen =
 
 export type ScreenId = Screen['id'];
 
-export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'messages', 'profile'] as const;
+export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'messages', 'profile', 'booking'] as const;
 export type TabId = (typeof tabScreens)[number];
 
 /**
@@ -102,6 +109,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'onboarding': return '/onboarding';
     case 'nearby': return `/nearby${q({ intent: screen.params?.intent })}`;
     case 'games': return `/games${q({ section: screen.params?.section, view: screen.params?.view })}`;
+    case 'booking': return '/booking';
     case 'tournaments': return '/tournaments';
     case 'tournament': return `/tournaments/${screen.params.id}`;
     case 'tournament-chat': return `/tournaments/${screen.params.id}/chat${q({ name: screen.params.name })}`;
@@ -130,20 +138,26 @@ export function pathFromScreen(screen: Screen): string {
     case 'invite-players': return `/games/${screen.params.id}/invite`;
     case 'notifications': return '/notifications';
     case 'friends': return '/friends';
+    case 'members': return '/owner/members';
     case 'messages': return '/messages';
     case 'chat': return `/messages/${screen.params.id}${q({ name: screen.params.name })}`;
     case 'game-chat': return `/games/${screen.params.id}/chat${q({ name: screen.params.name })}`;
     case 'owner-venues': return '/owner/venues';
+    case 'owner-venues-v2': return '/owner/venues/v2';
     case 'owner-venue': return `/owner/venues/${screen.params.id}${q({ tab: screen.params.tab })}`;
     case 'owner-new-venue': return '/owner/venues/new';
     case 'claim-venue': return '/owner/venues/claim';
-    case 'owner-bookings': return `/owner/bookings${q({ status: screen.params?.status })}`;
+    case 'owner-bookings': return `/owner/reports${q({ status: screen.params?.status })}`;
     case 'owner-front-desk': return `/owner/front-desk${q({ venue: screen.params?.venueId })}`;
+    case 'owner-manual-reservation': return `/owner/manual-reservation${q({ venue: screen.params?.venueId })}`;
+    case 'owner-calendar': return '/owner/calendar';
     case 'owner-pricing': return '/owner/pricing';
+    case 'owner-partners': return '/owner/partners';
     case 'owner-insights': return '/owner/insights';
     case 'owner-notifications': return '/owner/notifications';
     case 'owner-staff': return '/owner/staff';
     case 'owner-settlements': return '/owner/settlements';
+    case 'owner-shop': return '/shop';
     case 'owner-subscription-plans': return `/owner/venues/${screen.params.venueId}/subscription-plans`;
     case 'organizer-hub': return '/organizer';
     case 'organizer-tournaments': return '/organizer/tournaments';
@@ -207,6 +221,8 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (c === 'chat') return { id: 'game-chat', params: { id: b, name: opt(sp.get('name')) } };
       if (c === 'invite') return { id: 'invite-players', params: { id: b } };
       return { id: 'game-details', params: { id: b } };
+    case 'booking':
+      return { id: 'booking' };
     case 'tournaments':
       if (c === 'chat') return { id: 'tournament-chat', params: { id: b, name: opt(sp.get('name')) } };
       if (b) return { id: 'tournament', params: { id: b } };
@@ -243,18 +259,24 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'owner':
       if (b === 'venues') {
         if (!c) return { id: 'owner-venues' };
+        if (c === 'v2') return { id: 'owner-venues-v2' };
         if (c === 'new') return { id: 'owner-new-venue' };
         if (c === 'claim') return { id: 'claim-venue' };
         if (d === 'subscription-plans') return { id: 'owner-subscription-plans', params: { venueId: c } };
         return { id: 'owner-venue', params: { id: c, tab: opt(sp.get('tab')) } };
       }
-      if (b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : {} };
+      // Canonical path is /owner/reports; /owner/bookings kept as a legacy alias so old links still resolve.
+      if (b === 'reports' || b === 'bookings') return { id: 'owner-bookings', params: opt(sp.get('status')) ? { status: sp.get('status')! } : {} };
       if (b === 'front-desk') return { id: 'owner-front-desk', params: opt(sp.get('venue')) ? { venueId: sp.get('venue')! } : {} };
+      if (b === 'manual-reservation') return { id: 'owner-manual-reservation', params: opt(sp.get('venue')) ? { venueId: sp.get('venue')! } : {} };
+      if (b === 'calendar') return { id: 'owner-calendar' };
       if (b === 'pricing') return { id: 'owner-pricing' };
+      if (b === 'partners') return { id: 'owner-partners' };
       if (b === 'insights') return { id: 'owner-insights' };
       if (b === 'notifications') return { id: 'owner-notifications' };
       if (b === 'staff') return { id: 'owner-staff' };
       if (b === 'settlements') return { id: 'owner-settlements' };
+      if (b === 'members') return { id: 'members' };
       return { id: 'home' };
     case 'organizer':
       if (!b) return { id: 'organizer-hub' };
@@ -269,6 +291,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'rosters') return c ? { id: 'organizer-roster', params: { id: c } } : { id: 'organizer-rosters' };
       if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : {} };
       return { id: 'organizer-hub' };
+    case 'shop': return { id: 'owner-shop' };
     case 'flowchart': return { id: 'flowchart' };
     case 'admin':
       if (b === 'claims') return { id: 'admin-claims' };
@@ -279,13 +302,19 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
 
 /** A sensible Back target to seed history with when a deep link lands on a detail screen. */
 export function deepLinkParent(id: ScreenId): Screen {
+  if (id === 'booking') return { id: 'home' };
   if (id === 'club-details' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return { id: 'clubs' };
   if (id === 'tournament' || id === 'tournament-chat') return { id: 'tournaments' };
   if (id === 'open-play-detail') return { id: 'games', params: { section: 'open-play', view: 'discover' } };
   if (id === 'court-details') return { id: 'nearby' };
   if (id === 'booking-refund') return { id: 'my-bookings' };
+  if (id === 'owner-venues-v2') return { id: 'home' };
   if (id === 'claim-venue') return { id: 'owner-venues' };
+  if (id === 'owner-calendar') return { id: 'profile' };
+  if (id === 'owner-manual-reservation') return { id: 'owner-pricing' };
+  if (id === 'owner-partners') return { id: 'profile' };
   if (id === 'owner-staff') return { id: 'profile' };
+  if (id === 'owner-shop') return { id: 'profile' };
   if (id === 'owner-subscription-plans') return { id: 'owner-venues' };
   if (id === 'owner-settlements') return { id: 'profile' };
   if (id === 'chat') return { id: 'messages' };
@@ -300,6 +329,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'open-play-book') return { id: 'nearby' };
   if (id === 'flowchart') return { id: 'home' };
   if (id === 'friends') return { id: 'profile' };
+  if (id === 'members') return { id: 'profile' };
   return { id: 'home' };
 }
 
