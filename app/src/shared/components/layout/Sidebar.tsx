@@ -3,16 +3,8 @@ import { Avatar } from '../ui/Avatar';
 import type { TabId } from '../../lib/navigation';
 import { useAuthStore } from '../../lib/authStore';
 import { useMessageStore } from '../../lib/messageStore';
-import { userHasPermission, type AppUser } from '../../lib/permissions';
-
-/** Human label for a signed-in user's role, used as the sidebar footer subtitle. */
-function roleLabel(user: AppUser): string {
-  if (userHasPermission(user, 'admin.access')) return 'Admin';
-  if (userHasPermission(user, 'owner.access')) return 'Owner';
-  if (userHasPermission(user, 'organizer.access')) return 'Organizer';
-  if (userHasPermission(user, 'coach.access')) return 'Coach';
-  return 'Player';
-}
+import { userHasPermission } from '../../lib/permissions';
+import { ROLE_META, primaryRole } from '../../lib/roleDisplay';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -103,7 +95,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
   const footSub = currentUser
     ? currentUser.skillLevel != null
       ? `DUPR ${currentUser.skillLevel}`
-      : currentUser.skillLevelLabel ?? roleLabel(currentUser)
+      : currentUser.skillLevelLabel ?? ROLE_META[primaryRole(currentUser)].label
     : 'Browsing as guest';
   return (
     <aside className="sidebar" aria-label="Primary navigation">

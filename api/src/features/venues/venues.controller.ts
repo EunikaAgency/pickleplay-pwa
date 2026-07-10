@@ -18,7 +18,8 @@ import { CoachApplication } from '../coach-applications/coach-applications.model
 import { User } from '../auth/auth.model.js';
 import { Booking } from '../bookings/bookings.model.js';
 import { Game } from '../games/games.model.js';
-import { resolveVenueCapacity, freeCourtsByHour, courtFreeHoursWithTurnover, hoursTouched, activeBookingsForDate, expireOverdueBookings, findSlotConflict } from '../bookings/bookings.controller.js';
+import { resolveVenueCapacity, freeCourtsByHour, courtFreeHoursWithTurnover, hoursTouched, activeBookingsForDate, expireOverdueBookings, findSlotConflict, venueWideClosedHours, closedHoursFromBlocks, courtBlocksAsBookings } from '../bookings/bookings.controller.js';
+import { OCCUPANCY_BLOCK_NOTES } from '../bookings/pricing.js';
 import { hasPermission, effectiveOwnerId } from '../../shared/lib/permissions.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 
@@ -437,6 +438,19 @@ export async function requireVenueOwner(c: any, venueId: string): Promise<boolea
   // owner's id for a staff sub-account — so a staff member is treated as the
   // owner for every venue their owner owns.
   return venue.ownerUserId?.toString() === effectiveOwnerId(user);
+}
+
+// Destructive-action gate: the venue's ACTUAL owner (or an admin). Deliberately
+// compares against user.sub, not effectiveOwnerId — a staff sub-account inherits
+// its owner's venues for every other operation, but must never be able to delete
+// one out from under them.
+export async function requireVenueRealOwner(c: any, venueId: string): Promise<boolean> {
+  const user = c.get('user');
+  const venue = await Venue.findById(venueId).select('ownerUserId');
+  if (!venue) return false;
+  if (hasPermission(user, 'admin.venues.manage')) return true;
+  if (!hasPermission(user, 'owner.venues.manage')) return false;
+  return venue.ownerUserId?.toString() === String(user?.sub);
 }
 
 // The viewer's management role for a venue: 'owner' (or admin) > 'manager' >
@@ -967,7 +981,7 @@ export async function deleteVenue(c: any) {
   const rawId = c.req.param('id');
   const venueId = await resolveVenueId(rawId);
   if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
-  if (!(await requireVenueOwner(c, venueId))) {
+  if (!(await requireVenueRealOwner(c, venueId))) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner can delete this venue' } }, 403);
   }
   const user = c.get('user');
@@ -1853,6 +1867,13 @@ export async function getVenueAvailability(c: any) {
     for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
   }
 
+  // A venue-wide maintenance block shuts every court. Folding it into slotOpen lets
+  // all three return paths below inherit it, since each already zeroes `free`
+  // outside the mask. Court-scoped blocks ride along in the occupancy set
+  // (activeBookingsForDate), so they only cost the court they name.
+  const closed = await venueWideClosedHours(venueId, date);
+  for (let h = 0; h < 24; h++) if (closed[h]) slotOpen[h] = false;
+
   // Per-court view: a court is free for an hour only when it isn't itself booked
   // AND the venue pool still has a court to spare — court-less (venue-level)
   // reservations consume the pool even though they don't name a court, so a named
@@ -1951,11 +1972,19 @@ export async function getVenueAvailabilityRange(c: any) {
   const allOverrides = await SlotPriceOverride.find({
     venueId,
     date: { $gte: from, $lte: to },
-  }).lean<{ date: string; startTime: string; endTime: string }[]>();
+  }).lean<{ date: string; startTime: string; endTime: string; courtId?: any; note?: string | null }[]>();
   const overridesByDate = new Map<string, typeof allOverrides>();
   for (const o of allOverrides) {
     const arr = overridesByDate.get(o.date);
     if (arr) arr.push(o); else overridesByDate.set(o.date, [o]);
+  }
+
+  // Maintenance blocks come out of the overrides we already fetched — no extra query.
+  const maintenanceByDate = new Map<string, typeof allOverrides>();
+  for (const o of allOverrides) {
+    if (!OCCUPANCY_BLOCK_NOTES.includes(o.note ?? '')) continue;
+    const arr = maintenanceByDate.get(o.date);
+    if (arr) arr.push(o); else maintenanceByDate.set(o.date, [o]);
   }
 
   // All active bookings across the range, grouped by date (one query).
@@ -1989,7 +2018,13 @@ export async function getVenueAvailabilityRange(c: any) {
       for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
     }
 
-    const dayBookings = byDate.get(date) ?? [];
+    // Venue-wide maintenance closes the day's hours outright; court-scoped
+    // maintenance joins the occupancy set. Mirrors getVenueAvailability.
+    const dayMaintenance = maintenanceByDate.get(date) ?? [];
+    const dayClosed = closedHoursFromBlocks(dayMaintenance);
+    for (let h = 0; h < 24; h++) if (dayClosed[h]) slotOpen[h] = false;
+
+    const dayBookings = [...(byDate.get(date) ?? []), ...courtBlocksAsBookings(dayMaintenance)];
     let free: number[];
     if (courtId) {
       if (courtSubCount > 1) {
@@ -2047,13 +2082,16 @@ export async function batchVenueAvailability(c: any) {
       // A venue is only open on dates where it has at least one override.
       // Hours not covered by any override are closed (zero free courts).
       const overrides = await SlotPriceOverride.find({ venueId, date })
-        .lean<{ startTime: string; endTime: string }[]>();
+        .lean<{ startTime: string; endTime: string; courtId?: any; note?: string | null }[]>();
 
       if (overrides.length === 0) continue; // no schedule = closed — omit
 
       const capacity = await resolveVenueCapacity(venueId);
+      // Court-scoped maintenance arrives inside activeBookingsForDate; venue-wide
+      // maintenance is a closure, applied to the mask below.
       const bookings = await activeBookingsForDate(venueId, date);
       const free = freeCourtsByHour(bookings, capacity);
+      const closed = closedHoursFromBlocks(overrides.filter((o) => OCCUPANCY_BLOCK_NOTES.includes(o.note ?? '')));
 
       // Build the open-hour mask from the union of all override windows.
       const slotOpen = new Array<boolean>(24).fill(false);
@@ -2063,9 +2101,9 @@ export async function batchVenueAvailability(c: any) {
         for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
       }
 
-      // Zero out hours outside every override window.
+      // Zero out hours outside every override window, and hours the venue is shut.
       for (let h = 0; h < 24; h++) {
-        if (!slotOpen[h]) free[h] = 0;
+        if (!slotOpen[h] || closed[h]) free[h] = 0;
       }
 
       results.push({ venueId, freeByHour: free });
@@ -2098,6 +2136,22 @@ export async function updateBookingStatus(c: any) {
     update.paymentDueAt = new Date(Date.now() + hours * 3_600_000);
   }
   const result = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
+
+  // Cancelling a manual reservation must also clear the 'Reserved' paint the
+  // owner screen wrote alongside it, or the pricing grid keeps showing the slot
+  // as taken long after it reopened. Best-effort: the Booking is the source of
+  // truth, exactly as it is on the create side.
+  if (status === 'cancelled' && booking.bookingType === 'manual') {
+    await SlotPriceOverride.deleteMany({
+      venueId,
+      date: booking.date,
+      ...(booking.courtId ? { courtId: booking.courtId } : { courtId: null }),
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      note: 'Reserved',
+    }).catch(() => { /* paint cleanup is best-effort */ });
+  }
+
   // Tell the booker their request was approved and they need to pay to confirm.
   if (status === 'awaiting_payment' && result) {
     const venue = await Venue.findById(venueId).select('displayName bookingPayWindowHours').lean<{ displayName?: string; bookingPayWindowHours?: number }>();

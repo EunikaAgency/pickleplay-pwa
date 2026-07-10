@@ -38,6 +38,17 @@ export type Screen =
   // keeps the court reserved).
   | { id: 'booking-refund'; params: { bookingId: string } }
   | { id: 'payment-history' }
+  // Coach: the paid subscription that unlocks becoming a coach. Canonical entry
+  // is the Profile tab; the Home CTA just routes here.
+  | { id: 'coach-subscribe' }
+  // Browse coaches who hold a live subscription, then book one.
+  | { id: 'find-coach' }
+  | { id: 'coach-detail'; params: { id: string } }
+  | { id: 'book-coach'; params: { id: string; serviceId?: string } }
+  /** The signed-in coach's incoming session requests. */
+  | { id: 'coach-bookings' }
+  /** Another player's public profile card (badge shows Coach / Organizer). */
+  | { id: 'player-profile'; params: { id: string } }
   | { id: 'create-club' }
   | { id: 'edit-club'; params: { id: string } }
   | { id: 'edit-profile' }
@@ -136,6 +147,12 @@ export function pathFromScreen(screen: Screen): string {
     case 'my-bookings': return '/my-bookings';
     case 'booking-refund': return `/bookings/${screen.params.bookingId}/refund`;
     case 'payment-history': return '/payments';
+    case 'coach-subscribe': return '/coach/subscribe';
+    case 'coach-bookings': return '/coach/bookings';
+    case 'find-coach': return '/coaches';
+    case 'coach-detail': return `/coaches/${screen.params.id}`;
+    case 'book-coach': return `/coaches/${screen.params.id}/book${q({ serviceId: screen.params.serviceId })}`;
+    case 'player-profile': return `/players/${screen.params.id}`;
     case 'create-club': return '/clubs/create';
     case 'edit-club': return `/clubs/${screen.params.id}/edit`;
     case 'edit-profile': return '/profile/edit';
@@ -261,6 +278,17 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b) return { id: 'open-play-detail', params: { source: 'auto', id: b } };
       return { id: 'games', params: { section: 'open-play', view: 'discover' } };
     case 'payments': return { id: 'payment-history' };
+    case 'coach':
+      if (b === 'subscribe') return { id: 'coach-subscribe' };
+      if (b === 'bookings') return { id: 'coach-bookings' };
+      return { id: 'coach-subscribe' };
+    case 'coaches':
+      if (!b) return { id: 'find-coach' };
+      if (c === 'book') return { id: 'book-coach', params: { id: b, serviceId: opt(sp.get('serviceId')) } };
+      return { id: 'coach-detail', params: { id: b } };
+    case 'players':
+      if (b) return { id: 'player-profile', params: { id: b } };
+      return { id: 'home' };
     case 'profile': return b === 'edit' ? { id: 'edit-profile' } : { id: 'profile' };
     case 'settings':
       if (b === 'test-email') return { id: 'test-email' };
@@ -322,6 +350,10 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'open-play-detail') return { id: 'games', params: { section: 'open-play', view: 'discover' } };
   if (id === 'court-details') return { id: 'nearby' };
   if (id === 'booking-refund') return { id: 'my-bookings' };
+  if (id === 'coach-detail' || id === 'book-coach') return { id: 'find-coach' };
+  // The subscribe screen's real home is the Profile tab (Home only links to it).
+  if (id === 'coach-subscribe' || id === 'coach-bookings') return { id: 'profile' };
+  if (id === 'find-coach' || id === 'player-profile') return { id: 'home' };
   if (id === 'owner-venues-v2') return { id: 'home' };
   if (id === 'claim-venue') return { id: 'owner-venues' };
   if (id === 'owner-calendar') return { id: 'profile' };

@@ -136,6 +136,9 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   const unread = useNotificationStore((s) => s.unread);
   const firstName = firstNameOf(user);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
+  // The cross-venue report at /owner/reports is owner-only; staff work bookings
+  // through the front desk, calendar, and per-venue inbox instead.
+  const canReports = userHasPermission(user, 'owner.reports.view');
   const {
     canAnalytics, venues, status, retry, combined, combinedRevenueDaily,
     monthBookings, structural, statsReady, glanceFor, pending, upcoming, removeBooking,
@@ -150,7 +153,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   const quick: { icon: string; label: string; onPress: () => void }[] = [
     { icon: 'storefront', label: 'My venues', onPress: () => onNavigate('owner-venues') },
     ...(canBookings ? [{ icon: 'frontdesk', label: 'Front desk', onPress: () => onNavigate('owner-front-desk', {}) }] : []),
-    ...(canBookings ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
+    ...(canReports ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
     // { icon: 'settlements', label: 'Settlements', onPress: () => onNavigate('owner-settlements') },
     // ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];
@@ -293,12 +296,12 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
                   <span className="ohome-kpi-value">{statsReady ? money(combined.week) : '—'}</span>
                   <span className="ohome-kpi-label">Revenue this week</span>
                 </button>
-                <button className="ohome-kpi" onClick={() => { if (canBookings) onNavigate('owner-bookings', {}); else onNavigate('owner-insights'); }}>
+                <button className="ohome-kpi" onClick={() => { if (canReports) onNavigate('owner-bookings', {}); else onNavigate('owner-insights'); }}>
                   <span className="ohome-kpi-icon ohome-kpi-ic-neutral"><CalendarIco size={18} /></span>
                   <span className="ohome-kpi-value">{statsReady ? combined.todayBookings : '—'}</span>
                   <span className="ohome-kpi-label">Bookings today</span>
                 </button>
-                <button className="ohome-kpi" onClick={() => { if (canBookings) onNavigate('owner-bookings', { status: 'pending_approval' }); else onNavigate('owner-insights'); }}>
+                <button className="ohome-kpi" onClick={() => { if (canReports) onNavigate('owner-bookings', { status: 'pending_approval' }); else onNavigate('owner-insights'); }}>
                   <span className="ohome-kpi-icon ohome-kpi-ic-coral"><Bell size={18} /></span>
                   <span className="ohome-kpi-value">{statsReady ? pendingCount : '—'}</span>
                   <span className="ohome-kpi-label">Awaiting approval</span>
@@ -327,7 +330,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
             <section className="ohome-section">
               <div className="ohome-section-head">
                 <h2>Bookings</h2>
-                <button className="ohome-see-all" onClick={() => onNavigate('owner-bookings', {})}>View all</button>
+                {canReports && <button className="ohome-see-all" onClick={() => onNavigate('owner-bookings', {})}>View all</button>}
               </div>
               <div className="ohome-scrollbox">
                 <div className="ohome-scrollbox-inner">

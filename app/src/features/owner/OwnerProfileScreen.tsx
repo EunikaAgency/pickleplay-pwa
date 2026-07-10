@@ -69,14 +69,20 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   const canNotifs = userHasPermission(user, 'owner.notifications.view');
   const isOrganizer = userHasPermission(user, 'organizer.access');
   const canModerate = userHasPermission(user, 'admin.moderation.manage');
-  const {
-    canAnalytics, venues, combined, structural, statsReady, monthBookings, pending,
-  } = useOwnerDashboard({ withBookings: canBookings });
-
-  const name = user?.displayName ?? 'Owner';
+  // /owner/reports is owner-only — staff don't see the business-wide roll-up.
+  const canReports = userHasPermission(user, 'owner.reports.view');
   // Staff land on this same console (they hold owner.access) — show their real
   // role on the badge, and label them "Venue staff" rather than "Venue owner".
   const role = user ? primaryRole(user) : 'owner';
+  // Staff see no revenue/bookings roll-up, so don't pay for it: both flags fan
+  // out one request per venue, and a staff member inherits their owner's whole
+  // portfolio (which can be hundreds of venues).
+  const isStaff = role === 'staff';
+  const {
+    canAnalytics, venues, combined, structural, statsReady, monthBookings, pending,
+  } = useOwnerDashboard({ withBookings: canBookings && !isStaff, withAnalytics: !isStaff });
+
+  const name = user?.displayName ?? 'Owner';
   const roleMeta = ROLE_META[role] ?? ROLE_META.owner;
   const roleNoun = role === 'staff' ? 'Venue staff' : 'Venue owner';
   const pendingCount = canBookings ? pending.length : combined.pending;
@@ -91,7 +97,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     { key: 'calendar', icon: <CalendarIco />, label: 'Calendar', sub: 'Court-by-court booking schedule', onClick: () => onNavigate('owner-calendar'), className: 'sm:hidden' },
     ...(canBookings ? [{ key: 'manual-reservation', icon: <Plus />, label: 'Manual reservation', sub: 'Record a phone / walk-in booking', onClick: () => onNavigate('owner-manual-reservation', {}), className: 'mtonly' } as Row] : []),
     { key: 'partners', icon: <UsersIco />, label: 'Partners', sub: 'Coaches & organisers at your venues', onClick: () => onNavigate('owner-partners'), className: 'sm:hidden' },
-    ...(canBookings ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
+    ...(canReports ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
     ...(canStaff ? [{ key: 'staff', icon: <UsersIco />, label: 'Staff', sub: 'Accounts that manage your venues, bookings & clubs', onClick: () => onNavigate('owner-staff') } as Row] : []),
     ...(canCreate ? [{ key: 'new-venue', icon: <Plus />, label: 'New venue', sub: 'List another court', onClick: () => onNavigate('owner-new-venue') } as Row] : []),
   ];
@@ -144,11 +150,14 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
             {roleMeta.label}
           </div>
           <p className="profile-tagline" style={{ fontStyle: 'normal' }}>{user?.bio || venueLine}</p>
-          <div className="stats-row">
-            <div className="stat-col"><span className="stat-col-number games">{venues.length}</span><span className="stat-col-label">Venues</span></div>
-            <div className="stat-col"><span className="stat-col-number games">{structural.courts}</span><span className="stat-col-label">Courts</span></div>
-            <div className="stat-col"><span className="stat-col-number games">{statsReady ? monthBookings : '—'}</span><span className="stat-col-label">Bookings</span></div>
-          </div>
+          {/* Portfolio counts read as the viewer's own; staff don't own any of it. */}
+          {!isStaff && (
+            <div className="stats-row">
+              <div className="stat-col"><span className="stat-col-number games">{venues.length}</span><span className="stat-col-label">Venues</span></div>
+              <div className="stat-col"><span className="stat-col-number games">{structural.courts}</span><span className="stat-col-label">Courts</span></div>
+              <div className="stat-col"><span className="stat-col-number games">{statsReady ? monthBookings : '—'}</span><span className="stat-col-label">Bookings</span></div>
+            </div>
+          )}
           <div style={{ marginTop: 16 }}>
             <button className="edit-profile-btn" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
           </div>
@@ -156,8 +165,9 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
       </div>
 
       <div>
-        {/* BUSINESS KPIs — mirrors the player Activity grid */}
-        {canAnalytics && (
+        {/* BUSINESS KPIs — mirrors the player Activity grid. Hidden for staff:
+            the revenue/bookings roll-up is the owner's business, not theirs. */}
+        {canAnalytics && !isStaff && (
           <div className="content-section">
             <h2 className="section-title">This month</h2>
             <div className="activity-grid">

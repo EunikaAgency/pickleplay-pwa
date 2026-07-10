@@ -7,6 +7,8 @@ import { FormField } from '../../../shared/components/forms/FormField';
 import { FormSelect } from '../../../shared/components/forms/FormSelect';
 import { BookingLinkShare } from '../components/BookingLinkShare';
 import { updateVenue, checkBookingSlug, deleteVenue, ApiError, type OwnerVenueDetail, type BookingSlugCheck, type PaymentOption } from '../../../shared/lib/api';
+import { useAuthStore } from '../../../shared/lib/authStore';
+import { primaryRole } from '../../../shared/lib/roleDisplay';
 
 interface ListingEditorTabProps {
   venue: OwnerVenueDetail;
@@ -184,6 +186,11 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
+  // A staff sub-account manages every venue its owner owns, but can't delete one
+  // (the API rejects it via requireVenueRealOwner) — so don't offer the action.
+  // Fails closed: an unresolved user hides the destructive control.
+  const currentUser = useAuthStore((s) => s.user);
+  const canDelete = currentUser ? primaryRole(currentUser) !== 'staff' : false;
 
   const onDelete = async () => {
     setDeleting(true);
@@ -462,6 +469,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         {status === 'saving' ? 'Saving…' : status === 'saved' ? <><Icon name="check" size={18} /> Saved</> : 'Save changes'}
       </Button>
 
+      {canDelete && (
       <CollapsibleSection title="Danger zone" icon="close" description="Deleting removes this venue and its listing. This can't be undone.">
         {confirmDelete ? (
           <div className="rounded-xl bg-[var(--coral-soft)] p-3.5">
@@ -501,6 +509,7 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
           </button>
         )}
       </CollapsibleSection>
+      )}
 
       <Toast message="Listing saved" show={status === 'saved'} />
     </div>

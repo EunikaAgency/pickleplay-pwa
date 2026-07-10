@@ -74,6 +74,15 @@ function timeBlockRate(hours: OwnerHourEntry[] | undefined, date: string, startT
   return match?.price ?? null;
 }
 
+/**
+ * Overrides carrying one of these notes mark a slot as *blocked*, not priced —
+ * they're stored with `price: 0` only because the schema needs a number. They
+ * must never reach the rate ladder, or a blocked hour would quote ₱0. Kept in
+ * step with `BLOCK_NOTES` in api/src/features/bookings/pricing.ts.
+ */
+const BLOCK_NOTES = new Set(['Maintenance', 'Reserved']);
+const isBlockOverride = (o: SlotPriceOverride) => BLOCK_NOTES.has(o.note ?? '');
+
 /** A surge override covering this date+start (court-scoped first, then venue-wide), or null. */
 function surgeRate(
   overrides: SlotPriceOverride[] | undefined,
@@ -84,6 +93,8 @@ function surgeRate(
   if (!overrides?.length) return null;
   const startMin = toMinutes(startTime);
   if (startMin == null) return null;
+  const priced = overrides.filter((o) => !isBlockOverride(o));
+  if (!priced.length) return null;
   const covers = (o: SlotPriceOverride) => {
     if (o.date !== date) return false;
     const s = toMinutes(o.startTime);
@@ -91,9 +102,9 @@ function surgeRate(
     return s != null && e != null && startMin >= s && startMin < e;
   };
   // A court-specific override beats a venue-wide one.
-  const courtSpecific = courtId ? overrides.find((o) => covers(o) && o.courtId === courtId) : null;
+  const courtSpecific = courtId ? priced.find((o) => covers(o) && o.courtId === courtId) : null;
   if (courtSpecific) return courtSpecific.price;
-  const venueWide = overrides.find((o) => covers(o) && !o.courtId);
+  const venueWide = priced.find((o) => covers(o) && !o.courtId);
   return venueWide?.price ?? null;
 }
 

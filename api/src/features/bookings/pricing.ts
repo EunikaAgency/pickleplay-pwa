@@ -73,9 +73,27 @@ function timeBlockRate(
   return match?.price ?? null;
 }
 
+/**
+ * SlotPriceOverride rows carrying one of these notes are *occupancy markers the
+ * owner painted*, not prices — they're stored with `price: 0` purely because the
+ * schema needs a number. They must never reach the rate ladder: as the
+ * highest-precedence source, a `price: 0` override would sell the slot for ₱0.
+ *
+ * 'Maintenance' — owner closed the slot (no Booking behind it; see
+ *   `maintenanceBlocksForDate` in bookings.controller.ts, which makes it block).
+ * 'Reserved'    — painted alongside a manual reservation, which is a real
+ *   confirmed Booking. That Booking is what blocks the slot.
+ */
+export const BLOCK_NOTES = new Set(['Maintenance', 'Reserved']);
+
+/** Only 'Maintenance' has no Booking behind it, so only it joins the occupancy set. */
+export const OCCUPANCY_BLOCK_NOTES = ['Maintenance'];
+
+export const isBlockOverride = (o: { note?: string | null }) => BLOCK_NOTES.has(o.note ?? '');
+
 /** A surge override covering this date+start (court-scoped first, then venue-wide), or null. */
 function surgeRate(
-  overrides: { date: string; startTime: string; endTime: string; price: number; courtId?: string | null; _id?: any }[] | undefined,
+  overrides: { date: string; startTime: string; endTime: string; price: number; courtId?: any; note?: string | null; _id?: any }[] | undefined,
   date: string,
   startTime: string,
   courtId?: string | null,
@@ -83,16 +101,21 @@ function surgeRate(
   if (!overrides?.length) return null;
   const startMin = toMinutes(startTime);
   if (startMin == null) return null;
+  // Block markers are not prices — skip them so they can't win precedence at ₱0.
+  const priced = overrides.filter((o) => !isBlockOverride(o));
+  if (!priced.length) return null;
   const covers = (o: { date: string; startTime: string; endTime: string }) => {
     if (o.date !== date) return false;
     const s = toMinutes(o.startTime);
     const e = toMinutes(o.endTime);
     return s != null && e != null && startMin >= s && startMin < e;
   };
-  // A court-specific override beats a venue-wide one.
-  const courtSpecific = courtId ? overrides.find((o) => covers(o) && o.courtId === courtId) : null;
+  // A court-specific override beats a venue-wide one. `o.courtId` is an ObjectId
+  // off a lean doc while `courtId` is a string — compare stringified, or every
+  // court-scoped override silently loses to the venue fallback.
+  const courtSpecific = courtId ? priced.find((o) => covers(o) && o.courtId != null && String(o.courtId) === String(courtId)) : null;
   if (courtSpecific) return { price: courtSpecific.price, overrideId: String(courtSpecific._id) };
-  const venueWide = overrides.find((o) => covers(o) && !o.courtId);
+  const venueWide = priced.find((o) => covers(o) && !o.courtId);
   return venueWide ? { price: venueWide.price, overrideId: String(venueWide._id) } : null;
 }
 
@@ -122,7 +145,7 @@ export async function resolveHourlyRate(params: ResolveRateParams): Promise<Rate
     Venue.findById(venueId).select('priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean(),
     courtId ? Court.findById(courtId).select('hourlyRate subUnitRates').lean() : null,
     VenueHour.find({ venueId }).select('dayOfWeek openTime closeTime price isClosed').lean(),
-    SlotPriceOverride.find({ venueId, date }).select('date startTime endTime price courtId').lean(),
+    SlotPriceOverride.find({ venueId, date }).select('date startTime endTime price courtId note').lean(),
   ]);
 
   const subUnitRate = (subUnitIndex != null && (court as any)?.subUnitRates?.length)

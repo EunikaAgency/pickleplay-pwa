@@ -5,7 +5,8 @@ import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 import { ROLE_META, primaryRole } from '../../../shared/lib/roleDisplay';
 import { getInitials } from '../../../shared/lib/initials';
-import { listBookings, listGames, listMyTournaments, getMyOpenPlay, type ApiBooking, type ApiGame } from '../../../shared/lib/api';
+import { getSettings, listBookings, listGames, listMyTournaments, getMyOpenPlay, type ApiBooking, type ApiGame } from '../../../shared/lib/api';
+import { CoachPromoSheet } from '../CoachPromoSheet';
 import { useTheme, type ThemePreference } from '../../../shared/hooks/useTheme';
 import { useNotificationStore } from '../../../shared/lib/notificationStore';
 
@@ -137,6 +138,31 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   // the competitive block. Admins/moderators get neither.
   const showPlayerStats = role === 'player' || role === 'coach';
   const showOrganizerStats = role === 'organizer';
+  // Gates on the live PAID subscription, not the `coach` role — an approved
+  // venue application grants that role without one. Flips the row from
+  // "Become a coach" to "Coach subscription" and reveals session requests.
+  const isCoach = !!user?.coachSubscriptionActive;
+
+  // The coach pitch banner + its "what you get" sheet. Price/term come from the
+  // public settings read, so the banner never hard-codes ₱499.
+  const [coachPromoOpen, setCoachPromoOpen] = useState(false);
+  const [coachPrice, setCoachPrice] = useState<number | null>(null);
+  const [coachDays, setCoachDays] = useState<number | null>(null);
+
+  // Pricing for the coach banner. Skipped for people who already subscribed
+  // (the banner isn't rendered for them). Failures leave the pill on "Learn more".
+  useEffect(() => {
+    if (!isLoggedIn || isCoach) return;
+    let alive = true;
+    getSettings()
+      .then((s) => {
+        if (!alive || !s.partnerSubscription) return;
+        setCoachPrice(s.partnerSubscription.coach);
+        setCoachDays(s.partnerSubscription.durationDays);
+      })
+      .catch(() => { /* pill falls back to "Learn more" */ });
+    return () => { alive = false; };
+  }, [isLoggedIn, isCoach]);
 
   // Processed at fetch time (Date.now() must not run during render — purity rule).
   const [metrics, setMetrics] = useState<ProfileMetrics | null>(null);
@@ -244,6 +270,67 @@ export function ProfileScreenV2(props: ProfileV2Props) {
           History + Recent Games are live (derived from games + bookings). */}
       <div>
         <div className="section-gap" />
+
+        {/* Coaching — the canonical home of the coach subscription. The Home tab
+            only carries a CTA that routes here. Shown to every signed-in player:
+            subscribing is how you *become* a coach, so it can't require the role.
+
+            A player who isn't a coach yet sees the PITCH as an upgrade banner
+            (same treatment as "Unlock Full Stats"); tapping it opens a sheet that
+            spells out what the plan unlocks before sending them to the paid
+            screen. Once subscribed the banner is replaced by plain manage rows. */}
+        {isLoggedIn && (
+          <div className="content-section">
+            <h2 className="section-title">Coaching</h2>
+
+            {!isCoach && (
+              <div
+                className="upgrade-banner"
+                role="button"
+                tabIndex={0}
+                onClick={() => setCoachPromoOpen(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCoachPromoOpen(true); } }}
+              >
+                <div className="upgrade-text">
+                  <strong>Coach on PickleBallers</strong>
+                  <p>Get listed in Find Coach, take bookings &amp; earn.</p>
+                </div>
+                <button className="upgrade-pill" type="button" tabIndex={-1}>
+                  {coachPrice != null ? `₱${coachPrice.toLocaleString('en-PH')}` : 'Learn more'}
+                </button>
+              </div>
+            )}
+
+            {isCoach && (
+              <ul className="settings-list">
+                <li className="settings-item" role="button" tabIndex={0}
+                  onClick={() => onNavigate('coach-subscribe')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('coach-subscribe'); } }}>
+                  <div className="settings-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6" /><path d="m2 10 10-5 10 5-10 5z" /><path d="M6 12v5c3 2.5 9 2.5 12 0v-5" /></svg>
+                  </div>
+                  <div className="settings-label">
+                    <strong>Coach subscription</strong>
+                    <span>Manage your plan</span>
+                  </div>
+                  <Chevron />
+                </li>
+                <li className="settings-item" role="button" tabIndex={0}
+                  onClick={() => onNavigate('coach-bookings')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('coach-bookings'); } }}>
+                  <div className="settings-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="m9 16 2 2 4-4" /></svg>
+                  </div>
+                  <div className="settings-label">
+                    <strong>Session requests</strong>
+                    <span>Accept or decline player bookings</span>
+                  </div>
+                  <Chevron />
+                </li>
+              </ul>
+            )}
+          </div>
+        )}
 
         {userHasPermission(user, 'organizer.access') && (
           <div className="content-section">
@@ -524,6 +611,16 @@ export function ProfileScreenV2(props: ProfileV2Props) {
 
         <div style={{ height: 20 }} />
       </div>
+
+      {/* "What you get" popup. Subscribing itself stays on the dedicated screen,
+          which owns the address gate + payment — the sheet only explains + routes. */}
+      <CoachPromoSheet
+        open={coachPromoOpen}
+        onClose={() => setCoachPromoOpen(false)}
+        onContinue={() => { setCoachPromoOpen(false); onNavigate('coach-subscribe'); }}
+        price={coachPrice}
+        durationDays={coachDays}
+      />
     </V2Shell>
   );
 }

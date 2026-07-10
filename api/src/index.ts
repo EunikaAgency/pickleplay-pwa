@@ -9,7 +9,9 @@ import { compress } from 'hono/compress';
 
 import { errorHandler } from './shared/middleware/error-handler.js';
 import { requestId } from './shared/middleware/request-id.js';
+import { clientIdentity } from './shared/middleware/client-identity.js';
 import { rateLimiter } from './shared/middleware/rate-limiter.js';
+import { requestQueue } from './shared/middleware/queue.js';
 import routesRouter from './routes/index.js';
 import { connectDb } from './shared/db/index.js';
 import { loadRolePermissionsCache, seedSystemRoles } from './features/roles/roles.controller.js';
@@ -97,6 +99,12 @@ app.use('*', cors({
 // the connection closes. The club feed stream (/clubs/:id/stream) must flush.
 const compressMw = compress();
 app.use('*', (c, next) => (c.req.path.endsWith('/stream') ? next() : compressMw(c, next)));
+
+// Resolve who is calling BEFORE anything that meters them. Route-level
+// requireAuth/optionalAuth run too late for the limiter and the queue to see a
+// user, so both would otherwise key every request by IP — lumping a whole NAT
+// (office, campus, mobile carrier) into one shared bucket.
+app.use('*', clientIdentity);
 app.use('*', rateLimiter());
 
 /* ─── Request Body Size Limit ──────────────────────────── */
@@ -126,6 +134,16 @@ app.use('/images/*', serveStatic({ root: './uploads' }));
 // `/uploads/<file>`). Serve it from the repo root so `/uploads/<file>` resolves
 // to `./uploads/<file>` — without this, freshly uploaded photos 404.
 app.use('/uploads/*', serveStatic({ root: './' }));
+
+/* ─── Concurrency gate ─────────────────────────────────── */
+// Registered after the static mounts and before the API routes, so it only
+// meters DB-bound handlers — the actual choke point. Serving an image off disk
+// should never wait behind a queue, and an SSE stream must never hold a slot
+// (see the bypass list in queue.ts).
+//
+// Excess requests WAIT here rather than being rejected: a burst gets served a
+// little slower instead of erroring, and only a full queue sheds 503s.
+app.use('*', requestQueue());
 
 /* ─── Directory Routes ─────────────────────────────────── */
 

@@ -474,7 +474,15 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
               </div>
             ) : (
               <>
-                <div className="section-header"><h2 className="section-title">Players near you</h2></div>
+                {/* `/friends/suggestions` has three tiers: geolocated (distances present),
+                    shared clubs/games, then a random sample. Only the first is genuinely
+                    "near you" — claiming it for the others would be a lie. Same copy as
+                    the home rail's fallback heading. */}
+                <div className="section-header">
+                  <h2 className="section-title">
+                    {suggestions.some((s) => s.distanceKm != null) ? 'Players near you' : 'People you may know'}
+                  </h2>
+                </div>
                 <div className="friend-list">
                   {suggestions.map((person) => (
                     <FriendRow

@@ -76,8 +76,37 @@ src/
                              #   unit-tested in bracketEngine.test.ts. Routes live under
                              #   /tournaments/:id/{entrants,bracket,matches,standings}
     cities/                  # city directory
-    coaches/                 # coaches + coach-reviews.* (reviews sub-resource)
-    coach-applications/      # coaches apply to venues; owners approve/reject
+    coaches/                 # coaches + coach-reviews.* (reviews sub-resource).
+                             #   Coach is its own doc, linked to a User by `userId`
+                             #   (imported directory rows have none). CoachService =
+                             #   a bookable session type. GET /coaches?subscribed=true
+                             #   returns ONLY coaches with a live coach subscription
+                             #   (powers Find Coach); POST /coaches (createMyCoach)
+                             #   requires one (402 SUBSCRIPTION_REQUIRED).
+    coach-applications/      # coaches apply to venues; owners approve/reject.
+                             #   Submitting now requires a live coach subscription
+                             #   (402) — the paid plan is what buys "become a coach
+                             #   at this venue". Approval still mints the venue-scoped
+                             #   UserRole grant (the profile badge).
+    coach-bookings/          # a player books a coaching session with a coach.
+                             #   CoachBooking model (deliberately NOT the court
+                             #   `Booking` — a session is a claim on a person's time,
+                             #   not a court). pending → coach accepts (confirmed) /
+                             #   declines; either party cancels. Price is server-
+                             #   derived from the CoachService or the coach's hourly
+                             #   rate — never trusted from the client. Guards:
+                             #   COACH_NOT_SUBSCRIBED / SLOT_TAKEN / SELF_BOOKING.
+    partner-subscriptions/   # the PAID, PLATFORM-level coach/organizer plan.
+                             #   PartnerSubscription model + hasActivePartnerSubscription
+                             #   / activeSubscriberIds (batched) / expireLapsedSubscriptions
+                             #   (lazy expiry on read — no cron). Subscribing requires a
+                             #   complete postal address (400 ADDRESS_REQUIRED) and grants
+                             #   the GLOBAL coach/organizer role; cancelling revokes it but
+                             #   keeps venue-scoped grants. Price + term live in AppSettings.
+                             #   NOTE: unrelated to `subscriptions/` (a newsletter list).
+    users/                   # GET /users/:id — another player's PUBLIC profile card
+                             #   (roles, per-venue partner badges, live isCoach/isOrganizer).
+                             #   Never exposes email/phone/postal address.
     tournament-applications/ # organizers request a venue+slot for a tournament; owners approve/reject
     content/                 # editorial / CMS content + organizer tournaments AND open play
                              #   Tournaments: create/edit/cancel/mine, open-registration,
@@ -170,7 +199,8 @@ src/
                              #   permissions.ts). Distinct from venues' per-venue VenueStaff.
                              #   create/list/update(rename|reset-pw)/remove (DELETE = hard
                              #   delete the login); owner+admin only (owner.staff.manage).
-    subscriptions/           # subscription tiers
+    subscriptions/           # newsletter mailing list (email opt-in) + AuditLog.
+                             #   NOT a paid plan — see partner-subscriptions/ for that.
     tables/                  # generic table/list endpoints (controller + routes)
     tags/                    # tag taxonomy
     venues/                  # venues.* + venue-management.* (owner-side editing;
@@ -234,9 +264,16 @@ src/
                              #   Notification + push together — the usual notify entry point;
                              #   also publishes notification.created to userEvents.ts),
                              #   userEvents.ts (in-process per-user realtime bus, channel
-                             #   user:${id} — mirrors clubs.events.ts; drives GET /me/stream)
+                             #   user:${id} — mirrors clubs.events.ts; drives GET /me/stream),
+                             #   client-ip.ts (trusted-proxy-aware caller IP: X-Forwarded-For
+                             #   is honoured ONLY when the socket peer is in TRUSTED_PROXIES,
+                             #   else the header is a free rate-limit bypass)
     middleware/              # auth.ts (requireAuth / optionalAuth), error-handler.ts,
-                             # rate-limiter.ts, request-id.ts
+                             # request-id.ts,
+                             # client-identity.ts (resolves clientId/clientUser BEFORE routing
+                             #   so the two meters below can key per-user, not per-IP),
+                             # rate-limiter.ts (per-identity sliding window; abuse backstop),
+                             # queue.ts (concurrency gate + fair queue; overload backstop)
 ```
 
 ## Key shared modules (know these before touching behavior)
@@ -244,6 +281,13 @@ src/
 - **`src/routes/index.ts`** — where every feature is mounted; the whole API surface.
 - **`features/root/root.controller.ts`** — `/lists` source of truth (must stay in sync with routes).
 - **`shared/middleware/auth.ts`** — `requireAuth` (hard fail) / `optionalAuth` (attach if present).
+- **`shared/middleware/client-identity.ts`** — runs before the limiter/queue and sets `clientId`
+  (`user:<id>` when a valid token is present, else `ip:<addr>`). It intentionally does *not* set
+  `user` — that key stays the contract of `requireAuth`/`optionalAuth`.
+- **`shared/middleware/queue.ts`** — bounds in-flight requests (`API_MAX_CONCURRENT`) and makes the
+  excess **wait** instead of failing; sheds `503 SERVER_BUSY` only when the queue or the timeout is
+  exhausted. `maxConcurrentPerClient` is the fairness lever: one client can never occupy every slot,
+  so a flood degrades only the flooder. Bypasses `OPTIONS`, `/health`, and `*/stream` (SSE).
 - **`shared/lib/jwt.ts`** — sign/verify; secret in `JWT_SECRET`.
 - **`shared/lib/permissions.ts`** — roles → permissions; the canonical `ALL_PERMISSIONS` /
   `PERMISSION_CATALOGUE` / `ROLE_PERMISSIONS` (source of truth synced to web + app — see `../AGENTS.md`).

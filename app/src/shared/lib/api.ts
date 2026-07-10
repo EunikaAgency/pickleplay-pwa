@@ -230,6 +230,9 @@ export interface ApiUser {
   hasOnboarded?: boolean | null;
   preferences?: UserPreferences | null;
   privacySetting?: string | null;
+  /** Live paid partner subscriptions — NOT the same as holding the role. */
+  coachSubscriptionActive?: boolean | null;
+  organizerSubscriptionActive?: boolean | null;
   /** Per-venue partner badges ("Coach at <venue>", "Organiser at <venue>"). */
   partnerRoles?: Array<{ role: string; venueId: string; venueName: string }>;
 }
@@ -273,6 +276,8 @@ export function toAppUser(api: ApiUser): AppUser {
     hasOnboarded: api.hasOnboarded ?? false,
     preferences: api.preferences ?? DEFAULT_PREFERENCES,
     privacySetting: normalizePrivacy(api.privacySetting),
+    coachSubscriptionActive: !!api.coachSubscriptionActive,
+    organizerSubscriptionActive: !!api.organizerSubscriptionActive,
     roleDefault: normalizeRole(api.roleDefault ?? api.role),
     roles,
     permissions: resolveRolePermissions(roles),
@@ -3068,6 +3073,13 @@ export interface AppSettings {
   emailBccAddress?: string;
   /** Pricing mode: 'start' = rate based on booking start time (default); 'blend' = per-hour resolution. */
   pricingMode?: 'start' | 'blend';
+  /** Price + term of the paid coach/organizer subscriptions. */
+  partnerSubscription?: {
+    coach: number;
+    organizer: number;
+    durationDays: number;
+    currency: string;
+  };
 }
 
 /** Public app settings — used by checkout to decide test vs live card UI. */
@@ -4081,4 +4093,216 @@ export async function exportRentalInventoryCsv(filters?: RentalInventoryFilters)
     throw err;
   }
   return res.text();
+}
+
+/* ─── Partner subscriptions (paid coach / organizer plans) ──────── */
+
+export type PartnerPlan = 'coach' | 'organizer';
+export type PartnerSubscriptionStatus = 'active' | 'expired' | 'cancelled';
+
+export interface PartnerSubscription {
+  id: string;
+  plan: PartnerPlan;
+  status: PartnerSubscriptionStatus;
+  priceAmount: number;
+  currency: string;
+  startedAt: string;
+  expiresAt: string;
+  autoRenew: boolean;
+  /** Server-derived: status is active AND the term hasn't lapsed. */
+  isActive: boolean;
+}
+
+export interface PartnerSubscriptionState {
+  subscriptions: PartnerSubscription[];
+  /** The live coach subscription, or null. */
+  coach: PartnerSubscription | null;
+  organizer: PartnerSubscription | null;
+  pricing: { coach: number; organizer: number; durationDays: number; currency: string };
+  /** False when the profile is missing address fields required to subscribe. */
+  addressComplete: boolean;
+  missingAddressFields: string[];
+}
+
+/** The signed-in user's coach/organizer subscription state + current pricing. */
+export async function getMyPartnerSubscriptions(): Promise<PartnerSubscriptionState> {
+  return request<PartnerSubscriptionState>('/api/v1/partner-subscriptions/me', { auth: true });
+}
+
+/** Buy a term. Throws ApiError `ADDRESS_REQUIRED` (400) when the profile address
+ *  is incomplete, or `ALREADY_SUBSCRIBED` (409). */
+export async function subscribeToPartnerPlan(
+  plan: PartnerPlan,
+  opts?: { autoRenew?: boolean },
+): Promise<PartnerSubscription> {
+  return request<PartnerSubscription>('/api/v1/partner-subscriptions', {
+    method: 'POST', body: { plan, autoRenew: opts?.autoRenew }, auth: true,
+  });
+}
+
+/** Cancel an active term — revokes the role immediately, no refund. */
+export async function cancelPartnerSubscription(id: string): Promise<PartnerSubscription> {
+  return request<PartnerSubscription>(`/api/v1/partner-subscriptions/${id}`, { method: 'DELETE', auth: true });
+}
+
+/* ─── Coaches (browse + book) ───────────────────────────────────── */
+
+export interface ApiCoach {
+  id: string;
+  slug?: string | null;
+  displayName: string;
+  specialty?: string | null;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  imageUrl?: string | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+  experienceYears?: number | null;
+  languages?: string[];
+  certifications?: string[];
+  cityPrimary?: string | null;
+  location?: string | null;
+  pricePrivatePerHour?: number | null;
+  priceGroupPerPlayer?: number | null;
+  priceCurrency?: string | null;
+  /** Legacy flat rate on imported directory rows; fallback for pricePrivatePerHour. */
+  rateFrom?: number | null;
+  bookingLeadTimeHours?: number | null;
+  isVerified?: boolean | null;
+  userId?: string | null;
+}
+
+export interface ApiCoachService {
+  id: string;
+  name?: string | null;
+  durationMinutes?: number | null;
+  price: number;
+  description?: string | null;
+  maxStudents?: number | null;
+  isActive?: boolean;
+}
+
+export interface ApiCoachDetail extends ApiCoach {
+  services: ApiCoachService[];
+  venues: Array<{ id: string; name: string; slug?: string; location?: string }>;
+}
+
+/** Browse coaches. `subscribed: true` is what Find Coach passes — it returns
+ *  only coaches holding a live subscription, so imported directory rows drop out. */
+export async function listCoaches(params?: {
+  subscribed?: boolean; search?: string; specialty?: string; venueId?: string; minRating?: number;
+}): Promise<ApiCoach[]> {
+  const q = new URLSearchParams();
+  if (params?.subscribed) q.set('subscribed', 'true');
+  if (params?.search) q.set('search', params.search);
+  if (params?.specialty) q.set('specialty', params.specialty);
+  if (params?.venueId) q.set('venueId', params.venueId);
+  if (params?.minRating !== undefined) q.set('minRating', String(params.minRating));
+  const qs = q.toString();
+  return request<ApiCoach[]>(`/api/v1/coaches${qs ? `?${qs}` : ''}`);
+}
+
+/** One coach by slug or id, with their bookable services + venues. */
+export async function getCoach(id: string): Promise<ApiCoachDetail> {
+  return request<ApiCoachDetail>(`/api/v1/coaches/${id}`);
+}
+
+/** The signed-in user's own coach profile (404 when they have none). */
+export async function getMyCoach(): Promise<ApiCoachDetail> {
+  return request<ApiCoachDetail>('/api/v1/coaches/me', { auth: true });
+}
+
+/** Create the signed-in user's coach profile. Requires a live coach
+ *  subscription server-side (402 `SUBSCRIPTION_REQUIRED` otherwise). */
+export async function createMyCoach(body: {
+  displayName?: string; specialty?: string; bio?: string;
+  pricePrivatePerHour?: number; priceGroupPerPlayer?: number; experienceYears?: number;
+}): Promise<ApiCoachDetail> {
+  return request<ApiCoachDetail>('/api/v1/coaches', { method: 'POST', body, auth: true });
+}
+
+/* ─── Coach bookings (a player books a session) ─────────────────── */
+
+export type CoachBookingStatus = 'pending' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
+
+export interface ApiCoachBooking {
+  id: string;
+  coachId: string;
+  coach: { id: string; name: string; slug?: string; avatarUrl?: string | null; specialty?: string | null } | null;
+  player: { id: string; name: string; avatarUrl?: string | null } | null;
+  serviceId?: string | null;
+  venueId?: string | null;
+  date: string;
+  startTime: string;
+  endTime?: string | null;
+  durationMinutes?: number | null;
+  amount: number;
+  currency: string;
+  status: CoachBookingStatus;
+  notes?: string | null;
+  declineReason?: string | null;
+  createdAt: string;
+}
+
+/** Request a coaching session. The price is derived server-side from the chosen
+ *  service (or the coach's hourly rate) — never sent by the client. */
+export async function createCoachBooking(body: {
+  coachId: string; date: string; startTime: string;
+  serviceId?: string; venueId?: string; endTime?: string; durationMinutes?: number; notes?: string;
+}): Promise<ApiCoachBooking> {
+  return request<ApiCoachBooking>('/api/v1/coach-bookings', { method: 'POST', body, auth: true });
+}
+
+/** Sessions the signed-in player requested. */
+export async function listMyCoachBookings(): Promise<ApiCoachBooking[]> {
+  return request<ApiCoachBooking[]>('/api/v1/coach-bookings/mine', { auth: true });
+}
+
+/** The signed-in coach's incoming session requests. */
+export async function listCoachInbox(): Promise<ApiCoachBooking[]> {
+  return request<ApiCoachBooking[]>('/api/v1/coach-bookings/coach', { auth: true });
+}
+
+export async function acceptCoachBooking(id: string): Promise<ApiCoachBooking> {
+  return request<ApiCoachBooking>(`/api/v1/coach-bookings/${id}/accept`, { method: 'PATCH', auth: true });
+}
+
+export async function declineCoachBooking(id: string, reason?: string): Promise<ApiCoachBooking> {
+  return request<ApiCoachBooking>(`/api/v1/coach-bookings/${id}/decline`, { method: 'PATCH', body: { reason }, auth: true });
+}
+
+/** Either party calls the session off. */
+export async function cancelCoachBooking(id: string): Promise<ApiCoachBooking> {
+  return request<ApiCoachBooking>(`/api/v1/coach-bookings/${id}/cancel`, { method: 'PATCH', auth: true });
+}
+
+/* ─── Public player profile ─────────────────────────────────────── */
+
+export interface PublicUser {
+  id: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  isVerified: boolean;
+  bio?: string | null;
+  skillLevel?: number | null;
+  skillLevelLabel?: string | null;
+  city?: string | null;
+  province?: string | null;
+  roles: string[];
+  partnerRoles: Array<{ role: string; venueId: string; venueName: string }>;
+  /** True only while the coach subscription is LIVE — drives the "Coach" badge. */
+  isCoach: boolean;
+  isOrganizer: boolean;
+  coach: {
+    id: string; slug?: string; specialty?: string | null;
+    rating: number; reviewCount: number;
+    pricePrivatePerHour?: number | null; priceCurrency: string;
+  } | null;
+  privacySetting: string;
+  memberSince: string;
+}
+
+/** Another player's public profile card. Open to guests. */
+export async function getPublicUser(id: string): Promise<PublicUser> {
+  return request<PublicUser>(`/api/v1/users/${id}`);
 }

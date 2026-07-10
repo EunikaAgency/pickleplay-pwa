@@ -7,6 +7,7 @@ import { signAccessToken, signRefreshToken, verifyToken } from '../../shared/lib
 import { resolveRolePermissions } from '../../shared/lib/permissions.js';
 import { getOAuthUrl, exchangeCode, isGmailConfigured, hasValidTokens, sendEmail, getStoredTokens } from '../../shared/lib/gmail.js';
 import { passwordChangedEmail, passwordResetEmail, welcomeEmail } from '../../shared/lib/email-templates.js';
+import { PartnerSubscription, expireLapsedSubscriptions } from '../partner-subscriptions/partner-subscriptions.model.js';
 
 // Public self-registration is limited to player and owner. Everyone signs up as
 // a player (or an owner); coach and organizer are NOT sign-up roles — they are
@@ -108,13 +109,31 @@ async function authUserPayload(user: any) {
     ? await Venue.find({ _id: { $in: venueIds } }).select('displayName').lean()
     : [];
   const venueById = new Map((venueRows as any[]).map((v: any) => [v._id.toString(), v.displayName]));
-  const partnerRoles = venueGrants.map((g: any) => ({
-    role: g.role,
-    venueId: g.scopeId?.toString(),
-    venueName: venueById.get(g.scopeId?.toString()) || 'Unknown venue',
-  }));
+  // Drop grants whose venue no longer exists (stale seed rows) instead of
+  // rendering a row of "Unknown venue" badges, and collapse duplicates.
+  const seenBadges = new Set<string>();
+  const partnerRoles = venueGrants.flatMap((g: any) => {
+    const venueId = g.scopeId?.toString();
+    const venueName = venueById.get(venueId);
+    if (!venueId || !venueName) return [];
+    const key = `${g.role}|${venueId}`;
+    if (seenBadges.has(key)) return [];
+    seenBadges.add(key);
+    return [{ role: g.role, venueId, venueName }];
+  });
+
+  // Live partner subscriptions. The app gates the "Become a coach" CTA on THIS,
+  // not on the coach role — an approved venue application grants that role
+  // without a subscription, and a lapsed subscription leaves it behind.
+  await expireLapsedSubscriptions(user._id);
+  const liveSubs = await PartnerSubscription.find({
+    userId: user._id, status: 'active', expiresAt: { $gt: new Date() },
+  }).select('plan').lean() as any[];
+  const livePlans = new Set(liveSubs.map((s) => s.plan));
 
   return {
+    coachSubscriptionActive: livePlans.has('coach'),
+    organizerSubscriptionActive: livePlans.has('organizer'),
     id: user._id,
     email: user.email,
     displayName: user.displayName,
@@ -168,11 +187,12 @@ async function tokenPayloadFor(user: any) {
     role: user.roleDefault || 'player',
     roles,
     permissions: resolveRolePermissions(roles),
-    // Staff sub-accounts no longer inherit the owner's full portfolio via
-    // effectiveOwnerId(). They must be explicitly added to individual venues
-    // through the per-venue Staff tab, which creates VenueStaff rows — those,
-    // not parentOwnerId, now gate a staff member's venue access.
-    // parentOwnerUserId is kept on the User doc only so listStaff can find them.
+    // Carried in the JWT so effectiveOwnerId() can scope a staff member to their
+    // owner's resources without a DB lookup on every request. Omitted otherwise.
+    // A staff sub-account inherits its owner's whole portfolio — per-venue
+    // VenueStaff rows stay additive (they grant manager/front_desk to users who
+    // are NOT the owner's staff), they are not the gate.
+    ...(user.parentOwnerUserId ? { parentOwnerId: user.parentOwnerUserId.toString() } : {}),
   };
 }
 

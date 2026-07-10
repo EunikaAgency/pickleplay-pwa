@@ -102,8 +102,13 @@ Current features: `admin`, `auth`, `bookings`, `cities`, `coaches` (+ `coach-rev
 
 ## Git & deploy
 
-- Remote: `https://github.com/jhonivancuaco/pickleballers-api.git` (private). Pushes require a PAT.
-- This repo is **gitignored from the sibling parent monorepo** (`/var/public/pickleplay/`) — `api/` is in that repo's `.gitignore`. Commit and push from `/var/public/pickleplay/api/` only.
+- ⚠️ **This directory is NOT a separate git repo.** It has no `.git`, it is **not**
+  gitignored by the parent, and the parent monorepo (`EunikaAgency/pickleplay-pwa`)
+  tracks every file under `api/src`. Verify before trusting anything below:
+  `git -C api rev-parse --show-toplevel` → `/var/public/pickleplay`.
+  Commit `api/` changes from the parent repo, alongside `app/` and `web/`.
+- (Historical) A standalone remote `https://github.com/jhonivancuaco/pickleballers-api.git`
+  once existed; it is not wired up here.
 - PM2 ecosystem: `ecosystem.config.json` (port, env, CORS origins). System autostart is via `pm2-eunika-blue.service` (already installed); run `pm2 save` after `pm2 start ecosystem.config.json` so reboots survive.
 
 ## Keeping the public roadmap current
@@ -138,4 +143,7 @@ Skipping it is treated like skipping a test: the work isn't done.
 
 - **Static-file serving for `/images/...`** is not wired yet — `mainImageUrl` paths are stored in Mongo but no route resolves them. Add a `serveStatic({ root: './uploads' })` mount on `/images/*` once the JPEG payload lands.
 - **Pricing import**: only the flat `priceFrom` lives on `Venue`. The richer `VenuePricing` rows (audiences, days, time windows) live in their own collection but no controller exposes them yet.
-- **No write endpoints for `Coach`** — `coaches.routes.ts` is read-only. If coaches self-edit becomes a flow, add POST/PATCH and remember to update `/lists`.
+- ~~No write endpoints for `Coach`~~ — **done.** `POST /coaches` (`createMyCoach`),
+  `GET|PATCH /coaches/me`, and the `coach-applications` slice all exist. Creating a
+  coach profile or applying at a venue now requires an active **coach subscription**
+  (`partner-subscriptions/`), which returns `402 SUBSCRIPTION_REQUIRED` otherwise.

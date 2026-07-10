@@ -1,0 +1,12 @@
+import { chromium } from '@playwright/test';
+const APP='http://localhost:9000', API='http://localhost:9002';
+const r=await fetch(`${API}/api/v1/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'christianian.i.alcazar@gmail.com',password:'password123'})});
+const t=(await r.json()).data;
+const b = await chromium.launch();
+const p = await (await b.newContext({viewport:{width:390,height:560},deviceScaleFactor:2})).newPage();
+await p.goto(APP);
+await p.evaluate(x=>{localStorage.setItem('pb-access-token',x.accessToken);localStorage.setItem('pb-refresh-token',x.refreshToken);sessionStorage.setItem('pb-splash-seen','1');},t);
+await p.goto(`${APP}/home`); await p.waitForSelector('.coach-cta'); await p.waitForTimeout(1200);
+const el = await p.locator('.container').first();
+await el.screenshot({path:'/tmp/claude-1000/-var-public-pickleplay/9f44749f-d9c3-4293-bf3e-e7372a295c4b/scratchpad/home-cards.png'});
+await b.close();

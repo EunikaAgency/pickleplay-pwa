@@ -126,7 +126,27 @@ src/
                        #   CreateClub + EditClub (live: POST/PATCH
                        #   /clubs — name/description/visibility + cover-photo upload
                        #   + member limit). All via the clubs client in api.ts.
-    profile/           # Profile, EditProfile, Settings, Notifications, PaymentHistory,
+    coaches/           # the coach feature. CoachSubscribeScreen (`coach-subscribe`,
+                       #   /coach/subscribe) — the CANONICAL entry, reached from the Profile
+                       #   tab's "Coaching" section; the Home CTA only links here. Buys the
+                       #   paid plan (price + term from GET /settings), blocks on an
+                       #   incomplete profile address (ADDRESS_REQUIRED → Edit Profile), and
+                       #   calls authStore.restore() so the new coach role lands without a
+                       #   re-login. FindCoachScreen (`find-coach`, /coaches) — lists ONLY
+                       #   coaches holding a live subscription (listCoaches({subscribed:true})),
+                       #   debounced server-side search. CoachDetailScreen (`coach-detail`) →
+                       #   BookCoachScreen (`book-coach`): pick a CoachService or the plain
+                       #   hourly session, date + HourSelect start time, notes →
+                       #   createCoachBooking (the SERVER prices it). CoachBookingsScreen
+                       #   (`coach-bookings`) = the coach's inbox (accept/decline/cancel).
+                       #   coachDisplay.ts holds the local formatters (rate/location/service/
+                       #   status chip) — the slice must not import another slice's display module.
+    profile/           # Profile, EditProfile (address1/2 + city/province/zipcode, re-seeded
+                       #   once the session restores), Settings, Notifications, PaymentHistory,
+                       #   PlayerProfileScreen (`player-profile`, /players/:id — another
+                       #   player's PUBLIC card via getPublicUser; Coach/Organizer badges reuse
+                       #   shared/lib/roleDisplay.ts ROLE_META; a live coach gets a "Book a
+                       #   coaching session" shortcut),
                        #   MembersScreen (player-facing community dashboard: clubs + venue
                        #   memberships in a searchable, filterable table with KPI cards,
                        #   status badges, loading skeletons, and empty state; reachable
@@ -547,6 +567,8 @@ src/
 | Live notification badge (unread) | `shared/lib/notificationStore.ts` + `shared/hooks/useNotificationPolling.ts` (started in `App.tsx`); `shared/components/ui/NotificationBadge.tsx` on the home bell + TabBar "You" tab |
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
+| Coach subscription / Find Coach / book a coach | `features/coaches/` (entry: Profile tab → "Coaching"; the Home `.coach-cta` only links there). ⚠️ Gate the subscribe CTAs on **`user.coachSubscriptionActive`**, never on `roles.includes('coach')` — a venue owner approving a coach application grants that role with **no** subscription, and the role survives a lapsed one. Backed by `api/src/features/partner-subscriptions/` + `coach-bookings/` |
+| Another player's public profile | `features/profile/PlayerProfileScreen.tsx` (`player-profile`, `/players/:id`); `getPublicUser` in `shared/lib/api.ts` → `GET /api/v1/users/:id`; badges via `shared/lib/roleDisplay.ts` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Owner subscription plans (membership tiers) | `features/owner/SubscriptionPlansScreen.tsx` (`owner-subscription-plans`, from Members tab "Manage Subscription"), `features/owner/components/CreateEditPlanSheet.tsx` (create/edit form), `shared/lib/api.ts` → `listSubscriptionPlans`/`createSubscriptionPlan`/`updateSubscriptionPlan`(versioning)/`deleteSubscriptionPlan`/`duplicateSubscriptionPlan`/`toggleSubscriptionPlan`/`listPublicPlans`/`subscribeToPlan`; player-side: `MembershipSheet.tsx` uses `listPublicPlans` when the owner has active plans (falls back to hardcoded defaults); backed by `SubscriptionPlan`/`SubscriptionPlanVersion`/`VenueSubscription` models in `api/src/features/venues/` |
 | Demand data capture (searches, views, bookings funnel, empty slots) | `shared/hooks/useDemandTracking.ts` (client-side signals); `shared/lib/api.ts` → `recordDemandEvent` / `getVenueDemand` / `getVenueLeakageReport` / `getSuggestedPricing`; owner Demand/Leakage/Insights tabs; backed by `api/src/features/demand/` |

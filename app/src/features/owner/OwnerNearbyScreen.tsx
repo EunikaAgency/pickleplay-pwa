@@ -95,6 +95,7 @@ function byAttention(a: VenueRow, b: VenueRow): number {
 export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
   const user = useAuthStore((s) => s.user);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
+  const canReports = userHasPermission(user, 'owner.reports.view');
   const canCreate = userHasPermission(user, 'owner.venues.create');
   const canClaim = userHasPermission(user, 'owner.venues.claim');
   const { venues, status, retry, glanceFor, analyticsByVenue, canAnalytics } = useOwnerDashboard({
@@ -245,7 +246,11 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
                           {canBookings && (
                             <button
                               type="button"
-                              onClick={() => onNavigate('owner-bookings', {})}
+                              // Staff can't open the cross-venue report, so send them to
+                              // this venue's own bookings inbox rather than a dead tap.
+                              onClick={() => (canReports
+                                ? onNavigate('owner-bookings', {})
+                                : onNavigate('owner-venue', { id: r.venue.slug || r.venue.id, tab: 'bookings' }))}
                               className="h-8 px-3 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] font-bold text-[12px]"
                             >
                               Bookings

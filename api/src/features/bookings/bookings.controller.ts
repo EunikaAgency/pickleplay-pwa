@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { Booking } from './bookings.model.js';
-import { Venue, Court, VenueMember } from '../venues/venues.model.js';
+import { Venue, Court, VenueMember, SlotPriceOverride } from '../venues/venues.model.js';
 import { Payment } from '../payments/payments.model.js';
 import { recordDemand } from '../demand/demand.controller.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { bookingConfirmedReceipt, bookingRequestedReceipt, cancellationReceipt } from '../../shared/lib/email-templates.js';
-import { resolveHourlyRate, perPlayerSurcharge } from './pricing.js';
+import { resolveHourlyRate, perPlayerSurcharge, OCCUPANCY_BLOCK_NOTES } from './pricing.js';
 
 function canEmail() { return isGmailConfigured() && hasValidTokens(); }
 
@@ -99,11 +99,64 @@ export async function resolveEffectiveCapacity(venueId: string): Promise<number>
   return courts.reduce((sum, c) => sum + (c.isSplittable && c.splitCount ? c.splitCount : 1), 0);
 }
 
-/** Every active (non-cancelled) booking for a venue on a date — the occupancy set. */
+/**
+ * Owner-painted 'Maintenance' windows. Unlike every other way a slot goes busy,
+ * these have no Booking behind them — the pricing grid writes only a
+ * SlotPriceOverride — so nothing stopped a player booking a court that was closed
+ * for maintenance. They have to be folded into the occupancy set by hand.
+ *
+ * 'Reserved' is deliberately NOT here: it is painted alongside a manual
+ * reservation, which is a real confirmed Booking. Counting both would decrement
+ * the capacity pool twice for one reservation.
+ */
+export async function maintenanceBlocksForDate(venueId: string, date: string) {
+  return SlotPriceOverride.find({ venueId, date, note: { $in: OCCUPANCY_BLOCK_NOTES } })
+    .select('startTime endTime courtId')
+    .lean<{ startTime: string; endTime: string; courtId?: any }[]>();
+}
+
+/**
+ * Hours (0–23) the whole venue is shut by a venue-wide maintenance block.
+ *
+ * A venue-wide block names no court, so it can't be modelled as a pseudo-booking:
+ * `freeCourtsByHour` would dock a single court from the pool when the owner meant
+ * "every court is closed". Callers zero these hours out instead.
+ */
+export async function venueWideClosedHours(venueId: string, date: string): Promise<boolean[]> {
+  const blocks = await maintenanceBlocksForDate(venueId, date);
+  return closedHoursFromBlocks(blocks);
+}
+
+/** Shared with the range/batch endpoints, which fetch their overrides in one query. */
+export function closedHoursFromBlocks(blocks: { startTime: string; endTime: string; courtId?: any }[]): boolean[] {
+  const closed = new Array<boolean>(24).fill(false);
+  for (const b of blocks) {
+    if (b.courtId != null) continue; // court-scoped: handled as occupancy, not closure
+    for (const h of hoursTouched(b.startTime, b.endTime)) closed[h] = true;
+  }
+  return closed;
+}
+
+/** Court-scoped maintenance shaped like bookings, so pool/court math needs no changes. */
+export function courtBlocksAsBookings(blocks: { startTime: string; endTime: string; courtId?: any }[]) {
+  return blocks
+    .filter((b) => b.courtId != null)
+    .map((b) => ({ startTime: b.startTime, endTime: b.endTime, courtId: b.courtId, subUnitIndex: null }));
+}
+
+/**
+ * Every active (non-cancelled) booking for a venue on a date — the occupancy set.
+ * Court-scoped maintenance blocks join it (they occupy exactly the court they
+ * name); venue-wide ones are a closure, see `venueWideClosedHours`.
+ */
 export async function activeBookingsForDate(venueId: string, date: string) {
-  return Booking.find({ venueId, date, status: { $ne: 'cancelled' } })
-    .select('startTime endTime courtId subUnitIndex')
-    .lean<{ startTime?: string | null; endTime?: string | null; courtId?: any; subUnitIndex?: number | null }[]>();
+  const [bookings, blocks] = await Promise.all([
+    Booking.find({ venueId, date, status: { $ne: 'cancelled' } })
+      .select('startTime endTime courtId subUnitIndex')
+      .lean<{ startTime?: string | null; endTime?: string | null; courtId?: any; subUnitIndex?: number | null }[]>(),
+    maintenanceBlocksForDate(venueId, date),
+  ]);
+  return [...bookings, ...courtBlocksAsBookings(blocks)];
 }
 
 // A reservation clashes when its court (or, for venue-level bookings, every court
@@ -119,6 +172,15 @@ export async function findSlotConflict(body: {
   if (body.endTime <= body.startTime) return 'End time must be after the start time.';
   const wanted = hoursTouched(body.startTime, body.endTime);
   if (!wanted.length) return null;
+
+  // Owner-painted maintenance. A venue-wide block shuts every court outright; a
+  // court-scoped one is folded into the clash checks below (and into the pool via
+  // activeBookingsForDate), so it can't be booked even while other courts are free.
+  const maintenance = await maintenanceBlocksForDate(body.venueId, body.date);
+  const closed = closedHoursFromBlocks(maintenance);
+  if (wanted.some((h) => closed[h])) {
+    return 'This venue is closed for maintenance during that time. Please pick another slot.';
+  }
 
   // A player can't double-book the same court: reject a window that overlaps one
   // this same user already holds on THIS court at this venue/date. Different
@@ -175,6 +237,19 @@ export async function findSlotConflict(body: {
         return buffer > 0
           ? `That court needs ${buffer} min between bookings — this slot is too close to another reservation. Please pick another time.`
           : 'That court is already booked for an overlapping time. Please pick another slot.';
+      }
+    }
+
+    // Maintenance on THIS court. The pool check below won't catch it while other
+    // courts are free, so it has to be rejected here. No turnover buffer: a closure
+    // is a hard window, not a reservation needing changeover time.
+    for (const b of maintenance) {
+      if (b.courtId == null || String(b.courtId) !== String(body.courtId)) continue;
+      const bs = toMinutes(b.startTime);
+      const be = toMinutes(b.endTime);
+      if (bs == null || be == null) continue;
+      if (reqStart < be && reqEnd > bs) {
+        return 'That court is closed for maintenance during that time. Please pick another slot.';
       }
     }
   }

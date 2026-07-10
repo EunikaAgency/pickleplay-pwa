@@ -38,11 +38,18 @@ export async function getPublicUser(c: any) {
     ? await Venue.find({ _id: { $in: venueIds } }).select('displayName').lean() as any[]
     : [];
   const venueById = new Map(venueRows.map((v) => [v._id.toString(), v.displayName]));
-  const partnerRoles = venueGrants.map((g) => ({
-    role: g.role,
-    venueId: g.scopeId.toString(),
-    venueName: venueById.get(g.scopeId.toString()) || 'Unknown venue',
-  }));
+  // A grant can outlive its venue (stale seed rows). Skip those rather than
+  // print "Coach at Unknown venue", and collapse duplicate role+venue pairs.
+  const seenBadges = new Set<string>();
+  const partnerRoles = venueGrants.flatMap((g) => {
+    const venueId = g.scopeId.toString();
+    const venueName = venueById.get(venueId);
+    if (!venueName) return [];
+    const key = `${g.role}|${venueId}`;
+    if (seenBadges.has(key)) return [];
+    seenBadges.add(key);
+    return [{ role: g.role, venueId, venueName }];
+  });
 
   // The "Coach" badge means a LIVE subscription, not merely the role — a lapsed
   // coach shouldn't wear the badge or be bookable.

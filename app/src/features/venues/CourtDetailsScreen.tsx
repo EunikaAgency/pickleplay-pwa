@@ -454,6 +454,12 @@ function CourtDetail({
         const refresh = kind === 'coach' ? getMyCoachApplicationForVenue : getMyOrganizerApplicationForVenue;
         const set = kind === 'coach' ? setCoachApp : setOrgApp;
         refresh(venue.id).then((a) => set(a ? { id: a.id, status: a.status } : null)).catch(() => {});
+        return;
+      }
+      // Applying is a paid capability (402). Send them to the subscribe screen
+      // rather than failing silently — this is the intended upsell path.
+      if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
+        onNavigate('coach-subscribe');
       }
     } finally {
       setApplyBusy('');

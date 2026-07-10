@@ -12,6 +12,7 @@ export const ALL_PERMISSIONS = [
   'owner.venues.manage',
   'owner.bookings.manage',
   'owner.analytics.view',
+  'owner.reports.view',
   'owner.games.view',
   'owner.market.view',
   'owner.reviews.manage',
@@ -104,6 +105,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.venues.manage',
     'owner.bookings.manage',
     'owner.analytics.view',
+    'owner.reports.view',
     'owner.games.view',
     'owner.market.view',
     'owner.reviews.manage',
@@ -120,9 +122,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // A delegated sub-account an owner (or admin) creates. Staff run the owner
   // console for ALL of their creating owner's venues, bookings, and clubs (scoped
   // server-side by parentOwnerUserId → effectiveOwnerId), but cannot create more
-  // staff (owner.staff.manage), nor create/claim new venues — those stay the
-  // owner's own administrative actions. The operational owner.* set mirrors the
-  // owner role minus those three keys.
+  // staff (owner.staff.manage), nor create/claim new venues, nor open the
+  // cross-venue revenue report at /owner/reports (owner.reports.view) — those
+  // stay the owner's own administrative actions. The operational owner.* set
+  // mirrors the owner role minus those four keys. Staff still work bookings via
+  // the front desk, calendar, and per-venue inbox.
   staff: [
     ...PLAYER_BASE_PERMISSIONS,
     'owner.access',
@@ -176,6 +180,7 @@ export const PERMISSION_CATALOGUE: Array<{
   { key: 'owner.venues.manage', group: 'Owner', label: 'Manage own venues', description: 'Edit venues they own.' },
   { key: 'owner.bookings.manage', group: 'Owner', label: 'Manage bookings', description: 'View, confirm, cancel, and mark paid bookings on owned venues.' },
   { key: 'owner.analytics.view', group: 'Owner', label: 'View venue analytics', description: 'See revenue, bookings, occupancy, and customer analytics for owned venues.' },
+  { key: 'owner.reports.view', group: 'Owner', label: 'View business reports', description: 'Open the cross-venue revenue/KPI report at /owner/reports. Withheld from staff sub-accounts.' },
   { key: 'owner.games.view', group: 'Owner', label: 'View venue games', description: 'See games and court activity scheduled at owned venues.' },
   { key: 'owner.market.view', group: 'Owner', label: 'View venues map', description: 'See the owner venues map — your venues plotted with their live status (today’s bookings, pending approvals, occupancy).' },
   { key: 'owner.reviews.manage', group: 'Owner', label: 'Reply to reviews', description: 'Respond to reviews on owned venues.' },

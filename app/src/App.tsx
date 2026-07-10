@@ -14,6 +14,12 @@ import { BookCourtScreen } from './features/bookings/BookCourtScreen';
 import { MyBookingsScreen } from './features/bookings/MyBookingsScreen';
 import { BookingRefundScreen } from './features/bookings/BookingRefundScreen';
 import { PaymentHistoryScreen } from './features/profile/PaymentHistoryScreen';
+import { PlayerProfileScreen } from './features/profile/PlayerProfileScreen';
+import { CoachSubscribeScreen } from './features/coaches/CoachSubscribeScreen';
+import { CoachBookingsScreen } from './features/coaches/CoachBookingsScreen';
+import { FindCoachScreen } from './features/coaches/FindCoachScreen';
+import { CoachDetailScreen } from './features/coaches/CoachDetailScreen';
+import { BookCoachScreen } from './features/coaches/BookCoachScreen';
 import { CreateClubScreen } from './features/clubs/CreateClubScreen';
 import { EditClubScreen } from './features/clubs/EditClubScreen';
 import { ClubPostScreen } from './features/clubs/ClubPostScreen';
@@ -103,6 +109,13 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'book-court': 'player.bookings.create',
   'booking-refund': 'player.bookings.create',
   'payment-history': 'player.payments.view',
+  // Subscribing + booking a coach are ordinary player capabilities (the paid
+  // subscription is the real gate, enforced server-side). `find-coach` and
+  // `coach-detail` stay ungated — browsing coaches is open to guests, like
+  // browsing courts and games.
+  'coach-subscribe': 'player.profile.manage',
+  'book-coach': 'player.bookings.create',
+  'coach-bookings': 'coach.profile.manage',
   'create-club': 'player.clubs.create',
   'edit-club': 'player.clubs.create',
   'club-post-edit': 'player.clubs.post',
@@ -120,7 +133,10 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-venue': 'owner.venues.manage',
   'owner-new-venue': 'owner.venues.create',
   'claim-venue': 'owner.venues.claim',
-  'owner-bookings': 'owner.bookings.manage',
+  // /owner/reports — the cross-venue revenue/KPI report. Owner-only: staff hold
+  // owner.bookings.manage (they work the front desk, calendar, and per-venue
+  // inbox) but must not see the owner's business-wide numbers.
+  'owner-bookings': 'owner.reports.view',
   'owner-front-desk': 'owner.bookings.manage',
   'owner-manual-reservation': 'owner.bookings.manage',
   'owner-pricing': 'owner.access',
@@ -158,6 +174,9 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'my-bookings': 'see your bookings',
   'booking-refund': 'manage your booking',
   'payment-history': 'see your payment history',
+  'coach-subscribe': 'become a coach',
+  'coach-bookings': 'manage your coaching sessions',
+  'book-coach': 'book a coach',
   'create-club': 'start a club',
   'edit-club': 'edit your club',
   'club-post-edit': 'edit your post',
@@ -269,6 +288,9 @@ function tabForScreen(id: ScreenId): TabId {
   if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
   if (id === 'chat') return 'messages';
+  // Finding/booking a coach is a Home-tab journey (entered from the Home card);
+  // subscribing + the coach's own inbox live under Profile, which is the fallthrough.
+  if (id === 'find-coach' || id === 'coach-detail' || id === 'book-coach' || id === 'player-profile') return 'home';
   return 'profile';
 }
 
@@ -595,6 +617,34 @@ function AppInner() {
         return <BookingRefundScreen bookingId={screen.params.bookingId} onNavigate={navigate} onBack={goBack} />;
       case 'payment-history':
         return <PaymentHistoryScreen onNavigate={navigate} onBack={goBack} />;
+      case 'coach-subscribe':
+        return <CoachSubscribeScreen onNavigate={navigate} onBack={goBack} />;
+      case 'coach-bookings':
+        return <CoachBookingsScreen onBack={goBack} />;
+      case 'find-coach':
+        return <FindCoachScreen onNavigate={navigate} onBack={goBack} />;
+      case 'coach-detail':
+        return (
+          <CoachDetailScreen
+            key={screen.params.id}
+            coachId={screen.params.id}
+            onNavigate={navigate}
+            onBack={goBack}
+            onRequireAuth={requireAuth}
+          />
+        );
+      case 'book-coach':
+        return (
+          <BookCoachScreen
+            key={screen.params.id}
+            coachId={screen.params.id}
+            serviceId={screen.params.serviceId}
+            onNavigate={navigate}
+            onBack={goBack}
+          />
+        );
+      case 'player-profile':
+        return <PlayerProfileScreen key={screen.params.id} userId={screen.params.id} onNavigate={navigate} onBack={goBack} />;
       case 'create-club':
         return playerV2 ? <CreateClubV2 {...v2Chrome} onBack={goBack} /> : <CreateClubScreen onNavigate={navigate} onBack={goBack} />;
       case 'edit-profile':

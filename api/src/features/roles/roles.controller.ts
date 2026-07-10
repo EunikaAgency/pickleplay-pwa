@@ -40,7 +40,7 @@ const SYSTEM_PERMISSION_BACKFILLS: Record<string, string[]> = {
   // owners aren't locked out of the pages their role is meant to have.
   owner: [
     'owner.venues.claim',
-    'owner.bookings.manage', 'owner.analytics.view', 'owner.games.view',
+    'owner.bookings.manage', 'owner.analytics.view', 'owner.reports.view', 'owner.games.view',
     'owner.market.view', 'owner.notifications.view',
     'owner.coaches.manage', 'owner.tournaments.manage', 'owner.staff.manage',
     'player.tournaments.join', 'player.games.invite', 'player.games.chat', 'user.messages.send', ...CLUB_PERMISSIONS,

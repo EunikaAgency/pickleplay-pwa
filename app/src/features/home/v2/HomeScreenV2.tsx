@@ -145,6 +145,11 @@ const RAIL_SIZE = 10;
 export function HomeScreenV2(chrome: V2ScreenChrome) {
   const { onNavigate } = chrome;
   const user = useAuthStore((s) => s.user);
+  const isLoggedIn = !!user;
+  // Hide the CTA only from people who actually hold a live subscription. The
+  // `coach` role alone isn't enough — a venue owner can grant it by approving an
+  // application, and it survives a lapsed subscription.
+  const isCoach = !!user?.coachSubscriptionActive;
   const [games, setGames] = useState<ApiGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [commitment, setCommitment] = useState<NextCommitment | null>(null);
@@ -258,7 +263,28 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
             </span>
             <span className="qa-label">Book Court</span>
           </button>
+          <button className="qa-card qa-neutral" onClick={() => onNavigate('find-coach')}>
+            <span className="qa-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6" /><path d="m2 10 10-5 10 5-10 5z" /><path d="M6 12v5c3 2.5 9 2.5 12 0v-5" /></svg>
+            </span>
+            <span className="qa-label">Find Coach</span>
+          </button>
         </section>
+
+        {/* Become-a-coach CTA. The subscription itself lives on the Profile tab —
+            this is only a doorway to it, and it disappears once you're a coach. */}
+        {isLoggedIn && !isCoach && (
+          <button className="coach-cta" onClick={() => onNavigate('coach-subscribe')}>
+            <span className="coach-cta-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6" /><path d="m2 10 10-5 10 5-10 5z" /><path d="M6 12v5c3 2.5 9 2.5 12 0v-5" /></svg>
+            </span>
+            <span className="coach-cta-text">
+              <strong>Coach on PickleBallers</strong>
+              <span>Subscribe to get listed and take bookings</span>
+            </span>
+            <svg className="coach-cta-chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+          </button>
+        )}
 
         {/* FEATURED — while loading, show the heading + a hero skeleton so the
             card reserves its space instead of popping in (and shoving Discover

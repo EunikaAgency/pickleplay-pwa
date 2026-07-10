@@ -12,6 +12,7 @@ export const ALL_PERMISSIONS = [
   'owner.venues.manage',
   'owner.bookings.manage',
   'owner.analytics.view',
+  'owner.reports.view',
   'owner.games.view',
   'owner.market.view',
   'owner.reviews.manage',
@@ -93,6 +94,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.venues.manage',
     'owner.bookings.manage',
     'owner.analytics.view',
+    'owner.reports.view',
     'owner.games.view',
     'owner.market.view',
     'owner.reviews.manage',
@@ -108,9 +110,12 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   // A delegated sub-account an owner (or admin) creates — runs the owner console
   // for ALL of that owner's venues, bookings, and clubs (scoped server-side by
-  // parentOwnerUserId). Mirrors the owner role minus owner.staff.manage and
+  // parentOwnerUserId). Mirrors the owner role minus owner.staff.manage,
   // owner.venues.create / owner.venues.claim (staff can't create staff or add new
-  // venues to the owner's org). Keep in sync with api shared/lib/permissions.ts.
+  // venues to the owner's org), and owner.reports.view (the cross-venue
+  // revenue/KPI report is the owner's business, not the staff member's — they
+  // still work bookings via the front desk, calendar, and per-venue inbox).
+  // Keep in sync with api shared/lib/permissions.ts.
   staff: [
     ...PLAYER_PERMISSIONS,
     'owner.access',
@@ -189,6 +194,14 @@ export interface AppUser {
   preferences: UserPreferences;
   /** Profile visibility (public / friends / private). */
   privacySetting?: PrivacySetting;
+  /**
+   * Live PAID partner subscriptions. Distinct from holding the `coach` role:
+   * a venue owner approving a coach application grants the role with no
+   * subscription, and a lapsed subscription leaves the role behind. Gate the
+   * subscribe CTAs on these, never on `roles.includes('coach')`.
+   */
+  coachSubscriptionActive?: boolean;
+  organizerSubscriptionActive?: boolean;
   roleDefault: Role;
   roles: Role[];
   permissions: Permission[];

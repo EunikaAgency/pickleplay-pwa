@@ -74,8 +74,10 @@ function relativeTime(iso?: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-/** Map a stored linkUrl (e.g. "/games/<id>") to an in-app navigation. */
-function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Navigate): boolean {
+/** Map a stored linkUrl (e.g. "/games/<id>") to an in-app navigation.
+ *  `canReports` gates /owner/reports — staff get booking notifications but can't
+ *  open the owner's cross-venue report, so they're sent to the front desk. */
+function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Navigate, canReports: boolean): boolean {
   if (!linkUrl) return false;
   // Game chat message → straight into the game's group chat, not the lobby.
   const gameChat = linkUrl.match(/^\/games\/([0-9a-fA-F]{24})\/chat$/);
@@ -95,6 +97,7 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   // Owner Reports dashboard (e.g. /owner/reports?status=pending_approval; /owner/bookings is the legacy alias).
   const ownerBookings = linkUrl.match(/^\/owner\/(?:reports|bookings)(\?.*)?$/);
   if (ownerBookings) {
+    if (!canReports) { onNavigate('owner-front-desk', {}); return true; }
     const sp = new URLSearchParams(linkUrl.includes('?') ? linkUrl.slice(linkUrl.indexOf('?')) : '');
     onNavigate('owner-bookings', sp.get('status') ? { status: sp.get('status')! } : {});
     return true;
@@ -190,7 +193,7 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x))); // optimistic
       void markNotificationRead(n.id).catch(() => { /* best-effort */ });
     }
-    navigateFromLink(n.linkUrl, onNavigate);
+    navigateFromLink(n.linkUrl, onNavigate, userHasPermission(me, 'owner.reports.view'));
   };
 
   // Accept/decline an owner-sent membership invite right from the notification.
