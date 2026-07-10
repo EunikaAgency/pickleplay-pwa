@@ -63,8 +63,9 @@ export const makeDefaultGameFilters = (radiusKm: number | null = null): GameFilt
 });
 
 /** How many filters are currently narrowing the list (for the badge / chips).
- *  Radius is excluded, mirroring venueFilters.ts — it's a persisted preference
- *  rather than a filter the user actively applied this session. */
+ *  Radius IS counted here, unlike venueFilters.ts. On the Courts tab a radius is
+ *  always in force, so badging it would be noise. Here it is opt-in, and a
+ *  distance filter can silently empty the feed — so it has to be visible. */
 export function countActiveGameFilters(f: GameFilters): number {
   let n = 0;
   // 'custom' without a chosen date narrows nothing, so it doesn't earn a badge.
@@ -72,6 +73,7 @@ export function countActiveGameFilters(f: GameFilters): number {
   if (f.skill !== 'Any') n++;
   if (f.gameType !== 'Any') n++;
   if (f.openings) n++;
+  if (f.radiusKm != null) n++;
   return n;
 }
 

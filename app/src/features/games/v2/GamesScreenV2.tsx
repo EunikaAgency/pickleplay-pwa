@@ -127,10 +127,12 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   /** Bumped to re-run the load effect when the user retries. */
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Discover controls. Radius seeds from the user's saved preference; the rest
-  // start unfiltered. Sort defaults to the relevance score.
-  const [filters, setFilters] = useState<GameFilters>(() =>
-    makeDefaultGameFilters(me?.preferences?.searchRadiusKm ?? null));
+  // Discover controls start fully unfiltered — distance included. `searchRadiusKm`
+  // is the Courts tab's preference: there you're picking a venue to book, so a
+  // radius is always sensible. Here you're picking a *game*, and people will
+  // travel further for the right one. Seeding it made distance an invisible
+  // opt-out filter that silently emptied the feed.
+  const [filters, setFilters] = useState<GameFilters>(() => makeDefaultGameFilters());
   const [filterOpen, setFilterOpen] = useState(false);
   const [sort, setSort] = useState<SortKey>('best');
   const [sortOpen, setSortOpen] = useState(false);
@@ -353,15 +355,16 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setView('discover');
     // The two sections offer different play types (Events has no open play), so a
     // carried-over type filter could strand the user on a guaranteed-empty list.
-    // The radius is a persisted preference, not a per-section choice — keep it.
-    setFilters((f) => makeDefaultGameFilters(f.radiusKm));
+    // Distance is cleared too — a filter that empties the feed must never survive
+    // a navigation the user didn't connect to it.
+    setFilters(makeDefaultGameFilters());
     syncTabUrl(next, 'discover');
   };
   const selectView = (next: View) => { setView(next); syncTabUrl(section, next); };
 
   const clearDiscoverControls = () => {
     setSearch('');
-    setFilters((f) => makeDefaultGameFilters(f.radiusKm));
+    setFilters(makeDefaultGameFilters());
   };
 
   const leaveOpenGame = async (g: ApiGame) => {

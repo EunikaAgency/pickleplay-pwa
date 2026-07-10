@@ -3,7 +3,17 @@ import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { firstNameOf } from '../../../shared/lib/permissions';
-import { apiImageUrl, listGames, listBookings, type ApiGame, type ApiBooking } from '../../../shared/lib/api';
+import {
+  apiImageUrl,
+  listGames,
+  listBookings,
+  listFriends,
+  suggestFriends,
+  sendFriendRequest,
+  type ApiGame,
+  type ApiBooking,
+  type ApiFriendProfile,
+} from '../../../shared/lib/api';
 import { getInitials } from '../../../shared/lib/initials';
 
 // Prefer the booked court's photo, then the venue's image, as an absolute URL.
@@ -129,12 +139,20 @@ function levelClass(g: ApiGame): { cls: string; label: string } {
   return { cls: 'level-mixed', label: g.skillLabel || 'All levels' };
 }
 
+// How many avatars the friends rail holds before it just scrolls.
+const RAIL_SIZE = 10;
+
 export function HomeScreenV2(chrome: V2ScreenChrome) {
   const { onNavigate } = chrome;
   const user = useAuthStore((s) => s.user);
   const [games, setGames] = useState<ApiGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [commitment, setCommitment] = useState<NextCommitment | null>(null);
+  // Friends rail: accepted friends, or suggestions when the player has none yet.
+  const [friends, setFriends] = useState<ApiFriendProfile[]>([]);
+  const [suggested, setSuggested] = useState<ApiFriendProfile[]>([]);
+  const [friendsReady, setFriendsReady] = useState(false);
+  const [requested, setRequested] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let alive = true;
@@ -158,8 +176,41 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
     return () => { alive = false; };
   }, [chrome.isLoggedIn]);
 
+  // Friends rail — guests skip it (friending needs an account). With no friends
+  // yet we fall back to suggestions so the rail is never a dead empty box.
+  useEffect(() => {
+    if (!chrome.isLoggedIn) return;
+    let alive = true;
+    (async () => {
+      const rows = await listFriends().catch(() => []);
+      if (!alive) return;
+      const mine = rows.map((r) => r.friend);
+      setFriends(mine);
+      // Always pull suggestions: they fill the rest of the rail so a player with
+      // one or two friends doesn't stare at empty space. Server excludes existing
+      // friends and self.
+      if (mine.length < RAIL_SIZE) {
+        const picks = await suggestFriends().catch(() => []);
+        if (alive) setSuggested(picks.slice(0, RAIL_SIZE - mine.length));
+      }
+      if (alive) setFriendsReady(true);
+    })();
+    return () => { alive = false; };
+  }, [chrome.isLoggedIn]);
+
+  async function addFriend(userId: string) {
+    setRequested((prev) => new Set(prev).add(userId));
+    try {
+      await sendFriendRequest(userId);
+    } catch {
+      setRequested((prev) => { const next = new Set(prev); next.delete(userId); return next; });
+    }
+  }
+
   const featured = games[0] ?? null;
   const discover = games.slice(featured ? 1 : 0, featured ? 7 : 6);
+  // Labels + divider only earn their space when both groups are on the rail.
+  const showGroupLabels = friends.length > 0 && suggested.length > 0;
   const firstName = firstNameOf(user);
   const greeting = firstName ? `Ready to play, ${firstName}?` : 'Ready to play?';
 
@@ -294,6 +345,70 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
             </div>
           )}
         </section>
+
+        {/* FRIENDS — accepted friends, or "People you may know" when there are none.
+            Guests never see it (friending requires an account). */}
+        {chrome.isLoggedIn && friendsReady && (friends.length > 0 || suggested.length > 0) && (
+          <section className="section" aria-label="Friends">
+            <div className="section-head">
+              <h2>{friends.length > 0 ? 'Friends' : 'People you may know'}</h2>
+              <button className="see-all" onClick={() => onNavigate('friends')}>See All</button>
+            </div>
+            <div className="scroll-row friend-row">
+              {friends.length > 0 && (
+                <div className="friend-group">
+                  {showGroupLabels && <span className="friend-group-label">Your friends</span>}
+                  <div className="friend-group-row">
+                    {friends.map((p) => {
+                      const avatar = apiImageUrl(p.avatarUrl);
+                      return (
+                        <article key={p.id} className="friend-card">
+                          <div
+                            className="friend-av"
+                            style={avatar ? { backgroundImage: `url(${avatar})` } : undefined}
+                          >
+                            {avatar ? null : getInitials(p.displayName)}
+                          </div>
+                          <span className="friend-name">{p.displayName}</span>
+                          <span className="friend-sub">{p.skillLevelLabel || 'Player'}</span>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {showGroupLabels && <div className="friend-divider" aria-hidden="true" />}
+              {suggested.length > 0 && (
+                <div className="friend-group">
+                  {showGroupLabels && <span className="friend-group-label">Suggested</span>}
+                  <div className="friend-group-row">
+                    {suggested.map((p) => {
+                      const avatar = apiImageUrl(p.avatarUrl);
+                      return (
+                        <article key={p.id} className="friend-card">
+                          <div
+                            className="friend-av is-suggested"
+                            style={avatar ? { backgroundImage: `url(${avatar})` } : undefined}
+                          >
+                            {avatar ? null : getInitials(p.displayName)}
+                          </div>
+                          <span className="friend-name">{p.displayName}</span>
+                          <button
+                            className="friend-add"
+                            disabled={requested.has(p.id)}
+                            onClick={() => addFriend(p.id)}
+                          >
+                            {requested.has(p.id) ? 'Requested' : 'Add'}
+                          </button>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* "UP NEXT" banner — real data: the player's soonest game/booking, else a
             find-a-game prompt (logged in) or a join CTA (guests). Replaces the old

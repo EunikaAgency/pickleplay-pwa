@@ -749,6 +749,77 @@
     transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
   }
 .pb-v2.v2-home .game-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.pb-v2.v2-home .friend-row { gap: 16px; }
+.pb-v2.v2-home .friend-card {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+    width: 84px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+.pb-v2.v2-home .friend-av {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--bg-alt);
+    background-size: cover;
+    background-position: center;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--text-secondary);
+  }
+.pb-v2.v2-home .friend-name {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+.pb-v2.v2-home .friend-av.is-suggested {
+    box-shadow: none;
+    border: 2px dashed var(--border);
+  }
+/* Each half of the rail is a labelled group; a hairline splits them. */
+.pb-v2.v2-home .friend-group {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+.pb-v2.v2-home .friend-group-row { display: flex; gap: 16px; }
+.pb-v2.v2-home .friend-group-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+.pb-v2.v2-home .friend-divider {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: 1px;
+    background: var(--border);
+  }
+.pb-v2.v2-home .friend-sub { font-size: 11px; color: var(--text-secondary); }
+.pb-v2.v2-home .friend-add {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--on-accent);
+    background: var(--lime);
+    border-radius: var(--radius-pill);
+    padding: 4px 12px;
+  }
+.pb-v2.v2-home .friend-add:disabled { background: var(--bg-alt); color: var(--text-secondary); }
 .pb-v2.v2-home .game-img {
     position: relative;
     height: 120px;

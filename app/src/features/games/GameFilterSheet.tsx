@@ -41,7 +41,8 @@ export function GameFilterSheet({ open, onClose, value, onChange, resultCount, s
       height="74dvh"
       footer={
         <div className="flex gap-2.5">
-          <Button variant="outline" fullWidth className="flex-1" onClick={() => onChange(makeDefaultGameFilters(value.radiusKm))}>
+          {/* Reset clears distance too — it is a filter here, not a preference. */}
+          <Button variant="outline" fullWidth className="flex-1" onClick={() => onChange(makeDefaultGameFilters())}>
             Reset
           </Button>
           <Button variant="dark" fullWidth className="flex-[2]" onClick={onClose}>

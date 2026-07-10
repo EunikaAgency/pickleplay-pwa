@@ -297,8 +297,27 @@ describe('countActiveGameFilters', () => {
     expect(countActiveGameFilters({ ...makeDefaultGameFilters(), when: 'custom', customDate: '2026-07-10' })).toBe(1);
   });
 
-  it('does not badge the radius, which is a persisted preference', () => {
-    expect(countActiveGameFilters(makeDefaultGameFilters(10))).toBe(0);
+  // A distance filter can empty the feed on its own. If it isn't badged, the user
+  // sees an empty list and no indication of why.
+  it('badges the radius when one is set', () => {
+    expect(countActiveGameFilters(makeDefaultGameFilters(10))).toBe(1);
+  });
+
+  it('badges nothing for a fresh filter set', () => {
+    expect(countActiveGameFilters(makeDefaultGameFilters())).toBe(0);
+  });
+});
+
+describe('default filters', () => {
+  // Regression: the Play tab used to seed radiusKm from `preferences.searchRadiusKm`
+  // (the Courts tab's 10km default), which silently hid every listing further away.
+  it('applies no distance filter by default', () => {
+    expect(makeDefaultGameFilters().radiusKm).toBeNull();
+  });
+
+  it('leaves every other filter unset', () => {
+    const f = makeDefaultGameFilters();
+    expect([f.when, f.skill, f.gameType, f.openings, f.customDate]).toEqual(['any', 'Any', 'Any', false, null]);
   });
 });
 
