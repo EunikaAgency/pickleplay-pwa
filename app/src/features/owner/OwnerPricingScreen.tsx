@@ -49,7 +49,7 @@ const cellKey = (day: string, hour: string) => `${day}:${hour}`;
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function cellLabel(rule: PricingRule | null, isReserved: boolean, isMaintenance: boolean) {
-  if (isReserved) return 'Reserved · Paid';
+  if (isReserved) return 'Reserved';
   if (isMaintenance) return 'Maintenance · Blocked';
   return rule ? `${rule.shortName} · ₱${rule.price}` : 'Clear · ₱0';
 }
@@ -203,7 +203,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   }, [venue, venues]);
 
   useEffect(() => {
-    const SPECIALS = new Set([CLEAR_TOOL_ID, RESERVED_TOOL_ID, MAINTENANCE_TOOL_ID]);
+    const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID]);
     if (!SPECIALS.has(activeRuleId) && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLEAR_TOOL_ID);
   }, [activeRuleId, rules]);
 
@@ -314,7 +314,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
   const paintCellKey = (key: string, toolId = activeRuleId) => {
     const sk = scopeKey;
-    const SPECIALS = new Set([CLEAR_TOOL_ID, RESERVED_TOOL_ID, MAINTENANCE_TOOL_ID]);
+    const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID]);
     if (!SPECIALS.has(toolId) && !rules.some((rule) => rule.id === toolId)) return;
     // Available = clear the cell back to default (no rule, no special marker).
     if (toolId === CLEAR_TOOL_ID) {
@@ -652,20 +652,10 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 </button>
               );
             })}
-            {(() => {
-              const active = activeRuleId === RESERVED_TOOL_ID;
-              return (
-                <button
-                  type="button"
-                  onClick={() => setActiveRuleId(RESERVED_TOOL_ID)}
-                  aria-pressed={active}
-                  className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
-                  style={{ borderColor: active ? RESERVED_COLOR : 'transparent', color: active ? RESERVED_COLOR : 'var(--muted)' }}
-                >
-                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: RESERVED_COLOR }} /> Reserved
-                </button>
-              );
-            })()}
+            <span className="inline-flex h-8 items-center rounded-[4px] px-3 font-extrabold" style={{ color: RESERVED_COLOR }}>
+              <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: RESERVED_COLOR }} /> Reserved
+            </span>
+            <span className="text-[var(--muted)]">Reserved is managed from Manual reservation</span>
             {(() => {
               const active = activeRuleId === MAINTENANCE_TOOL_ID;
               return (
@@ -786,7 +776,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
             {rules.map((rule) => <Legend key={rule.id} color={rule.color} label={`${rule.shortName} - ₱${rule.price}/hr`} />)}
-            <Legend color={RESERVED_COLOR} label="Reserved · Paid" />
+            <Legend color={RESERVED_COLOR} label="Reserved" />
             <Legend color={MAINTENANCE_COLOR} label="Maintenance · Blocked" />
             <Legend color={CLOSED_COLOR} label="Clear · Open (default)" />
           </div>
@@ -832,6 +822,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               const coverage = allCoverageByWeek.get(weekLabel)!;
               for (const day of DAYS) {
                 for (const b of dayBlocks(day, weekCells, rules)) {
+                  if (!b.ruleId) continue;
                   for (let h = hourOf(b.openTime); h < hourOf(b.closeTime); h++) coverage.set(`${day}|${h}`, b.ruleId);
                 }
               }

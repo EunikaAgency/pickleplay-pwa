@@ -74,6 +74,13 @@ const listQuery = z.object({
   mine: z.coerce.boolean().optional(),
   creator: z.string().optional(),
   invited: z.coerce.boolean().optional(),
+  // Browse surfaces cap the result set, truncating by `date` — so a caller that
+  // ranks on any other key only ranks within the soonest `pageSize` rows.
+  // The Play tab ranks client-side and asks for the whole upcoming window; other
+  // callers keep the 50 default. The 500 max is a runaway guard, not a product
+  // cap: `date >= today` has no upper bound, so an uncapped query would ask for
+  // every game that will ever exist.
+  pageSize: z.coerce.number().int().min(1).max(500).optional().default(50),
 });
 
 const VENUE_SELECT = 'displayName slug area city lat lng priceFrom priceFromLabel mainImageUrl';
@@ -260,7 +267,7 @@ export async function listGames(c: any) {
   const rows = await Game.find(filter)
     .populate(POPULATE)
     .sort({ date: 1, createdAt: -1 })
-    .limit(50)
+    .limit(q.pageSize)
     .lean();
   return c.json({ data: rows.map((r: any) => serialize(r)) });
 }

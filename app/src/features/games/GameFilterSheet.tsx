@@ -1,5 +1,6 @@
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Button } from '../../shared/components/ui/Button';
+import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicker';
 import { Chip } from '../../shared/components/ui/Chip';
 import {
   type GameFilters, makeDefaultGameFilters,
@@ -19,6 +20,13 @@ interface GameFilterSheetProps {
   /** Narrow the play-type choices — the Events section holds no open-play games,
    *  so offering that option there guarantees an empty result. */
   typeOptions?: typeof TYPE_OPTIONS;
+}
+
+/** Today as YYYY-MM-DD in local time (not toISOString, which is UTC and would shift
+ *  the day in a +offset timezone — the same rule the API's date fields follow). */
+function todayYmd(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function GameFilterSheet({ open, onClose, value, onChange, resultCount, showRadius = false, typeOptions = TYPE_OPTIONS }: GameFilterSheetProps) {
@@ -51,6 +59,17 @@ export function GameFilterSheet({ open, onClose, value, onChange, resultCount, s
             </Chip>
           ))}
         </div>
+        {value.when === 'custom' && (
+          <div className="mt-3">
+            {/* Past days are disabled: the feed only ever contains upcoming plays,
+                so a past date could only ever return nothing. */}
+            <CalendarDatePicker
+              value={value.customDate ?? ''}
+              min={todayYmd()}
+              onChange={(ymd) => set({ customDate: ymd })}
+            />
+          </div>
+        )}
       </div>
 
       <div className="field">

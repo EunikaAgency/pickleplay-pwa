@@ -14,7 +14,7 @@ import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
-  listCourts, getHours, listSlotOverrides, createVenueBooking, createSlotOverride, getVenueBookings,
+  listCourts, getHours, listSlotOverrides, createVenueBooking, createSlotOverride, getVenueBookings, getVenueAvailability, ApiError,
   updateBookingStatus,
   type ApiBooking, type ApiVenue, type OwnerCourt, type VenueBookingPayload,
   type OwnerHourEntry, type SlotPriceOverride,
@@ -22,6 +22,7 @@ import {
 import { resolveHourlyRate } from '../../shared/lib/pricing';
 import type { Navigate } from '../../shared/lib/navigation';
 import { money, prettyDate, todayYMD, hoursBetween, addHours, snapToHour, to12h } from '../bookings/bookingDisplay';
+import { mapBookingError } from '../bookings/bookingErrors';
 
 interface OwnerManualReservationScreenProps {
   /** Optional deep-link to a specific venue (slug or id); else the owner picks. */
@@ -57,8 +58,27 @@ function fmtDate(ymd: string | null | undefined): string {
 function personName(b: ApiBooking): string {
   return b.customerName || b.userName || (b.bookingType === 'manual' ? 'Walk-in' : b.bookingType === 'blocked' ? 'Blocked' : 'Player');
 }
-function courtLabel(b: ApiBooking): string {
-  return b.courtName || (b.courtNumber ? `Court ${b.courtNumber}` : 'Any court');
+function toMinutes(value?: string | null): number | null {
+  if (!value) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (Number.isNaN(h) || Number.isNaN(min)) return null;
+  return h * 60 + min;
+}
+
+function overlaps(startA: string, endA: string, startB: string, endB: string): boolean {
+  const aStart = toMinutes(startA);
+  const aEnd = toMinutes(endA);
+  const bStart = toMinutes(startB);
+  const bEnd = toMinutes(endB);
+  if (aStart == null || aEnd == null || bStart == null || bEnd == null) return false;
+  return aStart < bEnd && bStart < aEnd;
+}
+
+function sameScopeOverride(ov: SlotPriceOverride, courtId: string): boolean {
+  return ov.courtId === null || (courtId ? ov.courtId === courtId : ov.courtId === null);
 }
 
 // A dedicated owner screen for recording a manual reservation (phone / walk-in /
@@ -109,11 +129,13 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2600); };
 
   const cancelReservation = async (b: ApiBooking) => {
     if (!b.venueId) return;
+    setConfirmCancelId(null);
     setCancelingId(b.id);
     try {
       await updateBookingStatus(b.venueId, b.id, { status: 'cancelled', cancellationReason: 'Removed by owner' });
@@ -197,10 +219,35 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
 
   const submit = async () => {
     setError(null);
+    if (!vref) { setError('Choose a venue first.'); return; }
     if (hours <= 0) { setError('End time must be after the start time.'); return; }
     if (!customerName.trim()) { setError('Add a customer name.'); return; }
     setBusy(true);
     try {
+      const blockingOverride = overrides.find((ov) =>
+        sameScopeOverride(ov, courtId)
+        && (ov.note === 'Reserved' || ov.note === 'Maintenance')
+        && overlaps(startTime, endTime, ov.startTime, ov.endTime),
+      );
+      if (blockingOverride?.note === 'Reserved') {
+        setError('This time is already reserved on the pricing grid. Pick another slot.');
+        return;
+      }
+      if (blockingOverride?.note === 'Maintenance') {
+        setError('This time is marked unavailable for maintenance. Pick another slot.');
+        return;
+      }
+
+      const availability = await getVenueAvailability(vref, date, courtId || undefined);
+      const startHour = Number(startTime.slice(0, 2));
+      const endHour = Number(endTime.slice(0, 2));
+      const hasUnavailableHour = Array.from({ length: Math.max(0, endHour - startHour) }, (_, idx) => startHour + idx)
+        .some((hour) => (availability.hours.find((entry) => entry.hour === hour)?.free ?? 0) <= 0);
+      if (hasUnavailableHour) {
+        setError('That court is already booked or unavailable for the selected time. Pick another slot.');
+        return;
+      }
+
       // 1) The real reservation — server runs the same double-booking guard as the
       //    player checkout, so a conflict throws here before we paint anything.
       const payload: VenueBookingPayload = {
@@ -223,6 +270,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
       let painted = true;
       try {
         await createSlotOverride(vref, { courtId: courtId || undefined, date, startTime, endTime, price: 0, note: 'Reserved' });
+        setOverrides(await listSlotOverrides(vref, date));
       } catch {
         painted = false;
       }
@@ -235,7 +283,9 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
       setAmountTouched(false);
       flash(painted ? 'Reservation saved · painted on the pricing grid' : 'Reservation saved · pricing grid not updated');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save. Please try again.');
+      const mapped = mapBookingError(e);
+      if (e instanceof ApiError && e.code === 'SLOT_CONFLICT') setOverrides(await listSlotOverrides(vref, date).catch(() => overrides));
+      setError(mapped.message);
     } finally {
       setBusy(false);
     }
@@ -405,35 +455,47 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
                   const day = fmtDate(b.date);
                   const time = `${to12h(b.startTime || '')}–${to12h(b.endTime || '')}`;
                   const amountStr = money(b.amount || 0, currency);
+                  const confirming = confirmCancelId === b.id;
                   return (
-                    <li key={b.id} className="flex items-start gap-3 px-4 py-3 border-b border-[var(--hairline)] last:border-b-0">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-extrabold text-[var(--ink)] truncate">{personName(b)}</span>
-                          {tag && <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)] shrink-0">{tag}</span>}
+                    <li key={b.id} className={`flex items-start gap-3 px-4 py-3 border-b border-[var(--hairline)] last:border-b-0${confirming ? ' bg-[#FFF0ED]' : ''}`}>
+                      {confirming ? (
+                        <div className="flex-1 flex items-center gap-3 min-w-0">
+                          <span className="text-[13px] font-extrabold text-[var(--coral)]">Cancel this reservation?</span>
+                          <div className="flex items-center gap-2 ml-auto shrink-0">
+                            <button type="button" onClick={() => cancelReservation(b)} disabled={cancelingId === b.id} className="h-8 px-3 rounded-full bg-[var(--coral)] text-white text-[12px] font-bold hover:opacity-90 disabled:opacity-60">
+                              {cancelingId === b.id ? 'Removing…' : 'Yes, cancel'}
+                            </button>
+                            <button type="button" onClick={() => setConfirmCancelId(null)} className="h-8 px-3 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] text-[12px] font-bold hover:bg-[var(--border-subtle)]">
+                              Keep
+                            </button>
+                          </div>
                         </div>
-                        {b.venueName && (
-                          <div className="text-[12px] font-semibold text-[var(--ink-2)] truncate mt-0.5">{b.venueName}</div>
-                        )}
-                        <div className="text-[12px] text-[var(--muted)] mt-0.5">
-                          {day}{time ? ` · ${time}` : ''}{b.courtNumber ? ` · Court ${b.courtNumber}` : b.courtName ? ` · ${b.courtName}` : ''}
-                        </div>
-                      </div>
-                      <div className="text-[13px] font-extrabold text-[var(--ink)] shrink-0 tabular-nums mt-0.5">{amountStr}</div>
-                      <button
-                        type="button"
-                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] hover:bg-[#FFF0ED] transition-colors mt-0.5"
-                        disabled={cancelingId === b.id}
-                        onClick={(e) => { e.stopPropagation(); cancelReservation(b); }}
-                        aria-label="Cancel reservation"
-                        title="Cancel reservation"
-                      >
-                        {cancelingId === b.id ? (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="animate-spin"><circle cx="12" cy="12" r="10" strokeOpacity="0.3" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-                        ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                        )}
-                      </button>
+                      ) : (
+                        <>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[13px] font-extrabold text-[var(--ink)] truncate">{personName(b)}</span>
+                              {tag && <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)] shrink-0">{tag}</span>}
+                            </div>
+                            {b.venueName && (
+                              <div className="text-[12px] font-semibold text-[var(--ink-2)] truncate mt-0.5">{b.venueName}</div>
+                            )}
+                            <div className="text-[12px] text-[var(--muted)] mt-0.5">
+                              {day}{time ? ` · ${time}` : ''}{b.courtNumber ? ` · Court ${b.courtNumber}` : b.courtName ? ` · ${b.courtName}` : ''}
+                            </div>
+                          </div>
+                          <div className="text-[13px] font-extrabold text-[var(--ink)] shrink-0 tabular-nums mt-0.5">{amountStr}</div>
+                          <button
+                            type="button"
+                            className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[var(--muted)] hover:text-[var(--coral)] hover:bg-[#FFF0ED] transition-colors mt-0.5"
+                            onClick={(e) => { e.stopPropagation(); setConfirmCancelId(b.id); }}
+                            aria-label="Cancel reservation"
+                            title="Cancel reservation"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                          </button>
+                        </>
+                      )}
                     </li>
                   );
                 })}

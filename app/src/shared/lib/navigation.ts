@@ -78,7 +78,9 @@ export type Screen =
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
   | { id: 'open-play-book'; params: { venueId: string } }
   // Public flowchart viewer (no auth required).
-  | { id: 'flowchart' };
+  | { id: 'flowchart' }
+  // Public full-screen venue map (no auth required).
+  | { id: 'map' };
 
 export type ScreenId = Screen['id'];
 
@@ -172,6 +174,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'admin-claims': return '/admin/claims';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
     case 'flowchart': return '/flowchart';
+    case 'map': return '/map';
   }
   return '/';
 }
@@ -293,6 +296,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'organizer-hub' };
     case 'shop': return { id: 'owner-shop' };
     case 'flowchart': return { id: 'flowchart' };
+    case 'map': return { id: 'map' };
     case 'admin':
       if (b === 'claims') return { id: 'admin-claims' };
       return { id: 'home' };
@@ -328,6 +332,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'admin-claims') return { id: 'profile' };
   if (id === 'open-play-book') return { id: 'nearby' };
   if (id === 'flowchart') return { id: 'home' };
+  if (id === 'map') return { id: 'nearby' };
   if (id === 'friends') return { id: 'profile' };
   if (id === 'members') return { id: 'profile' };
   return { id: 'home' };

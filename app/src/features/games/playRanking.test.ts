@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { ApiGame, ApiOpenPlaySession } from '../../shared/lib/api';
+import { countActiveGameFilters, makeDefaultGameFilters, matchesPlayFilters, type GameFilters } from './gameFilters';
 import {
   fillPressure, gameToPlayItem, proximity, rankPlayFeed, scoreItem, sessionToPlayItem,
   skillFit, sortScored, startAt, timeFit,
@@ -245,12 +246,59 @@ describe('sortScored', () => {
     expect(sortScored([nowhere, near], 'nearest').map((i) => i.id)).toEqual(['a', 'b']);
   });
 
+  it('sorts by spots remaining, ascending, under "Spots left"', () => {
+    const one = scoreItem(sessionToPlayItem(session({ id: 'a', joinedCount: 7, capacity: 8 })), ctx());
+    const four = scoreItem(sessionToPlayItem(session({ id: 'b', joinedCount: 4, capacity: 8 })), ctx());
+    expect(sortScored([four, one], 'fill').map((i) => i.id)).toEqual(['a', 'b']);
+  });
+
+  it('sorts full lobbies and capacity-less listings last under "Spots left"', () => {
+    const open = scoreItem(sessionToPlayItem(session({ id: 'a', joinedCount: 6, capacity: 8 })), ctx());
+    const full = scoreItem(sessionToPlayItem(session({ id: 'b', joinedCount: 8, capacity: 8 })), ctx());
+    const interest = scoreItem(gameToPlayItem(game({ id: 'c', gameType: 'open', interestedCount: 3 })), ctx());
+    const order = sortScored([full, interest, open], 'fill').map((i) => i.id);
+    expect(order[0]).toBe('a');
+    expect(order.slice(1).sort()).toEqual(['b', 'c']);
+  });
+
   it('is a total order — equal scores fall through to id, so renders are stable', () => {
     const a = mk({ id: 'aaa' });
     const b = mk({ id: 'bbb' });
     expect(a.score).toBe(b.score);
     expect(sortScored([b, a], 'best').map((i) => i.id)).toEqual(['aaa', 'bbb']);
     expect(sortScored([a, b], 'best').map((i) => i.id)).toEqual(['aaa', 'bbb']);
+  });
+});
+
+describe('matchesPlayFilters — "Pick a date"', () => {
+  const item = (date: string) => scoreItem(gameToPlayItem(game({ date })), ctx());
+  const f = (over: Partial<GameFilters> = {}): GameFilters => ({ ...makeDefaultGameFilters(), ...over });
+
+  it('is inert until a date is chosen — tapping the chip must not empty the feed', () => {
+    expect(matchesPlayFilters(item('2026-07-10'), f({ when: 'custom' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(item('2026-08-30'), f({ when: 'custom' }), NOW)).toBe(true);
+  });
+
+  it('matches only the chosen day once one is picked', () => {
+    const filters = f({ when: 'custom', customDate: '2026-07-10' });
+    expect(matchesPlayFilters(item('2026-07-10'), filters, NOW)).toBe(true);
+    expect(matchesPlayFilters(item('2026-07-11'), filters, NOW)).toBe(false);
+  });
+
+  it('excludes a dateless listing when a specific day is requested', () => {
+    const dateless = scoreItem(gameToPlayItem(game({ date: null })), ctx());
+    expect(matchesPlayFilters(dateless, f({ when: 'custom', customDate: '2026-07-10' }), NOW)).toBe(false);
+  });
+});
+
+describe('countActiveGameFilters', () => {
+  it('does not badge "Pick a date" before a date is chosen', () => {
+    expect(countActiveGameFilters({ ...makeDefaultGameFilters(), when: 'custom' })).toBe(0);
+    expect(countActiveGameFilters({ ...makeDefaultGameFilters(), when: 'custom', customDate: '2026-07-10' })).toBe(1);
+  });
+
+  it('does not badge the radius, which is a persisted preference', () => {
+    expect(countActiveGameFilters(makeDefaultGameFilters(10))).toBe(0);
   });
 });
 

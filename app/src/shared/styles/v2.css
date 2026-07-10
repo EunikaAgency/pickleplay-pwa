@@ -2123,6 +2123,29 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 .pb-v2.v2-games .section-dropdown:focus {
   border-color: var(--lime-active);
 }
+/* The trigger is a <button> (see GamesScreenV2), so it needs the left alignment a
+   <select> gave for free. */
+.pb-v2.v2-games button.section-dropdown {
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+/* Full-width menu anchored under the trigger — unlike .sort-menu, which is a
+   narrow right-aligned popover. Item styling is shared (.sort-menu-item). */
+.pb-v2.v2-games .section-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+}
 .pb-v2.v2-games .section-dropdown-chevron {
   position: absolute;
   right: 12px;
@@ -2181,12 +2204,24 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 .pb-v2.v2-games .tab-group-row {
   flex: 0 0 auto;
 }
+/* Search input + filter/sort controls, closed by a hairline. Replaces a `pb-4`
+   utility and an inline border so the 8px gap to the first card lives in one
+   place, alongside .games-list-scroll's matching padding-top. */
+.pb-v2.v2-games .search-filter-row {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+}
 .pb-v2.v2-games .games-list-scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  /* Breathing room under the hairline above, which otherwise sits flush against
+     the first card. */
+  padding-top: 8px;
+  /* Clearance for the fixed bottom tab bar + the floating action button — not a
+     cosmetic gap. Shrinking this hides the last card behind them. */
   padding-bottom: calc(148px + env(safe-area-inset-bottom));
 }
 .pb-v2.v2-games .games-list-scroll::-webkit-scrollbar { display: none; }
@@ -5623,3 +5658,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 .pb-v2.v2-owner-home .ohome-empty h2 { font-size: 19px; font-weight: 800; }
 .pb-v2.v2-owner-home .ohome-empty p { font-size: 13px; color: var(--text-secondary); margin: 6px 0 16px; }
 .pb-v2.v2-owner-home .ohome-empty-btn { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: var(--radius-pill); }
+
+/* ---- /map — full-screen, public, no-interaction venue map ---- */
+.fullmap-screen { position: fixed; inset: 0; z-index: 9999; }
+.fullmap-leaflet { width: 100%; height: 100%; }

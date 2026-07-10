@@ -8,7 +8,7 @@
 import type { ApiGame } from '../../shared/lib/api';
 import type { ScoredPlayItem } from './playRanking';
 
-export type WhenFilter = 'any' | 'today' | 'tomorrow' | 'weekend';
+export type WhenFilter = 'any' | 'today' | 'tomorrow' | 'weekend' | 'custom';
 export type SkillFilter = 'Any' | 'Beginner' | '2.5–3.0' | '3.0–3.5' | '3.5–4.0' | '4.0+';
 export type TypeFilter = 'Any' | 'doubles' | 'singles' | 'open';
 
@@ -21,6 +21,9 @@ export interface GameFilters {
   openings: boolean;
   /** Max distance in km. Null = no radius filter (or the user shared no location). */
   radiusKm: number | null;
+  /** The day picked when `when === 'custom'` (YYYY-MM-DD). Null until one is chosen,
+   *  in which case the `when` filter is inert rather than matching nothing. */
+  customDate: string | null;
 }
 
 export const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
@@ -28,6 +31,7 @@ export const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
   { value: 'today', label: 'Today' },
   { value: 'tomorrow', label: 'Tomorrow' },
   { value: 'weekend', label: 'Weekend' },
+  { value: 'custom', label: 'Pick a date' },
 ];
 
 export const SKILL_OPTIONS: SkillFilter[] = ['Any', 'Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+'];
@@ -55,6 +59,7 @@ export const makeDefaultGameFilters = (radiusKm: number | null = null): GameFilt
   gameType: 'Any',
   openings: false,
   radiusKm,
+  customDate: null,
 });
 
 /** How many filters are currently narrowing the list (for the badge / chips).
@@ -62,7 +67,8 @@ export const makeDefaultGameFilters = (radiusKm: number | null = null): GameFilt
  *  rather than a filter the user actively applied this session. */
 export function countActiveGameFilters(f: GameFilters): number {
   let n = 0;
-  if (f.when !== 'any') n++;
+  // 'custom' without a chosen date narrows nothing, so it doesn't earn a badge.
+  if (f.when !== 'any' && !(f.when === 'custom' && !f.customDate)) n++;
   if (f.skill !== 'Any') n++;
   if (f.gameType !== 'Any') n++;
   if (f.openings) n++;
@@ -82,9 +88,13 @@ function skillFilterBand(f: SkillFilter): [number, number] | null {
 }
 
 /** Which day bucket a YYYY-MM-DD falls in, relative to `now`. */
-function matchesWhen(date: string | null, when: WhenFilter, now: Date): boolean {
+function matchesWhen(date: string | null, when: WhenFilter, customDate: string | null, now: Date): boolean {
   if (when === 'any') return true;
+  // "Pick a date" with no date chosen yet is inert. Matching nothing would empty
+  // the feed the instant the chip is tapped, before the calendar is even used.
+  if (when === 'custom' && !customDate) return true;
   if (!date) return false;
+  if (when === 'custom') return date === customDate;
   const d = new Date(`${date}T00:00:00`);
   if (Number.isNaN(d.getTime())) return false;
   const today = new Date(now);
@@ -98,7 +108,7 @@ function matchesWhen(date: string | null, when: WhenFilter, now: Date): boolean 
 /** Whether a unified Play item passes the active filters. Used by the v2 Play tab
  *  for both games and Open Play sessions. */
 export function matchesPlayFilters(item: ScoredPlayItem, f: GameFilters, now: Date = new Date()): boolean {
-  if (!matchesWhen(item.date, f.when, now)) return false;
+  if (!matchesWhen(item.date, f.when, f.customDate, now)) return false;
 
   if (f.skill !== 'Any') {
     const want = skillFilterBand(f.skill)!;

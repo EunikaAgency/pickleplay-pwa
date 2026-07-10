@@ -278,13 +278,24 @@ function explain(item: PlayItem, ctx: RankContext, distanceKm: number | null): s
 
 export type SortKey = 'best' | 'soonest' | 'nearest' | 'fill' | 'newest';
 
+/** Attribute nouns, not superlatives. These render after a "Sort:" prefix
+ *  ("Sort: Distance"), and a superlative would promise an absolute the feed
+ *  can't always honour. */
 export const SORT_LABELS: Record<SortKey, string> = {
-  best: 'Best match',
-  soonest: 'Soonest',
-  nearest: 'Nearest',
-  fill: 'Almost full',
-  newest: 'Newest',
+  best: 'Relevance',
+  soonest: 'Start time',
+  nearest: 'Distance',
+  fill: 'Spots left',
+  newest: 'Recently added',
 };
+
+/** Seats still open. Full lobbies and interest-based listings (which have no
+ *  capacity at all) have no meaningful answer, so they sort last. */
+export function spotsLeft(item: PlayItem): number {
+  if (item.fill.mode !== 'capacity' || item.fill.cap <= 0) return Infinity;
+  const left = item.fill.cap - item.fill.joined;
+  return left > 0 ? left : Infinity;
+}
 
 /** Sort a scored list. Every comparator falls through to `id` so the order is
  *  total and stable — otherwise the feed appears to reshuffle between renders. */
@@ -301,7 +312,9 @@ export function sortScored(items: ScoredPlayItem[], key: SortKey): ScoredPlayIte
       return at - bt || byId(a, b);
     },
     nearest: (a, b) => last(a.distanceKm, Infinity) - last(b.distanceKm, Infinity) || byId(a, b),
-    fill: (a, b) => fillPressure(b) - fillPressure(a) || byId(a, b),
+    // Ascending: 1 spot left ranks above 5. Matches the "Spots left" label — unlike
+    // the old fillPressure ordering, which ranked a *full* lobby near the bottom.
+    fill: (a, b) => spotsLeft(a) - spotsLeft(b) || byId(a, b),
     newest: (a, b) => last(b.createdAt, '') .localeCompare(last(a.createdAt, '')) || byId(a, b),
   };
   return [...items].sort(cmp[key]);

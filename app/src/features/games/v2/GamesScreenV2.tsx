@@ -35,6 +35,15 @@ const FALLBACK_GAME_IMG = '/fallback-game.png';
  *  render would invalidate the ranking memo on every keystroke. */
 const EMPTY_SESSIONS: ApiOpenPlaySession[] = [];
 
+/** The Play feed ranks client-side, so it asks for the whole upcoming window
+ *  rather than a page of it — otherwise sorting by Distance or Spots left would
+ *  only rank within the soonest N, since the server truncates by date. 500 is the
+ *  server's runaway guard, not a product cap. */
+const DISCOVER_PAGE_SIZE = 500;
+
+const SECTION_KEYS: Section[] = ['games', 'open-play'];
+const SECTION_LABELS: Record<Section, string> = { games: 'Events', 'open-play': 'Open Play' };
+
 function gameImage(g: ApiGame): string {
   return apiImageUrl(g.courtImage) || apiImageUrl(g.venue?.image) || '';
 }
@@ -113,6 +122,10 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [actionId, setActionId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  /** A Discover fetch failed. Distinct from "the catalogue is empty". */
+  const [feedError, setFeedError] = useState<string | null>(null);
+  /** Bumped to re-run the load effect when the user retries. */
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Discover controls. Radius seeds from the user's saved preference; the rest
   // start unfiltered. Sort defaults to the relevance score.
@@ -122,6 +135,8 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [sort, setSort] = useState<SortKey>('best');
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement | null>(null);
+  const [sectionOpen, setSectionOpen] = useState(false);
+  const sectionRef = useRef<HTMLDivElement | null>(null);
 
   // The viewer's location, for distance ranking + the card's distance line. There
   // is no shared geolocation hook; this mirrors NearbyScreenV2's local state.
@@ -151,25 +166,41 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     return () => { alive = false; };
   }, []);
 
-  // Close the sort menu on an outside click or Escape, matching NearbyScreenV2.
+  // Close the sort / section menus on an outside click or Escape, matching
+  // NearbyScreenV2. Both are custom listboxes, so neither gets this for free.
   useEffect(() => {
-    if (!sortOpen) return;
+    if (!sortOpen && !sectionOpen) return;
+    const outside = (ref: React.RefObject<HTMLDivElement | null>, target: Node) =>
+      !!ref.current && !ref.current.contains(target);
     const onDown = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+      const t = e.target as Node;
+      if (sortOpen && outside(sortRef, t)) setSortOpen(false);
+      if (sectionOpen && outside(sectionRef, t)) setSectionOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSortOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setSortOpen(false);
+      setSectionOpen(false);
+    };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [sortOpen]);
+  }, [sortOpen, sectionOpen]);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setFeedError(null);
+    // The two Discover fetches are the screen's reason to exist. Swallowing their
+    // failure into `[]` renders "No open plays available" — telling the user the
+    // catalogue is empty when the server actually errored. Record it instead.
+    const onFeedError = (e: unknown) => {
+      if (alive) setFeedError(e instanceof Error ? e.message : 'Could not load plays.');
+    };
     Promise.all([
       listPublicTournaments().catch(() => [] as ApiTournament[]),
-      listOpenPlaySessions().catch(() => [] as ApiOpenPlaySession[]),
-      listGames({ status: 'published' }).catch(() => [] as ApiGame[]),
+      listOpenPlaySessions({ pageSize: DISCOVER_PAGE_SIZE }).catch((e) => { onFeedError(e); return [] as ApiOpenPlaySession[]; }),
+      listGames({ status: 'published', pageSize: DISCOVER_PAGE_SIZE }).catch((e) => { onFeedError(e); return [] as ApiGame[]; }),
       isLoggedIn ? listGames({ mine: true }).catch(() => [] as ApiGame[]) : Promise.resolve([] as ApiGame[]),
       isLoggedIn ? listGames({ invited: true }).catch(() => [] as ApiGame[]) : Promise.resolve([] as ApiGame[]),
       isLoggedIn ? listBookings().catch(() => [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
@@ -187,7 +218,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       setOpenSessionRegs(new Set(sRegs.map((r) => r.sessionId).filter(Boolean)));
     }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, reloadKey]);
 
   // Realtime: when a game.invited event arrives, refetch invited games.
   useEffect(() => {
@@ -248,10 +279,11 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
   const q = search.trim().toLowerCase();
   const matchText = (haystack: string) => !q || haystack.toLowerCase().includes(q);
-  // Host / organizer names are searchable: "is Marco hosting anything?" is a
-  // natural query, and both names are already in the payload.
-  const filterGames = (list: ApiGame[]) => !q ? list : list.filter((g) => matchText(gameTitle(g)) || matchText(gameVenue(g)) || matchText(gameVenueLoc(g) || '') || matchText(g.creator?.displayName || ''));
-  const filterSessions = (list: ApiOpenPlaySession[]) => !q ? list : list.filter((s) => matchText(s.title || '') || matchText(s.venueName || '') || matchText(s.levelLabel || '') || matchText(s.organizerName || ''));
+  // Both entity types match the same five things: title, venue, location, skill
+  // label, and the host's name. Host is the one people reach for most ("is Marco
+  // hosting anything?") and it used to match nothing.
+  const filterGames = (list: ApiGame[]) => !q ? list : list.filter((g) => matchText(gameTitle(g)) || matchText(gameVenue(g)) || matchText(gameVenueLoc(g) || '') || matchText(g.skillLabel || '') || matchText(g.creator?.displayName || ''));
+  const filterSessions = (list: ApiOpenPlaySession[]) => !q ? list : list.filter((s) => matchText(s.title || '') || matchText(s.venueName || '') || matchText([s.venueArea, s.venueCity].filter(Boolean).join(' · ')) || matchText(s.levelLabel || '') || matchText(s.organizerName || ''));
   const filterBookings = (list: ApiBooking[]) => !q ? list : list.filter((b) => matchText(b.venueName || '') || matchText(b.courtName || ''));
 
   const gamesDiscoverFiltered = useMemo(() => filterGames(gamesDiscover), [gamesDiscover, q]);
@@ -453,17 +485,40 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
         </div>
 
         <div className="tab-group-row">
-          <div className="section-dropdown-wrap">
-            <select
+          {/* A custom listbox, not a native <select>: the browser draws a select's
+              popup at the viewport level, so it escaped the .app device frame and
+              rendered over the top-left of the page. Same reason NearbyScreenV2's
+              sort control is hand-rolled. */}
+          <div className="section-dropdown-wrap" ref={sectionRef}>
+            <button
+              type="button"
               className="section-dropdown"
-              value={section}
-              onChange={(e) => selectSection(e.target.value as Section)}
-              aria-label="Play section"
+              aria-haspopup="listbox"
+              aria-expanded={sectionOpen}
+              aria-label={`Play section: ${SECTION_LABELS[section]}`}
+              onClick={() => setSectionOpen((o) => !o)}
             >
-              <option value="games">Events</option>
-              <option value="open-play">Open Play</option>
-            </select>
+              {SECTION_LABELS[section]}
+            </button>
             <svg className="section-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+            {sectionOpen && (
+              <ul className="section-menu" role="listbox" aria-label="Play section">
+                {SECTION_KEYS.map((key) => (
+                  <li key={key} role="option" aria-selected={section === key}>
+                    <button
+                      type="button"
+                      className={`sort-menu-item${section === key ? ' active' : ''}`}
+                      onClick={() => { selectSection(key); setSectionOpen(false); }}
+                    >
+                      {SECTION_LABELS[key]}
+                      {section === key && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
@@ -482,7 +537,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
             </div>
           </div>
 
-        <div className="pb-4" style={{ borderBottom: '1px solid var(--hairline)' }}>
+        <div className="search-filter-row">
           <div className="search-bar">
             <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
             <input
@@ -554,7 +609,16 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
         <div className="games-list-scroll">
           {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
-          {!loading && section === 'games' && view === 'discover' && (
+          {/* A failed fetch is not an empty catalogue. Say so, and offer a retry. */}
+          {!loading && isDiscoverFeed && feedError && (
+            <Empty
+              icon="⚠️"
+              title="Couldn’t load plays"
+              text={feedError}
+              action={{ label: 'Try again', onClick: () => setReloadKey((k) => k + 1) }}
+            />
+          )}
+          {!loading && !feedError && section === 'games' && view === 'discover' && (
             <DiscoverFeed
               items={discoverFiltered}
               onOpen={(i) => onNavigate('game-details', { id: i.id })}
@@ -580,7 +644,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesManageFiltered.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
           )}
-          {!loading && section === 'open-play' && view === 'discover' && (
+          {!loading && !feedError && section === 'open-play' && view === 'discover' && (
             <DiscoverFeed
               items={discoverFiltered}
               onOpen={(i) => onNavigate('open-play-detail', { source: i.kind, id: i.id })}
@@ -634,11 +698,11 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   );
 }
 
-function Empty({ text, action }: { text: string; action?: { label: string; onClick: () => void } }) {
+function Empty({ text, action, title = 'No items here yet', icon = '🎾' }: { text: string; action?: { label: string; onClick: () => void }; title?: string; icon?: string }) {
   return (
     <div className="empty-state">
-      <div className="empty-icon-ring">🎾</div>
-      <h3>No items here yet</h3>
+      <div className="empty-icon-ring">{icon}</div>
+      <h3>{title}</h3>
       <p>{text}</p>
       {action && <button className="empty-cta" onClick={action.onClick}>{action.label}</button>}
     </div>

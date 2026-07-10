@@ -17,7 +17,8 @@ const PUBLIC_TOURNAMENT_STATUSES = ['approved', 'registration_open', 'ongoing', 
 
 const listQuery = z.object({
   venueId: z.string().optional(), city: z.string().optional(), date: z.string().optional(),
-  status: z.string().optional(), pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+  // See games.controller: 500 is a runaway guard, not a product cap.
+  status: z.string().optional(), pageSize: z.coerce.number().int().min(1).max(500).optional().default(50),
 });
 
 /** Venue fields a session carries for the Play feed — coordinates drive distance

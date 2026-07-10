@@ -1647,6 +1647,9 @@ export interface ListGamesParams {
   mine?: boolean;
   /** "My Invites" — games the current user was invited to (needs auth). */
   invited?: boolean;
+  /** Max rows (1–100, default 50). The server truncates by `date`, so a caller
+   *  that ranks on another key only ranks within the soonest `pageSize` rows. */
+  pageSize?: number;
 }
 
 export interface CreateGamePayload {
@@ -3406,7 +3409,9 @@ function normalizeOpenPlaySession(s: Record<string, unknown>): ApiOpenPlaySessio
 }
 
 /** Public Open Play sessions, soonest first. */
-export async function listOpenPlaySessions(params: { venueId?: string; date?: string } = {}): Promise<ApiOpenPlaySession[]> {
+export async function listOpenPlaySessions(params: { venueId?: string; date?: string; pageSize?: number } = {}): Promise<ApiOpenPlaySession[]> {
+  // Server truncates by `date`, so a caller that ranks on another key should ask
+  // for the whole upcoming window rather than a page of it.
   const env = await rawRequest<Record<string, unknown>[]>(`${OPEN_PLAY_PREFIX}${toQuery({ pageSize: 100, ...params })}`, { auth: true });
   return (env.data ?? []).map(normalizeOpenPlaySession);
 }
