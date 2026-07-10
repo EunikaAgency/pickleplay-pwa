@@ -1,17 +1,16 @@
 // Pickleballers API — Test-owner venue setup (Nicolas Garrido & Oscar Walker)
 //
 // Sets up a clean owner test-fixture: our two owner test users each end up with
-// exactly 20 venues, and NO other owner holds any venue. Every assigned venue is
-// located in NCR (Metro Manila) or CALABARZON (Cavite/Laguna/Batangas/Rizal/
-// Quezon) — picked randomly from the existing in-region venues so lat/lng/city
-// stay coherent — and gets a random courtCount in 6..12 with matching Court docs.
+// exactly 100 venues, and NO other owner holds any venue. Venues are picked
+// randomly from ALL live venues (not region-filtered) so lat/lng/city stay
+// coherent — and each gets a random courtCount in 6..12 with matching Court docs.
 //
 // What it does (idempotent — re-running reshuffles):
 //   1) Wipes Venue.ownerUserId on ALL venues and resets their state to
 //      'unclaimed' (so only the two target owners end up owning anything).
-//   2) Builds a pool of venues in NCR + CALABARZON, prioritising all CALABARZON
-//      ones (for regional variety), then fills the rest from NCR at random.
-//   3) Assigns 20 to Nicolas Garrido and 20 to Oscar Walker (state → 'claimed').
+//   2) Builds a pool from ALL live (non-deleted) venues — picks 200 at random.
+//      The Dink Lab is pinned (always included, assigned to Oscar Walker).
+//   3) Assigns 100 to Nicolas Garrido and 100 to Oscar Walker (state → 'claimed').
 //   4) Sets each assigned venue's courtCount to a random 6..12.
 //   5) Reconciles Court docs per venue: deletes courts numbered above the new
 //      count, then creates the missing ones (1..courtCount), imaged from the
@@ -26,13 +25,11 @@ import { User } from '../../features/auth/auth.model.js';
 import { Venue, Court } from '../../features/venues/venues.model.js';
 
 const OWNER_NAMES = ['Nicolas Garrido', 'Oscar Walker'];
-const VENUES_PER_OWNER = 20;
+const VENUES_PER_OWNER = 100;
 const COURTS_MIN = 6;
 const COURTS_MAX = 12;
 const BACKFILL_TAG = 'court-backfill';
-
-const NCR_REGIONS = ['Metro Manila'];
-const CALABARZON_REGIONS = ['Cavite', 'Laguna', 'Batangas', 'Rizal', 'Quezon'];
+const DINK_LAB_SLUG = 'the-dink-lab';
 
 function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -110,28 +107,34 @@ async function main() {
     throw new Error(`Expected owners [${OWNER_NAMES.join(', ')}], found: ${owners.map((o: any) => o.displayName).join(', ')}`);
   }
 
-  const NEED = VENUES_PER_OWNER * OWNER_NAMES.length; // 40
+  const NEED = VENUES_PER_OWNER * OWNER_NAMES.length; // 200
 
-  // Pool: in-region, live venues. Prioritise CALABARZON for variety, then NCR.
-  const cala = await Venue.find({ region: { $in: CALABARZON_REGIONS }, deletedAt: null })
-    .select('_id displayName slug region surfaceType indoorOutdoor mainImageUrl galleryImageUrls')
-    .lean();
-  const ncr = await Venue.find({ region: { $in: NCR_REGIONS }, deletedAt: null })
+  // Pool: ALL live venues. Pin The Dink Lab so it's always included.
+  const allVenues = await Venue.find({ deletedAt: null })
     .select('_id displayName slug region surfaceType indoorOutdoor mainImageUrl galleryImageUrls')
     .lean();
 
-  const calaPool = shuffle([...cala]);
-  const ncrPool = shuffle([...ncr]);
-  const picked = [...calaPool, ...ncrPool].slice(0, NEED);
-  if (picked.length < NEED) {
-    throw new Error(`Only ${picked.length} NCR/CALABARZON venues available, need ${NEED}.`);
+  if (allVenues.length < NEED) {
+    throw new Error(`Only ${allVenues.length} live venues available, need ${NEED}.`);
   }
-  const pool = shuffle(picked);
+
+  const dink = allVenues.find((v: any) => v.slug === DINK_LAB_SLUG);
+  const rest = shuffle(allVenues.filter((v: any) => v.slug !== DINK_LAB_SLUG));
+
+  // Build pool: The Dink Lab first, then fill the rest randomly.
+  const pool = dink ? [dink, ...rest.slice(0, NEED - 1)] : rest.slice(0, NEED);
+  if (pool.length < NEED) {
+    throw new Error(`Only ${pool.length} venues in pool, need ${NEED}.`);
+  }
+
+  if (!dink) {
+    console.warn('⚠ The Dink Lab not found in the database — proceeding without it.');
+  }
 
   // 1) Wipe ALL ownership so only the two target owners hold venues.
   await Venue.updateMany({}, { $unset: { ownerUserId: 1 }, $set: { state: 'unclaimed' } });
 
-  // 2) Split the pool 20/20 across the two owners.
+  // 2) Split the pool 100/100 across the two owners.
   const byName = new Map(owners.map((o: any) => [o.displayName, o]));
   const assignments = OWNER_NAMES.map((name, i) => ({
     owner: byName.get(name)!,

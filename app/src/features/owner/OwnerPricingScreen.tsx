@@ -652,10 +652,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 </button>
               );
             })}
-            <span className="inline-flex h-8 items-center rounded-[4px] px-3 font-extrabold" style={{ color: RESERVED_COLOR }}>
-              <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: RESERVED_COLOR }} /> Reserved
-            </span>
-            <span className="text-[var(--muted)]">Reserved is managed from Manual reservation</span>
             {(() => {
               const active = activeRuleId === MAINTENANCE_TOOL_ID;
               return (
@@ -776,7 +772,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
             {rules.map((rule) => <Legend key={rule.id} color={rule.color} label={`${rule.shortName} - ₱${rule.price}/hr`} />)}
-            <Legend color={RESERVED_COLOR} label="Reserved" />
             <Legend color={MAINTENANCE_COLOR} label="Maintenance · Blocked" />
             <Legend color={CLOSED_COLOR} label="Clear · Open (default)" />
           </div>
