@@ -97,8 +97,18 @@ src/
                        #   gated by player.tournaments.chat — mirrors GameChat), tournamentDisplay
                        #   (status/format/date/money formatters). Reuses the /tournaments API
                        #   (listPublicTournaments/register/withdraw/my-registration/messages).
-    clubs/             # Clubs (live: my/discover lists — cursor-paginated + server
-                       #   search), ClubDetails (live: detail + members +
+    social/            # the **Social tab** (Clubs + Friends). SocialScreen (shell +
+                       #   the Clubs|Friends `Segmented` switch, sub-tab in `?tab=`,
+                       #   landing rule: pending friend requests → Friends, else Clubs;
+                       #   guests are gated into Clubs), ClubsPanel (was clubs/v2/
+                       #   ClubsScreenV2 — my/discover lists, cursor-paginated + server
+                       #   search; its empty "My Clubs" state cross-links to Friends),
+                       #   FriendsPanel (was profile/FriendsScreen — friends/requests/
+                       #   find, geolocated suggestions, DM hand-off; restyled to v2 and
+                       #   owns its own signed-out state). Club **detail** screens stay
+                       #   in clubs/ below. Scoped by `.pb-v2.v2-social` in v2.css.
+    clubs/             # club DETAIL screens (the list lives in social/ above).
+                       #   ClubDetails (live: detail + members +
                        #   Facebook-style feed with post/like + photo/GIF
                        #   attachments, realtime via the club SSE stream, join/leave,
                        #   ⋯ menu: invite/share link + host edit/delete + host
@@ -289,6 +299,9 @@ src/
                         #    refreshes on focus/visibility while signed in — now a fallback),
                         #   useMessagePolling (polls unread message count for the sidebar/tab-bar
                         #    Messages badge — same focus/visibility-refresh pattern),
+                        #   useFriendRequestPolling (same pattern for the Social tab's
+                        #    pending friend-request badge; also refreshes on the realtime
+                        #    'notification' bus event, and zeroes when logged out),
                         #   useRealtimeStream (one app-wide EventSource to GET /api/v1/me/stream;
                         #    fans new notifications + incoming messages onto the realtime bus)
     lib/                # navigation.ts, permissions.ts, authStore.ts, api.ts, venueDisplay.ts,
@@ -297,6 +310,9 @@ src/
                         # notificationStore.ts (Zustand: live unread count + refresh, for the badge),
                         # messageStore.ts (Zustand: live unread message count + refresh, for the
                         #   sidebar/tab-bar/V2TopNav Messages badge),
+                        # friendRequestStore.ts (Zustand: pending friend-request count +
+                        #   refresh — drives the Social tab badge; `loaded` gates the
+                        #   Social landing rule so a cold load doesn't read 0),
                         # realtimeBus.ts (tiny in-app pub/sub; useRealtimeStream publishes, screens subscribe)
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
     styles/index.css    # Tailwind + all design tokens (--primary, --lime, --coral, shadows…)
@@ -392,10 +408,19 @@ src/
   (client-side via `gameFilters.ts` — when/skill/type/has-openings; both edit one `GameFilters`
   state, the header button shows an active-filter count). The search box was removed; the
   Game-Details **chat** is still demo (no endpoint yet).
-- **Clubs are live** (reached via the **Clubs** tab in the TabBar, plus the home **Clubs**
-  quick-action and a **Clubs** row in the Profile/"You" tab):
-  `ClubsScreen` lists your clubs (`listClubs({ mine: true })`) + a
-  Discover directory (`listClubs()`, your clubs filtered out), with client-side search.
+- **Social tab = Clubs + Friends.** Both are "people I play with", so they share one
+  tab (`social`, path `/social?tab=clubs|friends`). Friends used to sit three taps deep
+  in Profile and nobody found it; it is now half of a top-level tab, and the **badge**
+  on that tab (pending friend requests) is what actually surfaces it. Landing on a bare
+  `/social`: Friends if requests are waiting, else Clubs — so existing club members see
+  no change. The tab is **public** (Clubs is guest-browsable); the auth gate lives inside
+  `FriendsPanel`, not in `SCREEN_PERMISSIONS`. `/clubs` and `/friends` remain as
+  back-compat aliases onto the right panel, and `tabForScreen` maps the whole club
+  family + `friends` → `social`.
+- **Clubs are live** (the Clubs half of the **Social** tab, plus the home **Clubs**
+  quick-action):
+  `ClubsPanel` lists your clubs (`listClubs({ mine: true })`) + a
+  Discover directory (`listClubs()`, your clubs filtered out), with server-side search.
   `ClubDetailsScreen` (mounted with `clubId`) loads the club, members, and a
   **Facebook-style feed** — members post (`createClubPost`) and like (`react/unreactClubPost`),
   tapping a post opens the single-post permalink (`ClubPostScreen`), and a post's author edits it
@@ -488,7 +513,8 @@ src/
   Only the streak card stays demo (no player-stats backend).
 - **Chrome:** TabBar (mobile) + Sidebar (desktop) render via `App.tsx`; hidden on
   `landing`/`login`/`onboarding`. The mobile v2 TabBar's tabs are **Home · Map ·
-  Games · Tournament · Clubs · Profile**; the legacy/owner chrome also includes
+  Games · Tournament · Social · Profile** (Social carries a live badge with the
+  count of friend requests awaiting your answer — `useFriendRequestStore`); the legacy/owner chrome also includes
   a Tournament tab. The old center **+** create-FAB was removed in favour of a Clubs
   tab; create a game from the home "Create match" quick-action. The desktop Sidebar still
   carries the create FAB (`onCreate`/`canCreate` props remain for it).
@@ -529,6 +555,7 @@ src/
 | Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
 | Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
+| Social tab (Clubs + Friends, the request badge) | `features/social/{SocialScreen,ClubsPanel,FriendsPanel}.tsx`; badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/social-tab.spec.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |

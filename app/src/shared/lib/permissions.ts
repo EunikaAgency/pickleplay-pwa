@@ -177,6 +177,12 @@ export interface AppUser {
   skillLevel?: number;
   skillLevelLabel?: string;
   bio?: string;
+  /** Postal address. Required before subscribing as a coach or organizer. */
+  address1?: string;
+  address2?: string;
+  city?: string;
+  province?: string;
+  zipcode?: string;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean;
   /** Account preferences (notification toggles + display units + search radius). */

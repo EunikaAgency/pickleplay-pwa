@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)",
+      "Bash(cd /var/public/pickleplay/app/src && grep -n \"FRIENDS_PREFIX =\" shared/lib/api.ts && grep -n \"export async function register\\\\|/auth/register\\\\|/auth/signup\" shared/lib/api.ts | head -3 && echo \"=== api routes for friends ===\" && grep -rn \"friends\" ../../api/src/features/*/[a-z]*.routes.ts 2>/dev/null | head -8)",
+      "Read(//var/api/src/**)"
+    ]
+  }
+}

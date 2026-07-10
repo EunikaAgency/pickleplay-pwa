@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
-import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
-import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
-import { listClubs, joinClub, type ApiClub } from '../../../shared/lib/api';
-import { getInitials } from '../../../shared/lib/initials';
+import type { V2ScreenChrome } from '../../shared/components/layout/V2Chrome';
+import { V2Skeleton } from '../../shared/components/ui/V2Skeleton';
+import { listClubs, joinClub, type ApiClub } from '../../shared/lib/api';
+import { getInitials } from '../../shared/lib/initials';
 
 type Filter = 'all' | 'mine';
 
-export function ClubsScreenV2(chrome: V2ScreenChrome) {
+interface ClubsPanelProps {
+  chrome: V2ScreenChrome;
+  /** Jumps the parent Social screen to the Friends panel (empty-state cross-link). */
+  onFindPlayers: () => void;
+}
+
+/** The Clubs half of the Social tab. Body only — `SocialScreen` owns the shell. */
+export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
   const { onNavigate, requireAuth, isLoggedIn } = chrome;
   const [all, setAll] = useState<ApiClub[]>([]);
   const [mine, setMine] = useState<ApiClub[]>([]);
@@ -112,14 +119,7 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
   );
 
   return (
-    <V2Shell screen="v2-clubs" chrome={chrome}>
-      <div className="page-content">
-        {/* Section heading + descriptive subheading (mirrors the Games section) */}
-        <div className="clubs-intro">
-          <h1 className="clubs-heading">Clubs</h1>
-          <p className="clubs-subheading">Join a community, share posts, and meet players near you.</p>
-        </div>
-
+    <>
         {/* Search */}
         <div className="search-wrap">
           <div className="search-bar">
@@ -150,6 +150,9 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
                   <div className="empty-state">
                     <div className="empty-state-icon">🏆</div>
                     <p>{isLoggedIn ? "You haven't joined any clubs yet." : 'Sign in to see your clubs.'}</p>
+                    {/* A club is a commitment; adding a player isn't. Point a member with no
+                        clubs at the lighter action rather than leaving them on a dead end. */}
+                    <button className="social-crosslink" onClick={onFindPlayers}>Find players instead →</button>
                   </div>
                 )}
               </>
@@ -198,7 +201,6 @@ export function ClubsScreenV2(chrome: V2ScreenChrome) {
         )}
 
         <div style={{ height: 20 }} />
-      </div>
-    </V2Shell>
+    </>
   );
 }

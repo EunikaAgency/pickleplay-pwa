@@ -2,6 +2,11 @@ import { Schema, model } from 'mongoose';
 
 const paymentSchema = new Schema({
   bookingId:  { type: Schema.Types.ObjectId, ref: 'Booking' },
+  // What this payment bought. Every Payment used to be a court booking, so an
+  // absent `purpose` reads as 'booking' — partner (coach/organizer)
+  // subscriptions are the first non-booking charge on the platform.
+  purpose:    { type: String, enum: ['booking', 'partner_subscription'], default: 'booking' },
+  subscriptionId: { type: Schema.Types.ObjectId, ref: 'PartnerSubscription' },
   userId:     { type: Schema.Types.ObjectId, ref: 'User', required: true },
   amount:     { type: Number, required: true },
   currency:   { type: String, default: 'PHP' },

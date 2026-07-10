@@ -352,7 +352,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
           <section className="section" aria-label="Friends">
             <div className="section-head">
               <h2>{friends.length > 0 ? 'Friends' : 'People you may know'}</h2>
-              <button className="see-all" onClick={() => onNavigate('friends')}>See All</button>
+              <button className="see-all" onClick={() => onNavigate('social', { tab: 'friends' })}>See All</button>
             </div>
             <div className="scroll-row friend-row">
               {friends.length > 0 && (

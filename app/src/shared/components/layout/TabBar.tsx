@@ -24,7 +24,7 @@ const tabs: Tab[] = [
   { id: 'home',    label: 'Today',  icon: 'home',     iconFill: 'home_fill' },
   { id: 'games',   label: 'Play',   icon: 'calendar', iconFill: 'calendar_fill' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
-  { id: 'clubs',   label: 'Clubs',  icon: 'groups',   iconFill: 'groups_fill' },
+  { id: 'social',  label: 'Social', icon: 'groups',   iconFill: 'groups_fill' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
   { id: 'messages', label: 'Messages', icon: 'chat' },
   { id: 'profile', label: 'Profile', icon: 'user',     iconFill: 'user_fill' },
@@ -36,7 +36,7 @@ const ownerTabs: Tab[] = [
   { id: 'home',    label: 'Home',     icon: 'home' },
   { id: 'booking', label: 'Bookings', icon: 'calendar' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
-  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'social',  label: 'Social',   icon: 'groups' },
   { id: 'nearby',  label: 'Venues',   icon: 'map_pin' },
   { id: 'messages', label: 'Messages', icon: 'chat' },
   { id: 'profile', label: 'Profile',  icon: 'user' },
@@ -47,7 +47,7 @@ const organizerTabs: Tab[] = [
   { id: 'home',    label: 'Organize', icon: 'trophy' },
   { id: 'games',   label: 'Games',    icon: 'calendar' },
   { id: 'nearby',  label: 'Nearby',   icon: 'map_pin' },
-  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'social',  label: 'Social',   icon: 'groups' },
   { id: 'profile', label: 'Profile',  icon: 'user' },
 ];
 

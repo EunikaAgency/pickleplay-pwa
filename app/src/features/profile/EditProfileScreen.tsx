@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { FormField } from '../../shared/components/forms/FormField';
 import { FormTierPicker } from '../../shared/components/forms/FormTierPicker';
@@ -70,7 +70,11 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       firstName: currentUser?.firstName?.trim() || nameParts[0] || '',
       lastName: nameParts.slice(1).join(' '),
       bio: currentUser?.bio ?? '',
-      location: '',
+      address1: currentUser?.address1 ?? '',
+      address2: currentUser?.address2 ?? '',
+      city: currentUser?.city ?? '',
+      province: currentUser?.province ?? '',
+      zipcode: currentUser?.zipcode ?? '',
       tier: initialTier as SkillTier['id'],
     },
     validators: {
@@ -78,6 +82,19 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       lastName: (v) => (!v || !(v as string).trim() ? 'Last name is required.' : undefined),
     },
   });
+
+  // On a cold load (deep link or reload) the session is still being restored
+  // when useForm captures its initial values, so every field would render
+  // blank. Re-seed once the account lands — `reset()` reads the latest
+  // `initial`. Without this, saving from a cold-loaded form would overwrite the
+  // stored bio and address with empty strings.
+  const seededFromAccount = useRef(!!currentUser);
+  const resetForm = form.reset;
+  useEffect(() => {
+    if (seededFromAccount.current || !currentUser) return;
+    seededFromAccount.current = true;
+    resetForm();
+  }, [currentUser, resetForm]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -94,6 +111,11 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         // Keep the visible name in sync with the edited first/last name.
         displayName: `${firstName} ${lastName}`.trim(),
         bio: form.values.bio.trim(),
+        address1: form.values.address1.trim(),
+        address2: form.values.address2.trim(),
+        city: form.values.city.trim(),
+        province: form.values.province.trim(),
+        zipcode: form.values.zipcode.trim(),
         // Only players/coaches carry a skill level — don't write one for others.
         ...(showSkillLevel
           ? { skillLevel: String(duprForTier(form.values.tier)), skillLevelLabel: tierName }
@@ -187,11 +209,45 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
 
         <div className="field">
           <FormField
-            label="Location"
-            value={form.values.location}
-            onChange={(e) => form.setField('location', e.target.value)}
+            label="Address line 1"
+            value={form.values.address1}
+            onChange={(e) => form.setField('address1', e.target.value)}
             leadingIcon="location"
-            placeholder="City or zip"
+            placeholder="House / street"
+          />
+        </div>
+
+        <div className="field">
+          <FormField
+            label="Address line 2"
+            value={form.values.address2}
+            onChange={(e) => form.setField('address2', e.target.value)}
+            placeholder="Barangay, unit, landmark (optional)"
+          />
+        </div>
+
+        <div className="field grid grid-cols-2 gap-2.5">
+          <FormField
+            label="City"
+            value={form.values.city}
+            onChange={(e) => form.setField('city', e.target.value)}
+            placeholder="e.g. Tanza"
+          />
+          <FormField
+            label="Province"
+            value={form.values.province}
+            onChange={(e) => form.setField('province', e.target.value)}
+            placeholder="e.g. Cavite"
+          />
+        </div>
+
+        <div className="field">
+          <FormField
+            label="Zip code"
+            value={form.values.zipcode}
+            onChange={(e) => form.setField('zipcode', e.target.value)}
+            inputMode="numeric"
+            placeholder="e.g. 4108"
           />
         </div>
 

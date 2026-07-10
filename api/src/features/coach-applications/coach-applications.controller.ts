@@ -5,11 +5,14 @@ import { Coach } from '../coaches/coaches.model.js';
 import { User, UserRole } from '../auth/auth.model.js';
 import { resolveVenueId } from '../venues/venues.controller.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
+import { hasActivePartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
 
 // Players apply to coach at a venue and track their own applications. Gated by
 // player.dashboard.access — any player-type account can apply, but owners/staff
 // cannot (they lack this permission). The old coach.applications.manage gate
-// created a chicken-and-egg: you needed the coach role to apply for it.
+// created a chicken-and-egg: you needed the coach role to apply for it. The
+// paid coach subscription is now the real gate (see submitCoachApplication):
+// subscribing is what buys access to "become a coach at this venue".
 const PLAYER_PERM = 'player.dashboard.access' as const;
 // Owner reviews applications for venues they own.
 const OWNER_PERM = 'owner.coaches.manage' as const;
@@ -89,6 +92,11 @@ export async function submitCoachApplication(c: any) {
   const user = c.get('user');
   if (!hasPermission(user, PLAYER_PERM)) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Only player accounts can apply as a coach' } }, 403);
+  }
+  // Applying to coach at a venue is a paid capability. 402 (not 403) so the app
+  // can tell "you need to subscribe" apart from "you may never do this".
+  if (!(await hasActivePartnerSubscription(user.sub, 'coach'))) {
+    return c.json({ error: { code: 'SUBSCRIPTION_REQUIRED', message: 'A coach subscription is required to apply at a venue.' } }, 402);
   }
   const body = submitSchema.parse(await c.req.json());
   const venueId = await resolveVenueId(body.venueId);

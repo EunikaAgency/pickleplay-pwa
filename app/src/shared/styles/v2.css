@@ -143,6 +143,7 @@
 .pb-v2 .v2c-tab.active::after { content: ''; position: absolute; bottom: 8px; width: 4px; height: 4px; border-radius: 50%; background: var(--lime-active); }
 .pb-v2 .v2c-tab svg { width: 21px; height: 21px; flex-shrink: 0; }
 .pb-v2 .v2c-tab-label { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.pb-v2 .v2c-tab-badge { position: absolute; top: 6px; left: calc(50% + 4px); min-width: 17px; height: 17px; padding: 0 3px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--warning); color: #fff; font-family: 'Grandstander', cursive; font-weight: 700; font-size: 9px; line-height: 1; border: 2px solid var(--surface); font-variant-numeric: tabular-nums; }
 
 .pb-v2 .v2c-fab {
   position: fixed; right: 20px; bottom: calc(84px + env(safe-area-inset-bottom));
@@ -2961,8 +2962,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 .pb-v2.v2-games * { transition: none !important; animation: none !important; }
 }
 
-/* ===================== Clubs.html → .pb-v2.v2-clubs ===================== */
-.pb-v2.v2-clubs {
+/* ============ Clubs.html → .pb-v2.v2-social (the Social tab) ============ */
+.pb-v2.v2-social {
     --blue:          #3355FF;
     --blue-hover:    #2440D9;
     --lime:          #CCFF33;
@@ -2987,6 +2988,18 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     --warning:       #F97316;
     --error:         #EF4444;
 
+    /* Friends panel. `--success` fills a button (white text on green, safe in
+       both themes); `--success-text` is green used AS text, so it has to flip
+       or it fails contrast on the dark ground. */
+    --success-text:    #15803D;
+    --role-organizer:  #7C3AED;
+
+    /* Segmented control. The active pill must read as RAISED off the track in
+       both themes, so it can't just be `--surface` — in dark that's darker than
+       `--bg-alt` and the selected segment reads as a hole. */
+    --seg-track:   #E1E8FF;
+    --seg-active:  #FFFFFF;
+
     --radius-card: 16px;
     --radius-lg:   20px;
     --radius-pill: 9999px;
@@ -2998,30 +3011,30 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     --ease-out:    cubic-bezier(0,0,0.2,1);
     --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
   }
-.pb-v2.v2-clubs * { box-sizing: border-box; }
-.pb-v2.v2-clubs, .pb-v2.v2-clubs { margin: 0; padding: 0; }
-.pb-v2.v2-clubs {
+.pb-v2.v2-social * { box-sizing: border-box; }
+.pb-v2.v2-social, .pb-v2.v2-social { margin: 0; padding: 0; }
+.pb-v2.v2-social {
     font-family: 'Lexend', sans-serif;
     background: var(--bg-app);
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     padding-bottom: 80px;
   }
-.pb-v2.v2-clubs h1, .pb-v2.v2-clubs h2, .pb-v2.v2-clubs h3, .pb-v2.v2-clubs h4, .pb-v2.v2-clubs .brand { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
-.pb-v2.v2-clubs p { margin: 0; }
-.pb-v2.v2-clubs a { text-decoration: none; color: inherit; }
-.pb-v2.v2-clubs button { font-family: inherit; cursor: pointer; border: none; }
-.pb-v2.v2-clubs a:focus-visible, .pb-v2.v2-clubs button:focus-visible {
+.pb-v2.v2-social h1, .pb-v2.v2-social h2, .pb-v2.v2-social h3, .pb-v2.v2-social h4, .pb-v2.v2-social .brand { font-family: 'Grandstander', cursive; margin: 0; line-height: 1.2; }
+.pb-v2.v2-social p { margin: 0; }
+.pb-v2.v2-social a { text-decoration: none; color: inherit; }
+.pb-v2.v2-social button { font-family: inherit; cursor: pointer; border: none; }
+.pb-v2.v2-social a:focus-visible, .pb-v2.v2-social button:focus-visible {
     outline: 2px solid var(--blue);
     outline-offset: 2px;
     border-radius: 4px;
   }
-.pb-v2.v2-clubs .container {
+.pb-v2.v2-social .container {
     width: 100%;
     max-width: none; /* beat Tailwind's colliding `.container` utility max-widths */
     padding: 0 16px;
   }
-.pb-v2.v2-clubs .topnav {
+.pb-v2.v2-social .topnav {
     position: sticky;
     top: 0;
     z-index: 50;
@@ -3029,7 +3042,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     border-bottom: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-sm);
   }
-.pb-v2.v2-clubs .topnav-inner {
+.pb-v2.v2-social .topnav-inner {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3037,19 +3050,19 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     gap: 12px;
     position: relative;
   }
-.pb-v2.v2-clubs .brand {
+.pb-v2.v2-social .brand {
     font-weight: 800;
     font-size: 22px;
     letter-spacing: 0.3px;
     color: var(--blue);
   }
-.pb-v2.v2-clubs .brand span { color: var(--lime-active); }
-.pb-v2.v2-clubs .nav-actions {
+.pb-v2.v2-social .brand span { color: var(--lime-active); }
+.pb-v2.v2-social .nav-actions {
     display: flex;
     align-items: center;
     gap: 4px;
   }
-.pb-v2.v2-clubs .icon-btn {
+.pb-v2.v2-social .icon-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -3063,8 +3076,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     transition: background 150ms var(--ease-out);
     cursor: pointer;
   }
-.pb-v2.v2-clubs .icon-btn:hover { background: var(--bg-app); }
-.pb-v2.v2-clubs .notif-dot {
+.pb-v2.v2-social .icon-btn:hover { background: var(--bg-app); }
+.pb-v2.v2-social .notif-dot {
     position: absolute;
     top: 7px;
     right: 8px;
@@ -3074,7 +3087,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     background: var(--warning);
     border: 2px solid var(--surface);
   }
-.pb-v2.v2-clubs .fab {
+.pb-v2.v2-social .fab {
   position: fixed;
   bottom: 80px;
   right: max(16px, calc(50vw - 224px));
@@ -3093,12 +3106,12 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   z-index: 40;
   transition: transform 150ms var(--ease-spring), box-shadow 150ms;
 }
-.pb-v2.v2-clubs .fab:hover {
+.pb-v2.v2-social .fab:hover {
   transform: scale(1.08);
   box-shadow: 0 6px 24px rgba(163,204,0,0.55);
 }
-.pb-v2.v2-clubs .fab:active { transform: scale(0.95); }
-.pb-v2.v2-clubs .tabbar {
+.pb-v2.v2-social .fab:active { transform: scale(0.95); }
+.pb-v2.v2-social .tabbar {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -3109,7 +3122,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     display: flex;
     z-index: 45;
   }
-.pb-v2.v2-clubs .tab-item {
+.pb-v2.v2-social .tab-item {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -3124,8 +3137,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     cursor: pointer;
     text-decoration: none;
   }
-.pb-v2.v2-clubs .tab-item.active { color: var(--blue); }
-.pb-v2.v2-clubs .tab-item.active::after {
+.pb-v2.v2-social .tab-item.active { color: var(--blue); }
+.pb-v2.v2-social .tab-item.active::after {
     content: '';
     position: absolute;
     bottom: 8px;
@@ -3134,8 +3147,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     border-radius: 50%;
     background: var(--lime-active);
   }
-.pb-v2.v2-clubs .tab-item svg { width: 22px; height: 22px; }
-.pb-v2.v2-clubs .page-content {
+.pb-v2.v2-social .tab-item svg { width: 22px; height: 22px; }
+.pb-v2.v2-social .page-content {
     width: 100%;
     padding: 0 16px;
   }
@@ -3143,18 +3156,18 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
    clubs page-content has no top padding (unlike Games' 16px), so the intro adds
    it here; margin-bottom is 0 because the search row below already has a 14px
    top — together that mirrors Games' heading rhythm (16px above, 14px below). */
-.pb-v2.v2-clubs .clubs-intro { margin-bottom: 0; padding-top: 16px; }
-.pb-v2.v2-clubs .clubs-heading {
+.pb-v2.v2-social .clubs-intro { margin-bottom: 0; padding-top: 16px; }
+.pb-v2.v2-social .clubs-heading {
   font-family: var(--font-display); font-weight: 800; font-size: 26px;
   color: var(--text-primary); line-height: 1.1;
 }
-.pb-v2.v2-clubs .clubs-subheading {
+.pb-v2.v2-social .clubs-subheading {
   font-size: 13px; color: var(--text-secondary); margin-top: 4px;
 }
-.pb-v2.v2-clubs .search-wrap {
+.pb-v2.v2-social .search-wrap {
     padding: 14px 0 6px;
   }
-.pb-v2.v2-clubs .search-bar {
+.pb-v2.v2-social .search-bar {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -3165,10 +3178,10 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     transition: border-color 150ms;
     box-shadow: var(--shadow-sm);
   }
-.pb-v2.v2-clubs .search-bar:focus-within {
+.pb-v2.v2-social .search-bar:focus-within {
     border-color: var(--blue);
   }
-.pb-v2.v2-clubs .search-bar input {
+.pb-v2.v2-social .search-bar input {
     flex: 1;
     border: none;
     background: transparent;
@@ -3177,17 +3190,17 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     color: var(--ink);
     outline: none;
   }
-.pb-v2.v2-clubs .search-bar input::placeholder { color: var(--text-muted); }
-.pb-v2.v2-clubs .search-bar svg { color: var(--text-muted); flex-shrink: 0; }
-.pb-v2.v2-clubs .filter-row {
+.pb-v2.v2-social .search-bar input::placeholder { color: var(--text-muted); }
+.pb-v2.v2-social .search-bar svg { color: var(--text-muted); flex-shrink: 0; }
+.pb-v2.v2-social .filter-row {
     display: flex;
     gap: 8px;
     padding: 10px 0 4px;
     overflow-x: auto;
     scrollbar-width: none;
   }
-.pb-v2.v2-clubs .filter-row::-webkit-scrollbar { display: none; }
-.pb-v2.v2-clubs .filter-chip {
+.pb-v2.v2-social .filter-row::-webkit-scrollbar { display: none; }
+.pb-v2.v2-social .filter-chip {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -3202,28 +3215,28 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     transition: all 150ms var(--ease-out);
     cursor: pointer;
   }
-.pb-v2.v2-clubs .filter-chip.active {
+.pb-v2.v2-social .filter-chip.active {
     background: var(--blue);
     border-color: var(--blue);
     color: #fff;
   }
-.pb-v2.v2-clubs .filter-chip:hover:not(.active) {
+.pb-v2.v2-social .filter-chip:hover:not(.active) {
     border-color: var(--blue);
     color: var(--blue);
   }
-.pb-v2.v2-clubs .section-header {
+.pb-v2.v2-social .section-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 18px 0 10px;
   }
-.pb-v2.v2-clubs .section-title {
+.pb-v2.v2-social .section-title {
     font-size: 17px;
     font-weight: 700;
     color: var(--ink);
     font-family: 'Grandstander', cursive;
   }
-.pb-v2.v2-clubs .view-all-btn {
+.pb-v2.v2-social .view-all-btn {
     font-size: 12px;
     font-weight: 600;
     color: var(--blue);
@@ -3232,7 +3245,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     padding: 0;
     cursor: pointer;
   }
-.pb-v2.v2-clubs .club-card {
+.pb-v2.v2-social .club-card {
     background: var(--surface);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-sm);
@@ -3245,11 +3258,11 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     transition: box-shadow 150ms var(--ease-out), transform 150ms var(--ease-out);
     cursor: pointer;
   }
-.pb-v2.v2-clubs .club-card:hover {
+.pb-v2.v2-social .club-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
   }
-.pb-v2.v2-clubs .club-icon {
+.pb-v2.v2-social .club-icon {
     width: 52px;
     height: 52px;
     border-radius: 14px;
@@ -3259,10 +3272,10 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     flex-shrink: 0;
     font-size: 22px;
   }
-.pb-v2.v2-clubs .club-icon.lime { background: var(--lime); }
-.pb-v2.v2-clubs .club-icon.blue { background: var(--blue); }
-.pb-v2.v2-clubs .club-info { flex: 1; min-width: 0; }
-.pb-v2.v2-clubs .club-name {
+.pb-v2.v2-social .club-icon.lime { background: var(--lime); }
+.pb-v2.v2-social .club-icon.blue { background: var(--blue); }
+.pb-v2.v2-social .club-info { flex: 1; min-width: 0; }
+.pb-v2.v2-social .club-name {
     font-family: 'Grandstander', cursive;
     font-size: 15px;
     font-weight: 700;
@@ -3272,13 +3285,13 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     overflow: hidden;
     text-overflow: ellipsis;
   }
-.pb-v2.v2-clubs .club-meta {
+.pb-v2.v2-social .club-meta {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 5px;
   }
-.pb-v2.v2-clubs .tag {
+.pb-v2.v2-social .tag {
     display: inline-flex;
     align-items: center;
     padding: 2px 9px;
@@ -3288,9 +3301,9 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     background: var(--bg-alt);
     color: var(--blue);
   }
-.pb-v2.v2-clubs .tag.lime-tag { background: var(--bg-feature); color: var(--lime-active); }
-.pb-v2.v2-clubs .tag.green-tag { background: rgba(34,197,94,0.1); color: var(--success); }
-.pb-v2.v2-clubs .club-members {
+.pb-v2.v2-social .tag.lime-tag { background: var(--bg-feature); color: var(--lime-active); }
+.pb-v2.v2-social .tag.green-tag { background: rgba(34,197,94,0.1); color: var(--success); }
+.pb-v2.v2-social .club-members {
     font-size: 11px;
     color: var(--text-muted);
     margin-top: 4px;
@@ -3298,11 +3311,11 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     align-items: center;
     gap: 4px;
   }
-.pb-v2.v2-clubs .club-chevron {
+.pb-v2.v2-social .club-chevron {
     color: var(--text-muted);
     flex-shrink: 0;
   }
-.pb-v2.v2-clubs .event-badge {
+.pb-v2.v2-social .event-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -3314,7 +3327,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     padding: 2px 8px;
     margin-left: 2px;
   }
-.pb-v2.v2-clubs .featured-card {
+.pb-v2.v2-social .featured-card {
     border-radius: var(--radius-lg);
     overflow: hidden;
     box-shadow: var(--shadow-md);
@@ -3324,11 +3337,11 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
     border: 1px solid var(--border-subtle);
   }
-.pb-v2.v2-clubs .featured-card:hover {
+.pb-v2.v2-social .featured-card:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
   }
-.pb-v2.v2-clubs .featured-img-placeholder {
+.pb-v2.v2-social .featured-img-placeholder {
     width: 100%;
     height: 220px;
     background-image: linear-gradient(135deg,#E1E8FF,#E9EDFF);
@@ -3341,7 +3354,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     position: relative;
     overflow: hidden;
   }
-.pb-v2.v2-clubs .featured-img-placeholder::before {
+.pb-v2.v2-social .featured-img-placeholder::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -3350,7 +3363,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
       radial-gradient(ellipse at 85% 15%, rgba(255,255,255,0.07) 0%, transparent 45%);
     pointer-events: none;
   }
-.pb-v2.v2-clubs .featured-img-placeholder::after {
+.pb-v2.v2-social .featured-img-placeholder::after {
     content: '';
     position: absolute;
     bottom: 0; left: 0; right: 0;
@@ -3358,13 +3371,13 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     background: linear-gradient(to top, rgba(13,22,48,0.70) 0%, transparent 100%);
     pointer-events: none;
   }
-.pb-v2.v2-clubs .court-illustration {
+.pb-v2.v2-social .court-illustration {
     position: relative;
     z-index: 1;
     width: 100%;
     height: 100%;
   }
-.pb-v2.v2-clubs .featured-label {
+.pb-v2.v2-social .featured-label {
     position: absolute;
     top: 12px;
     left: 14px;
@@ -3382,17 +3395,17 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     border-radius: var(--radius-pill);
     box-shadow: 0 2px 8px rgba(0,0,0,0.18);
   }
-.pb-v2.v2-clubs .featured-content {
+.pb-v2.v2-social .featured-content {
     padding: 16px 16px 18px;
     background: var(--surface);
     position: relative;
   }
-.pb-v2.v2-clubs .featured-tags {
+.pb-v2.v2-social .featured-tags {
     display: flex;
     gap: 6px;
     margin-bottom: 10px;
   }
-.pb-v2.v2-clubs .featured-tag {
+.pb-v2.v2-social .featured-tag {
     display: inline-flex;
     align-items: center;
     padding: 3px 10px;
@@ -3402,8 +3415,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     background: var(--bg-alt);
     color: var(--blue);
   }
-.pb-v2.v2-clubs .featured-tag.open { background: rgba(34,197,94,0.12); color: var(--success); }
-.pb-v2.v2-clubs .featured-name {
+.pb-v2.v2-social .featured-tag.open { background: rgba(34,197,94,0.12); color: var(--success); }
+.pb-v2.v2-social .featured-name {
     font-family: 'Grandstander', cursive;
     font-size: 20px;
     font-weight: 800;
@@ -3411,19 +3424,19 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     margin-bottom: 5px;
     line-height: 1.15;
   }
-.pb-v2.v2-clubs .featured-desc {
+.pb-v2.v2-social .featured-desc {
     font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.55;
     margin-bottom: 14px;
   }
-.pb-v2.v2-clubs .featured-stats {
+.pb-v2.v2-social .featured-stats {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     margin-bottom: 16px;
   }
-.pb-v2.v2-clubs .featured-stat {
+.pb-v2.v2-social .featured-stat {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -3434,8 +3447,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     border-radius: var(--radius-pill);
     padding: 5px 11px;
   }
-.pb-v2.v2-clubs .featured-stat svg { color: var(--blue); flex-shrink: 0; }
-.pb-v2.v2-clubs .join-btn {
+.pb-v2.v2-social .featured-stat svg { color: var(--blue); flex-shrink: 0; }
+.pb-v2.v2-social .join-btn {
     display: block;
     width: 100%;
     padding: 14px;
@@ -3452,18 +3465,18 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     box-shadow: 0 2px 12px rgba(163,204,0,0.30);
     transition: background 150ms var(--ease-out), transform 100ms var(--ease-out), box-shadow 150ms;
   }
-.pb-v2.v2-clubs .join-btn:hover {
+.pb-v2.v2-social .join-btn:hover {
     background: var(--lime-hover);
     box-shadow: 0 4px 18px rgba(163,204,0,0.40);
   }
-.pb-v2.v2-clubs .join-btn:active { transform: scale(0.98); background: var(--lime-active); }
-.pb-v2.v2-clubs .discover-clubs-grid {
+.pb-v2.v2-social .join-btn:active { transform: scale(0.98); background: var(--lime-active); }
+.pb-v2.v2-social .discover-clubs-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 12px;
   }
-.pb-v2.v2-clubs .discover-club-card {
+.pb-v2.v2-social .discover-club-card {
     min-width: 0;
     min-height: 170px;
     background: var(--surface);
@@ -3476,22 +3489,22 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     flex-direction: column;
     transition: box-shadow 150ms var(--ease-out), transform 150ms var(--ease-out);
   }
-.pb-v2.v2-clubs .discover-club-card:hover {
+.pb-v2.v2-social .discover-club-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
   }
-.pb-v2.v2-clubs .discover-club-card.featured {
+.pb-v2.v2-social .discover-club-card.featured {
     background: linear-gradient(180deg, var(--surface) 0%, var(--bg-feature) 100%);
     border-color: rgba(163,204,0,0.45);
   }
-.pb-v2.v2-clubs .discover-club-head {
+.pb-v2.v2-social .discover-club-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 10px;
   }
-.pb-v2.v2-clubs .discover-club-icon {
+.pb-v2.v2-social .discover-club-icon {
     width: 40px;
     height: 40px;
     border-radius: 11px;
@@ -3504,7 +3517,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     font-size: 17px;
     font-weight: 700;
   }
-.pb-v2.v2-clubs .discover-featured-label {
+.pb-v2.v2-social .discover-featured-label {
     display: inline-flex;
     align-items: center;
     padding: 3px 7px;
@@ -3516,7 +3529,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     letter-spacing: 0.4px;
     text-transform: uppercase;
   }
-.pb-v2.v2-clubs .discover-card-name {
+.pb-v2.v2-social .discover-card-name {
     font-family: 'Grandstander', cursive;
     font-size: 14px;
     font-weight: 800;
@@ -3528,7 +3541,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-.pb-v2.v2-clubs .discover-card-desc {
+.pb-v2.v2-social .discover-card-desc {
     margin-top: 5px;
     font-size: 11px;
     line-height: 1.35;
@@ -3539,13 +3552,13 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
-.pb-v2.v2-clubs .discover-card-tags {
+.pb-v2.v2-social .discover-card-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 5px;
     margin-top: 10px;
   }
-.pb-v2.v2-clubs .discover-card-meta {
+.pb-v2.v2-social .discover-card-meta {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
@@ -3555,24 +3568,24 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     font-size: 10px;
     font-weight: 600;
   }
-.pb-v2.v2-clubs .discover-club-card .join-sm-btn {
+.pb-v2.v2-social .discover-club-card .join-sm-btn {
     margin-top: auto;
   }
 @media (max-width: 620px) {
-  .pb-v2.v2-clubs .discover-clubs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pb-v2.v2-social .discover-clubs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 390px) {
-  .pb-v2.v2-clubs .discover-clubs-grid { grid-template-columns: 1fr; }
+  .pb-v2.v2-social .discover-clubs-grid { grid-template-columns: 1fr; }
 }
-.pb-v2.v2-clubs .nearby-scroll {
+.pb-v2.v2-social .nearby-scroll {
     display: flex;
     gap: 12px;
     overflow-x: auto;
     scrollbar-width: none;
     padding-bottom: 4px;
   }
-.pb-v2.v2-clubs .nearby-scroll::-webkit-scrollbar { display: none; }
-.pb-v2.v2-clubs .nearby-card {
+.pb-v2.v2-social .nearby-scroll::-webkit-scrollbar { display: none; }
+.pb-v2.v2-social .nearby-card {
     background: var(--surface);
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-sm);
@@ -3584,11 +3597,11 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     transition: box-shadow 150ms, transform 150ms;
     flex-shrink: 0;
   }
-.pb-v2.v2-clubs .nearby-card:hover {
+.pb-v2.v2-social .nearby-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
   }
-.pb-v2.v2-clubs .nearby-icon {
+.pb-v2.v2-social .nearby-icon {
     width: 44px;
     height: 44px;
     border-radius: 12px;
@@ -3598,7 +3611,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     font-size: 20px;
     margin-bottom: 10px;
   }
-.pb-v2.v2-clubs .nearby-card-name {
+.pb-v2.v2-social .nearby-card-name {
     font-family: 'Grandstander', cursive;
     font-size: 13px;
     font-weight: 700;
@@ -3608,12 +3621,12 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     overflow: hidden;
     text-overflow: ellipsis;
   }
-.pb-v2.v2-clubs .nearby-card-meta {
+.pb-v2.v2-social .nearby-card-meta {
     font-size: 11px;
     color: var(--text-muted);
     margin-bottom: 10px;
   }
-.pb-v2.v2-clubs .join-sm-btn {
+.pb-v2.v2-social .join-sm-btn {
     display: block;
     width: 100%;
     padding: 7px;
@@ -3627,8 +3640,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     cursor: pointer;
     transition: background 150ms;
   }
-.pb-v2.v2-clubs .join-sm-btn:hover { background: var(--blue-hover); }
-.pb-v2.v2-clubs .create-club-strip {
+.pb-v2.v2-social .join-sm-btn:hover { background: var(--blue-hover); }
+.pb-v2.v2-social .create-club-strip {
     background: var(--bg-feature);
     border: 1.5px dashed var(--lime-active);
     border-radius: var(--radius-card);
@@ -3640,8 +3653,8 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     cursor: pointer;
     transition: background 150ms;
   }
-.pb-v2.v2-clubs .create-club-strip:hover { background: #eaffd0; }
-.pb-v2.v2-clubs .create-icon-circle {
+.pb-v2.v2-social .create-club-strip:hover { background: #eaffd0; }
+.pb-v2.v2-social .create-icon-circle {
     width: 46px;
     height: 46px;
     border-radius: 50%;
@@ -3652,7 +3665,7 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     flex-shrink: 0;
     color: var(--ink);
   }
-.pb-v2.v2-clubs .create-text strong {
+.pb-v2.v2-social .create-text strong {
     display: block;
     font-size: 14px;
     font-weight: 700;
@@ -3660,33 +3673,199 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     font-family: 'Grandstander', cursive;
     margin-bottom: 2px;
   }
-.pb-v2.v2-clubs .create-text span {
+.pb-v2.v2-social .create-text span {
     font-size: 12px;
     color: var(--text-secondary);
   }
-.pb-v2.v2-clubs .empty-state {
+.pb-v2.v2-social .empty-state {
     text-align: center;
     padding: 30px 0 10px;
   }
-.pb-v2.v2-clubs .empty-state-icon {
+.pb-v2.v2-social .empty-state-icon {
     font-size: 44px;
     margin-bottom: 12px;
   }
-.pb-v2.v2-clubs .empty-state h3 {
+.pb-v2.v2-social .empty-state h3 {
     font-size: 16px;
     font-weight: 700;
     color: var(--ink);
     margin-bottom: 6px;
     font-family: 'Grandstander', cursive;
   }
-.pb-v2.v2-clubs .empty-state p {
+.pb-v2.v2-social .empty-state p {
     font-size: 13px;
     color: var(--text-secondary);
     line-height: 1.5;
   }
-.pb-v2.v2-clubs .section-gap { height: 8px; }
+.pb-v2.v2-social .section-gap { height: 8px; }
+
+/* ── Social: the Clubs | Friends switch ────────────────────────────────────
+   A segmented pill track, NOT another chip row — both panels already carry
+   their own `.filter-chip` filters underneath, and two stacked chip rows read
+   as noise. */
+.pb-v2.v2-social .social-seg {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 14px;
+    background: var(--seg-track);
+    border-radius: 12px;
+  }
+.pb-v2.v2-social .social-seg button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 0;
+    border-radius: 9px;
+    background: none;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: 'Grandstander', cursive;
+    color: var(--text-secondary);
+    transition: background 150ms, color 150ms;
+  }
+.pb-v2.v2-social .social-seg button.active {
+    background: var(--seg-active);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+.pb-v2.v2-social .social-seg-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--radius-pill);
+    background: var(--warning);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+/* ── Social: Friends panel ─────────────────────────────────────────────── */
+.pb-v2.v2-social .friend-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 16px;
+    margin-left: 5px;
+    padding: 0 4px;
+    border-radius: var(--radius-pill);
+    background: var(--warning);
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+.pb-v2.v2-social .friend-list { display: flex; flex-direction: column; }
+.pb-v2.v2-social .friend-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 11px 2px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+.pb-v2.v2-social .friend-row:last-child { border-bottom: none; }
+.pb-v2.v2-social .friend-av {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-alt);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Grandstander', cursive;
+  }
+.pb-v2.v2-social .friend-info { flex: 1; min-width: 0; }
+.pb-v2.v2-social .friend-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+.pb-v2.v2-social .friend-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 3px;
+  }
+.pb-v2.v2-social .friend-skill { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+.pb-v2.v2-social .friend-dist { font-size: 11.5px; font-weight: 700; color: var(--success-text); }
+.pb-v2.v2-social .friend-bio {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+.pb-v2.v2-social .role-pill {
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+  }
+.pb-v2.v2-social .role-pill.player { background: var(--success); }
+.pb-v2.v2-social .role-pill.coach { background: var(--blue); }
+.pb-v2.v2-social .role-pill.organizer { background: var(--role-organizer); }
+
+.pb-v2.v2-social .friend-acts { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pb-v2.v2-social .friend-pending { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+.pb-v2.v2-social .friend-sent { font-size: 11.5px; font-weight: 700; color: var(--success-text); }
+
+.pb-v2.v2-social .fbtn {
+    padding: 7px 12px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    background: none;
+    transition: opacity 150ms, background 150ms;
+  }
+.pb-v2.v2-social .fbtn:disabled { opacity: 0.5; }
+.pb-v2.v2-social .fbtn.primary { background: var(--success); color: #fff; }
+.pb-v2.v2-social .fbtn.quiet { background: var(--bg-alt); color: var(--ink); }
+.pb-v2.v2-social .fbtn.danger { color: var(--error); padding: 7px 8px; }
+.pb-v2.v2-social .fbtn.danger:hover:not(:disabled) { background: var(--bg-alt); }
+.pb-v2.v2-social .fbtn.icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--text-muted);
+  }
+.pb-v2.v2-social .fbtn.icon:hover { background: var(--bg-alt); color: var(--ink); }
+
+/* Empty-state exit hatch — a club is a commitment, adding a player isn't. */
+.pb-v2.v2-social .social-crosslink {
+    margin-top: 12px;
+    padding: 9px 16px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-app);
+    color: var(--blue);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Grandstander', cursive;
+  }
+.pb-v2.v2-social .social-crosslink:hover { background: var(--bg-alt); }
 @media (prefers-reduced-motion: reduce) {
-.pb-v2.v2-clubs * { transition: none !important; animation: none !important; }
+.pb-v2.v2-social * { transition: none !important; animation: none !important; }
 }
 
 /* ===================== Profile.html → .pb-v2.v2-profile ===================== */
@@ -5531,6 +5710,11 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   --text-muted: #8A93A3;
   --muted: #8A93A3;
   --ink-fill: #26314F;
+  /* Green/purple used AS TEXT (not as a fill) must lighten on the dark ground. */
+  --success-text: #4ADE80;
+  --role-organizer: #A78BFA;
+  --seg-track: #101318;
+  --seg-active: #2C313B;
   /* v2-nearby-only surface/text tokens — defined only in that scope, so they
      must flip here too or the Nearby list sheet + cards stay light in dark mode. */
   --bg-white: #1A1D24;
@@ -5544,6 +5728,11 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .pb-v2 {
+    /* Green/purple used AS TEXT (not as a fill) must lighten on the dark ground. */
+    --success-text: #4ADE80;
+    --role-organizer: #A78BFA;
+    --seg-track: #101318;
+    --seg-active: #2C313B;
     --bg-page: #0E1014;
     --bg-app: #23272F;
     --bg-alt: #2C313B;

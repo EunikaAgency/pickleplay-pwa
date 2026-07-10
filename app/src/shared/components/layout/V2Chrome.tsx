@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Navigate, TabId } from '../../lib/navigation';
 import { useNotificationStore } from '../../lib/notificationStore';
 import { useMessageStore } from '../../lib/messageStore';
+import { useFriendRequestStore } from '../../lib/friendRequestStore';
 
 /**
  * Shared chrome for the v2.1 player design: a sticky top nav, the bottom tab bar
@@ -80,19 +81,23 @@ const TAB_ICONS: Partial<Record<TabId, ReactNode>> = {
   nearby: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>),
   games: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>),
   tournaments: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" /><path d="M5 5H3v2a4 4 0 0 0 4 4" /><path d="M19 5h2v2a4 4 0 0 1-4 4" /></svg>),
-  clubs: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>),
+  social: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>),
   messages: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>),
   profile: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>),
 };
-const TAB_LABELS: Partial<Record<TabId, string>> = { home: 'Home', nearby: 'Map', games: 'Play', tournaments: 'Tournament', clubs: 'Clubs', messages: 'Messages', profile: 'Profile' };
+const TAB_LABELS: Partial<Record<TabId, string>> = { home: 'Home', nearby: 'Map', games: 'Play', tournaments: 'Tournament', social: 'Social', messages: 'Messages', profile: 'Profile' };
 
 // The full tab order. `tabIds` (from App, role-derived) may drop some — e.g.
 // owners/admins don't get the player Tournament tab.
-const DEFAULT_TAB_ORDER: TabId[] = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'profile'];
+const DEFAULT_TAB_ORDER: TabId[] = ['home', 'nearby', 'games', 'tournaments', 'social', 'profile'];
 
-// The v2.1 tab bar renders the player tabs — Home · Nearby · Games · Tournament · Clubs ·
+// The v2.1 tab bar renders the player tabs — Home · Nearby · Games · Tournament · Social ·
 // Profile. Creating a game lives on the floating green FAB instead (see V2Fab).
 export function V2TabBar({ activeTab, onTabPress, tabIds = DEFAULT_TAB_ORDER }: { activeTab: TabId; onTabPress: (tab: TabId) => void; tabIds?: TabId[] }) {
+  // Read straight from the store (as V2TopNav does for notifications/messages)
+  // rather than threading a count through chrome props. The polling hook zeroes
+  // it when logged out, so a guest can never see the badge.
+  const pendingFriends = useFriendRequestStore((s) => s.pending);
   return (
     <nav className="v2c-tabbar" aria-label="Primary navigation">
       {/* Skip ids with no icon/label. Each tab is `flex: 1`, so an unrenderable
@@ -101,15 +106,20 @@ export function V2TabBar({ activeTab, onTabPress, tabIds = DEFAULT_TAB_ORDER }: 
           real tabs off-centre. */}
       {tabIds.filter((id) => TAB_LABELS[id]).map((id) => {
         const isActive = id === activeTab;
+        // A friend request used to fire one notification and vanish; the badge is
+        // what actually makes the Friends half of this tab discoverable.
+        const badge = id === 'social' ? pendingFriends : 0;
         return (
           <button
             key={id}
             className={`v2c-tab${isActive ? ' active' : ''}`}
             aria-current={isActive ? 'page' : undefined}
+            aria-label={badge > 0 ? `${TAB_LABELS[id]}, ${badge} pending friend request${badge === 1 ? '' : 's'}` : undefined}
             onClick={() => onTabPress(id)}
           >
             {TAB_ICONS[id]}
             <span className="v2c-tab-label">{TAB_LABELS[id]}</span>
+            {badge > 0 && <span className="v2c-tab-badge">{badge > 9 ? '9+' : badge}</span>}
           </button>
         );
       })}

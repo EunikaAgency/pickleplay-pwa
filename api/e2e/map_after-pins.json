@@ -1,0 +1,1316 @@
+[
+ {
+  "slug": "courtside-amore",
+  "name": "(Daet Racquet Club) Courtside Amore",
+  "lat": 13.9119078,
+  "lng": 121.8658662
+ },
+ {
+  "slug": "24-7-pickle-mandaluyong",
+  "name": "24/7 Pickle Mandaluyong",
+  "lat": 15.7674265,
+  "lng": 121.5526852
+ },
+ {
+  "slug": "2916-pickleballers-guillermo-badminton-and-pickleball-court",
+  "name": "2916 Pickleballers @ Guillermo Badminton & Pickleball Court (Bacarra)",
+  "lat": 13.6041398,
+  "lng": 124.2913331
+ },
+ {
+  "slug": "ace-e-resort-pickleball",
+  "name": "ACE & E Resort Pickleball",
+  "lat": 17.0858526,
+  "lng": 121.7001772
+ },
+ {
+  "slug": "abra-high-school-gym",
+  "name": "Abra High School Gym",
+  "lat": 18.1913867,
+  "lng": 120.600421
+ },
+ {
+  "slug": "acacia-smashers-pickleball-club",
+  "name": "Acacia Smashers Pickleball Club",
+  "lat": 18.5072082,
+  "lng": 121.2165621
+ },
+ {
+  "slug": "actifit-sports-center",
+  "name": "Actifit Sports Center",
+  "lat": 16.163443,
+  "lng": 119.996735
+ },
+ {
+  "slug": "activate-skypark-festival-mall-alabang-pickleball",
+  "name": "Activate Skypark Festival Mall Alabang Pickleball",
+  "lat": 18.1062821,
+  "lng": 120.80154
+ },
+ {
+  "slug": "activate-sports-ph-lucena-lucena-city",
+  "name": "Activate Sports PH Lucena",
+  "lat": 14.6075338,
+  "lng": 121.3100874
+ },
+ {
+  "slug": "activate-sports-ph-one-ayala",
+  "name": "Activate Sports PH One Ayala (Makati)",
+  "lat": 14.0151466,
+  "lng": 121.6075974
+ },
+ {
+  "slug": "alabang-country-club",
+  "name": "Alabang Country Club",
+  "lat": 12.979285,
+  "lng": 121.4288626
+ },
+ {
+  "slug": "albay-pickleball-club-emmalene-iimuro-tennis-club",
+  "name": "Albay Pickleball Club @ Emmalene Iimuro Tennis Club",
+  "lat": 13.233178,
+  "lng": 120.5923403
+ },
+ {
+  "slug": "amadea-resort-and-pickleball",
+  "name": "Amadea Resort and Pickleball",
+  "lat": 18.2683031,
+  "lng": 121.9090996
+ },
+ {
+  "slug": "arcovia-pickleball-club",
+  "name": "Arcovia Pickleball Club",
+  "lat": 17.9679576,
+  "lng": 121.8927643
+ },
+ {
+  "slug": "asingan-paddlers-pickleball-club",
+  "name": "Asingan Paddlers Pickleball Club",
+  "lat": 14.6334522,
+  "lng": 120.4289228
+ },
+ {
+  "slug": "athlete-central",
+  "name": "Athlete Central",
+  "lat": 16.1393288,
+  "lng": 119.9235767
+ },
+ {
+  "slug": "athlete-central-ph",
+  "name": "Athlete Central PH Cainta (Rizal's Biggest Pickleball Facility, 11 PB-capable courts)",
+  "lat": 14.6011438,
+  "lng": 120.3921937
+ },
+ {
+  "slug": "ayala-heights-badminton-court",
+  "name": "Ayala Heights Badminton Court",
+  "lat": 14.6888727,
+  "lng": 122.4065467
+ },
+ {
+  "slug": "ayala-malls-30th-pickleball-2nd-floor",
+  "name": "Ayala Malls 30th (Pasig) Pickleball - 2nd Floor",
+  "lat": 14.8846865,
+  "lng": 120.8450203
+ },
+ {
+  "slug": "bf-multi-purpose-court",
+  "name": "BF Multi-purpose Court",
+  "lat": 13.9283829,
+  "lng": 122.0956865
+ },
+ {
+  "slug": "bacnotan-pickleball-club-first-ever-pb-court-in-bacnotan",
+  "name": "Bacnotan Pickleball Club (BPC) - First Ever PB Court in Bacnotan",
+  "lat": 13.4142415,
+  "lng": 123.3897401
+ },
+ {
+  "slug": "bagong-bayan-picklers",
+  "name": "Bagong Bayan Picklers",
+  "lat": 17.5387459,
+  "lng": 121.6140475
+ },
+ {
+  "slug": "balanga-paddle-park",
+  "name": "Balanga Paddle Park",
+  "lat": 13.9058553,
+  "lng": 121.2914436
+ },
+ {
+  "slug": "balayan-bay-pickleball-club",
+  "name": "Balayan Bay Pickleball Club",
+  "lat": 14.9573354,
+  "lng": 120.9630688
+ },
+ {
+  "slug": "baler-ace-pickleball-court",
+  "name": "Baler Ace Pickleball Court",
+  "lat": 16.3343882,
+  "lng": 121.1094152
+ },
+ {
+  "slug": "banay-banay-pickleball",
+  "name": "Banay-Banay Pickleball Lipa",
+  "lat": 16.7950264,
+  "lng": 120.4431893
+ },
+ {
+  "slug": "batangas-city-pickleball-arena",
+  "name": "Batangas City Pickleball Arena",
+  "lat": 13.0190749,
+  "lng": 120.8206823
+ },
+ {
+  "slug": "batangas-pickleball-arena",
+  "name": "Batangas Pickleball Arena",
+  "lat": 14.0046025,
+  "lng": 121.9150141
+ },
+ {
+  "slug": "bauan-community-pickleball-hub",
+  "name": "Bauan Community Pickleball Hub",
+  "lat": 16.8434149,
+  "lng": 120.3476712
+ },
+ {
+  "slug": "binangonan-pickleball-grounds",
+  "name": "Binangonan Pickleball Grounds",
+  "lat": 13.981871,
+  "lng": 122.9346252
+ },
+ {
+  "slug": "bi-an-dinkers-hub",
+  "name": "Biñan Dinkers Hub",
+  "lat": 14.3498395,
+  "lng": 121.0613332
+ },
+ {
+  "slug": "bi-an-paddle-park",
+  "name": "Biñan Paddle Park",
+  "lat": 12.9420009,
+  "lng": 121.6923044
+ },
+ {
+  "slug": "blue-ridge-pickleball-club",
+  "name": "Blue Ridge Pickleball Club",
+  "lat": 12.3704045,
+  "lng": 121.9896604
+ },
+ {
+  "slug": "bounce-at-parqal-mall-pickleball",
+  "name": "Bounce at Parqal Mall Pickleball Parañaque",
+  "lat": 12.4401391,
+  "lng": 123.5024427
+ },
+ {
+  "slug": "bravo-pickleball-vista-mall-bataan-balanga",
+  "name": "Bravo Pickleball Vista Mall Bataan",
+  "lat": 13.7956541,
+  "lng": 123.8800926
+ },
+ {
+  "slug": "bulacan-sports-complex",
+  "name": "Bulacan Sports Complex",
+  "lat": 13.9107935,
+  "lng": 122.6085078
+ },
+ {
+  "slug": "ccf-center-pickleball",
+  "name": "CCF Center Pickleball",
+  "lat": 13.1335072,
+  "lng": 123.6070438
+ },
+ {
+  "slug": "chops-pickleball-hub-san-jose-occidental-mindoro",
+  "name": "CHOPS Pickleball Hub San Jose Occidental Mindoro",
+  "lat": 13.2392891,
+  "lng": 123.8180667
+ },
+ {
+  "slug": "calaca-dinkers-court",
+  "name": "Calaca Dinkers Court",
+  "lat": 14.8638923,
+  "lng": 120.7889062
+ },
+ {
+  "slug": "calamba-court-central",
+  "name": "Calamba Court Central",
+  "lat": 13.5204038,
+  "lng": 122.0171781
+ },
+ {
+  "slug": "camsur-pickleball-club",
+  "name": "CamSur Pickleball Club",
+  "lat": 13.0460453,
+  "lng": 123.4043143
+ },
+ {
+  "slug": "camella-covered-court-pickleball",
+  "name": "Camella Covered Court Pickleball",
+  "lat": 13.9930195,
+  "lng": 120.7278598
+ },
+ {
+  "slug": "camella-nueva-ecija-covered-court-pickleball",
+  "name": "Camella Nueva Ecija Covered Court Pickleball",
+  "lat": 13.1377796,
+  "lng": 123.4536121
+ },
+ {
+  "slug": "camp-ola-pickleball-courts-legazpi",
+  "name": "Camp Ola Pickleball Courts Legazpi",
+  "lat": 14.2538776,
+  "lng": 122.6990819
+ },
+ {
+  "slug": "casamor-la-union-bacnotan",
+  "name": "CasaMor La Union Bacnotan (Private Stay-and-Play Airbnb with Pickleball Court)",
+  "lat": 16.1277423,
+  "lng": 121.8889144
+ },
+ {
+  "slug": "celebrity-sports-club",
+  "name": "Celebrity Sports Club",
+  "lat": 15.6660408,
+  "lng": 120.8348443
+ },
+ {
+  "slug": "citywalk-badminton-sports-center",
+  "name": "Citywalk Badminton Sports Center",
+  "lat": 18.5537812,
+  "lng": 120.9968315
+ },
+ {
+  "slug": "conquest-sports",
+  "name": "Conquest Sports",
+  "lat": 17.674474,
+  "lng": 121.7559844
+ },
+ {
+  "slug": "corinthian-gardens-pickleball-club",
+  "name": "Corinthian Gardens Pickleball Club",
+  "lat": 12.3327053,
+  "lng": 121.1291533
+ },
+ {
+  "slug": "cristy-hernandez-activity-center",
+  "name": "Cristy Hernandez Activity Center",
+  "lat": 14.1158297,
+  "lng": 122.9597302
+ },
+ {
+  "slug": "cuenca-highland-pickleball",
+  "name": "Cuenca Highland Pickleball",
+  "lat": 18.5384593,
+  "lng": 120.7626205
+ },
+ {
+  "slug": "dasmarinas-pickleball",
+  "name": "Dasmarinas Pickleball",
+  "lat": 14.6814581,
+  "lng": 122.3704293
+ },
+ {
+  "slug": "dasmari-as-smash-pickleball-club",
+  "name": "Dasmariñas Smash Pickleball Club",
+  "lat": 13.8049811,
+  "lng": 123.8538635
+ },
+ {
+  "slug": "deca-mall-tondo-pickleball",
+  "name": "Deca Mall Tondo Pickleball",
+  "lat": 16.2732969,
+  "lng": 119.8587079
+ },
+ {
+  "slug": "dink-drive-pickleball",
+  "name": "Dink & Drive Pickleball",
+  "lat": 14.6005717,
+  "lng": 121.1778075
+ },
+ {
+  "slug": "dink-and-shot",
+  "name": "Dink and Shot",
+  "lat": 13.8715445,
+  "lng": 121.2362767
+ },
+ {
+  "slug": "divine-light-academy-las-pinas",
+  "name": "Divine Light Academy Las Piñas",
+  "lat": 17.5284713,
+  "lng": 121.5872002
+ },
+ {
+  "slug": "dona-juana-subdivision-pickleball",
+  "name": "Doña Juana Subdivision Pickleball",
+  "lat": 12.27942,
+  "lng": 122.6290589
+ },
+ {
+  "slug": "dragonsmash",
+  "name": "DragonSmash",
+  "lat": 12.46796,
+  "lng": 120.9599408
+ },
+ {
+  "slug": "esj-pickleball-court",
+  "name": "ESJ Pickleball Court",
+  "lat": 16.7016485,
+  "lng": 121.8034276
+ },
+ {
+  "slug": "fairview-pickleball-club",
+  "name": "Fairview Pickleball Club",
+  "lat": 14.8091839,
+  "lng": 121.0459945
+ },
+ {
+  "slug": "fairview-pickleball-club-fairview-quezon-city-2",
+  "name": "Fairview Pickleball Club",
+  "lat": 16.8420481,
+  "lng": 120.4032408
+ },
+ {
+  "slug": "fairview-terraces-pickleball",
+  "name": "Fairview Terraces Pickleball",
+  "lat": 14.2576594,
+  "lng": 120.9660075
+ },
+ {
+  "slug": "filinvest-east-homes-pickleball-courts",
+  "name": "Filinvest East Homes Pickleball Courts",
+  "lat": 12.3547895,
+  "lng": 121.0771828
+ },
+ {
+  "slug": "fitness-hub",
+  "name": "Fitness Hub",
+  "lat": 16.8864517,
+  "lng": 120.4044378
+ },
+ {
+  "slug": "five-s-pickleball-general-mamerto-natividad",
+  "name": "Five-S Pickleball",
+  "lat": 12.6176939,
+  "lng": 122.1215756
+ },
+ {
+  "slug": "flair-pickleball-club",
+  "name": "Flair Pickleball Club",
+  "lat": 12.969798,
+  "lng": 124.0101444
+ },
+ {
+  "slug": "gpark-playgrounds",
+  "name": "GPARK Playgrounds",
+  "lat": 13.9221417,
+  "lng": 120.6242274
+ },
+ {
+  "slug": "gapan-pickle-courts",
+  "name": "Gapan Pickle Courts",
+  "lat": 13.5770983,
+  "lng": 124.2247555
+ },
+ {
+  "slug": "gapan-pickleball-pavilion",
+  "name": "Gapan Pickleball Pavilion",
+  "lat": 16.7279439,
+  "lng": 121.7636074
+ },
+ {
+  "slug": "goldentop-sports-center-pandacan",
+  "name": "Goldentop Sports Center Pandacan Manila",
+  "lat": 17.5472033,
+  "lng": 120.8547609
+ },
+ {
+  "slug": "green-kitchen-pickleball",
+  "name": "Green Kitchen Pickleball",
+  "lat": 14.2741314,
+  "lng": 120.7346017
+ },
+ {
+  "slug": "greenland-village-pickleball",
+  "name": "Greenland Village Pickleball",
+  "lat": 17.5916771,
+  "lng": 120.6000573
+ },
+ {
+  "slug": "hemady-sports-plaza",
+  "name": "Hemady Sports Plaza (Kyusi Pickleball Club home)",
+  "lat": 14.1048742,
+  "lng": 122.8547103
+ },
+ {
+  "slug": "hideout-pickleball-court",
+  "name": "Hideout Pickleball Court",
+  "lat": 17.6228,
+  "lng": 120.3906984
+ },
+ {
+  "slug": "home-court-pickleball",
+  "name": "Home Court Pickleball",
+  "lat": 16.9861484,
+  "lng": 120.736925
+ },
+ {
+  "slug": "ibaan-town-pickleball-court",
+  "name": "Ibaan Town Pickleball Court",
+  "lat": 12.0023198,
+  "lng": 120.1972611
+ },
+ {
+  "slug": "jcas-malolos",
+  "name": "JCAS Malolos",
+  "lat": 12.1844688,
+  "lng": 119.9078882
+ },
+ {
+  "slug": "john-hay-sports-pavilion",
+  "name": "John Hay Sports Pavilion (Camp John Hay Pickleball)",
+  "lat": 14.1489044,
+  "lng": 122.3841887
+ },
+ {
+  "slug": "kai-multipurpose-hall",
+  "name": "KAI Multipurpose Hall",
+  "lat": 12.1731724,
+  "lng": 122.0372696
+ },
+ {
+  "slug": "kalamandarin-pickleball-court",
+  "name": "Kalamandarin Pickleball Court",
+  "lat": 14.601527,
+  "lng": 121.0312265
+ },
+ {
+  "slug": "kerry-sports-manila-pickleball",
+  "name": "Kerry Sports Manila Pickleball (Shangri-La at the Fort BGC)",
+  "lat": 16.0691388,
+  "lng": 120.7559011
+ },
+ {
+  "slug": "kingsville-hills-pickleball-club",
+  "name": "Kingsville Hills Pickleball Club",
+  "lat": 17.3343551,
+  "lng": 121.7625886
+ },
+ {
+  "slug": "lds-pickleball-valenzuela",
+  "name": "LDS Pickleball Valenzuela",
+  "lat": 16.3876476,
+  "lng": 121.4537409
+ },
+ {
+  "slug": "las-pi-as-smash-pickleball-club",
+  "name": "Las Piñas Smash Pickleball Club",
+  "lat": 16.3428233,
+  "lng": 122.1140076
+ },
+ {
+  "slug": "lemery-rally-pickleball-center",
+  "name": "Lemery Rally Pickleball Center",
+  "lat": 15.7970545,
+  "lng": 120.2531491
+ },
+ {
+  "slug": "lipa-pickleball-arena",
+  "name": "Lipa Pickleball Arena",
+  "lat": 13.016468,
+  "lng": 120.7670682
+ },
+ {
+  "slug": "lipa-smash-pickleball-club",
+  "name": "Lipa Smash Pickleball Club",
+  "lat": 13.4782803,
+  "lng": 121.9126034
+ },
+ {
+  "slug": "lumiere-pickleball-club",
+  "name": "Lumiere Pickleball Club",
+  "lat": 15.4608882,
+  "lng": 120.9441547
+ },
+ {
+  "slug": "magallanes-village-association",
+  "name": "Magallanes Village Association",
+  "lat": 13.5878971,
+  "lng": 122.3382716
+ },
+ {
+  "slug": "makati-pickleball-club",
+  "name": "Makati Pickleball Club",
+  "lat": 17.8495325,
+  "lng": 121.3389926
+ },
+ {
+  "slug": "makati-sports-club",
+  "name": "Makati Sports Club",
+  "lat": 17.7993089,
+  "lng": 120.4548834
+ },
+ {
+  "slug": "malamig-barangay-hall",
+  "name": "Malamig Barangay Hall",
+  "lat": 13.8342656,
+  "lng": 122.0300997
+ },
+ {
+  "slug": "malvar-sports-pickleball-court",
+  "name": "Malvar Sports Pickleball Court",
+  "lat": 12.9491024,
+  "lng": 122.0959796
+ },
+ {
+  "slug": "mandaluyong-ace-pickleball-court",
+  "name": "Mandaluyong Ace Pickleball Court",
+  "lat": 17.5534275,
+  "lng": 120.6510988
+ },
+ {
+  "slug": "manila-pickleball-arena",
+  "name": "Manila Pickleball Arena",
+  "lat": 15.2113187,
+  "lng": 120.6577191
+ },
+ {
+  "slug": "manila-rally-pickleball-center",
+  "name": "Manila Rally Pickleball Center",
+  "lat": 14.747399,
+  "lng": 121.9317222
+ },
+ {
+  "slug": "marikina-pickleballers",
+  "name": "Marikina Pickleballers",
+  "lat": 15.2922414,
+  "lng": 119.9970432
+ },
+ {
+  "slug": "market-market-pickleball-club",
+  "name": "Market! Market! Pickleball Club",
+  "lat": 16.6513969,
+  "lng": 121.2233197
+ },
+ {
+  "slug": "marquee-place-sports-zone",
+  "name": "Marquee Place Sports Zone",
+  "lat": 12.3687867,
+  "lng": 122.6868302
+ },
+ {
+  "slug": "masey-pickleball-boracay-malay",
+  "name": "Masey Pickleball Boracay",
+  "lat": 17.7163596,
+  "lng": 120.6556978
+ },
+ {
+  "slug": "meadowood-executive-village-pickleball-club",
+  "name": "Meadowood Executive Village Pickleball Club",
+  "lat": 15.6727353,
+  "lng": 120.8892531
+ },
+ {
+  "slug": "merville-covered-court",
+  "name": "Merville Covered Court",
+  "lat": 13.780122,
+  "lng": 124.3933376
+ },
+ {
+  "slug": "metro-south-pickleball-club",
+  "name": "Metro South Pickleball Club",
+  "lat": 17.1157182,
+  "lng": 121.6242747
+ },
+ {
+  "slug": "metro-vigan-pickleball-club",
+  "name": "Metro Vigan Pickleball Club (Pantay Daya Covered Court)",
+  "lat": 18.5460218,
+  "lng": 121.2511232
+ },
+ {
+  "slug": "meycauayan-sports-complex-pickleball-not-verified",
+  "name": "Meycauayan Sports Complex (Pickleball — NOT VERIFIED)",
+  "lat": 16.41744,
+  "lng": 120.6178189
+ },
+ {
+  "slug": "mira-nila-clubhouse-pickleball",
+  "name": "Mira Nila Clubhouse Pickleball (The Pickling Zone home court)",
+  "lat": 14.0467417,
+  "lng": 120.6925796
+ },
+ {
+  "slug": "mission-hills-pickleball-club",
+  "name": "Mission Hills Pickleball Club",
+  "lat": 14.6979002,
+  "lng": 122.3288863
+ },
+ {
+  "slug": "montecourt-merville",
+  "name": "Montecourt Merville",
+  "lat": 15.9834667,
+  "lng": 120.8131438
+ },
+ {
+  "slug": "nspc-pickleball-courts",
+  "name": "NSPC - Pickleball Courts",
+  "lat": 15.3238368,
+  "lng": 119.971367
+ },
+ {
+  "slug": "narra-pickle-court",
+  "name": "Narra Pickle Court (San Jose City)",
+  "lat": 14.7167356,
+  "lng": 121.9069265
+ },
+ {
+  "slug": "nasugbu-beach-pickleball",
+  "name": "Nasugbu Beach Pickleball",
+  "lat": 14.6406504,
+  "lng": 120.571533
+ },
+ {
+  "slug": "nasugbu-rally-pickleball-center",
+  "name": "Nasugbu Rally Pickleball Center",
+  "lat": 13.5647794,
+  "lng": 123.1436303
+ },
+ {
+  "slug": "navotas-pickle-courts",
+  "name": "Navotas Pickle Courts",
+  "lat": 12.0961779,
+  "lng": 120.3073074
+ },
+ {
+  "slug": "nawa-wellness-pickleball",
+  "name": "Nawa Wellness Pickleball (Eco Luxury Resort)",
+  "lat": 12.5087907,
+  "lng": 123.3113196
+ },
+ {
+  "slug": "neopolitan-brittany-pickleball-courts",
+  "name": "Neopolitan Brittany Pickleball Courts",
+  "lat": 12.2251147,
+  "lng": 121.9655255
+ },
+ {
+  "slug": "new-st-francis-pickleball-club",
+  "name": "New St Francis Pickleball Club",
+  "lat": 17.1470152,
+  "lng": 121.5163989
+ },
+ {
+  "slug": "new-st-francis-village",
+  "name": "New St Francis Village",
+  "lat": 14.0037894,
+  "lng": 121.6348236
+ },
+ {
+  "slug": "north-south-pickleball-club",
+  "name": "North-South Pickleball Club",
+  "lat": 13.7553825,
+  "lng": 121.0549668
+ },
+ {
+  "slug": "oh-pickleball-court",
+  "name": "OH! Pickleball Court",
+  "lat": 12.6641238,
+  "lng": 123.9955523
+ },
+ {
+  "slug": "olongapo-smash-pickleball-club",
+  "name": "Olongapo Smash Pickleball Club",
+  "lat": 13.3974253,
+  "lng": 121.2270624
+ },
+ {
+  "slug": "one-serendra-pickleball-club",
+  "name": "One Serendra Pickleball Club",
+  "lat": 13.2139451,
+  "lng": 120.6582594
+ },
+ {
+  "slug": "pal-sports-center",
+  "name": "PAL Sports Center",
+  "lat": 12.3713084,
+  "lng": 123.6356593
+ },
+ {
+  "slug": "pickleball-elites-sports-center",
+  "name": "PICKLEBALL ELITES SPORTS CENTER",
+  "lat": 18.2605142,
+  "lng": 121.9972757
+ },
+ {
+  "slug": "paddle-and-play-pickleball",
+  "name": "Paddle & Play Pickleball (Balayan)",
+  "lat": 12.8965476,
+  "lng": 120.8683641
+ },
+ {
+  "slug": "palisade-pickleball-club",
+  "name": "Palisade Pickleball Club",
+  "lat": 12.501038,
+  "lng": 122.5400854
+ },
+ {
+  "slug": "palms-country-club",
+  "name": "Palms Country Club",
+  "lat": 12.4033448,
+  "lng": 121.9805535
+ },
+ {
+  "slug": "paradiso-verde-sport-center",
+  "name": "Paradiso Verde Sport Center (Labo)",
+  "lat": 16.6475971,
+  "lng": 121.1685339
+ },
+ {
+  "slug": "philippine-baptist-theological-seminary-pickleball-baguio",
+  "name": "Philippine Baptist Theological Seminary (PBTS) Pickleball Baguio",
+  "lat": 12.2335972,
+  "lng": 119.8769742
+ },
+ {
+  "slug": "pickle-play",
+  "name": "Pickle Play",
+  "lat": 16.0682317,
+  "lng": 120.33322
+ },
+ {
+  "slug": "pickleball-camp-timberland-san-mateo",
+  "name": "Pickleball Camp Timberland",
+  "lat": 16.1376447,
+  "lng": 121.9427729
+ },
+ {
+  "slug": "pickleball-central-ph-pcph-pampanga",
+  "name": "Pickleball Central PH (PCPH Pampanga)",
+  "lat": 14.8996837,
+  "lng": 120.7687522
+ },
+ {
+  "slug": "pickleball-east-dinkers-club-pedci",
+  "name": "Pickleball East Dinkers Club (PEDCI)",
+  "lat": 12.51049,
+  "lng": 123.400341
+ },
+ {
+  "slug": "pickleball-hq-binan",
+  "name": "Pickleball HQ Biñan",
+  "lat": 14.5462878,
+  "lng": 121.4134973
+ },
+ {
+  "slug": "pickleball-hub-tiendesitas",
+  "name": "Pickleball Hub @ Tiendesitas",
+  "lat": 16.3773691,
+  "lng": 120.5688167
+ },
+ {
+  "slug": "pickleball-junction",
+  "name": "Pickleball Junction",
+  "lat": 14.0372909,
+  "lng": 124.2458104
+ },
+ {
+  "slug": "pickleball-mania-montalban",
+  "name": "Pickleball Mania Montalban",
+  "lat": 15.934244,
+  "lng": 120.783844
+ },
+ {
+  "slug": "pickleball-r-court-naga",
+  "name": "Pickleball R'Court Naga (Robinsons Naga)",
+  "lat": 17.580509,
+  "lng": 120.3965302
+ },
+ {
+  "slug": "picklehaus-marikina",
+  "name": "Picklehaus Marikina",
+  "lat": 16.3230889,
+  "lng": 122.1903628
+ },
+ {
+  "slug": "pickler-s-lounge-at-ayala-malls-cloverleaf",
+  "name": "Pickler's Lounge at Ayala Malls Cloverleaf",
+  "lat": 12.7454059,
+  "lng": 121.486466
+ },
+ {
+  "slug": "pico-de-loro-beach-and-country-club-pickleball",
+  "name": "Pico de Loro Beach & Country Club Pickleball",
+  "lat": 14.1846036,
+  "lng": 122.3912385
+ },
+ {
+  "slug": "picolandia-pickleball-court-daraga",
+  "name": "Picolandia Pickleball Court",
+  "lat": 16.165253,
+  "lng": 121.9938556
+ },
+ {
+  "slug": "playhouse-pickle",
+  "name": "Playhouse Pickle",
+  "lat": 12.9581602,
+  "lng": 122.0544558
+ },
+ {
+  "slug": "proving-grounds-sports-center",
+  "name": "Proving Grounds Sports Center",
+  "lat": 16.9735239,
+  "lng": 121.2216719
+ },
+ {
+  "slug": "qmax-play-hauz-pickleball-billiards",
+  "name": "QMAX Play Hauz Pickleball / Billiards",
+  "lat": 13.171318,
+  "lng": 120.741747
+ },
+ {
+  "slug": "quezon-city-paddle-park",
+  "name": "Quezon City Paddle Park",
+  "lat": 16.4318348,
+  "lng": 120.5836623
+ },
+ {
+  "slug": "racket-yard",
+  "name": "Racket Yard",
+  "lat": 13.9196144,
+  "lng": 121.6048816
+ },
+ {
+  "slug": "reina-regente-tennis-club-tondo-pickleball",
+  "name": "Reina Regente Tennis Club - Tondo Pickleball",
+  "lat": 17.9472639,
+  "lng": 120.5075148
+ },
+ {
+  "slug": "revel-grove-santa-rosa",
+  "name": "Revel Grove Santa Rosa",
+  "lat": 13.5578702,
+  "lng": 121.0511077
+ },
+ {
+  "slug": "richmond-angono-tennis-court",
+  "name": "Richmond Angono Tennis Court (Angono Pickleball Club / APC)",
+  "lat": 16.869539,
+  "lng": 121.0086859
+ },
+ {
+  "slug": "robinsons-place-palawan-pickleball",
+  "name": "Robinsons Place Palawan Pickleball",
+  "lat": 14.7148351,
+  "lng": 122.4202454
+ },
+ {
+  "slug": "rockwell-club-amorsolo-square",
+  "name": "Rockwell Club, Amorsolo Square",
+  "lat": 13.4658691,
+  "lng": 120.7455848
+ },
+ {
+  "slug": "rodriguez-rizal-pickleball-club-rrpc",
+  "name": "Rodriguez Rizal Pickleball Club RRPC (Congress Ville Covered Court)",
+  "lat": 15.4838941,
+  "lng": 120.9793101
+ },
+ {
+  "slug": "rosario-5-6-covered-court-pickleball",
+  "name": "Rosario 5&6 Covered Court Pickleball",
+  "lat": 16.7737646,
+  "lng": 120.3566546
+ },
+ {
+  "slug": "rosario-pickle-grounds",
+  "name": "Rosario Pickle Grounds",
+  "lat": 17.0047312,
+  "lng": 120.9232564
+ },
+ {
+  "slug": "sm-center-antipolo-downtown",
+  "name": "SM Center Antipolo Downtown",
+  "lat": 16.5102006,
+  "lng": 121.1820008
+ },
+ {
+  "slug": "sm-city-baguio-pickleball",
+  "name": "SM City Baguio Pickleball",
+  "lat": 15.9960213,
+  "lng": 120.3414756
+ },
+ {
+  "slug": "sm-city-baliwag-pickleball",
+  "name": "SM City Baliwag Pickleball",
+  "lat": 17.2665624,
+  "lng": 121.4342156
+ },
+ {
+  "slug": "sm-city-cabanatuan-pickleball",
+  "name": "SM City Cabanatuan Pickleball",
+  "lat": 18.2432016,
+  "lng": 122.0487616
+ },
+ {
+  "slug": "sm-mall-of-asia-pickleball-moa-music-hall-activity-center",
+  "name": "SM Mall of Asia Pickleball (MOA Music Hall / Activity Center)",
+  "lat": 18.5591043,
+  "lng": 120.7866645
+ },
+ {
+  "slug": "smash-point-pickleball-yard",
+  "name": "SMASH POINT Pickleball Yard Magsaysay",
+  "lat": 12.024946,
+  "lng": 120.0533918
+ },
+ {
+  "slug": "sampaloc-tanay-pickleball-club-barangay-gym",
+  "name": "Sampaloc Tanay Pickleball Club (STPC) - Barangay Gym",
+  "lat": 18.2289984,
+  "lng": 122.0151977
+ },
+ {
+  "slug": "san-jose-pickleball-pavilion",
+  "name": "San Jose Pickleball Pavilion",
+  "lat": 17.2666526,
+  "lng": 121.2300393
+ },
+ {
+  "slug": "san-jose-del-monte-court-central",
+  "name": "San Jose del Monte Court Central",
+  "lat": 14.8935002,
+  "lng": 120.2238936
+ },
+ {
+  "slug": "san-jose-del-monte-dinkers-hub",
+  "name": "San Jose del Monte Dinkers Hub",
+  "lat": 13.142372,
+  "lng": 123.7543355
+ },
+ {
+  "slug": "san-juan-coastline-pickle-courts",
+  "name": "San Juan Coastline Pickle Courts",
+  "lat": 13.6285571,
+  "lng": 123.2061263
+ },
+ {
+  "slug": "san-juan-pickleball-pavilion",
+  "name": "San Juan Pickleball Pavilion",
+  "lat": 17.6213049,
+  "lng": 121.7259253
+ },
+ {
+  "slug": "san-pedro-pickleball-club-the-garage",
+  "name": "San Pedro Pickleball Club (The Garage)",
+  "lat": 17.2954166,
+  "lng": 121.1355455
+ },
+ {
+  "slug": "santa-maria-picklers",
+  "name": "Santa Maria Picklers (Pioneer Pickleball Court)",
+  "lat": 15.7549726,
+  "lng": 121.5824975
+ },
+ {
+  "slug": "santo-tomas-paddle-park",
+  "name": "Santo Tomas Paddle Park",
+  "lat": 13.4738468,
+  "lng": 121.8609772
+ },
+ {
+  "slug": "seha-pickleball-court",
+  "name": "Seha Pickleball Court",
+  "lat": 15.7585282,
+  "lng": 119.9375434
+ },
+ {
+  "slug": "sequoia-pickleball-club",
+  "name": "Sequoia Pickleball Club",
+  "lat": 12.3412468,
+  "lng": 121.3078737
+ },
+ {
+  "slug": "smash-cab-badminton-and-fitness",
+  "name": "Smash Cab Badminton and Fitness",
+  "lat": 13.9682962,
+  "lng": 122.533489
+ },
+ {
+  "slug": "smash-and-brew-pickleball-club",
+  "name": "Smash and Brew Pickleball Club",
+  "lat": 13.0144116,
+  "lng": 124.0257258
+ },
+ {
+  "slug": "solaire-resort-north-outdoor-fitness-deck-pickleball",
+  "name": "Solaire Resort North Outdoor Fitness Deck Pickleball",
+  "lat": 13.8441749,
+  "lng": 121.3863533
+ },
+ {
+  "slug": "solaire-sports-club-pickleball",
+  "name": "Solaire Sports Club Pickleball (Entertainment City Parañaque)",
+  "lat": 15.5627996,
+  "lng": 120.3972073
+ },
+ {
+  "slug": "soldiers-hills-2-covered-courts",
+  "name": "Soldiers Hills 2 Covered Courts",
+  "lat": 14.1758363,
+  "lng": 121.2217283
+ },
+ {
+  "slug": "sorsogon-pickleball-arena",
+  "name": "Sorsogon Pickleball Arena (The Dink Zone)",
+  "lat": 12.2279502,
+  "lng": 121.2268124
+ },
+ {
+  "slug": "south-city-homes-recreation-center-schrc-pickleball",
+  "name": "South City Homes Recreation Center (SCHRC) Pickleball",
+  "lat": 13.4016789,
+  "lng": 121.1804335
+ },
+ {
+  "slug": "southridge-pickleball-club",
+  "name": "Southridge Pickleball Club",
+  "lat": 14.0376463,
+  "lng": 122.5098
+ },
+ {
+  "slug": "subic-bay-yacht-club-pickleball",
+  "name": "Subic Bay Yacht Club Pickleball",
+  "lat": 14.8570284,
+  "lng": 120.2516309
+ },
+ {
+  "slug": "suburbia-east-tennis-court",
+  "name": "Suburbia East Tennis Court",
+  "lat": 14.6776724,
+  "lng": 120.5190027
+ },
+ {
+  "slug": "sun-valley-estates-badminton-courts",
+  "name": "Sun Valley Estates Badminton Courts",
+  "lat": 17.4175192,
+  "lng": 120.4765167
+ },
+ {
+  "slug": "sunny-sideout-pickleball-court",
+  "name": "Sunny Sideout - Pickleball Court",
+  "lat": 14.1949743,
+  "lng": 122.8720985
+ },
+ {
+  "slug": "sylvia-bf-homes",
+  "name": "Sylvia BF Homes",
+  "lat": 13.5185659,
+  "lng": 120.9745826
+ },
+ {
+  "slug": "tg-residence-pickleball-stay-and-play",
+  "name": "TG Residence Pickleball (Stay and Play)",
+  "lat": 13.9405119,
+  "lng": 121.640968
+ },
+ {
+  "slug": "taal-heritage-pickleball-club",
+  "name": "Taal Heritage Pickleball Club",
+  "lat": 15.2177956,
+  "lng": 120.6988309
+ },
+ {
+  "slug": "taguig-pickleball-grounds",
+  "name": "Taguig Pickleball Grounds",
+  "lat": 18.5478008,
+  "lng": 120.9305855
+ },
+ {
+  "slug": "tanauan-pickle-courts",
+  "name": "Tanauan Pickle Courts",
+  "lat": 16.9304555,
+  "lng": 121.1351317
+ },
+ {
+  "slug": "tarlac-city-pickleball-arena",
+  "name": "Tarlac City Pickleball Arena",
+  "lat": 16.2863028,
+  "lng": 120.3822237
+ },
+ {
+  "slug": "tarlac-recreational-park-pickleball",
+  "name": "Tarlac Recreational Park Pickleball",
+  "lat": 15.4382683,
+  "lng": 121.3287893
+ },
+ {
+  "slug": "taytay-pickle-courts",
+  "name": "Taytay Pickle Courts",
+  "lat": 13.9492842,
+  "lng": 122.9188387
+ },
+ {
+  "slug": "taytay-sports-center-pickleball-taytay",
+  "name": "Taytay Sports Center Pickleball",
+  "lat": 13.8958247,
+  "lng": 124.2746499
+ },
+ {
+  "slug": "the-3rd-shot-homecourt",
+  "name": "The 3rd Shot Homecourt",
+  "lat": 14.7382791,
+  "lng": 121.6449804
+ },
+ {
+  "slug": "the-court-by-balara",
+  "name": "The Court by Balara (24-Hour Pickleball Quezon City)",
+  "lat": 12.1981415,
+  "lng": 123.8675588
+ },
+ {
+  "slug": "the-dink-lab",
+  "name": "The Dink Lab",
+  "lat": 14.434796,
+  "lng": 120.902025
+ },
+ {
+  "slug": "the-garden-pickleball-series",
+  "name": "The Garden Pickleball Series Makati (Make It Makati Car-Free Sundays)",
+  "lat": 12.2453817,
+  "lng": 122.0180156
+ },
+ {
+  "slug": "the-mills-country-club-pickleball",
+  "name": "The Mills Country Club Pickleball",
+  "lat": 13.5740775,
+  "lng": 122.546191
+ },
+ {
+  "slug": "the-playground",
+  "name": "The PLAYGROUND Bayambang (Bayambang Pickleball League)",
+  "lat": 12.6677907,
+  "lng": 123.8789832
+ },
+ {
+  "slug": "the-pickle-bloc",
+  "name": "The Pickle Bloc",
+  "lat": 13.1809721,
+  "lng": 123.6744161
+ },
+ {
+  "slug": "the-pickle-spot-makati",
+  "name": "The Pickle Spot Makati",
+  "lat": 12.7298404,
+  "lng": 121.4156151
+ },
+ {
+  "slug": "the-pickle-yard-dasmarinas",
+  "name": "The Pickle Yard Dasmariñas",
+  "lat": 12.3762385,
+  "lng": 121.2425602
+ },
+ {
+  "slug": "the-pickle-yard",
+  "name": "The Pickle-Yard",
+  "lat": 13.3024695,
+  "lng": 123.6378909
+ },
+ {
+  "slug": "the-pickleground-ph",
+  "name": "The PickleGround PH",
+  "lat": 12.9258904,
+  "lng": 122.0577513
+ },
+ {
+  "slug": "the-pickleball-club-ayala-malls-manila-bay",
+  "name": "The Pickleball Club - Ayala Malls Manila Bay",
+  "lat": 17.2910411,
+  "lng": 121.1656195
+ },
+ {
+  "slug": "the-pickleball-club-nomo",
+  "name": "The Pickleball Club - NOMO",
+  "lat": 16.6829883,
+  "lng": 120.354562
+ },
+ {
+  "slug": "the-smash-city-valenzuela-s-premier-pickleball-centre",
+  "name": "The Smash City (Valenzuela's Premier Pickleball Centre)",
+  "lat": 16.5996526,
+  "lng": 121.5046461
+ },
+ {
+  "slug": "the-upper-deck-sports-center",
+  "name": "The Upper Deck Sports Center",
+  "lat": 15.2877511,
+  "lng": 120.0266304
+ },
+ {
+  "slug": "tru-grit-pickleball-court",
+  "name": "Tru Grit Pickleball Court",
+  "lat": 14.3265688,
+  "lng": 121.0782602
+ },
+ {
+  "slug": "twinville-civic-center",
+  "name": "Twinville Civic Center",
+  "lat": 15.7001483,
+  "lng": 120.6073837
+ },
+ {
+  "slug": "upap",
+  "name": "UPAP",
+  "lat": 13.2998707,
+  "lng": 123.4384809
+ },
+ {
+  "slug": "valle-verde-pickleball-club",
+  "name": "Valle Verde Pickleball Club",
+  "lat": 13.8362027,
+  "lng": 121.1826943
+ },
+ {
+  "slug": "vensand-pickleball-hub",
+  "name": "Vensand Pickleball Hub (Rodriguez Rizal)",
+  "lat": 13.1422351,
+  "lng": 120.718864
+ },
+ {
+  "slug": "village-sports-club",
+  "name": "Village Sports Club",
+  "lat": 12.4585648,
+  "lng": 122.6634201
+ },
+ {
+  "slug": "violago-compound-pickleball",
+  "name": "Violago Compound Pickleball",
+  "lat": 18.0425333,
+  "lng": 121.5665754
+ },
+ {
+  "slug": "vital-mpact-gym-pickleball-cubao",
+  "name": "Vital Mpact Gym Pickleball Cubao",
+  "lat": 12.6178329,
+  "lng": 122.2544534
+ },
+ {
+  "slug": "whitewoods-pickleball-club",
+  "name": "Whitewoods Pickleball Club",
+  "lat": 17.7562927,
+  "lng": 121.3563637
+ },
+ {
+  "slug": "xavier-school-pickleball",
+  "name": "Xavier School Pickleball",
+  "lat": 12.8989631,
+  "lng": 121.4577218
+ },
+ {
+  "slug": "zone-sports-center",
+  "name": "Zone Sports Center",
+  "lat": 13.5782279,
+  "lng": 122.9759448
+ }
+]

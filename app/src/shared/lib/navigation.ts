@@ -14,6 +14,10 @@ export type Screen =
   | { id: 'tournaments' }
   | { id: 'tournament'; params: { id: string } }
   | { id: 'tournament-chat'; params: { id: string; name?: string } }
+  // The Social tab — Clubs + Friends. `clubs` and `friends` survive as
+  // non-tab aliases so `/clubs`, `/friends`, and every existing
+  // `onNavigate('clubs'|'friends')` call site keep landing on the right panel.
+  | { id: 'social'; params?: { tab?: 'clubs' | 'friends' } }
   | { id: 'clubs' }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
@@ -84,7 +88,7 @@ export type Screen =
 
 export type ScreenId = Screen['id'];
 
-export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'clubs', 'messages', 'profile', 'booking'] as const;
+export const tabScreens = ['home', 'nearby', 'games', 'tournaments', 'social', 'messages', 'profile', 'booking'] as const;
 export type TabId = (typeof tabScreens)[number];
 
 /**
@@ -115,6 +119,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'tournaments': return '/tournaments';
     case 'tournament': return `/tournaments/${screen.params.id}`;
     case 'tournament-chat': return `/tournaments/${screen.params.id}/chat${q({ name: screen.params.name })}`;
+    case 'social': return `/social${q({ tab: screen.params?.tab })}`;
     case 'clubs': return '/clubs';
     case 'profile': return '/profile';
     case 'game-details': return `/games/${screen.params.id}`;
@@ -230,7 +235,12 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (c === 'chat') return { id: 'tournament-chat', params: { id: b, name: opt(sp.get('name')) } };
       if (b) return { id: 'tournament', params: { id: b } };
       return { id: 'tournaments' };
+    case 'social': {
+      const t = sp.get('tab');
+      return { id: 'social', params: { tab: t === 'friends' || t === 'clubs' ? t : undefined } };
+    }
     case 'clubs':
+      // Bare `/clubs` still works — it just lands on the Social tab's Clubs panel.
       if (!b) return { id: 'clubs' };
       if (b === 'create') return { id: 'create-club' };
       if (c === 'edit') return { id: 'edit-club', params: { id: b } };
@@ -307,7 +317,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
 /** A sensible Back target to seed history with when a deep link lands on a detail screen. */
 export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'booking') return { id: 'home' };
-  if (id === 'club-details' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return { id: 'clubs' };
+  if (id === 'club-details' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return { id: 'social', params: { tab: 'clubs' } };
   if (id === 'tournament' || id === 'tournament-chat') return { id: 'tournaments' };
   if (id === 'open-play-detail') return { id: 'games', params: { section: 'open-play', view: 'discover' } };
   if (id === 'court-details') return { id: 'nearby' };
@@ -333,7 +343,8 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'open-play-book') return { id: 'nearby' };
   if (id === 'flowchart') return { id: 'home' };
   if (id === 'map') return { id: 'nearby' };
-  if (id === 'friends') return { id: 'profile' };
+  // Friends now lives in the Social tab, not behind Profile.
+  if (id === 'friends' || id === 'clubs' || id === 'social') return { id: 'home' };
   if (id === 'members') return { id: 'profile' };
   return { id: 'home' };
 }

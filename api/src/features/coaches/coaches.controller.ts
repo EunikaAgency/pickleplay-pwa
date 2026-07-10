@@ -5,12 +5,19 @@ import { CoachApplication } from '../coach-applications/coach-applications.model
 import { CoachReview } from './coach-reviews.model.js';
 import { User } from '../auth/auth.model.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
+import {
+  activeSubscriberIds, hasActivePartnerSubscription,
+} from '../partner-subscriptions/partner-subscriptions.model.js';
 
 const listQuery = z.object({
   venueId: z.string().optional(),
   specialty: z.string().optional(),
   minRating: z.coerce.number().optional(),
   search: z.string().optional(),
+  // Find Coach passes this: return only coaches holding a live subscription, so
+  // the imported/unclaimed directory profiles don't dilute the list. Left off
+  // by default so existing surfaces (venue coach lists, search) don't change.
+  subscribed: z.coerce.boolean().optional(),
 });
 
 const createCoachReviewSchema = z.object({
@@ -154,6 +161,17 @@ export async function listCoaches(c: any) {
     ];
   }
   const rows = await Coach.find(filter).sort({ displayName: 1 }).limit(100).lean();
+
+  if (filters.subscribed) {
+    // A coach is "legit" only while their platform subscription is live. Batch
+    // the check (one query for the page) rather than per-row. Imported profiles
+    // carry no `userId`, so they can never be subscribed and drop out here.
+    const userIds = rows.map((r: any) => r.userId).filter(Boolean);
+    const subscribed = await activeSubscriberIds(userIds, 'coach');
+    const listed = rows.filter((r: any) => r.userId && subscribed.has(r.userId.toString()));
+    return c.json({ data: listed.map((r: any) => ({ ...r, id: r._id })) });
+  }
+
   return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id })) });
 }
 
@@ -191,6 +209,12 @@ export async function createMyCoach(c: any) {
   const user = c.get('user');
   if (!hasPermission(user, 'coach.profile.manage')) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Coach profile management permission required' } }, 403);
+  }
+  // The paid subscription is what unlocks becoming a coach. Checked explicitly
+  // (not just via the role) so a lapsed subscription closes the door even while
+  // the user still holds a venue-scoped coach grant from an old approval.
+  if (!(await hasActivePartnerSubscription(user.sub, 'coach'))) {
+    return c.json({ error: { code: 'SUBSCRIPTION_REQUIRED', message: 'A coach subscription is required to create a coach profile.' } }, 402);
   }
   const existing = await findCoachForUser(user.sub);
   if (existing) {

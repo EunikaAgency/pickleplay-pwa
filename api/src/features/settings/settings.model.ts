@@ -17,6 +17,12 @@ const appSettingsSchema = new Schema({
   // Pricing mode: 'start' = rate based on booking start time only (default);
   // 'blend' = resolve per clock hour for bookings that cross override boundaries.
   pricingMode:    { type: String, enum: ['start', 'blend'], default: 'start' },
+  // Price of the paid partner subscriptions that unlock the coach / organizer
+  // surfaces, and how long one term runs. Configured here (not hard-coded) so
+  // the price can move without a deploy.
+  coachSubscriptionPrice:     { type: Number, default: 499, min: 0 },
+  organizerSubscriptionPrice: { type: Number, default: 999, min: 0 },
+  partnerSubscriptionDays:    { type: Number, default: 30, min: 1, max: 3650 },
   updatedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

@@ -15,6 +15,13 @@ export interface IUser {
   skillLevel?: number;
   skillLevelLabel?: string;
   homeCityId?: Types.ObjectId;
+  /** Postal address, captured on the profile. Required before a user can
+   *  subscribe as a coach or organizer. */
+  address1?: string;
+  address2?: string;
+  city?: string;
+  province?: string;
+  zipcode?: string;
   roleDefault?: string;
   coachId?: Types.ObjectId;
   managedCoachId?: Types.ObjectId;
@@ -78,6 +85,11 @@ const userSchema = new Schema({
   skillLevel:      Number,
   skillLevelLabel: { type: String, maxlength: 20 },
   homeCityId:      { type: Schema.Types.ObjectId, ref: 'City' },
+  address1:        { type: String, maxlength: 200 },
+  address2:        { type: String, maxlength: 200 },
+  city:            { type: String, maxlength: 100 },
+  province:        { type: String, maxlength: 100 },
+  zipcode:         { type: String, maxlength: 20 },
   roleDefault:     { type: String, default: 'player' },
   coachId:         { type: Schema.Types.ObjectId },
   managedCoachId:  { type: Schema.Types.ObjectId },

@@ -66,7 +66,7 @@ const tabs: SideTab[] = [
   { id: 'games',   label: 'Play',   icon: 'calendar', iconFill: 'calendar_fill' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'nearby',  label: 'Nearby', icon: 'map_pin',  iconFill: 'map_pin_fill' },
-  { id: 'clubs',   label: 'Clubs',  icon: 'groups' },
+  { id: 'social',  label: 'Social', icon: 'groups' },
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
@@ -77,7 +77,7 @@ const ownerTabs: SideTab[] = [
   { id: 'booking', label: 'Bookings', icon: 'calendar' },
   { id: 'tournaments', label: 'Tournament', icon: 'trophy' },
   { id: 'nearby',  label: 'Venues',   icon: 'map_pin' },
-  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'social',  label: 'Social',   icon: 'groups' },
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
@@ -86,7 +86,7 @@ const organizerTabs: SideTab[] = [
   { id: 'home',    label: 'Organize', icon: 'trophy' },
   { id: 'games',   label: 'Games',    icon: 'calendar' },
   { id: 'nearby',  label: 'Nearby',   icon: 'map_pin' },
-  { id: 'clubs',   label: 'Clubs',    icon: 'groups' },
+  { id: 'social',  label: 'Social',   icon: 'groups' },
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 

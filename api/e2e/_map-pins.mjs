@@ -43,6 +43,14 @@ await page.locator('button:has-text("Not now"), button:has-text("Dismiss")')
   .first().click({ timeout: 2500 }).catch(() => {});
 
 await page.waitForSelector('.leaflet-container', { timeout: 20000 }).catch(() => {});
+await page.waitForTimeout(3000);
+
+// Zoom out far enough to frame the whole Luzon island group.
+const zoomOut = Number(process.argv[3] ?? 0);
+for (let i = 0; i < zoomOut; i++) {
+  await page.locator('.leaflet-control-zoom-out').click().catch(() => {});
+  await page.waitForTimeout(700);
+}
 await page.waitForTimeout(5000); // let tiles + markers settle
 
 const markers = await page.locator('.leaflet-marker-icon').count();

@@ -44,7 +44,25 @@ export async function getServiceFeePercent(): Promise<number> {
   return s?.serviceFeePercent ?? 7;
 }
 
-function publicShape(s: { paymentTestMode?: boolean; serviceFeePercent?: number; emailBccEnabled?: boolean; emailBccAddress?: string; pricingMode?: string } | null) {
+/** Price + term of the coach/organizer partner subscriptions. Imported by the
+ *  partner-subscriptions controller so the price is never hard-coded twice. */
+export async function getPartnerSubscriptionPricing(): Promise<{
+  coach: number; organizer: number; durationDays: number; currency: string;
+}> {
+  const s = await getSingleton();
+  return {
+    coach: s?.coachSubscriptionPrice ?? 499,
+    organizer: s?.organizerSubscriptionPrice ?? 999,
+    durationDays: s?.partnerSubscriptionDays ?? 30,
+    currency: 'PHP',
+  };
+}
+
+function publicShape(s: {
+  paymentTestMode?: boolean; serviceFeePercent?: number; emailBccEnabled?: boolean;
+  emailBccAddress?: string; pricingMode?: string; coachSubscriptionPrice?: number;
+  organizerSubscriptionPrice?: number; partnerSubscriptionDays?: number;
+} | null) {
   return {
     paymentTestMode: s?.paymentTestMode ?? true,
     serviceFeePercent: s?.serviceFeePercent ?? 7,
@@ -52,6 +70,13 @@ function publicShape(s: { paymentTestMode?: boolean; serviceFeePercent?: number;
     emailBccEnabled: s?.emailBccEnabled ?? false,
     emailBccAddress: s?.emailBccAddress ?? 'info@eunika.agency',
     pricingMode: (s?.pricingMode as 'start' | 'blend') ?? 'start',
+    // Public so the subscribe screen can render the price before committing.
+    partnerSubscription: {
+      coach: s?.coachSubscriptionPrice ?? 499,
+      organizer: s?.organizerSubscriptionPrice ?? 999,
+      durationDays: s?.partnerSubscriptionDays ?? 30,
+      currency: 'PHP',
+    },
   };
 }
 
@@ -76,6 +101,9 @@ const updateSchema = z.object({
   emailBccEnabled: z.boolean().optional(),
   emailBccAddress: z.string().email().max(255).optional(),
   pricingMode: z.enum(['start', 'blend']).optional(),
+  coachSubscriptionPrice: z.number().min(0).optional(),
+  organizerSubscriptionPrice: z.number().min(0).optional(),
+  partnerSubscriptionDays: z.number().int().min(1).max(3650).optional(),
 });
 
 /** Admin-only write of the payment mode + service fee. */
@@ -91,6 +119,9 @@ export async function updateSettings(c: any) {
   if (body.emailBccEnabled !== undefined) update.emailBccEnabled = body.emailBccEnabled;
   if (body.emailBccAddress !== undefined) update.emailBccAddress = body.emailBccAddress;
   if (body.pricingMode !== undefined) update.pricingMode = body.pricingMode;
+  if (body.coachSubscriptionPrice !== undefined) update.coachSubscriptionPrice = body.coachSubscriptionPrice;
+  if (body.organizerSubscriptionPrice !== undefined) update.organizerSubscriptionPrice = body.organizerSubscriptionPrice;
+  if (body.partnerSubscriptionDays !== undefined) update.partnerSubscriptionDays = body.partnerSubscriptionDays;
   const s = await AppSettings.findOneAndUpdate(
     { key: 'global' },
     update,

@@ -25,7 +25,6 @@ import { TestEmailScreen } from './features/profile/TestEmailScreen';
 import { SearchScreen } from './features/search/SearchScreen';
 import { InvitePlayersScreen } from './features/games/InvitePlayersScreen';
 import { NotificationsScreen } from './features/profile/NotificationsScreen';
-import { FriendsScreen } from './features/profile/FriendsScreen';
 import { ConversationsScreen } from './features/messages/ConversationsScreen';
 import { ChatScreen } from './features/messages/ChatScreen';
 import { GameChatScreen } from './features/games/GameChatScreen';
@@ -75,6 +74,7 @@ import { userHasPermission, type Permission } from './shared/lib/permissions';
 import { useAuthStore } from './shared/lib/authStore';
 import { useNotificationPolling } from './shared/hooks/useNotificationPolling';
 import { useMessagePolling } from './shared/hooks/useMessagePolling';
+import { useFriendRequestPolling } from './shared/hooks/useFriendRequestPolling';
 import { useInvitePolling } from './shared/hooks/useInvitePolling';
 import { useInviteStore } from './shared/lib/inviteStore';
 import { useRealtimeStream } from './shared/hooks/useRealtimeStream';
@@ -85,7 +85,7 @@ import { tabScreens, pathFromScreen, screenFromLocation, deepLinkParent, type Na
 import { HomeScreenV2 } from './features/home/v2/HomeScreenV2';
 import { NearbyScreenV2 } from './features/venues/v2/NearbyScreenV2';
 import { GamesScreenV2 } from './features/games/v2/GamesScreenV2';
-import { ClubsScreenV2 } from './features/clubs/v2/ClubsScreenV2';
+import { SocialScreen } from './features/social/SocialScreen';
 import { TournamentsScreenV2 } from './features/tournaments/v2/TournamentsScreenV2';
 import { TournamentDetailScreen as PlayerTournamentDetailScreen } from './features/tournaments/v2/TournamentDetailScreen';
 import { TournamentChatScreen } from './features/tournaments/v2/TournamentChatScreen';
@@ -111,7 +111,6 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   settings: 'player.profile.manage',
   'test-email': 'admin.access',
   notifications: 'user.notifications.manage',
-  friends: 'player.profile.manage',
   messages: 'user.messages.send',
   chat: 'user.messages.send',
   'game-chat': 'player.games.chat',
@@ -168,7 +167,6 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   settings: 'manage your settings',
   'test-email': 'use the test email tool',
   notifications: 'see your notifications',
-  friends: 'manage your friends',
   messages: 'see your messages',
   chat: 'send a message',
   'game-chat': 'open the game chat',
@@ -267,7 +265,7 @@ function tabForScreen(id: ScreenId): TabId {
   // Owner venue screens live under the "Venues" tab (which itself opens
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
   if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans' || id === 'owner-venues-v2' || id === 'owner-calendar' || id === 'owner-partners' || id === 'owner-manual-reservation') return 'nearby';
-  if (id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'clubs';
+  if (id === 'clubs' || id === 'friends' || id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'social';
   if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
   if (id === 'chat') return 'messages';
@@ -286,6 +284,8 @@ function AppInner() {
   useNotificationPolling(isLoggedIn);
   // Keep the unread-message badge on the sidebar/tab-bar Messages button live.
   useMessagePolling(isLoggedIn);
+  // Keeps the Social tab's pending friend-request badge live.
+  useFriendRequestPolling(isLoggedIn);
   // Keep the "Invites" FAB badge (pending Open Play invites) live.
   useInvitePolling(isLoggedIn);
   const inviteCount = useInviteStore((s) => s.count);
@@ -546,8 +546,11 @@ function AppInner() {
         return <PlayerTournamentDetailScreen key={screen.params.id} tournamentId={screen.params.id} onNavigate={navigate} onBack={goBack} onRequireAuth={requireAuth} />;
       case 'tournament-chat':
         return <TournamentChatScreen key={screen.params.id} tournamentId={screen.params.id} name={screen.params.name} onBack={goBack} />;
+      case 'social':
+        return <SocialScreen chrome={v2Chrome} tab={screen.params?.tab} />;
+      // `/clubs` and `/friends` are back-compat aliases onto the Social tab.
       case 'clubs':
-        return <ClubsScreenV2 {...v2Chrome} />;
+        return <SocialScreen chrome={v2Chrome} tab="clubs" />;
       case 'profile':
         // Owners get their own profile dashboard; everyone else uses the v2 profile.
         if (isOwner) return <OwnerProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
@@ -609,7 +612,7 @@ function AppInner() {
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
       case 'friends':
-        return <FriendsScreen onNavigate={navigate} onBack={goBack} />;
+        return <SocialScreen chrome={v2Chrome} tab="friends" />;
       case 'messages':
         return <ConversationsScreen onNavigate={navigate} onBack={goBack} />;
       case 'chat':

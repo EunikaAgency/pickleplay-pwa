@@ -221,6 +221,11 @@ export interface ApiUser {
   skillLevel?: number | null;
   skillLevelLabel?: string | null;
   bio?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  zipcode?: string | null;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean | null;
   preferences?: UserPreferences | null;
@@ -260,6 +265,11 @@ export function toAppUser(api: ApiUser): AppUser {
     skillLevel: typeof api.skillLevel === 'number' ? api.skillLevel : undefined,
     skillLevelLabel: api.skillLevelLabel ?? undefined,
     bio: api.bio ?? undefined,
+    address1: api.address1 ?? undefined,
+    address2: api.address2 ?? undefined,
+    city: api.city ?? undefined,
+    province: api.province ?? undefined,
+    zipcode: api.zipcode ?? undefined,
     hasOnboarded: api.hasOnboarded ?? false,
     preferences: api.preferences ?? DEFAULT_PREFERENCES,
     privacySetting: normalizePrivacy(api.privacySetting),
@@ -376,6 +386,11 @@ export interface ProfileUpdate {
   firstName?: string;
   lastName?: string;
   bio?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  province?: string;
+  zipcode?: string;
   skillLevel?: string;
   skillLevelLabel?: string;
   hasOnboarded?: boolean;

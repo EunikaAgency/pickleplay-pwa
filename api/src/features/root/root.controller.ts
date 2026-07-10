@@ -148,7 +148,7 @@ export function listEndpoints(c: any) {
     {
       name: 'Coaches',
       endpoints: [
-        { path: '/api/v1/coaches', methods: ['GET', 'POST'], description: 'List coaches; POST creates the current user\'s coach profile (unlisted until verified, requires coach.profile.manage)' },
+        { path: '/api/v1/coaches', methods: ['GET', 'POST'], description: 'List coaches (?subscribed=true returns only coaches with a live coach subscription — powers Find Coach); POST creates the current user\'s coach profile (unlisted until verified; requires coach.profile.manage + an active coach subscription, else 402)' },
         { path: '/api/v1/coaches/me', methods: ['GET', 'PATCH'], description: 'Current user coach profile; PATCH requires coach.profile.manage', auth: 'user' },
         { path: '/api/v1/coaches/:id', methods: ['GET'], description: 'Single coach by slug or _id' },
         { path: '/api/v1/coaches/:id/reviews', methods: ['GET', 'POST'], description: 'Coach reviews (POST requires auth)' },
@@ -158,7 +158,7 @@ export function listEndpoints(c: any) {
     {
       name: 'Coach applications',
       endpoints: [
-        { path: '/api/v1/coach-applications', methods: ['POST'], description: 'Apply to coach at a venue — body { venueId } (slug or _id); one per player+venue (requires player.dashboard.access — player-only gate)', auth: 'user' },
+        { path: '/api/v1/coach-applications', methods: ['POST'], description: 'Apply to coach at a venue — body { venueId } (slug or _id); one per player+venue (requires player.dashboard.access AND an active coach subscription, else 402 SUBSCRIPTION_REQUIRED)', auth: 'user' },
         { path: '/api/v1/coach-applications/mine', methods: ['GET'], description: "Current player's own coach applications, with venue info (player-only)", auth: 'user' },
         { path: '/api/v1/coach-applications/for-venue/:venueId', methods: ['GET'], description: "Current player's coach application for one venue (or null) — drives the Apply button state (player-only)", auth: 'user' },
         { path: '/api/v1/coach-applications/:id', methods: ['DELETE'], description: 'Applicant withdraws their own pending coach application (deletes the row)', auth: 'user' },
@@ -167,6 +167,31 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/coach-applications/:id/approve', methods: ['PATCH'], description: 'Approve a coach application — grants the coach role + UserRole for that venue (venue owner or admin)', auth: 'user' },
         { path: '/api/v1/coach-applications/:id/reject', methods: ['PATCH'], description: 'Reject a coach application — revokes any existing grant (venue owner or admin)', auth: 'user' },
         { path: '/api/v1/coach-applications/:id/remove', methods: ['PATCH'], description: 'Remove an approved coach from the venue — revokes the grant (venue owner or admin)', auth: 'user' },
+      ],
+    },
+    {
+      name: 'Partner subscriptions',
+      endpoints: [
+        { path: '/api/v1/partner-subscriptions/me', methods: ['GET'], description: "Current user's coach/organizer subscriptions + live status per plan, current pricing, and whether their postal address is complete enough to subscribe", auth: 'user' },
+        { path: '/api/v1/partner-subscriptions', methods: ['POST'], description: 'Buy a term of the coach or organizer plan — body { plan, autoRenew? }. 400 ADDRESS_REQUIRED if the profile address is incomplete, 409 ALREADY_SUBSCRIBED if a term is live. Grants the global coach/organizer role', auth: 'user' },
+        { path: '/api/v1/partner-subscriptions/:id', methods: ['DELETE'], description: 'Cancel an active subscription — revokes the global role grant (venue-scoped grants from approved applications are kept). No refund', auth: 'user' },
+      ],
+    },
+    {
+      name: 'Coach bookings',
+      endpoints: [
+        { path: '/api/v1/coach-bookings', methods: ['POST'], description: 'A player requests a coaching session — body { coachId, date, startTime, serviceId?, venueId?, endTime?, durationMinutes?, notes? }. Price is server-derived from the service or the coach\'s hourly rate. 409 COACH_NOT_SUBSCRIBED / SLOT_TAKEN', auth: 'user' },
+        { path: '/api/v1/coach-bookings/mine', methods: ['GET'], description: 'Sessions the signed-in player requested', auth: 'user' },
+        { path: '/api/v1/coach-bookings/coach', methods: ['GET'], description: "The signed-in coach's incoming session requests", auth: 'user' },
+        { path: '/api/v1/coach-bookings/:id/accept', methods: ['PATCH'], description: 'Coach accepts a pending request → confirmed (notifies the player)', auth: 'user' },
+        { path: '/api/v1/coach-bookings/:id/decline', methods: ['PATCH'], description: 'Coach declines a pending request — body { reason? } (notifies the player)', auth: 'user' },
+        { path: '/api/v1/coach-bookings/:id/cancel', methods: ['PATCH'], description: 'Either party cancels a pending/confirmed session (notifies the other)', auth: 'user' },
+      ],
+    },
+    {
+      name: 'Users',
+      endpoints: [
+        { path: '/api/v1/users/:id', methods: ['GET'], description: "A player's PUBLIC profile card — display name, avatar, bio, skill, city/province, roles, per-venue partner badges, and live isCoach/isOrganizer flags. Never exposes email/phone/postal address; a private profile hides bio/skill/location" },
       ],
     },
     {
@@ -309,8 +334,8 @@ export function listEndpoints(c: any) {
     {
       name: 'Settings',
       endpoints: [
-        { path: '/api/v1/settings', methods: ['GET'], description: 'Public app settings (payment test mode, demo card, service-fee %)' },
-        { path: '/api/v1/settings', methods: ['PATCH'], description: 'Update app settings (payment test mode, service-fee %)', auth: 'admin' },
+        { path: '/api/v1/settings', methods: ['GET'], description: 'Public app settings (payment test mode, demo card, service-fee %, coach/organizer subscription price + term)' },
+        { path: '/api/v1/settings', methods: ['PATCH'], description: 'Update app settings (payment test mode, service-fee %, coachSubscriptionPrice / organizerSubscriptionPrice / partnerSubscriptionDays)', auth: 'admin' },
         { path: '/api/v1/settings/test-email', methods: ['POST'], description: 'Send sample emails for selected templates to a test address', auth: 'admin' },
       ],
     },
