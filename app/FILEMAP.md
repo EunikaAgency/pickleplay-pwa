@@ -147,6 +147,11 @@ src/
                        #   player's PUBLIC card via getPublicUser; Coach/Organizer badges reuse
                        #   shared/lib/roleDisplay.ts ROLE_META; a live coach gets a "Book a
                        #   coaching session" shortcut),
+                       #   CoachPromoSheet (the "what you get" popup behind the Coaching
+                       #   upgrade banner on ProfileScreenV2 — perks + live price from
+                       #   getSettings; Continue routes to `coach-subscribe`, which still
+                       #   owns the address gate + payment. Lives in profile/ because a
+                       #   feature slice must not import another slice's components),
                        #   MembersScreen (player-facing community dashboard: clubs + venue
                        #   memberships in a searchable, filterable table with KPI cards,
                        #   status badges, loading skeletons, and empty state; reachable
@@ -251,8 +256,7 @@ src/
                        # quick link to the Leakage funnel + inline pricing suggestions.
       components/      # reusable blocks: OwnerSection/OwnerStat/KpiCard (analytics summary tile
                        # w/ trend delta, used by the Reports dashboard)/VenueCard/OwnerBookingRow/
-                       # OwnerGameCard/CompletenessMeter/MapPinPicker (tap-to-drop-pin Leaflet
-                       # map; new-venue form reverse-geocodes the pin to auto-fill the city)/
+                       # OwnerGameCard/CompletenessMeter/
                        # AddressAutocomplete (true type-ahead address field — debounced
                        # /geocode/suggest list; pick → drop pin + auto-fill city (free-text
                        # field, silently links a seeded cityId on match) / address line1 /
@@ -293,6 +297,8 @@ src/
   shared/              # cross-feature only (never import a feature from another feature)
     components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
                         # AvatarCropper (circular photo crop via croppie; used by EditProfile),
+                        # MapPinPicker (tap/drag-to-drop-pin Leaflet map; the new-venue form and
+                        #   EditProfile reverse-geocode the pin to auto-fill the address),
                         # ChatThread (shared Messenger-style group-chat thread — used by
                         #   GameChatScreen + tournaments/v2/TournamentChatScreen),
                         # EmptyState/ErrorState/LoadingSkeleton (v1) +

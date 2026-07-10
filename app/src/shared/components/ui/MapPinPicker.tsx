@@ -4,8 +4,8 @@ import L from 'leaflet';
 
 /**
  * A compact "tap the map to drop a pin" control. Tapping the map or dragging the
- * marker reports new coordinates via `onPin`. Shared by the venue create form and
- * the Location editor tab so both behave identically.
+ * marker reports new coordinates via `onPin`. Used by the venue create form and
+ * the Edit Profile address form, so both behave identically.
  */
 
 // Default map center: Metro Manila (the product's home market).

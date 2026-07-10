@@ -8,7 +8,9 @@ import { duprForTier, skillTiers, tierForDupr, type SkillTier } from '../../shar
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { Button } from '../../shared/components/ui/Button';
 import { getInitials } from '../../shared/lib/initials';
-import { ApiError, uploadAvatar } from '../../shared/lib/api';
+import { MapPinPicker } from '../../shared/components/ui/MapPinPicker';
+import { ApiError, reverseGeocode, uploadAvatar } from '../../shared/lib/api';
+import { getCurrentLocation } from '../../shared/lib/geo';
 import { userHasPermission } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
 
@@ -95,6 +97,60 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
     seededFromAccount.current = true;
     resetForm();
   }, [currentUser, resetForm]);
+
+  // ── Address from the map ────────────────────────────────────────────────
+  // The pin is an input aid, not saved state: the account stores the address
+  // text, not coordinates, so the pin lives only for this editing session.
+  const [pin, setPin] = useState<[number, number] | null>(null);
+  const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [pinLabel, setPinLabel] = useState<string | null>(null);
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  // Both entry points (locate + manual pin) overwrite what's in the address
+  // fields — re-prefilling is the whole point of moving the pin. A field is
+  // only touched when the geocoder actually resolved a value for it, so a
+  // rural pin with no street name never blanks out a typed one. Address line 2
+  // (unit / landmark) is never auto-filled; no geocoder knows it.
+  const applyDetected = (parts: { city: string | null; region: string | null; line1: string | null; postcode: string | null }) => {
+    if (parts.line1) form.setField('address1', parts.line1);
+    if (parts.city) form.setField('city', parts.city);
+    if (parts.region) form.setField('province', parts.region);
+    if (parts.postcode) form.setField('zipcode', parts.postcode);
+    setPinLabel([parts.city, parts.region].filter(Boolean).join(' · ') || null);
+  };
+
+  const handlePin = async (lat: number, lng: number) => {
+    setPin([lat, lng]);
+    setPinError(null);
+    setPinLabel(null);
+    setDetecting(true);
+    try {
+      const hit = await reverseGeocode(lat, lng);
+      if (hit) applyDetected(hit);
+      else setPinError('No address found at that point. Drag the pin somewhere closer to a road.');
+    } catch {
+      setPinError('Couldn’t look up that spot. You can still type the address below.');
+    } finally {
+      setDetecting(false);
+    }
+  };
+
+  const useMyLocation = async () => {
+    if (locating || detecting) return;
+    setLocating(true);
+    setPinError(null);
+    try {
+      const [lat, lng] = await getCurrentLocation();
+      setFlyTo([lat, lng]); // a fresh array each call, so re-locating re-centres
+      await handlePin(lat, lng);
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : 'Couldn’t get your location.');
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -205,6 +261,33 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             hint="Contact support to change your email."
             trailingSlot={<span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] bg-[var(--surface)] border border-[var(--hairline)] rounded-full px-2 py-0.5 select-none">Read-only</span>}
           />
+        </div>
+
+        <div className="field">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <span className="text-[11px] font-bold text-[var(--muted)]">Find your address</span>
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={locating || detecting}
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full border border-[var(--hairline)] bg-[var(--surface)] text-[11px] font-extrabold text-[var(--primary)] disabled:opacity-50"
+            >
+              <Icon name="location" size={14} />
+              {locating ? 'Locating…' : 'Use my location'}
+            </button>
+          </div>
+
+          <MapPinPicker lat={pin?.[0] ?? null} lng={pin?.[1] ?? null} onPin={handlePin} flyTo={flyTo} heightClass="h-[200px]" />
+
+          <p className="mt-1.5 text-[11px] leading-snug text-[var(--muted)]" aria-live="polite">
+            {detecting
+              ? 'Looking up that spot…'
+              : pinError
+                ? <span className="text-[var(--coral)]">{pinError}</span>
+                : pinLabel
+                  ? <>Pinned in <span className="font-bold text-[var(--ink)]">{pinLabel}</span> — check the fields below.</>
+                  : 'Tap the map or drag the pin to fill in the address below.'}
+          </p>
         </div>
 
         <div className="field">

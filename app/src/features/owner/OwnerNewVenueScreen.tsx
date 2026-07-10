@@ -5,7 +5,7 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { FormField } from '../../shared/components/forms/FormField';
 import { useForm } from '../../shared/hooks/useForm';
 import { OwnerSection } from './components/OwnerSection';
-import { MapPinPicker } from './components/MapPinPicker';
+import { MapPinPicker } from '../../shared/components/ui/MapPinPicker';
 import { AddressAutocomplete } from './components/AddressAutocomplete';
 import { createVenue, fetchCities, reverseGeocode, ApiError, type ApiCity, type GeocodeSuggestion } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
