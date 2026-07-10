@@ -142,8 +142,12 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
   // The viewer's location, for distance ranking + the card's distance line. There
   // is no shared geolocation hook; this mirrors NearbyScreenV2's local state.
-  // A denial is not an error here — proximity simply scores neutral.
+  // A denial degrades the feed rather than breaking it, but the user has to be
+  // *told* — otherwise 25% of the ranking model silently stops applying and the
+  // Distance sort just isn't there, with nothing to explain either.
   const [userLoc, setUserLoc] = useState<LatLng | null>(null);
+  const [locStatus, setLocStatus] = useState<'locating' | 'on' | 'denied'>('locating');
+  const [locDismissed, setLocDismissed] = useState(false);
 
   const [tournaments, setTournaments] = useState<ApiTournament[]>([]);
   const [tournamentRegs, setTournamentRegs] = useState<Set<string>>(new Set());
@@ -160,13 +164,24 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setView(initialView);
   }, [initialSection, initialView]);
 
-  // Ask once on mount. Denied or unavailable → userLoc stays null and every
-  // listing scores NEUTRAL_PROXIMITY, so the feed still ranks and renders.
+  // Ask once on mount. Denied or unavailable → userLoc stays null, proximity drops
+  // out of the score, and the banner below offers a way back.
   useEffect(() => {
     let alive = true;
-    getCurrentLocation().then((loc) => { if (alive) setUserLoc(loc); }).catch(() => {});
+    getCurrentLocation()
+      .then((loc) => { if (alive) { setUserLoc(loc); setLocStatus('on'); } })
+      .catch(() => { if (alive) setLocStatus('denied'); });
     return () => { alive = false; };
   }, []);
+
+  /** Retry after a denial. Browsers won't re-prompt once blocked, so this only
+   *  succeeds if the user re-allowed it in site settings first. */
+  const retryLocate = () => {
+    setLocStatus('locating');
+    getCurrentLocation()
+      .then((loc) => { setUserLoc(loc); setLocStatus('on'); })
+      .catch(() => setLocStatus('denied'));
+  };
 
   // Close the sort / section menus on an outside click or Escape, matching
   // NearbyScreenV2. Both are custom listboxes, so neither gets this for free.
@@ -611,6 +626,19 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
         </div>
 
         <div className="games-list-scroll">
+          {/* Location denied/unavailable: proximity has dropped out of the ranking
+              and the Distance sort is gone. Say so, and offer the way back. */}
+          {isDiscoverFeed && locStatus === 'denied' && !locDismissed && (
+            <div className="loc-notice" role="status">
+              <span className="loc-notice-text">Location is off, so plays aren’t sorted by distance.</span>
+              <div className="loc-notice-actions">
+                <button type="button" className="loc-notice-cta" onClick={retryLocate}>Use my location</button>
+                <button type="button" className="loc-notice-dismiss" onClick={() => setLocDismissed(true)} aria-label="Dismiss">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                </button>
+              </div>
+            </div>
+          )}
           {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
           {/* A failed fetch is not an empty catalogue. Say so, and offer a retry. */}
           {!loading && isDiscoverFeed && feedError && (
@@ -631,6 +659,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
               narrowedByControls={q.length > 0 || activeFilterCount > 0}
               onClearControls={clearDiscoverControls}
+              located={userLoc != null}
             />
           )}
           {!loading && section === 'games' && view === 'joined' && (
@@ -657,6 +686,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
               narrowedByControls={q.length > 0 || activeFilterCount > 0}
               onClearControls={clearDiscoverControls}
+              located={userLoc != null}
             />
           )}
           {!loading && section === 'open-play' && view === 'joined' && (
@@ -823,7 +853,7 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
  *  and games, Events is games only — since the only differences are the detail
  *  route and the empty copy. Date headers only make sense under the chronological
  *  sort; over a relevance ranking they'd be noise. */
-function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyText, emptyAction, narrowedByControls, onClearControls }: {
+function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyText, emptyAction, narrowedByControls, onClearControls, located }: {
   items: ScoredPlayItem[];
   onOpen: (item: ScoredPlayItem) => void;
   showDateHeaders: boolean;
@@ -832,6 +862,9 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
   emptyAction?: { label: string; onClick: () => void };
   narrowedByControls: boolean;
   onClearControls: () => void;
+  /** We know where the user is — so a card with no distance means the *venue*
+   *  has no coordinates, not that location is off. The card says which. */
+  located: boolean;
 }) {
   // Nothing on the platform vs. nothing matching *your* search+filters are
   // different problems and deserve different exits.
@@ -844,7 +877,7 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
 
   const open = (i: ScoredPlayItem) => onOpen(i);
   if (!showDateHeaders) {
-    return <>{items.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} onClick={() => open(i)} />)}</>;
+    return <>{items.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} located={located} onClick={() => open(i)} />)}</>;
   }
 
   // Group consecutive runs — the list is already date-ordered under this sort.
@@ -861,7 +894,7 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
         <div className="text-[12px] font-extrabold tracking-[0.08em] text-[var(--muted)] uppercase">{g.header}</div>
         <div className="flex-1 h-px bg-[var(--hairline)]" />
       </div>
-      {g.rows.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} onClick={() => open(i)} />)}
+      {g.rows.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} located={located} onClick={() => open(i)} />)}
     </div>
   ))}</>;
 }
@@ -869,13 +902,19 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
 /** The unified Discover card. Sessions and games render alike — a `kind` badge and
  *  the "why" chips are what distinguish them — so a player can judge skill,
  *  distance, price, and host without tapping through. */
-function PlayCard({ item, onClick }: { item: ScoredPlayItem; onClick: () => void }) {
+function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: () => void; located: boolean }) {
   const badge = item.kind === 'session'
     ? { cls: 'badge-open', label: 'Open Play' }
     : typeBadge(item.source as ApiGame);
   const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
   const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
-  const dist = item.distanceKm != null ? formatDistance(item.distanceKm) : '';
+  // Three states, not two: a measured distance; "unknown" when we know where the
+  // user is but the venue has no coordinates; and nothing at all when location is
+  // off — in which case the banner above already explains the absence.
+  const dist = item.distanceKm != null
+    ? formatDistance(item.distanceKm)
+    : (located && !item.coords ? 'Distance unknown' : '');
+  const distUnknown = dist === 'Distance unknown';
 
   const f = item.fill;
   // Interest-based listings have no capacity, so the bar tracks progress toward
@@ -898,7 +937,7 @@ function PlayCard({ item, onClick }: { item: ScoredPlayItem; onClick: () => void
         <div className="game-title">{item.title}</div>
         <div className="game-meta">
           <div className="game-meta-row">{CLOCK_SVG}{when}</div>
-          <div className="game-meta-row">{PIN_SVG}{item.venueName}{dist && <span className="text-[var(--primary)] font-bold ml-1">· {dist}</span>}</div>
+          <div className="game-meta-row">{PIN_SVG}{item.venueName}{dist && <span className={distUnknown ? 'text-[var(--text-muted)] font-semibold ml-1' : 'text-[var(--primary)] font-bold ml-1'}>· {dist}</span>}</div>
           {(meta || item.venueLoc) && <div className="game-meta-loc">{meta || item.venueLoc}</div>}
         </div>
 

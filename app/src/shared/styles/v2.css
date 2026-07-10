@@ -2275,6 +2275,52 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 .pb-v2.v2-games .tab-group-row {
   flex: 0 0 auto;
 }
+/* Shown when location is denied/unavailable: proximity has dropped out of the
+   ranking and the Distance sort is hidden, so the absence needs explaining. */
+.pb-v2.v2-games .loc-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+}
+.pb-v2.v2-games .loc-notice-text {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+.pb-v2.v2-games .loc-notice-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.pb-v2.v2-games .loc-notice-cta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--blue);
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pb-v2.v2-games .loc-notice-cta:hover { color: var(--blue-hover); }
+.pb-v2.v2-games .loc-notice-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.pb-v2.v2-games .loc-notice-dismiss:hover { background: var(--surface); color: var(--ink); }
+
 /* Search input + filter/sort controls, closed by a hairline. Replaces a `pb-4`
    utility and an inline border so the 8px gap to the first card lives in one
    place, alongside .games-list-scroll's matching padding-top. */
