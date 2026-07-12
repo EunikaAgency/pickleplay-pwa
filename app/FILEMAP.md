@@ -126,7 +126,11 @@ src/
                        #   CreateClub + EditClub (live: POST/PATCH
                        #   /clubs — name/description/visibility + cover-photo upload
                        #   + member limit). All via the clubs client in api.ts.
-    coaches/           # the coach feature. CoachSubscribeScreen (`coach-subscribe`,
+    coaches/           # the coach feature. CoachSubscribeScreen shows the live plan, a
+                       #   "Subscription ending" state + Resume when cancelAtPeriodEnd is set,
+                       #   a Subscription-history list, and an in-app confirm BottomSheet for
+                       #   cancelling (never window.confirm) behind a solid-red Button
+                       #   variant="danger". (`coach-subscribe`,
                        #   /coach/subscribe) — the CANONICAL entry, reached from the Profile
                        #   tab's "Coaching" section; the Home CTA only links here. Buys the
                        #   paid plan (price + term from GET /settings), blocks on an
@@ -585,7 +589,7 @@ src/
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
 | Social tab (Clubs + Friends, the request badge) | `features/social/{SocialScreen,ClubsPanel,FriendsPanel}.tsx`; badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/social-tab.spec.ts` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
-| A reusable UI primitive | `shared/components/ui/` (check it exists before building one) |
+| A reusable UI primitive | `shared/components/ui/` (check it exists before building one). `Button` variants: primary/brand/dark/outline/ghost/`destructive` (soft red) / `danger` (solid red, for unmissable destructive actions) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |
 | Empty/loading/error states | `DemoBranch` + `EmptyState`/`ErrorState`/`LoadingSkeleton` (v1/owner) or `V2Skeleton` (v2.1 player screens) |
 

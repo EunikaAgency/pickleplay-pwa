@@ -51,7 +51,9 @@ export function CoachPromoSheet({ open, onClose, onContinue, price, durationDays
         </Button>
       }
     >
-      <div className="px-1 pb-5">
+      {/* 20px sides to line up with `.sheet-head` (padding: 8px 20px) and the
+          footer's px-5 — `.sheet-body` itself has no horizontal padding. */}
+      <div className="px-5 pb-5">
         {price != null && (
           <div className="mb-5 flex items-baseline gap-1.5 rounded-2xl bg-[var(--surface-2)] px-4 py-3.5">
             <span className="font-heading text-[30px] font-extrabold leading-none">{peso(price)}</span>

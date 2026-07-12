@@ -30,6 +30,8 @@ function subscriptionPayload(s: any) {
     startedAt: s.startedAt,
     expiresAt: s.expiresAt,
     autoRenew: s.autoRenew,
+    cancelAtPeriodEnd: !!s.cancelAtPeriodEnd,
+    cancelledAt: s.cancelledAt ?? null,
     // Derived so clients never have to compare clocks themselves.
     isActive: s.status === 'active' && new Date(s.expiresAt).getTime() > Date.now(),
   };
@@ -47,12 +49,6 @@ async function grantGlobalRole(userId: string, role: PartnerPlan): Promise<void>
     { $setOnInsert: { userId, role, scopeType: null, scopeId: null } },
     { upsert: true },
   );
-}
-
-/** Revoke the global grant. Venue-scoped rows (from approved applications) are
- *  left alone — losing the subscription shouldn't erase an owner's decision. */
-async function revokeGlobalRole(userId: string, role: PartnerPlan): Promise<void> {
-  await UserRole.deleteOne({ userId, role, scopeType: null, scopeId: null });
 }
 
 /** GET /partner-subscriptions/me — every subscription this user holds, the
@@ -149,8 +145,14 @@ export async function subscribe(c: any) {
   return c.json({ data: { ...subscriptionPayload(sub), paymentId: payment._id } }, 201);
 }
 
-/** DELETE /partner-subscriptions/:id — cancel. The term is NOT refunded and the
- *  row keeps its `expiresAt`, but the role grant is revoked immediately. */
+/**
+ * DELETE /partner-subscriptions/:id — cancel at the END of the paid term.
+ *
+ * The coach already paid for this period, so access (and the role) survive until
+ * `expiresAt`; only auto-renew is switched off. `expireLapsedSubscriptions` then
+ * flips the row to `expired` and revokes the role on the first read after the
+ * deadline. Nothing is refunded, and nothing is revoked today.
+ */
 export async function cancelSubscription(c: any) {
   const tokenUser = c.get('user');
   const id = c.req.param('id');
@@ -160,11 +162,34 @@ export async function cancelSubscription(c: any) {
   if (sub.get('status') !== 'active') {
     return c.json({ error: { code: 'CONFLICT', message: 'This subscription is not active.' } }, 409);
   }
+  if (sub.get('cancelAtPeriodEnd')) {
+    return c.json({ error: { code: 'ALREADY_CANCELLED', message: 'This subscription is already set to end at the term.' } }, 409);
+  }
 
-  sub.set('status', 'cancelled');
-  sub.set('cancelledAt', new Date());
+  sub.set('cancelAtPeriodEnd', true);
+  sub.set('autoRenew', false);
+  sub.set('cancelledAt', new Date());   // when it was REQUESTED, not when access ends
   await sub.save();
 
-  await revokeGlobalRole(tokenUser.sub, sub.get('plan') as PartnerPlan);
+  return c.json({ data: subscriptionPayload(sub) });
+}
+
+/** POST /partner-subscriptions/:id/resume — undo a scheduled cancellation while
+ *  the term is still running. */
+export async function resumeSubscription(c: any) {
+  const tokenUser = c.get('user');
+  const sub = await PartnerSubscription.findOne({ _id: c.req.param('id'), userId: tokenUser.sub });
+  if (!sub) return c.json({ error: { code: 'NOT_FOUND', message: 'Subscription not found' } }, 404);
+  if (sub.get('status') !== 'active' || new Date(sub.get('expiresAt')).getTime() <= Date.now()) {
+    return c.json({ error: { code: 'CONFLICT', message: 'This subscription has already ended.' } }, 409);
+  }
+  if (!sub.get('cancelAtPeriodEnd')) {
+    return c.json({ error: { code: 'CONFLICT', message: 'This subscription is not scheduled to end.' } }, 409);
+  }
+
+  sub.set('cancelAtPeriodEnd', false);
+  sub.set('cancelledAt', undefined);
+  await sub.save();
+  // The role was never revoked, so there is nothing to re-grant.
   return c.json({ data: subscriptionPayload(sub) });
 }

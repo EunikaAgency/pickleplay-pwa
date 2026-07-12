@@ -62,7 +62,9 @@ export function BottomSheet({ open, onClose, title, subtitle, height, children, 
         <div className="sheet-body">{children}</div>
         {footer && (
           <div
-            className={`shrink-0 px-5 pt-3 border-t-[0.5px] border-[var(--hairline)] bg-[var(--bg)] ${flushFooter ? 'pb-[calc(16px+env(safe-area-inset-bottom))]' : 'pb-[calc(96px+env(safe-area-inset-bottom))]'}`}
+            // `sheet-footer` is the hook the desktop rule uses to drop the
+            // mobile tab-bar clearance (there's no tab bar behind a modal).
+            className={`sheet-footer shrink-0 px-5 pt-3 border-t-[0.5px] border-[var(--hairline)] bg-[var(--bg)] ${flushFooter ? 'pb-[calc(16px+env(safe-area-inset-bottom))]' : 'pb-[calc(96px+env(safe-area-inset-bottom))]'}`}
           >
             {footer}
           </div>

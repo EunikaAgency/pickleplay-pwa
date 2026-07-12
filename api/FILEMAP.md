@@ -101,8 +101,12 @@ src/
                              #   / activeSubscriberIds (batched) / expireLapsedSubscriptions
                              #   (lazy expiry on read — no cron). Subscribing requires a
                              #   complete postal address (400 ADDRESS_REQUIRED) and grants
-                             #   the GLOBAL coach/organizer role; cancelling revokes it but
-                             #   keeps venue-scoped grants. Price + term live in AppSettings.
+                             #   the GLOBAL coach/organizer role. CANCEL IS SCHEDULED, not
+                             #   immediate: DELETE sets cancelAtPeriodEnd + stops auto-renew,
+                             #   access runs to expiresAt, and expireLapsedSubscriptions()
+                             #   revokes the role on the first read past the deadline
+                             #   (POST /:id/resume undoes it mid-term). Venue-scoped grants
+                             #   are never touched. Price + term live in AppSettings.
                              #   NOTE: unrelated to `subscriptions/` (a newsletter list).
     users/                   # GET /users/:id — another player's PUBLIC profile card
                              #   (roles, per-venue partner badges, live isCoach/isOrganizer).
@@ -287,7 +291,9 @@ src/
 - **`shared/middleware/queue.ts`** — bounds in-flight requests (`API_MAX_CONCURRENT`) and makes the
   excess **wait** instead of failing; sheds `503 SERVER_BUSY` only when the queue or the timeout is
   exhausted. `maxConcurrentPerClient` is the fairness lever: one client can never occupy every slot,
-  so a flood degrades only the flooder. Bypasses `OPTIONS`, `/health`, and `*/stream` (SSE).
+  so a flood degrades only the flooder. Bypasses `OPTIONS`, `/health`, and `*/stream` (SSE) — that
+  exempts them from the queue, not from a saturated event loop. Don't raise `API_MAX_QUEUED` to cure
+  503s: measured, a deeper queue traded fast failures for slow ones and made `/health` far worse.
 - **`shared/lib/jwt.ts`** — sign/verify; secret in `JWT_SECRET`.
 - **`shared/lib/permissions.ts`** — roles → permissions; the canonical `ALL_PERMISSIONS` /
   `PERMISSION_CATALOGUE` / `ROLE_PERMISSIONS` (source of truth synced to web + app — see `../AGENTS.md`).

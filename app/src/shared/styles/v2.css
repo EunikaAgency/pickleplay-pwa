@@ -4339,6 +4339,20 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
     border: 1.5px solid var(--border-subtle);
     margin-top: 0;
   }
+/* The coach pitch reuses the upgrade-banner shape but needs a fill you can
+   actually see: the stock gradient ends at #F4FFD6 on a pure-white card, with a
+   near-white border and no shadow, so its right half vanishes (worst on macOS
+   Chrome, which colour-manages these pale tints even flatter).
+   Mixed against --surface rather than hard-coded, so dark mode follows. */
+.pb-v2.v2-profile .upgrade-banner.coach-banner {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--blue) 20%, var(--surface)) 0%,
+      color-mix(in srgb, var(--lime) 70%, var(--surface)) 100%
+    );
+    border-color: color-mix(in srgb, var(--lime-active, #A3CC00) 60%, var(--border-subtle));
+    box-shadow: var(--shadow-sm);
+  }
 .pb-v2.v2-profile .upgrade-text {
     flex: 1;
   }

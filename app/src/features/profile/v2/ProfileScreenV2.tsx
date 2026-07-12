@@ -285,7 +285,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
 
             {!isCoach && (
               <div
-                className="upgrade-banner"
+                className="upgrade-banner coach-banner"
                 role="button"
                 tabIndex={0}
                 onClick={() => setCoachPromoOpen(true)}

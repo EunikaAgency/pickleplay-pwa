@@ -174,7 +174,8 @@ export function listEndpoints(c: any) {
       endpoints: [
         { path: '/api/v1/partner-subscriptions/me', methods: ['GET'], description: "Current user's coach/organizer subscriptions + live status per plan, current pricing, and whether their postal address is complete enough to subscribe", auth: 'user' },
         { path: '/api/v1/partner-subscriptions', methods: ['POST'], description: 'Buy a term of the coach or organizer plan — body { plan, autoRenew? }. 400 ADDRESS_REQUIRED if the profile address is incomplete, 409 ALREADY_SUBSCRIBED if a term is live. Grants the global coach/organizer role', auth: 'user' },
-        { path: '/api/v1/partner-subscriptions/:id', methods: ['DELETE'], description: 'Cancel an active subscription — revokes the global role grant (venue-scoped grants from approved applications are kept). No refund', auth: 'user' },
+        { path: '/api/v1/partner-subscriptions/:id', methods: ['DELETE'], description: 'Cancel at the END of the paid term — sets cancelAtPeriodEnd + stops auto-renew. Access and the role survive until expiresAt, then the lazy expiry sweep revokes the global grant (venue-scoped grants from approved applications are kept). No refund; 409 ALREADY_CANCELLED if already scheduled', auth: 'user' },
+        { path: '/api/v1/partner-subscriptions/:id/resume', methods: ['POST'], description: 'Undo a scheduled cancellation while the term is still running', auth: 'user' },
       ],
     },
     {

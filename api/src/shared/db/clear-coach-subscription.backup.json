@@ -1,0 +1,38 @@
+{
+  "clearedAt": "2026-07-10T09:41:44.813Z",
+  "user": {
+    "id": "6a4f16b5d2b28d59a068ecca",
+    "email": "84a3be4a.hernandez@example.com",
+    "displayName": "Steve Hernandez"
+  },
+  "partnerSubscriptions": [
+    {
+      "_id": "6a50ae8187cc6924f4f87d95",
+      "userId": "6a4f16b5d2b28d59a068ecca",
+      "plan": "coach",
+      "status": "active",
+      "priceAmount": 499,
+      "currency": "PHP",
+      "startedAt": "2026-07-10T08:34:09.554Z",
+      "expiresAt": "2026-08-09T08:34:09.554Z",
+      "autoRenew": false,
+      "createdAt": "2026-07-10T08:34:09.556Z",
+      "updatedAt": "2026-07-10T09:41:06.012Z",
+      "__v": 0,
+      "paymentId": "6a50ae8187cc6924f4f87d96",
+      "cancelAtPeriodEnd": true,
+      "cancelledAt": "2026-07-10T09:41:06.011Z"
+    }
+  ],
+  "globalCoachRole": {
+    "_id": "6a50ae8134553c48998786b9",
+    "scopeType": null,
+    "role": "coach",
+    "scopeId": null,
+    "userId": "6a4f16b5d2b28d59a068ecca",
+    "__v": 0,
+    "createdAt": "2026-07-10T08:34:09.562Z",
+    "isPrimary": false,
+    "updatedAt": "2026-07-10T08:34:09.562Z"
+  }
+}

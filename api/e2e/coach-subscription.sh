@@ -137,17 +137,33 @@ curl -s $API/users/$PUID | python3 -c 'import sys,json;d=json.load(sys.stdin)["d
 echo "  leak check (must all be absent):"
 curl -s $API/users/$PUID | python3 -c 'import sys,json;d=json.load(sys.stdin)["data"];[print("   ",k,"leaked!") for k in ("email","phone","address1","zipcode","gcashNumber") if k in d] or print("    none")'
 
-echo; echo "18) Cancel the subscription -> coach vanishes from Find Coach + role revoked"
+echo; echo "18) Cancel is SCHEDULED for the term end — access is NOT revoked today"
 s=$(code -X DELETE $API/partner-subscriptions/$SUB_ID -H "Authorization: Bearer $T")
 check "DELETE /partner-subscriptions/:id -> 200" "$s" "200"
+check "  status stays active" "$(python3 -c 'import json;print(json.load(open("/tmp/body.json"))["data"]["status"])')" "active"
+check "  cancelAtPeriodEnd set" "$(python3 -c 'import json;print(json.load(open("/tmp/body.json"))["data"]["cancelAtPeriodEnd"])')" "True"
 n=$(curl -s "$API/coaches?subscribed=true" | jqp 'len(d["data"])')
-check "subscribed coach list now empty" "$n" "0"
-mongosh --quiet pickleballers --eval '
-  const u = db.users.findOne({email:"'"$PLAYER"'"});
-  print("  global coach UserRole rows: " + db.userroles.countDocuments({userId:u._id,role:"coach",scopeType:null}));'
-curl -s $API/users/$PUID | python3 -c 'import sys,json;print("  public profile isCoach now:",json.load(sys.stdin)["data"]["isCoach"])'
+check "still listed in Find Coach" "$n" "1"
+check "coach role kept until the term ends" "$(mongosh --quiet pickleballers --eval 'const u=db.users.findOne({email:"'"$PLAYER"'"});print(db.userroles.countDocuments({userId:u._id,role:"coach",scopeType:null}))')" "1"
+check "public profile still isCoach" "$(curl -s $API/users/$PUID | jqp 'd["data"]["isCoach"]')" "True"
+s=$(code -X DELETE $API/partner-subscriptions/$SUB_ID -H "Authorization: Bearer $T")
+check "cancelling twice -> 409" "$s" "409"
+check "  error code" "$(ecode)" "ALREADY_CANCELLED"
 
-echo; echo "19) A lapsed coach is no longer bookable"
+echo; echo "18b) Resume undoes the scheduled cancellation"
+s=$(code -X POST $API/partner-subscriptions/$SUB_ID/resume -H "Authorization: Bearer $T")
+check "POST /:id/resume -> 200" "$s" "200"
+check "  cancelAtPeriodEnd cleared" "$(python3 -c 'import json;print(json.load(open("/tmp/body.json"))["data"]["cancelAtPeriodEnd"])')" "False"
+
+echo; echo "19) Once the term lapses, the role is revoked and the coach is unbookable"
+curl -s -X DELETE $API/partner-subscriptions/$SUB_ID -H "Authorization: Bearer $T" >/dev/null
+mongosh --quiet pickleballers --eval 'db.partnersubscriptions.updateOne({_id:ObjectId("'"$SUB_ID"'")},{$set:{expiresAt:new Date(Date.now()-1000)}})' >/dev/null
+curl -s $API/partner-subscriptions/me -H "Authorization: Bearer $T" >/dev/null   # lazy-expiry sweep
+check "row swept to expired" "$(mongosh --quiet pickleballers --eval 'print(db.partnersubscriptions.findOne({_id:ObjectId("'"$SUB_ID"'")}).status)')" "expired"
+check "global coach role revoked" "$(mongosh --quiet pickleballers --eval 'const u=db.users.findOne({email:"'"$PLAYER"'"});print(db.userroles.countDocuments({userId:u._id,role:"coach",scopeType:null}))')" "0"
+n=$(curl -s "$API/coaches?subscribed=true" | jqp 'len(d["data"])')
+check "dropped from Find Coach" "$n" "0"
+check "public profile isCoach now false" "$(curl -s $API/users/$PUID | jqp 'd["data"]["isCoach"]')" "False"
 s=$(code -X POST $API/coach-bookings -H "Authorization: Bearer $B" -H 'Content-Type: application/json' \
   -d "{\"coachId\":\"$COACH_ID\",\"date\":\"$TODAY\",\"startTime\":\"16:00\"}")
 check "book a lapsed coach -> 409" "$s" "409"

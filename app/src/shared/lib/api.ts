@@ -4109,6 +4109,10 @@ export interface PartnerSubscription {
   startedAt: string;
   expiresAt: string;
   autoRenew: boolean;
+  /** Cancellation is scheduled: access runs until `expiresAt`, then lapses. */
+  cancelAtPeriodEnd: boolean;
+  /** When cancellation was REQUESTED — not when access ends. */
+  cancelledAt: string | null;
   /** Server-derived: status is active AND the term hasn't lapsed. */
   isActive: boolean;
 }
@@ -4140,9 +4144,15 @@ export async function subscribeToPartnerPlan(
   });
 }
 
-/** Cancel an active term — revokes the role immediately, no refund. */
+/** Schedule cancellation for the END of the paid term. Access and the coach role
+ *  survive until `expiresAt`; nothing is revoked today and nothing is refunded. */
 export async function cancelPartnerSubscription(id: string): Promise<PartnerSubscription> {
   return request<PartnerSubscription>(`/api/v1/partner-subscriptions/${id}`, { method: 'DELETE', auth: true });
+}
+
+/** Undo a scheduled cancellation while the term is still running. */
+export async function resumePartnerSubscription(id: string): Promise<PartnerSubscription> {
+  return request<PartnerSubscription>(`/api/v1/partner-subscriptions/${id}/resume`, { method: 'POST', auth: true });
 }
 
 /* ─── Coaches (browse + book) ───────────────────────────────────── */

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
+import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { Toast } from '../../shared/components/ui/Toast';
 import {
-  ApiError, cancelPartnerSubscription, getMyPartnerSubscriptions, subscribeToPartnerPlan,
-  type PartnerSubscriptionState,
+  ApiError, cancelPartnerSubscription, getMyPartnerSubscriptions, resumePartnerSubscription,
+  subscribeToPartnerPlan, type PartnerSubscription, type PartnerSubscriptionState,
 } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -29,6 +30,15 @@ const COACH_BENEFITS = [
   'A verified Coach badge on your public profile',
 ];
 
+/** Chip copy + colour for a row in the subscription history. */
+function historyChip(s: PartnerSubscription): { label: string; color: string } {
+  if (s.isActive && s.cancelAtPeriodEnd) return { label: 'Ending', color: 'var(--amber, #F59E0B)' };
+  if (s.isActive) return { label: 'Active', color: 'var(--primary)' };
+  if (s.status === 'expired') return { label: 'Expired', color: 'var(--muted)' };
+  if (s.status === 'cancelled') return { label: 'Cancelled', color: 'var(--coral)' };
+  return { label: s.status, color: 'var(--muted)' };
+}
+
 export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScreenProps) {
   const [state, setState] = useState<PartnerSubscriptionState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +46,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   // The store refreshes the user so the new coach role reaches the rest of the app.
   const restore = useAuthStore((s) => s.restore);
 
@@ -52,7 +63,6 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
     return () => { alive = false; };
   }, [reloadKey]);
 
-  /** Re-read the subscription state (used after a subscribe/cancel + on retry). */
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const retry = useCallback(() => {
     setLoading(true); setLoadError(false); setReloadKey((k) => k + 1);
@@ -90,14 +100,13 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
 
   const doCancel = async () => {
     if (!state?.coach || busy) return;
-    if (!window.confirm('Cancel your coach subscription? You will be removed from Find Coach immediately. This term is not refunded.')) return;
     setBusy(true);
     setError(null);
     try {
-      await cancelPartnerSubscription(state.coach.id);
-      await restore();
+      const updated = await cancelPartnerSubscription(state.coach.id);
+      setConfirmOpen(false);
       reload();
-      setToast('Coach subscription cancelled.');
+      setToast(`Cancelled. You stay a coach until ${fmtDate(updated.expiresAt)}.`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not cancel. Please try again.');
     } finally {
@@ -105,10 +114,27 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
     }
   };
 
+  const doResume = async () => {
+    if (!state?.coach || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await resumePartnerSubscription(state.coach.id);
+      reload();
+      setToast('Subscription resumed.');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Could not resume. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const active = state?.coach ?? null;
+  const ending = !!active?.cancelAtPeriodEnd;
   const price = state?.pricing.coach ?? 0;
   const days = state?.pricing.durationDays ?? 30;
   const addressComplete = state?.addressComplete ?? true;
+  const history = state?.subscriptions ?? [];
 
   return (
     <div className="scroll pb-[120px]">
@@ -127,17 +153,30 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
 
       {!loading && !loadError && state && (
         <div className="px-5 pt-4">
-          {/* Status card — active subscription, or the pitch. */}
+          {/* Status card — active, ending, or the pitch. */}
           {active ? (
-            <div className="rounded-2xl border border-[var(--lime)] bg-[var(--lime-soft,rgba(154,205,50,0.12))] p-4">
-              <div className="flex items-center gap-2">
-                <Icon name="verified" size={20} />
-                <span className="font-heading text-[16px] font-extrabold">Coach subscription active</span>
+            ending ? (
+              <div className="rounded-2xl border border-[var(--coral)] bg-[var(--coral-soft)] p-4">
+                <div className="flex items-center gap-2">
+                  <Icon name="schedule" size={20} />
+                  <span className="font-heading text-[16px] font-extrabold">Subscription ending</span>
+                </div>
+                <p className="mt-1.5 text-[13px] text-[var(--muted)]">
+                  You stay a coach until <strong>{fmtDate(active.expiresAt)}</strong>. After that you&apos;ll
+                  drop off Find Coach and stop taking bookings.
+                </p>
               </div>
-              <p className="mt-1.5 text-[13px] text-[var(--muted)]">
-                Renews {fmtDate(active.expiresAt)} · {peso(active.priceAmount)} / {days} days
-              </p>
-            </div>
+            ) : (
+              <div className="rounded-2xl border border-[var(--lime)] bg-[var(--lime-soft,rgba(154,205,50,0.12))] p-4">
+                <div className="flex items-center gap-2">
+                  <Icon name="verified" size={20} />
+                  <span className="font-heading text-[16px] font-extrabold">Coach subscription active</span>
+                </div>
+                <p className="mt-1.5 text-[13px] text-[var(--muted)]">
+                  Renews {fmtDate(active.expiresAt)} · {peso(active.priceAmount)} / {days} days
+                </p>
+              </div>
+            )
           ) : (
             <div className="rounded-2xl bg-[var(--ink-fill,var(--navy,#1A2138))] p-5 text-white">
               <div className="font-heading text-[22px] font-extrabold leading-tight">
@@ -217,6 +256,39 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
               </button>
             </div>
           )}
+
+          {/* Subscription history — every term this account has bought. */}
+          {history.length > 0 && (
+            <section className="mt-8">
+              <h2 className="font-heading text-[15px] font-extrabold">Subscription history</h2>
+              <ul className="mt-3 flex flex-col gap-2">
+                {history.map((s) => {
+                  const chip = historyChip(s);
+                  return (
+                    <li
+                      key={s.id}
+                      className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[13.5px] font-bold capitalize">
+                          {s.plan} · {peso(s.priceAmount)}
+                        </span>
+                        <span className="block text-[12px] text-[var(--muted)]">
+                          {fmtDate(s.startedAt)} – {fmtDate(s.expiresAt)}
+                        </span>
+                      </span>
+                      <span
+                        className="flex-none rounded-full px-2.5 py-1 text-[11px] font-bold"
+                        style={{ color: chip.color, background: 'var(--surface-2)' }}
+                      >
+                        {chip.label}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
         </div>
       )}
 
@@ -224,9 +296,15 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
       {!loading && !loadError && state && (
         <div className="sticky-cta">
           {active ? (
-            <Button variant="ghost" fullWidth onClick={() => void doCancel()} disabled={busy}>
-              {busy ? 'Working…' : 'Cancel subscription'}
-            </Button>
+            ending ? (
+              <Button fullWidth onClick={() => void doResume()} disabled={busy}>
+                {busy ? 'Working…' : 'Resume subscription'}
+              </Button>
+            ) : (
+              <Button variant="danger" fullWidth onClick={() => setConfirmOpen(true)} disabled={busy}>
+                Cancel subscription
+              </Button>
+            )
           ) : (
             <Button
               fullWidth
@@ -238,6 +316,48 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
           )}
         </div>
       )}
+
+      {/* In-app confirmation — never a native window.confirm(). */}
+      <BottomSheet
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Cancel your subscription?"
+        subtitle="This takes effect at the end of your paid term."
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button variant="danger" fullWidth onClick={() => void doCancel()} disabled={busy}>
+              {busy ? 'Cancelling…' : 'Yes, cancel at term end'}
+            </Button>
+            <Button variant="ghost" fullWidth onClick={() => setConfirmOpen(false)} disabled={busy}>
+              Keep my subscription
+            </Button>
+          </div>
+        }
+      >
+        <div className="px-5 pb-4">
+          <ul className="flex flex-col gap-3">
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex-none text-[var(--primary)]"><Icon name="check_circle" size={18} /></span>
+              <span className="text-[13.5px] leading-snug">
+                You keep coaching until{' '}
+                <strong>{active ? fmtDate(active.expiresAt) : 'the end of your term'}</strong> — you already paid for it.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex-none text-[var(--coral)]"><Icon name="cancel" size={18} /></span>
+              <span className="text-[13.5px] leading-snug">
+                After that you drop off Find Coach and stop receiving booking requests.
+              </span>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex-none text-[var(--muted)]"><Icon name="undo" size={18} /></span>
+              <span className="text-[13.5px] leading-snug">
+                You can resume any time before that date. No refund is issued.
+              </span>
+            </li>
+          </ul>
+        </div>
+      </BottomSheet>
 
       <Toast message={toast ?? ''} show={!!toast} />
     </div>

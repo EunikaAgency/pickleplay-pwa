@@ -1256,19 +1256,29 @@
    (translateY(100%)); its upward shadow would otherwise bleed up into the page
    on screens with no bottom bar to cover it (e.g. the club detail). */
 .sheet.open { transform: translateY(0); box-shadow: 0 -8px 40px rgba(0,0,0,0.25); }
-/* On desktop the sheet pops up centered (not a bottom drawer).
-   vh units bypass the transformed .app containing block so vertical
-   centering works; horizontal reuse the base left:0/right:0 + margin:auto.
-   The base .sheet already transitions transform, so the 24px → -50%
-   shift animates smoothly. */
+/* On desktop the drawer becomes a centred modal dialog: all four corners
+   rounded, centred on the VIEWPORT, and capped so the footer can never fall off
+   the bottom edge. This is the ONLY place that positions the sheet on desktop —
+   the ≥1024px sidebar block below must not re-anchor it to the bottom, or the
+   two rules fight and the panel grows off-screen.
+
+   `50vh` (not `50%`) because `.app` is the containing block for position:fixed
+   (it has a transform + container-type), and its height isn't the viewport's. */
 @media (min-width: 768px) {
   .sheet {
-    top: 50vh !important;
-    bottom: auto !important;
+    top: 50vh;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    max-width: 520px;
     border-radius: 24px;
-    transform: translateY(24px);
+    /* Closed: centred, nudged down, faded out — and click-through, since an
+       invisible panel would otherwise sit over the middle of the page. */
+    transform: translateY(calc(-50% + 16px));
     opacity: 0;
-    max-height: 85dvh;
+    pointer-events: none;
+    max-height: min(85dvh, 760px);
     transition:
       transform .3s cubic-bezier(0.4, 0.0, 0.2, 1),
       opacity .25s ease;
@@ -1276,7 +1286,13 @@
   .sheet.open {
     transform: translateY(-50%);
     opacity: 1;
-    box-shadow: 0 4px 40px rgba(0,0,0,0.25);
+    pointer-events: auto;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.28);
+  }
+  /* The footer reserves 96px for the mobile tab bar; there is no tab bar behind
+     a desktop modal, so that gap is dead space under the primary action. */
+  .sheet .sheet-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 }
 /* Opt-in: animate height changes too, matching the map-sheet's easing/duration
@@ -1284,7 +1300,9 @@
 .sheet.sheet-anim-height {
   transition:
     transform .3s cubic-bezier(0.4, 0.0, 0.2, 1),
-    height .3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    height .3s cubic-bezier(0.4, 0.0, 0.2, 1),
+    /* keep the desktop modal's fade — this rule would otherwise drop it */
+    opacity .25s ease;
 }
 .sheet .sheet-handle {
   width: 36px; height: 5px;
@@ -1307,6 +1325,15 @@
   display: flex; align-items: center; justify-content: center;
   color: var(--ink-2);
 }
+/* The footer is the sheet's last child and paints an opaque background, so it
+   squares off the panel's bottom corners. Inherit the parent's radius instead
+   of clipping the sheet with `overflow: hidden` — sheets contain absolutely
+   positioned popups (e.g. HourSelect's listbox) that must escape the box.
+   On phones the parent's bottom radius is 0, so this is a no-op there. */
+.sheet .sheet-footer {
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
 .sheet .sheet-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px 0; }
 .sheet .sheet-body::-webkit-scrollbar { display: none; }
 
@@ -1317,7 +1344,10 @@
 /* Sheet panel: spring-bounce up instead of the default linear slide.
    The backdrop still uses the global .sheet-backdrop fade (opacity .25s). */
 .plan-pick-sheet.open {
-  transition: transform .45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition:
+    transform .45s cubic-bezier(0.34, 1.56, 0.64, 1),
+    /* keep the desktop modal's fade — this rule would otherwise drop it */
+    opacity .25s ease;
 }
 
 /* Title + subtitle drop in slightly after the panel lands. */
@@ -1909,17 +1939,11 @@
   /* Demo state widget: bottom-right. */
   .demo-control { right: 16px !important; bottom: 16px !important; }
 
-  /* Bottom sheets become a centred modal in the main column. */
-  .sheet {
-    max-width: 520px;
-    left: calc(var(--sidebar-w) + (100vw - var(--sidebar-w) - 520px) / 2);
-    right: auto;
-    transform: translateY(calc(100% + 5dvh + 16px));
-    border-radius: 24px;
-    bottom: 5dvh;
-    max-height: 80dvh;
-  }
-  .sheet.open { transform: translateY(0); }
+  /* NOTE: the sheet is already a centred modal from the ≥768px block above —
+     deliberately NOT re-positioned here. An earlier version re-anchored it
+     (`bottom: 5dvh; transform: translateY(0)`), which combined with that
+     block's `top: 50vh` to pin the panel at mid-height and let it grow off the
+     bottom of the screen. Keep desktop sheet positioning in one place. */
 
   /* Map screen sheet docks to the bottom of the main column. */
   .map-sheet {

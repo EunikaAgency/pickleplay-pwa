@@ -1,6 +1,6 @@
 import { type ButtonHTMLAttributes } from 'react';
 
-type ButtonVariant = 'primary' | 'brand' | 'dark' | 'outline' | 'ghost' | 'destructive';
+type ButtonVariant = 'primary' | 'brand' | 'dark' | 'outline' | 'ghost' | 'destructive' | 'danger';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -21,8 +21,12 @@ const variantClasses: Record<ButtonVariant, string> = {
     'h-[52px] px-5 text-base bg-[var(--surface)] text-[var(--ink-2)] border-[0.5px] border-[var(--hairline)]',
   ghost:
     'h-11 px-4 text-sm bg-transparent text-[var(--ink-2)]',
+  // Soft red: a destructive action that still sits among neutral controls.
   destructive:
     'h-[52px] px-5 text-base bg-[var(--coral-soft)] text-[var(--coral)]',
+  // Solid red: an unmissable destructive action (cancel a paid subscription).
+  danger:
+    'h-[52px] px-5 text-base bg-[var(--coral)] text-white shadow-[0_8px_22px_-6px_rgba(207,48,0,0.5)]',
 };
 
 export function Button({

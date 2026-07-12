@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import type { Types } from 'mongoose';
+import { UserRole } from '../auth/auth.model.js';
 
 /**
  * A PAID, PLATFORM-LEVEL subscription that unlocks the coach (or organizer)
@@ -25,7 +26,11 @@ export interface IPartnerSubscription {
   startedAt: Date;
   expiresAt: Date;
   autoRenew: boolean;
+  /** Cancellation is scheduled, not immediate: the coach keeps access (and the
+   *  role) until `expiresAt`, then lapses. */
+  cancelAtPeriodEnd: boolean;
   paymentId?: Types.ObjectId;
+  /** When the coach REQUESTED the cancellation, not when access ends. */
   cancelledAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -40,6 +45,7 @@ const partnerSubscriptionSchema = new Schema({
   startedAt:   { type: Date, default: () => new Date() },
   expiresAt:   { type: Date, required: true },
   autoRenew:   { type: Boolean, default: false },
+  cancelAtPeriodEnd: { type: Boolean, default: false },
   paymentId:   { type: Schema.Types.ObjectId, ref: 'Payment' },
   cancelledAt: Date,
 }, { timestamps: true });
@@ -52,15 +58,36 @@ partnerSubscriptionSchema.index({ expiresAt: 1 });
 export const PartnerSubscription = model('PartnerSubscription', partnerSubscriptionSchema);
 
 /**
- * Flip any `active` row whose deadline has passed to `expired`. Called on read
- * (there is no cron), mirroring how bookings lazily expire overdue payment
- * holds. Scoped to one user so a profile read never sweeps the whole table.
+ * Flip any `active` row whose deadline has passed to `expired`, and revoke the
+ * global role it granted. Called on read (there is no cron), mirroring how
+ * bookings lazily expire overdue payment holds. Scoped to one user so a profile
+ * read never sweeps the whole table.
+ *
+ * Revoking here is what makes "cancel at period end" work: cancelling only sets
+ * `cancelAtPeriodEnd`, leaving the row active until its deadline passes.
  */
 export async function expireLapsedSubscriptions(userId: Types.ObjectId | string): Promise<void> {
+  const now = new Date();
+  const lapsed = await PartnerSubscription.find({
+    userId, status: 'active', expiresAt: { $lte: now },
+  }).select('plan').lean() as any[];
+  if (!lapsed.length) return;
+
   await PartnerSubscription.updateMany(
-    { userId, status: 'active', expiresAt: { $lte: new Date() } },
+    { userId, status: 'active', expiresAt: { $lte: now } },
     { status: 'expired' },
   );
+
+  // Drop the global grant only when NO other live term of that plan remains
+  // (e.g. the coach re-subscribed before the old one lapsed).
+  for (const plan of new Set(lapsed.map((r) => r.plan))) {
+    const stillLive = await PartnerSubscription.exists({
+      userId, plan, status: 'active', expiresAt: { $gt: now },
+    });
+    if (!stillLive) {
+      await UserRole.deleteOne({ userId, role: plan, scopeType: null, scopeId: null });
+    }
+  }
 }
 
 /** Is this user currently subscribed to `plan`? Expires lapsed rows first, so
