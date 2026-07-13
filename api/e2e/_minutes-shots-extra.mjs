@@ -1,0 +1,12 @@
+import { chromium } from '@playwright/test';
+const APP='http://localhost:9000', API='http://localhost:9002';
+const tok=async(c)=>{const r=await fetch(`${API}/api/v1/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});return (await r.json()).data.accessToken;};
+const b=await chromium.launch();
+const ctx=await b.newContext({viewport:{width:1440,height:900},deviceScaleFactor:2});
+const p=await ctx.newPage(); const t=await tok({email:'ccdfa3b7.walker@example.com',password:'password123'});
+await p.goto(APP);
+await p.evaluate(k=>{localStorage.setItem('pb-access-token',k);localStorage.setItem('pb-refresh-token',k);sessionStorage.setItem('pb-splash-seen','1');},t);
+await p.goto(`${APP}/owner/venues`); await p.waitForTimeout(3500);
+const t2=(await p.locator('body').innerText()).replace(/\s+/g,' ');
+console.log('approval wording:', /awaiting approval|NEEDS APPROVAL|pending/i.test(t2), '|', t2.match(/.{0,50}awaiting approval.{0,30}/i)?.[0]);
+await b.close();
