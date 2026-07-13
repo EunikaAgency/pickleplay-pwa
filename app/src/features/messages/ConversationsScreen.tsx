@@ -154,9 +154,10 @@ interface ConvRowProps {
 }
 
 const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove }: ConvRowProps) {
-  // For venue/booking conversations: the player (non-owner) sees venue name +
-  // image; the owner sees the player's name + avatar so they know WHO messaged.
-  const isVenueForPlayer = c.contextLabel && !c.viewerIsOwner;
+  // For venue/booking conversations: the player sees venue name + image; whoever
+  // works the venue (owner or staff) sees the player's name + avatar so they know
+  // WHO messaged.
+  const isVenueForPlayer = c.contextLabel && !c.viewerIsVenueSide;
   const name = isVenueForPlayer ? c.contextLabel! : (c.otherParticipant?.displayName ?? 'Player');
   const avatarSrc = isVenueForPlayer
     ? (c.contextImageUrl ? apiImageUrl(c.contextImageUrl) : null)

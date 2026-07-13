@@ -12,6 +12,7 @@ import {
   markConversationRead,
   sendTyping,
   deleteMessage,
+  apiImageUrl,
   type ApiChatMessage,
   type ApiChatParticipant,
 } from '../../shared/lib/api';
@@ -112,7 +113,8 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
-  const [contextType, setContextType] = useState<string | null>(null);
+  /** Set on a venue-scoped thread: the venue this conversation is about. */
+  const [venue, setVenue] = useState<{ name: string; imageUrl: string | null; viewerIsVenueSide: boolean } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuFlipUp, setMenuFlipUp] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -162,7 +164,13 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
         if (!alive) return;
         setOther(conv.otherParticipant);
         setMessages(conv.messages);
-        if (conv.contextType) setContextType(conv.contextType);
+        setVenue(conv.contextLabel
+          ? {
+            name: conv.contextLabel,
+            imageUrl: conv.contextImageUrl ? apiImageUrl(conv.contextImageUrl) : null,
+            viewerIsVenueSide: conv.viewerIsVenueSide === true,
+          }
+          : null);
         // Mark the conversation read server-side so the unread-message badge drops.
         void markConversationRead(conversationId).then(() => {
           refreshBadge();
@@ -356,16 +364,30 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
     void sendTyping(conversationId).catch(() => {});
   };
 
-  const displayName = other?.displayName ?? 'Player';
+  // A player who messaged a venue is talking to the VENUE, so the thread reads as
+  // the venue (its name + photo) — the owner's personal name means nothing to them.
+  // The venue side (owner + staff) keeps seeing the player, with the venue named
+  // in the eyebrow.
+  const asVenue = venue && !venue.viewerIsVenueSide ? venue : null;
+  // Staff share the venue's inbox, so a colleague's reply is the VENUE talking —
+  // it belongs on the outgoing side, not mixed in with the player's messages.
+  const venueSide = venue?.viewerIsVenueSide === true;
+  const displayName = asVenue?.name ?? other?.displayName ?? 'Player';
+  const avatarSrc = asVenue ? asVenue.imageUrl : (other?.avatarUrl ?? null);
   const active = isActive(other?.lastActiveAt);
+  const presence = other?.lastActiveAt != null ? (active ? 'Active now' : 'Inactive') : undefined;
 
   return (
     <div className="absolute inset-0 flex flex-col bg-slate-200 pt-[env(safe-area-inset-top)]">
       <ScreenHeader
         onBack={onBack}
         title={displayName}
-        eyebrow={contextType === 'venue' ? `Re: ${displayName}` : 'Message'}
-        subtitle={other?.lastActiveAt != null ? (active ? 'Active now' : 'Inactive') : undefined}
+        eyebrow={asVenue ? 'Venue' : venue ? `Re: ${venue.name}` : 'Message'}
+        // Under the venue, name the person who actually replies, so the player
+        // isn't surprised by a stranger's name on the incoming messages.
+        subtitle={asVenue
+          ? ([other?.displayName, presence].filter(Boolean).join(' · ') || undefined)
+          : presence}
         className="border-b border-slate-200 bg-white shadow-[0_4px_14px_rgba(15,23,42,0.08)] z-10"
       />
 
@@ -384,7 +406,11 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
               </div>
             )}
             {messages.map((m) => {
-              const isMine = m.mine;
+              // On the venue side a colleague's reply is the venue talking, so it
+              // sits on the outgoing side — but only my OWN messages are unsendable
+              // (`m.mine`), and only mine carry a read receipt.
+              const fromColleague = venueSide && m.fromVenueSide === true && !m.mine;
+              const isMine = m.mine || fromColleague;
               const isDeleted = m.deleted === true || (m as LocalChatMessage)._deleted === true;
               const menuOpen = openMenuId === m.id;
               const bubbleCls = isDeleted
@@ -426,7 +452,7 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
                 >
                   {!isMine && (
                     <div className="relative shrink-0">
-                      <Avatar src={other?.avatarUrl} name={displayName} size={28} />
+                      <Avatar src={avatarSrc} name={displayName} size={28} />
                       {other?.lastActiveAt != null && (
                         <span className={`absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${active ? 'bg-[var(--lime)]' : 'bg-[var(--muted)]'}`} />
                       )}
@@ -477,12 +503,16 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
                         className={`px-3.5 py-2 rounded-[18px] text-[15px] leading-snug break-words ${bubbleCls}`}
                       >
                         {isDeleted
-                          ? (isMine ? 'You deleted a message' : `${displayName} deleted a message`)
+                          ? (m.mine
+                            ? 'You deleted a message'
+                            : `${fromColleague ? (m.senderName ?? 'A colleague') : displayName} deleted a message`)
                           : m.body}
                         {!isDeleted && (
                           <div className={`mt-1 flex items-center gap-1 text-[10px] ${isMine ? 'justify-end' : 'justify-start'} ${tsCls}`}>
+                            {/* Whose reply this was — the venue inbox is shared. */}
+                            {fromColleague && m.senderName && <span className="font-semibold">{m.senderName}</span>}
                             <span>{clockTime(m.createdAt)}</span>
-                            {isMine && (
+                            {m.mine && (
                               <span
                                 className={`inline-flex items-center gap-0.5 ${m.readByOther ? 'text-[var(--lime)]' : 'text-white/75'}`}
                                 title={receiptLabel}
@@ -533,7 +563,9 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
                         className={`absolute ${isMine ? 'right-0' : 'left-0'} ${menuFlipUp ? 'bottom-full mb-2' : 'top-full mt-2'} rounded-xl bg-neutral-800 text-white shadow-xl border border-white/10 py-2 z-50 min-w-[140px]`}
                         onClick={(e) => e.stopPropagation()}
                       >
-                        {isMine && (
+                        {/* Only your OWN message — sharing the venue inbox doesn't let
+                            you unsend a colleague's reply (the server 403s anyway). */}
+                        {m.mine && (
                           <button
                             type="button"
                             onClick={() => { removeMine(m); setOpenMenuId(null); }}
@@ -588,7 +620,7 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
             className="px-6 pb-1 flex items-center gap-2 overflow-hidden"
           >
             <div className="relative shrink-0">
-              <Avatar src={other?.avatarUrl} name={displayName} size={24} />
+              <Avatar src={avatarSrc} name={displayName} size={24} />
             </div>
             <div className="flex items-center gap-1 rounded-2xl rounded-bl-[7px] border border-slate-200 bg-white px-3 py-2 shadow-sm">
               <span className="flex gap-0.5">

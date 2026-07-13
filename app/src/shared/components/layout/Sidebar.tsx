@@ -11,6 +11,9 @@ interface SidebarProps {
   onTabPress: (tab: TabId) => void;
   onCreate: () => void;
   canCreate: boolean;
+  /** Whether to render the "Create game" CTA at all. Staff are a work account —
+   *  they run the owner's courts, they don't host games from the console. */
+  showCreate?: boolean;
   isLoggedIn: boolean;
   /** Pop one step off the navigation history (universal back). */
   onBack: () => void;
@@ -82,7 +85,7 @@ const organizerTabs: SideTab[] = [
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, isOwner = false, isOrganizer = false }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, isOwner = false, isOrganizer = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
@@ -227,9 +230,11 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
         </button>
       </nav>
 
-      <button className="side-create disabled:cursor-not-allowed disabled:opacity-50" onClick={onCreate} disabled={!canCreate}>
-        <Icon name="plus" size={18} /> Create game
-      </button>
+      {showCreate && (
+        <button className="side-create disabled:cursor-not-allowed disabled:opacity-50" onClick={onCreate} disabled={!canCreate}>
+          <Icon name="plus" size={18} /> Create game
+        </button>
+      )}
 
       <div className="sidebar-spacer" />
 

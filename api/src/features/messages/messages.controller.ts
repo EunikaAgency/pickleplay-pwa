@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { Conversation, Message, conversationKey } from './messages.model.js';
 import { User } from '../auth/auth.model.js';
-import { Venue } from '../venues/venues.model.js';
+import { Venue, VenueStaff } from '../venues/venues.model.js';
 import { Booking } from '../bookings/bookings.model.js';
 import { Notification } from '../interactions/interactions.model.js';
 import { Media } from '../media/media.model.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
-import { hasPermission } from '../../shared/lib/permissions.js';
+import { hasPermission, effectiveOwnerId } from '../../shared/lib/permissions.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 const startSchema = z.object({
@@ -37,22 +37,196 @@ function otherParticipantId(conv: any, me: string): string | null {
   return ids.find((id: string) => id !== me) ?? null;
 }
 
+/**
+ * ── Who works a venue ───────────────────────────────────────────────────────
+ * A message to a venue is addressed to the BUSINESS, not to the owner as a
+ * person — so the whole venue side sees it and any of them can reply. That side
+ * is: the owner, the owner's staff sub-accounts (parentOwnerUserId, the same
+ * lever effectiveOwnerId pulls everywhere else), and anyone holding an active
+ * VenueStaff row for that venue.
+ *
+ * The owner's PERSONAL threads stay private: visibility is granted per venue
+ * (contextId), never per participant — so a thread where the owner is merely a
+ * participant (a plain DM, or their own inquiry to someone else's venue) is
+ * invisible to their staff.
+ */
+
+/** Venue ids the viewer works: every venue their effective owner owns, plus any they staff. */
+async function managedVenueIds(user: any): Promise<string[]> {
+  const ids = new Set<string>();
+  const ownerId = effectiveOwnerId(user);
+  const [owned, staffed] = await Promise.all([
+    ownerId ? Venue.find({ ownerUserId: ownerId }).select('_id').lean() : [],
+    VenueStaff.find({ userId: user.sub, status: 'active' }).select('venueId').lean(),
+  ]) as [any[], any[]];
+  for (const v of owned) ids.add(String(v._id));
+  for (const s of staffed) ids.add(String(s.venueId));
+  return [...ids];
+}
+
+/** Everyone who works this venue — the recipients of a player's message to it. */
+async function venueSideUserIds(venueId: string, ownerId: string | null): Promise<string[]> {
+  const ids = new Set<string>();
+  if (ownerId) ids.add(String(ownerId));
+  const [subAccounts, staffed] = await Promise.all([
+    ownerId ? User.find({ parentOwnerUserId: ownerId }).select('_id').lean() : [],
+    VenueStaff.find({ venueId, status: 'active' }).select('userId').lean(),
+  ]) as [any[], any[]];
+  for (const u of subAccounts) ids.add(String(u._id));
+  for (const s of staffed) ids.add(String(s.userId));
+  return [...ids];
+}
+
+/**
+ * Venue label/image + whether the viewer is on the venue side. A player messaging
+ * a venue must see the VENUE (that's who they think they're talking to), not the
+ * owner's personal name; the venue side sees the player.
+ */
+async function venueContext(conv: any, user: any): Promise<{
+  label: string | null; imageUrl: string | null; ownerId: string | null; viewerIsVenueSide: boolean;
+}> {
+  const empty = { label: null, imageUrl: null, ownerId: null, viewerIsVenueSide: false };
+  if (conv.contextType !== 'venue' || !conv.contextId) return empty;
+  const venue: any = await Venue.findById(conv.contextId).select('displayName mainImageUrl ownerUserId').lean();
+  if (!venue) return empty;
+  // mainImageUrl (CSV import) is the base; user-uploaded Media wins — primary first.
+  const media = await Media.find({ ownerType: 'venue', ownerId: String(conv.contextId) }).select('url isPrimary').lean();
+  let imageUrl: string | null = venue.mainImageUrl ?? null;
+  for (const m of media as any[]) {
+    if (!imageUrl || m.isPrimary) imageUrl = m.url;
+  }
+  return {
+    label: venue.displayName ?? null,
+    imageUrl,
+    ownerId: venue.ownerUserId ? String(venue.ownerUserId) : null,
+    viewerIsVenueSide: (await managedVenueIds(user)).includes(String(conv.contextId)),
+  };
+}
+
+/** Participants can always see a thread; a venue thread is also open to its staff. */
+async function canAccess(conv: any, user: any): Promise<boolean> {
+  if ((conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) return true;
+  if (conv.contextType !== 'venue' || !conv.contextId) return false;
+  return (await managedVenueIds(user)).includes(String(conv.contextId));
+}
+
+/**
+ * The other SIDE of the thread — the audience for a read receipt or a typing
+ * indicator. These must never cross within a side: a colleague opening the venue
+ * inbox must not mark the venue's replies "Seen", because the customer hasn't
+ * seen them.
+ */
+async function otherSideUserIds(conv: any, user: any): Promise<string[]> {
+  if (conv.contextType === 'venue' && conv.contextId) {
+    const venue: any = await Venue.findById(conv.contextId).select('ownerUserId').lean();
+    const ownerId = venue?.ownerUserId ? String(venue.ownerUserId) : null;
+    const side = await venueSideUserIds(String(conv.contextId), ownerId);
+    if (side.includes(String(user.sub))) {
+      const pid = playerParticipantId(conv, ownerId);
+      return pid && pid !== String(user.sub) ? [pid] : [];
+    }
+    return side;
+  }
+  const other = otherParticipantId(conv, user.sub);
+  return other ? [other] : [];
+}
+
+/** Everyone who can see the thread — both participants plus the venue's staff. */
+async function threadViewerIds(conv: any): Promise<string[]> {
+  const ids = new Set<string>((conv.participantIds ?? []).map((p: any) => String(p)));
+  if (conv.contextType === 'venue' && conv.contextId) {
+    const venue: any = await Venue.findById(conv.contextId).select('ownerUserId').lean();
+    const side = await venueSideUserIds(String(conv.contextId), venue?.ownerUserId ? String(venue.ownerUserId) : null);
+    for (const uid of side) ids.add(uid);
+  }
+  return [...ids];
+}
+
+/** The player on a venue thread — the participant who isn't the venue's owner. */
+function playerParticipantId(conv: any, ownerId: string | null): string | null {
+  const ids = (conv.participantIds ?? []).map((p: any) => String(p));
+  return ids.find((id: string) => id !== String(ownerId)) ?? ids[0] ?? null;
+}
+
+/**
+ * Announce a player's opening message on a venue thread to everyone who works
+ * that venue — not just the owner, or staff would never learn a customer wrote in.
+ */
+async function announceVenueIntro(opts: {
+  conv: any; senderId: string; venueId: string; venueName: string; messageId: string; body: string; at: Date;
+}): Promise<void> {
+  const { conv, senderId, venueId, venueName, messageId, body, at } = opts;
+  const venue: any = await Venue.findById(venueId).select('ownerUserId').lean();
+  const side = await venueSideUserIds(venueId, venue?.ownerUserId ? String(venue.ownerUserId) : null);
+  const recipients = side.filter((uid) => uid !== String(senderId));
+  if (!recipients.length) return;
+
+  const me: any = await User.findById(senderId).select('displayName avatarUrl').lean();
+  const senderName = me?.displayName || 'Someone';
+  const senderAvatar = me?.avatarUrl ?? null;
+
+  for (const uid of recipients) {
+    publishUserEvent(uid, 'message.created', {
+      conversationId: String(conv._id),
+      message: { id: messageId, senderId: String(senderId), senderName, body, createdAt: at, mine: false, fromVenueSide: false },
+      conversation: {
+        lastBody: body,
+        lastSenderId: String(senderId),
+        lastAt: at,
+        lastDeletedBy: null,
+        otherParticipant: { id: String(senderId), displayName: senderName, avatarUrl: senderAvatar },
+        contextType: 'venue',
+        contextId: venueId,
+        unread: 1,
+      },
+    });
+  }
+  await Promise.all(recipients.map((uid) => notifyUser(uid, {
+    type: 'message',
+    title: `${senderName} · ${venueName}`,
+    body,
+    icon: 'chat',
+    linkUrl: `/messages/${String(conv._id)}`,
+    tag: `message-${String(conv._id)}`,
+  })));
+}
+
 /** When `me` last read `conv` (epoch ms); 0 if never. */
 function readAtMs(conv: any, me: string): number {
   const r = (conv.reads ?? []).find((x: any) => String(x.userId) === me);
   return r?.at ? new Date(r.at).getTime() : 0;
 }
 
+/**
+ * When the far side last read the thread — drives the Seen receipt. The venue
+ * side is a group (owner + staff), so for the player any of them reading counts;
+ * for the venue side only the player's own read mark does (a colleague opening
+ * the thread must not mark the message "Seen" by the customer).
+ */
+function otherSideReadAtMs(conv: any, me: string, playerId: string | null, viewerIsVenueSide: boolean): number {
+  if (viewerIsVenueSide) return playerId ? readAtMs(conv, playerId) : 0;
+  const times = (conv.reads ?? [])
+    .filter((r: any) => String(r.userId) !== me)
+    .map((r: any) => (r.at ? new Date(r.at).getTime() : 0));
+  return times.length ? Math.max(...times) : 0;
+}
+
 // GET /messages/conversations — the current user's threads, newest first, each
 // with the other participant + last-message preview + unread count.
 export async function listConversations(c: any) {
   const user = c.get('user');
-  const convs = await Conversation.find({ participantIds: user.sub, hiddenFor: { $ne: user.sub } }).sort({ lastAt: -1, updatedAt: -1 }).limit(50).lean();
+  // The viewer's own threads, plus every thread addressed to a venue they work —
+  // staff share the venue's inbox. Personal threads are not shared: they match
+  // only via participantIds.
+  const worked = await managedVenueIds(user);
+  const convs = await Conversation.find({
+    $or: [
+      { participantIds: user.sub },
+      ...(worked.length ? [{ contextType: 'venue', contextId: { $in: worked } }] : []),
+    ],
+    hiddenFor: { $ne: user.sub },
+  }).sort({ lastAt: -1, updatedAt: -1 }).limit(50).lean();
   if (!convs.length) return c.json({ data: [] });
-
-  const otherIds = [...new Set(convs.map((cv: any) => otherParticipantId(cv, user.sub)).filter(Boolean))] as string[];
-  const users = otherIds.length ? await User.find({ _id: { $in: otherIds } }).select('displayName avatarUrl lastActiveAt').lean() : [];
-  const userById = new Map((users as any[]).map((u) => [String(u._id), u]));
 
   // Resolve context labels — venue names + booking info — in one batch pass so
   // each conversation row can show where it came from.
@@ -84,6 +258,19 @@ export async function listConversations(c: any) {
   const extraVenues = missingVenueIds.length ? await Venue.find({ _id: { $in: missingVenueIds } }).select('displayName').lean() : [];
   for (const v of extraVenues as any[]) venueById.set(String(v._id), v);
 
+  // Who the viewer is talking to. Staff aren't participants of the venue threads
+  // they can see, so their counterpart is the PLAYER (the participant who isn't
+  // the venue's owner) — never their own owner.
+  const otherIdByConv = new Map<string, string | null>(convs.map((cv: any) => {
+    const isParticipant = (cv.participantIds ?? []).some((p: any) => String(p) === user.sub);
+    if (isParticipant) return [String(cv._id), otherParticipantId(cv, user.sub)];
+    const ownerId = (venueById.get(String(cv.contextId)) as any)?.ownerUserId;
+    return [String(cv._id), playerParticipantId(cv, ownerId ? String(ownerId) : null)];
+  }));
+  const otherIds = [...new Set([...otherIdByConv.values()].filter(Boolean))] as string[];
+  const users = otherIds.length ? await User.find({ _id: { $in: otherIds } }).select('displayName avatarUrl lastActiveAt').lean() : [];
+  const userById = new Map((users as any[]).map((u) => [String(u._id), u]));
+
   function contextLabel(cv: any): string | null {
     if (!cv.contextType || !cv.contextId) return null;
     const cid = String(cv.contextId);
@@ -107,7 +294,7 @@ export async function listConversations(c: any) {
 
   const data = await Promise.all(
     convs.map(async (cv: any) => {
-      const otherId = otherParticipantId(cv, user.sub);
+      const otherId = otherIdByConv.get(String(cv._id)) ?? null;
       const since = new Date(readAtMs(cv, user.sub));
       const unread = await Message.countDocuments({
         conversationId: cv._id,
@@ -127,10 +314,10 @@ export async function listConversations(c: any) {
         contextId: cv.contextId ? String(cv.contextId) : null,
         contextLabel: contextLabel(cv),
         contextImageUrl: cv.contextType === 'venue' && cv.contextId ? (venueImageById.get(String(cv.contextId)) ?? null) : null,
-        /** True when the current user owns this venue — the owner should see the
-         *  player's name + avatar, not the venue's. Players see the venue. */
-        viewerIsOwner: cv.contextType === 'venue' && cv.contextId
-          ? String((venueById.get(String(cv.contextId)) as any)?.ownerUserId) === user.sub
+        /** True when the viewer works this venue (owner or staff) — they should see
+         *  the player's name + avatar, so they know WHO messaged. Players see the venue. */
+        viewerIsVenueSide: cv.contextType === 'venue' && cv.contextId
+          ? worked.includes(String(cv.contextId))
           : false,
       };
     }),
@@ -184,31 +371,10 @@ export async function startConversation(c: any) {
       conv.lastDeletedBy = null;
       await conv.save();
 
-      // Notify the recipient about this first message.
-      const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
-      const senderName = (me as any)?.displayName || 'Someone';
-      const senderAvatar = (me as any)?.avatarUrl ?? null;
-      publishUserEvent(userId, 'message.created', {
-        conversationId: String(conv._id),
-        message: { id: String(msg._id), senderId: String(user.sub), body: introBody, createdAt: now, mine: false },
-        conversation: {
-          lastBody: introBody,
-          lastSenderId: String(user.sub),
-          lastAt: now,
-          lastDeletedBy: null,
-          otherParticipant: { id: String(user.sub), displayName: senderName, avatarUrl: senderAvatar },
-          contextType: 'venue',
-          contextId: contextId,
-          unread: 1,
-        },
-      });
-      await notifyUser(userId, {
-        type: 'message',
-        title: `${senderName} · ${venueName}`,
-        body: introBody,
-        icon: 'chat',
-        linkUrl: `/messages/${String(conv._id)}`,
-        tag: `message-${String(conv._id)}`,
+      // Tell the whole venue side — the owner AND their staff — a customer wrote in.
+      await announceVenueIntro({
+        conv, senderId: user.sub, venueId: contextId, venueName,
+        messageId: String(msg._id), body: introBody, at: now,
       });
     }
   }
@@ -222,10 +388,17 @@ export async function getConversation(c: any) {
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   const conv = await Conversation.findById(id);
-  if (!conv || !(conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) {
+  if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
-  const otherId = otherParticipantId(conv, user.sub);
+
+  // Venue-scoped thread: the player is talking to the VENUE, not to a stranger —
+  // so they get the venue's name + image, while the venue side (owner + staff)
+  // sees the player. Same model as listConversations.
+  const ctx = await venueContext(conv, user);
+  // Staff aren't participants, so their counterpart is the player, not the owner.
+  const isParticipant = (conv.participantIds ?? []).some((p: any) => String(p) === user.sub);
+  const otherId = isParticipant ? otherParticipantId(conv, user.sub) : playerParticipantId(conv, ctx.ownerId);
   const other = otherId ? await User.findById(otherId).select('displayName avatarUrl lastActiveAt').lean() : null;
   const messages = await Message.find({ conversationId: conv._id }).sort({ createdAt: 1 }).limit(200).lean();
 
@@ -249,8 +422,9 @@ export async function getConversation(c: any) {
     { $set: { isRead: true } },
   );
 
-  if (otherId) {
-    publishUserEvent(otherId, 'message.read', {
+  // Tell the other SIDE we read it (a colleague's read isn't the customer's).
+  for (const uid of await otherSideUserIds(conv, user)) {
+    publishUserEvent(uid, 'message.read', {
       conversationId: String(conv._id),
       readerId: user.sub,
       readAt: now,
@@ -274,23 +448,39 @@ export async function getConversation(c: any) {
     }];
   }));
 
+  // Name every sender — a venue inbox is shared, so staff must be able to tell
+  // which colleague already answered (they all read as the venue to the player).
+  const senderIds = [...new Set(messages.map((m: any) => String(m.senderId)))];
+  const senders = senderIds.length ? await User.find({ _id: { $in: senderIds } }).select('displayName').lean() : [];
+  const senderNameById = new Map((senders as any[]).map((u) => [String(u._id), u.displayName ?? 'Player']));
+
+  // A venue thread has exactly one player; anyone else who posts in it speaks for
+  // the venue (the owner, or a staff member replying on their behalf).
+  const playerId = ctx.label ? playerParticipantId(conv, ctx.ownerId) : null;
+  const otherReadAt = otherSideReadAtMs(conv, user.sub, playerId, ctx.viewerIsVenueSide);
+
   return c.json({
     data: {
       id: String(conv._id),
       otherParticipant: personView(other) ?? (otherId ? { id: otherId, displayName: 'Player', avatarUrl: null } : null),
       contextType: conv.contextType ?? null,
       contextId: conv.contextId ? String(conv.contextId) : null,
+      contextLabel: ctx.label,
+      contextImageUrl: ctx.imageUrl,
+      viewerIsVenueSide: ctx.viewerIsVenueSide,
       messages: messages.map((m: any) => {
         const mine = String(m.senderId) === user.sub;
-        const otherReadAt = otherId ? readAtMs(conv, otherId) : 0;
         const messageCreatedAt = m.createdAt ? new Date(m.createdAt).getTime() : 0;
         const readByOther = mine && otherReadAt > 0 && messageCreatedAt > 0 && messageCreatedAt <= otherReadAt;
         return {
           id: String(m._id),
           senderId: String(m.senderId),
+          senderName: senderNameById.get(String(m.senderId)) ?? 'Player',
           body: m.body,
           createdAt: m.createdAt,
           mine,
+          /** Sent by the venue (owner or staff) — so staff see it as outgoing, not as the player. */
+          fromVenueSide: playerId != null && String(m.senderId) !== playerId,
           deleted: m.deleted === true,
           replyToMessageId: m.replyToMessageId ? String(m.replyToMessageId) : null,
           replyTo: m.replyToMessageId ? (replyById.get(String(m.replyToMessageId)) ?? null) : null,
@@ -311,7 +501,7 @@ export async function sendMessage(c: any) {
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   const conv = await Conversation.findById(id);
-  if (!conv || !(conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) {
+  if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
   const { body, replyToMessageId } = sendSchema.parse(await c.req.json());
@@ -352,58 +542,87 @@ export async function sendMessage(c: any) {
   ] as any;
   await conv.save();
 
-  // Notify the recipient (in-app inbox + push + live unread badge).
-  const recipientId = otherParticipantId(conv, user.sub);
-  if (recipientId) {
+  // ── Fan the message out ──────────────────────────────────────────────────
+  // A venue thread is a shared inbox: it's seen by the player AND everyone who
+  // works the venue. Everyone but the sender gets the realtime push (so open
+  // chats and unread badges stay in sync), but a NOTIFICATION only crosses the
+  // player↔venue line — a colleague answering a customer shouldn't ping the rest
+  // of the staff as if it were new work.
+  const ctx = await venueContext(conv, user);
+  const venueSide = ctx.label && conv.contextId
+    ? await venueSideUserIds(String(conv.contextId), ctx.ownerId)
+    : [];
+  const playerId = ctx.label ? playerParticipantId(conv, ctx.ownerId) : null;
+  const senderIsVenueSide = venueSide.includes(String(user.sub));
+
+  const viewers = ctx.label
+    ? [...new Set([playerId, ...venueSide].filter(Boolean) as string[])]
+    : (conv.participantIds ?? []).map((p: any) => String(p));
+  const liveTo = viewers.filter((uid) => uid !== String(user.sub));
+  const notifyTo = ctx.label
+    ? (senderIsVenueSide ? (playerId ? [playerId] : []) : venueSide.filter((uid) => uid !== String(user.sub)))
+    : liveTo;
+
+  if (liveTo.length || notifyTo.length) {
     const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
     const senderName = (me as any)?.displayName || 'Someone';
     const senderAvatar = (me as any)?.avatarUrl ?? null;
+    // The venue side's list rows are headed by the PLAYER (who messaged), not by
+    // whichever colleague last replied.
+    const player = playerId && playerId !== String(user.sub)
+      ? await User.findById(playerId).select('displayName avatarUrl').lean()
+      : null;
 
-    // Live-push the message itself to the recipient's open chat (realtime),
-    // before the notification so an open thread updates instantly. `mine` is
-    // false from the recipient's perspective. Also include enough conversation-
-    // summary data so the conversation list can surgically upsert without a
-    // full re-fetch (lastBody, lastAt, otherParticipant, context).
-    publishUserEvent(recipientId, 'message.created', {
-      conversationId: String(conv._id),
-      message: {
-        id: String(msg._id),
-        senderId: String(user.sub),
-        body,
-        createdAt: now,
-        mine: false,
-        replyToMessageId: replyToMessageId || null,
-        replyTo,
-      },
-      // Conversation-summary fields for the recipient's conversation list so
-      // it can insert/update the row without re-fetching the full list.
-      conversation: {
-        lastBody: body,
-        lastSenderId: String(user.sub),
-        lastAt: now,
-        lastDeletedBy: null,
-        otherParticipant: {
-          id: String(user.sub),
-          displayName: senderName,
-          avatarUrl: senderAvatar,
+    const message = {
+      id: String(msg._id),
+      senderId: String(user.sub),
+      senderName,
+      body,
+      createdAt: now,
+      mine: false,
+      fromVenueSide: senderIsVenueSide,
+      replyToMessageId: replyToMessageId || null,
+      replyTo,
+    };
+
+    // Live-push to every other viewer, before the notification so an open thread
+    // updates instantly. The conversation summary rides along so their list can
+    // upsert the row without re-fetching.
+    for (const uid of liveTo) {
+      const recipientIsVenueSide = venueSide.includes(uid);
+      publishUserEvent(uid, 'message.created', {
+        conversationId: String(conv._id),
+        message,
+        conversation: {
+          lastBody: body,
+          lastSenderId: String(user.sub),
+          lastAt: now,
+          lastDeletedBy: null,
+          otherParticipant: recipientIsVenueSide && player
+            ? { id: String(playerId), displayName: (player as any).displayName ?? 'Player', avatarUrl: (player as any).avatarUrl ?? null }
+            : { id: String(user.sub), displayName: senderName, avatarUrl: senderAvatar },
+          contextType: conv.contextType ?? null,
+          contextId: conv.contextId ? String(conv.contextId) : null,
+          // Unread from THIS recipient's perspective. A colleague's reply is the
+          // venue's own answer — it doesn't leave unread work for the rest of them.
+          unread: senderIsVenueSide && recipientIsVenueSide ? 0 : 1,
         },
-        contextType: conv.contextType ?? null,
-        contextId: conv.contextId ? String(conv.contextId) : null,
-        // Unread count from the recipient's perspective: the recipient hasn't
-        // read this yet, so it's at least 1 (the client adds it to any existing
-        // unread count for the thread).
-        unread: 1,
-      },
-    });
+      });
+    }
+
     const preview = body.length > 120 ? `${body.slice(0, 117)}…` : body;
-    await notifyUser(recipientId, {
+    // On a venue thread the player is talking to the venue, so a reply from the
+    // owner (or their staff) is titled with the venue — "Oscar Walker" means
+    // nothing to them. The venue side is titled with the player who messaged.
+    const title = senderIsVenueSide && ctx.label ? ctx.label : senderName;
+    await Promise.all(notifyTo.map((uid) => notifyUser(uid, {
       type: 'message',
-      title: senderName,
+      title,
       body: preview,
       icon: 'chat',
       linkUrl: `/messages/${String(conv._id)}`,
       tag: `message-${String(conv._id)}`,
-    });
+    })));
   }
 
   return c.json({
@@ -413,6 +632,7 @@ export async function sendMessage(c: any) {
       body,
       createdAt: now,
       mine: true,
+      fromVenueSide: senderIsVenueSide,
       replyToMessageId: replyToMessageId || null,
       replyTo,
       readByOther: false,
@@ -428,7 +648,7 @@ export async function markConversationRead(c: any) {
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   const conv = await Conversation.findById(id);
-  if (!conv || !(conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) {
+  if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
 
@@ -445,9 +665,8 @@ export async function markConversationRead(c: any) {
     { $set: { isRead: true } },
   );
 
-  const otherId = otherParticipantId(conv, user.sub);
-  if (otherId) {
-    publishUserEvent(otherId, 'message.read', {
+  for (const uid of await otherSideUserIds(conv, user)) {
+    publishUserEvent(uid, 'message.read', {
       conversationId: String(conv._id),
       readerId: user.sub,
       readAt: now,
@@ -465,12 +684,11 @@ export async function sendTyping(c: any) {
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   const conv = await Conversation.findById(id);
-  if (!conv || !(conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) {
+  if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
-  const otherId = otherParticipantId(conv, user.sub);
-  if (otherId) {
-    publishUserEvent(otherId, 'message.typing', {
+  for (const uid of await otherSideUserIds(conv, user)) {
+    publishUserEvent(uid, 'message.typing', {
       conversationId: String(conv._id),
       userId: user.sub,
     });
@@ -486,7 +704,7 @@ export async function deleteConversation(c: any) {
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   const conv = await Conversation.findById(id);
-  if (!conv || !(conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) {
+  if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
   conv.hiddenFor = [
@@ -508,11 +726,12 @@ export async function deleteMessage(c: any) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Message not found' } }, 404);
   }
   const conv = await Conversation.findById(id);
-  if (!conv || !(conv.participantIds ?? []).some((p: any) => String(p) === user.sub)) {
+  if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
   const msg = await Message.findOne({ _id: msgId, conversationId: conv._id });
   if (!msg) return c.json({ error: { code: 'NOT_FOUND', message: 'Message not found' } }, 404);
+  // Sharing the venue inbox doesn't extend to unsending a colleague's message.
   if (String((msg as any).senderId) !== user.sub) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'You can only delete your own messages' } }, 403);
   }
@@ -543,10 +762,8 @@ export async function deleteMessage(c: any) {
   }
   await conv.save();
 
-  // Tell BOTH participants so their open chat + conversation list update live.
-  // Include the updated conversation preview so the list can surgically update
-  // without a full re-fetch.
-  const otherId = otherParticipantId(conv, user.sub);
+  // Tell everyone who can see the thread — both participants and, on a venue
+  // thread, the staff sharing the inbox — so their open chat + list update live.
   const deletedBy = String((msg as any).senderId);
   const convPreview = {
     lastBody: conv.lastBody ?? null,
@@ -556,8 +773,8 @@ export async function deleteMessage(c: any) {
     deletedBy: deletedBy !== user.sub ? deletedBy : user.sub,
   };
   const payload = { conversationId: String(conv._id), messageId: String(msgId), conversation: convPreview };
-  publishUserEvent(user.sub, 'message.deleted', payload);
-  if (otherId) publishUserEvent(otherId, 'message.deleted', payload);
+  const viewers = new Set([String(user.sub), ...(await threadViewerIds(conv))]);
+  for (const uid of viewers) publishUserEvent(uid, 'message.deleted', payload);
 
   return c.json({ data: { ok: true } });
 }
@@ -600,9 +817,9 @@ export async function getVenueConversation(c: any) {
     });
     created = true;
 
-    // Auto intro message so the owner sees venue context immediately.
-    const venueName = (venue as any).displayName || 'your venue';
-    const introBody = `Hi, I have a question about ${venueName}.`;
+    // Auto intro message so the venue sees context immediately.
+    const introVenueName = (venue as any).displayName || 'your venue';
+    const introBody = `Hi, I have a question about ${introVenueName}.`;
     const now = new Date();
     const msg = await Message.create({ conversationId: conv._id, senderId: user.sub, body: introBody });
     conv.lastBody = introBody;
@@ -610,30 +827,10 @@ export async function getVenueConversation(c: any) {
     conv.lastAt = now;
     await conv.save();
 
-    const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
-    const senderName = (me as any)?.displayName || 'Someone';
-    const senderAvatar = (me as any)?.avatarUrl ?? null;
-    publishUserEvent(ownerId, 'message.created', {
-      conversationId: String(conv._id),
-      message: { id: String(msg._id), senderId: String(user.sub), body: introBody, createdAt: now, mine: false },
-      conversation: {
-        lastBody: introBody,
-        lastSenderId: String(user.sub),
-        lastAt: now,
-        lastDeletedBy: null,
-        otherParticipant: { id: String(user.sub), displayName: senderName, avatarUrl: senderAvatar },
-        contextType: 'venue',
-        contextId: venueId,
-        unread: 1,
-      },
-    });
-    await notifyUser(ownerId, {
-      type: 'message',
-      title: `${senderName} · ${venueName}`,
-      body: introBody,
-      icon: 'chat',
-      linkUrl: `/messages/${String(conv._id)}`,
-      tag: `message-${String(conv._id)}`,
+    // The owner AND their staff — whoever gets to it first can answer.
+    await announceVenueIntro({
+      conv, senderId: user.sub, venueId, venueName: introVenueName,
+      messageId: String(msg._id), body: introBody, at: now,
     });
   }
 
@@ -653,7 +850,15 @@ export async function getVenueConversation(c: any) {
 // GET /messages/unread-count — total unread messages across the user's threads.
 export async function unreadMessageCount(c: any) {
   const user = c.get('user');
-  const convs = await Conversation.find({ participantIds: user.sub, hiddenFor: { $ne: user.sub } }).select('reads').lean();
+  // Same reach as the inbox: own threads + the venues the viewer works.
+  const worked = await managedVenueIds(user);
+  const convs = await Conversation.find({
+    $or: [
+      { participantIds: user.sub },
+      ...(worked.length ? [{ contextType: 'venue', contextId: { $in: worked } }] : []),
+    ],
+    hiddenFor: { $ne: user.sub },
+  }).select('reads').lean();
   let count = 0;
   await Promise.all(
     convs.map(async (cv: any) => {

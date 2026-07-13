@@ -480,6 +480,11 @@ function AppInner() {
   // allowed because Games > Discover now uses tournaments as structured games.
   const canOpenTournaments = !isOwner && !isAdmin;
   const canSeeTournaments = false;
+  // Staff are a delegated work account — they run the owner's courts, they don't
+  // host games from the console. Role-based, not permission-based: staff hold the
+  // player capabilities (player.games.create etc.) like every other role, so the
+  // Create CTA can't be gated on a permission without taking it from players too.
+  const isStaff = currentUser?.roles.includes('staff') ?? false;
   // Desktop sidebar layout for admin/owner/organizer: the frame cap is lifted so
   // the app can grow past 1024 px, activating the existing @container queries
   // that swap the bottom tab bars for a fixed sidebar.
@@ -761,7 +766,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} showTournaments={canSeeTournaments} isOwner={isOwner} isOrganizer={isOrganizer} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} showTournaments={canSeeTournaments} isOwner={isOwner} isOrganizer={isOrganizer} />
       )}
 
       <main className="app-main">{renderScreen()}</main>

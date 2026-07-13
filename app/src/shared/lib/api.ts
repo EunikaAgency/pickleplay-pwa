@@ -2138,9 +2138,9 @@ export interface ApiConversationSummary {
   contextLabel?: string | null;
   /** Venue image URL (when contextType is 'venue'). Raw path — wrap with apiImageUrl. */
   contextImageUrl?: string | null;
-  /** True when the current user owns this venue — the owner should see the
-   *  player's name + avatar, not the venue info. Players see the venue. */
-  viewerIsOwner?: boolean;
+  /** True when the viewer works this venue (owner or staff) — they see the player's
+   *  name + avatar, so they know WHO messaged. Players see the venue. */
+  viewerIsVenueSide?: boolean;
 }
 
 export interface ApiChatMessage {
@@ -2150,6 +2150,9 @@ export interface ApiChatMessage {
   body: string;
   createdAt?: string;
   mine: boolean;
+  /** Sent by the venue (owner or staff). Staff render these as outgoing — the venue
+   *  inbox is shared, so a colleague's reply is still the venue speaking. */
+  fromVenueSide?: boolean;
   deleted?: boolean;
   replyToMessageId?: string | null;
   replyTo?: ApiChatMessage | null;
@@ -2164,6 +2167,13 @@ export interface ApiConversation {
   /** When the conversation was started from a venue page. */
   contextType?: string | null;
   contextId?: string | null;
+  /** Resolved venue name. null = direct message. */
+  contextLabel?: string | null;
+  /** Venue image URL (when contextType is 'venue'). Raw path — wrap with apiImageUrl. */
+  contextImageUrl?: string | null;
+  /** True when the viewer works this venue (owner or staff) — they see the player,
+   *  the player sees the venue. */
+  viewerIsVenueSide?: boolean;
 }
 
 export interface ApiVenueConversation {

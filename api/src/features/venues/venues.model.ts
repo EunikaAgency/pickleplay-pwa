@@ -407,6 +407,9 @@ const venueStaffSchema = new Schema({
 }, { timestamps: true });
 
 venueStaffSchema.index({ venueId: 1, userId: 1, staffRole: 1 }, { unique: true });
+// "Which venues does this user work?" — the venue-inbox lookup on every message
+// list/send; not servable from the compound index above (wrong prefix).
+venueStaffSchema.index({ userId: 1, status: 1 });
 
 export const VenueStaff = model('VenueStaff', venueStaffSchema);
 
