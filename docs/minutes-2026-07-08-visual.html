@@ -64,9 +64,9 @@
   .kv td:first-child{ background:var(--wash); font-weight:700; color:var(--olive); width:34%; }
   .st-done{ color:#2E7D32; font-weight:700; }
   .st-part{ color:#B26A00; font-weight:700; }
-  .st-pend{ color:#C0392B; font-weight:700; }
+  .st-pend{ color:#B26A00; font-weight:700; }
   .st-expl{ color:#7A5CB8; font-weight:700; }
-  .st-corr{ color:#C0392B; font-weight:700; }
+  .st-corr{ color:#B26A00; font-weight:700; }
 
   /* ── Callouts ──────────────────────────────────────── */
   .callout{ border:1.6px solid var(--olive); background:var(--wash); border-radius:3px; padding:3.4mm 4mm; margin:4mm 0; page-break-inside:avoid; }
@@ -92,12 +92,12 @@
   /* status labels for captions — see the legend in the Visual context note */
   .lbl{ display:inline-block; font-family:'Fredoka'; font-size:7.6pt; font-weight:600; letter-spacing:.03em;
         padding:.6mm 2mm; border-radius:2px; margin-right:2mm; vertical-align:1px; white-space:nowrap; }
-  .lbl-cur { background:#E4EBF5; color:#284C7A; }   /* Current state       */
-  .lbl-mtg { background:#EAE3F7; color:#4A2E86; }   /* Meeting direction   */
-  .lbl-post{ background:#DFF0DC; color:#1F5A2B; }   /* Post-meeting update */
-  .lbl-prog{ background:#FFEFD6; color:#8A5410; }   /* Still in progress   */
-  .lbl-cmp { background:#E0EFF1; color:#1F5A62; }   /* Comparison          */
-  .lbl-gap { background:#FBE2E2; color:#9B2C20; }   /* Current gap         */
+  .lbl-cur { background:#E4EBF5; color:#284C7A; }   /* Current experience   */
+  .lbl-mtg { background:#EAE3F7; color:#4A2E86; }   /* Design direction     */
+  .lbl-post{ background:#DFF0DC; color:#1F5A2B; }   /* Post-meeting progress*/
+  .lbl-prog{ background:#FFEFD6; color:#8A5410; }   /* Work in progress     */
+  .lbl-cmp { background:#E0EFF1; color:#1F5A62; }   /* Related example      */
+  .lbl-gap { background:#FFF1DC; color:#8A5410; }   /* For team alignment   */
 
   .legend{ display:flex; flex-wrap:wrap; gap:1.5mm 3mm; margin:2.5mm 0 0; font-size:8.6pt; color:var(--muted); }
   .legend span.i{ display:block; }
@@ -151,7 +151,7 @@
   <div class="meta">
     <p><b>Meeting held: Wednesday, 8 July 2026</b></p>
     <p>Status reviewed after development work on 9–10 July 2026</p>
-    <p>Prepared for the PickleBallers project team</p>
+    <p>Prepared for the PickleBallers Team</p>
   </div>
   <div class="note">
     This document combines the Wednesday discussion with the actual state of the application as reviewed on
@@ -164,20 +164,19 @@
 </section>
 
 <!-- ══════════════════ VISUAL CONTEXT NOTE ══════════════════ -->
-<div class="callout amber" style="margin-top:0">
-  <div class="ttl">Visual context note</div>
-  <p>Screenshots in this document show the <b>current state of the PickleBallers application at the time of
-  documentation</b>. Since development continued after the meeting, some visuals may differ from what was discussed
-  on Wednesday or from the final product direction.</p>
-  <p style="margin-top:2.4mm">They are not a visual record of the meeting. To make the difference explicit, every
-  screenshot carries one of these labels:</p>
+<div class="callout" style="margin-top:0">
+  <div class="ttl">Visual context</div>
+  <p>The screenshots in this document reflect the application <b>during active development after the meeting</b>.
+  Some interfaces may already include post-meeting updates, or may continue to evolve as the team confirms the
+  final product direction.</p>
+  <p style="margin-top:2.4mm">Each screenshot carries a short label so it is clear what it is showing:</p>
   <div class="legend" style="margin-top:2.4mm">
-    <span class="i"><span class="lbl lbl-cur">Current state</span> the application after post-meeting development</span>
-    <span class="i"><span class="lbl lbl-post">Post-meeting update</span> a feature added or changed after the meeting</span>
-    <span class="i"><span class="lbl lbl-mtg">Meeting direction</span> the area discussed, though the interface may now differ</span>
-    <span class="i"><span class="lbl lbl-prog">Still in progress</span> the closest current build; the final flow is unsettled</span>
-    <span class="i"><span class="lbl lbl-cmp">Comparison</span> a related existing feature, shown to explain a proposal</span>
-    <span class="i"><span class="lbl lbl-gap">Current gap</span> where the build differs from the agreed direction</span>
+    <span class="i"><span class="lbl lbl-cur">Current experience</span> how the application works today</span>
+    <span class="i"><span class="lbl lbl-post">Post-meeting progress</span> an update introduced after the discussion</span>
+    <span class="i"><span class="lbl lbl-mtg">Design direction</span> an area being refined based on the meeting</span>
+    <span class="i"><span class="lbl lbl-prog">Work in progress</span> the current foundation for a feature still being developed</span>
+    <span class="i"><span class="lbl lbl-cmp">Related example</span> an existing interface that may help guide a future feature</span>
+    <span class="i"><span class="lbl lbl-gap">For team alignment</span> a flow to confirm before the next design phase</span>
   </div>
 </div>
 
@@ -185,11 +184,11 @@
 <h2>1. Meeting Information</h2>
 <table class="kv">
   <tr><td>Meeting date</td><td>Wednesday, 8 July 2026, evening</td></tr>
-  <tr><td>Participants</td><td>Marvin and the PickleBallers project team</td></tr>
+  <tr><td>Participants</td><td>The PickleBallers project team and stakeholders</td></tr>
   <tr><td>Primary purpose</td><td>To align the direction of the player app, Open Play, venue operations, staff access, social features, coaching, and payment-related flows.</td></tr>
   <tr><td>Status basis</td><td>Meeting discussion plus the actual implementation completed or reviewed after Thursday and Friday development work.</td></tr>
   <tr><td>Evidence basis</td><td>All screenshots were captured from the running application on 12 July 2026 — the player app on a 390&nbsp;×&nbsp;844 phone viewport, and the owner/staff console at 1440&nbsp;×&nbsp;900. Nothing shown is a mock-up. Because they were taken <b>after two further days of development</b>, they show the product as it stands today, not as it stood at the meeting.</td></tr>
-  <tr><td>Document purpose</td><td>To give Marvin, the team, and other stakeholders a complete but readable record of what was discussed, what has shipped, what remains incomplete, and what requires a business decision.</td></tr>
+  <tr><td>Document purpose</td><td>To give the team and other stakeholders a clear, readable record of what was discussed, what has progressed since, what is currently being refined, and what requires collective alignment for the next phase.</td></tr>
 </table>
 
 <!-- ══════════════════ 2. EXEC SUMMARY ══════════════════ -->
@@ -203,31 +202,33 @@ receive through calls, Messenger, social media, and walk-ins.</p>
 was reorganized, the Discover listing gained a real relevance system, manual reservations were added, venue staff
 permissions were restricted, Social became more prominent, and coaching became available from the player homepage.</p>
 
-<div class="callout red">
-  <div class="ttl">Most important issue requiring a decision</div>
-  <p>The current Open Play flow is built around a simple “Interested” action. It does not contain the lobby,
-  roster, approval stages, or Messenger-style group chat discussed during the meeting. Adding those
-  now would change the newly completed flow, so the team must align on the direction before proceeding.
-  <b>See section 7 for the screenshots that show this side by side.</b></p>
+<div class="callout amber">
+  <div class="ttl">The most important direction to confirm</div>
+  <p>The current Open Play experience uses a lightweight “I’m Interested” flow, which gives players a fast, low-friction
+  way to signal that they are coming. The lobby, roster, approval stages, and Messenger-style group chat discussed at
+  the meeting represent a fuller participation experience that can be introduced once the team confirms the preferred
+  direction. Because it would build on the flow just completed, it is worth settling early.
+  <b>Section 7 shows both directions side by side.</b></p>
 </div>
 
-<p>The second major gap is player eligibility. The meeting clearly raised women-only, men-only, skill-based, and
-similar restrictions. These rules do not yet exist in the current application, which means restricted sessions
-cannot be properly created or enforced.</p>
+<p>The second area to shape is player eligibility. Options such as women-only, men-only, open-to-all, and
+skill-based participation are part of the next refinement phase. They will require agreement on how restricted
+sessions should appear and behave before they are built.</p>
 
-<p>The remaining open areas are mainly business decisions rather than simple interface fixes: who pays for
-different types of Open Play, whether every Open Play needs a lobby, how coach session payments and
-commissions should work, and how eligibility should affect visibility and joining.</p>
+<p>The remaining open areas are mainly business decisions rather than interface work: who pays for the different
+types of Open Play, whether every Open Play should carry a lobby, how coach session payments and commissions
+should work, and how eligibility should affect visibility and joining. Each is ready to move as soon as the
+direction is agreed.</p>
 
 <div class="callout amber">
-  <div class="ttl">Two corrections to the previous status report <span class="newbadge">NEW</span></div>
-  <p>Reviewing the running application against the earlier written status turned up two items that were reported
-  as finished but are not:</p>
+  <div class="ttl">Two areas that have evolved since the last status note <span class="newbadge">UPDATE</span></div>
+  <p>Reviewing the running application alongside the earlier written status highlighted two areas where the build and
+  the agreed direction have not yet met. Both are small, well understood, and ready for the next iteration:</p>
   <ul class="tight" style="margin-top:2mm;margin-bottom:0">
-    <li><b>Open Play and Events are still inside a dropdown.</b> The meeting specifically asked that they
-      <i>not</i> be hidden in a dropdown. They are. Evidence in <b>section 3.4</b>.</li>
-    <li><b>Venue staff can still see venue revenue.</b> The Reports page is correctly blocked, but the staff
-      home screen shows monthly and weekly revenue. Evidence in <b>section 6</b>.</li>
+    <li><b>Open Play and Events are currently selected through a dropdown.</b> The meeting favoured making both
+      visible side by side, so surfacing them as tabs is a natural next refinement. See <b>section 3.4</b>.</li>
+    <li><b>Venue staff can currently see venue revenue on their home screen.</b> The Reports page is already
+      owner-only; aligning the dashboard with the same rule is a small, contained follow-up. See <b>section 6</b>.</li>
   </ul>
 </div>
 
@@ -267,7 +268,7 @@ and <b>Find Coach</b>. The function is aligned with the discussion, but the fina
       <circle class="an-ring" cx="571" cy="1587" r="34"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting update</span><b>Player home, as it ships today.</b> The three quick actions
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting progress</span><b>Player home, as it ships today.</b> The three quick actions
     read <b>Play</b>, <b>Book Court</b> and <b>Find Coach</b> — the meeting’s wording was “Open Play / Book a Court /
     Get a Coach”. The circled badge on the Social tab is the new pending friend-request count.</figcaption>
 </figure>
@@ -286,15 +287,16 @@ any sessions.</p>
 <p>Open Play covers casual or semi-structured sessions that may be created by ordinary players, venue owners, or
 organizers. Events cover more formal activities that may involve mechanics, brackets, categories, registration
 rules, and organizer control.</p>
-<p>The meeting agreed that the distinction should be visible through tabs or icons, <b>not hidden inside a
-dropdown</b>.</p>
+<p>The meeting agreed that the distinction should be clearly visible — shown as tabs, buttons or icons rather
+than tucked inside a dropdown.</p>
 
-<div class="callout red">
-  <div class="ttl">Correction — this was previously reported as done, and it is not <span class="newbadge">NEW</span></div>
-  <p>Open Play and Events are selected through a <b>dropdown</b>. Tapping it opens a small menu containing the two
-  options. The visible tabs on this screen (Discover / Joined / Manage) switch the <i>view</i>, not the section —
-  so a player who never opens the dropdown may not realise Events exists at all. This is precisely the outcome the
-  meeting asked the team to avoid.</p>
+<div class="callout amber">
+  <div class="ttl">For team alignment — surfacing Events alongside Open Play</div>
+  <p>In the current build, Open Play and Events are selected through a <b>dropdown</b>. Tapping it opens a short menu
+  containing the two options. The visible tabs on this screen (Discover / Joined / Manage) switch the <i>view</i>
+  rather than the section, so a player who does not open the dropdown may not notice that Events exists.</p>
+  <p style="margin-top:2mm">The meeting favoured showing both options side by side, so promoting them to visible tabs
+  is a straightforward next refinement. The screenshots below show the current starting point.</p>
 </div>
 
 <div class="phone-pair">
@@ -306,7 +308,7 @@ dropdown</b>.</p>
       <rect class="an-box" x="26" y="437" width="728" height="88" rx="44" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">Current gap</span><b>Closed state.</b> The red outline is the section control —
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">For team alignment</span><b>Closed state.</b> The red outline is the section control —
     it reads only “Open Play”. Events is not visible anywhere. The blue outline is the tab row, which switches
     <i>view</i> (Discover / Joined / Manage), not section.</figcaption>
 </figure>
@@ -317,7 +319,7 @@ dropdown</b>.</p>
       <rect class="an-box-lg" x="30" y="420" width="720" height="212" rx="16"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">Current gap</span><b>Open state.</b> Only after tapping does the menu reveal
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">For team alignment</span><b>Open state.</b> Only after tapping does the menu reveal
     <b>Events</b> and <b>Open Play</b>. The meeting asked for these to be visible tabs, buttons or icons.</figcaption>
 </figure>
 </div>
@@ -379,7 +381,7 @@ date and time, and a fill bar showing remaining spots.</p>
       <rect class="an-box" x="272" y="866" width="470" height="146" rx="10"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting update</span><b>The Discover feed, ranked by relevance.</b> Discover opens by
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting progress</span><b>The Discover feed, ranked by relevance.</b> Discover opens by
     default (circled). Sorting is set to <b>Relevance</b> (top right). Each card now carries the practical decision
     details the meeting asked for — venue, distance, skill band, price and host — plus a fill bar and spots count
     (“7/13”). Note the Joined and Invites tabs are hidden because this player has none.</figcaption>
@@ -391,9 +393,9 @@ date and time, and a fill bar showing remaining spots.</p>
 <b>Spots left</b>, and <b>Recently added</b>.</p>
 <p>The following filters are currently available: date (today, tomorrow, weekend, or a selected date), skill level,
 play type, sessions with openings, and distance.</p>
-<p>The meeting also discussed additional filters that have <b>not</b> yet been completed, including gender eligibility,
-free or paid sessions, venue or location, public or invitation-only sessions, and recurring or one-time sessions.
-The screenshot below shows the filter sheet exactly as it ships — those options are simply not there yet.</p>
+<p>The meeting also discussed additional filters that are planned for a following phase: gender eligibility, free or
+paid sessions, venue or location, public or invitation-only sessions, and recurring or one-time sessions. The
+screenshot opposite shows today’s filter sheet, which provides the foundation these will extend.</p>
 <p>The filters were designed not to dominate the listing. Active filters are visible, distance is no longer applied
 invisibly by default, and the player can recover easily when a filter returns no results.</p>
 
@@ -405,7 +407,7 @@ invisibly by default, and the player can recover easily when a filter returns no
       <rect class="an-box" x="414" y="730" width="340" height="392" rx="16"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting update</span><b>The sort menu.</b> All five agreed options are present and
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting progress</span><b>The sort menu.</b> All five agreed options are present and
     working: Relevance, Start time, Distance, Spots left, Recently added.</figcaption>
 </figure>
 <figure>
@@ -417,7 +419,7 @@ invisibly by default, and the player can recover easily when a filter returns no
       <text class="an-txt" x="391" y="1586" font-size="23" text-anchor="middle">No gender / paid / invite-only filter yet</text>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">Current gap</span><b>The filter sheet.</b> When, Skill level, Play type and Distance
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">For team alignment</span><b>The filter sheet.</b> When, Skill level, Play type and Distance
     are live. The filters the meeting asked for but which do not exist yet — gender eligibility, free vs paid,
     public vs invitation-only, recurring vs one-time — are absent.</figcaption>
 </figure>
@@ -428,16 +430,19 @@ invisibly by default, and the player can recover easily when a filter returns no
 included women-only, men-only, open-to-everyone, beginner-only, and sessions intended for specific skill levels.</p>
 
 <div class="callout amber">
-  <div class="ttl">Current gap</div>
-  <p>The current application has <b>no working gender or general eligibility rule</b> for Open Play. A host cannot
-  create a women-only or men-only session, and the application cannot prevent an ineligible player from joining.
-  There is no such field on the session, no such filter in the sheet above, and no such check when a player joins.
-  This remains one of the most important unfinished items.</p>
+  <div class="ttl">Next design phase</div>
+  <p>Eligibility options such as women-only, men-only, open-to-all, and skill-based participation are part of the
+  next refinement phase. They are not yet present in the current build — a session does not carry an eligibility
+  setting, the filter sheet does not offer one, and joining is not yet restricted by it.</p>
+  <p style="margin-top:2mm">Because eligibility touches the listing, the filters, the ranking and the join action at
+  once, it benefits from being agreed as a set before development begins. It is one of the most valuable items in
+  the next phase.</p>
 </div>
 
-<p>The team must confirm whether ineligible sessions should be hidden completely or remain visible but marked as
-unavailable. That decision affects Discover, filtering, ranking, and the join action. The diagram below sets out
-the two options — <b>neither is built yet</b>.</p>
+<p>The team should confirm whether ineligible sessions are hidden entirely or remain visible but marked as
+unavailable, since that shapes Discover, the filters, the ranking and the join action together. The diagram below
+illustrates the flow and the choice to be made; it is an illustrative concept rather than a screen in the product
+today.</p>
 
 <figure class="avoid">
   <div class="shot" style="padding:4mm 3mm; background:#FBFCF7;">
@@ -483,7 +488,7 @@ the two options — <b>neither is built yet</b>.</p>
       <text class="cd-m" x="512" y="118">Affects Discover, filters, ranking and the join button.</text>
     </svg>
   </div>
-  <figcaption><span class="figtag con">Conceptual — not built</span><span class="lbl lbl-mtg">Meeting direction</span><b>How eligibility would work.</b> A diagram, not a
+  <figcaption><span class="figtag con">Concept</span><span class="lbl lbl-mtg">Design direction</span><b>How eligibility would work.</b> A diagram, not a
     screen: none of this exists in the application today. The fork on the right is the decision the team needs to make.</figcaption>
 </figure>
 
@@ -522,7 +527,7 @@ reservations.</p>
       <rect class="an-box" x="1712" y="262" width="1128" height="120" rx="12" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-post">Post-meeting update</span><b>The owner Manual Reservation screen (owner console, 1440&nbsp;px).</b>
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-post">Post-meeting progress</span><b>The owner Manual Reservation screen (owner console, 1440&nbsp;px).</b>
     The owner picks the venue and court, sets date and time, names the off-platform customer, then tags
     <b>how they booked</b> (Walk-in / Phone / Messenger / Instagram / Other) and <b>how they paid</b>
     (Cash / GCash / Transfer / Card). The blue panel on the right lists reservations across all of the owner’s venues.</figcaption>
@@ -547,7 +552,7 @@ record a second booking over an occupied slot is refused by the server, so the c
       <text class="an-txt" x="2090" y="692" font-size="31" text-anchor="middle">Manual + blocked slots held</text>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current state</span><b>The court calendar for Monday 13 July.</b> The two blue cells are
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current experience</span><b>The court calendar for Monday 13 July.</b> The two blue cells are
     manual reservations (a Messenger booking at 6&nbsp;PM and a walk-in at 9&nbsp;AM); the red cell is a maintenance
     block at noon. The legend below the grid distinguishes games, private bookings, reserved and blocked slots, so a
     manually-entered booking is identifiable. Re-booking an occupied slot is rejected by the server, which is how
@@ -557,10 +562,10 @@ record a second booking over an occupied slot is refused by the server, so the c
 <h3>5.3 Recurring Open Play</h3>
 <p>The meeting added recurring Open Play as a requirement because many venues and organizers run the same
 session every week or on selected days.</p>
-<p>Recurring sessions are <b>partly</b> available today: organizers have a “Recurring sessions” screen where they
-can create a repeating series that generates individual weekly sessions. However, ordinary venue owners cannot
-create recurring Open Play from their own console, and the system does not yet offer complete controls for
-changing only one occurrence, future occurrences, or the whole series.</p>
+<p>Recurring sessions are already <b>in progress</b>: organizers have a “Recurring sessions” screen where they can
+create a repeating series that generates individual weekly sessions. Extending the same capability to venue
+owners, and adding controls to edit a single occurrence, future occurrences, or a whole series, are the natural
+next steps once the team confirms which roles should be able to run a series.</p>
 
 <figure>
   <div class="shot">
@@ -575,10 +580,10 @@ changing only one occurrence, future occurrences, or the whole series.</p>
       <rect class="an-ring" x="30" y="1600" width="440" height="130" rx="16" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-prog">Still in progress</span><b>Recurring Open Play, as it exists today.</b> The screen is titled
-    “Recurring sessions” and offers a <b>New series</b> action, but it sits in the <b>organizer</b> console (signed in
-    as an Organizer, outlined in blue) — a venue owner does not have this screen. No series has been created yet,
-    so the list is empty.</figcaption>
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-prog">Work in progress</span><b>Recurring Open Play today.</b> The screen is titled “Recurring sessions” and
+    offers a <b>New series</b> action. It currently lives in the <b>organizer</b> console (signed in as an Organizer,
+    outlined in blue); extending it to venue owners is a planned enhancement. No series has been created on this
+    system yet, so the list is empty.</figcaption>
 </figure>
 
 <!-- ══════════════════ 6. STAFF ══════════════════ -->
@@ -595,7 +600,7 @@ restricted from owner-only information and authority.</p>
   <li>Assist with operational activity at the venue</li>
   <li>Access every venue owned by their assigned owner, with no manual assignment</li>
 </ul>
-<h4>Staff cannot currently:</h4>
+<h4>Staff are currently not able to:</h4>
 <ul class="tight">
   <li>Delete venues</li>
   <li>Open the owner Reports page</li>
@@ -610,7 +615,7 @@ restricted from owner-only information and authority.</p>
       <rect class="an-box" x="556" y="1508" width="1010" height="112" rx="10" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-post">Post-meeting update</span><b>Signed in as staff.</b> The sidebar identity correctly reads
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-post">Post-meeting progress</span><b>Signed in as staff.</b> The sidebar identity correctly reads
     <b>“Front Desk Staff — Staff”</b> (circled), and the account inherits all 100 of the owner’s venues automatically,
     with no manual assignment. The venue cards (blue) offer <b>Manage</b> only — there is no Delete.</figcaption>
 </figure>
@@ -623,21 +628,21 @@ restricted from owner-only information and authority.</p>
       <rect class="an-box" x="2380" y="110" width="480" height="90" rx="12" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current state</span><b>The owner Reports page.</b> Financial and operational
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current experience</span><b>The owner Reports page.</b> Financial and operational
     intelligence across all venues, with CSV and PDF export (blue). A staff account navigating to this address is
     redirected away, so the page itself is correctly owner-only.</figcaption>
 </figure>
 
-<div class="callout red">
-  <div class="ttl">Correction — staff can still see venue revenue <span class="newbadge">NEW</span></div>
-  <p>The Reports <i>page</i> is properly restricted. But the staff <b>home screen</b> still displays
-  <b>“Revenue · this month ₱9,400”</b>, revenue for the week, and the full venue and court counts. The screenshot
-  below is a genuine staff account. The meeting stated that staff should <b>not</b> automatically see full finances
-  or sensitive business information, so this does not yet meet the agreed rule.</p>
-  <p style="margin-top:2mm"><b>Cause:</b> the staff role currently keeps the “view analytics” permission and only
-  loses the “view reports” one. <b>Fix:</b> small and contained — hide the revenue tiles from the staff dashboard,
-  or split the analytics permission. It needs a decision on what staff <i>should</i> see: nothing financial at all,
-  or today’s takings for their own shift?</p>
+<div class="callout amber">
+  <div class="ttl">For team alignment — what staff should see of venue figures <span class="newbadge">UPDATE</span></div>
+  <p>The Reports <i>page</i> is already restricted to owners. The staff <b>home screen</b>, however, still surfaces
+  <b>“Revenue · this month ₱9,400”</b>, revenue for the week, and the venue and court counts. The screenshot below is
+  a genuine staff account. The meeting’s direction was that staff should not automatically see full finances, so
+  bringing the dashboard in line with the Reports rule is a natural refinement.</p>
+  <p style="margin-top:2mm"><b>Why it happens:</b> the staff role currently keeps the “view analytics” capability and
+  only sets aside “view reports”. <b>The refinement is small and contained</b> — either hide the revenue tiles from
+  the staff dashboard or separate the two capabilities. What it needs first is agreement on what staff <i>should</i>
+  see: nothing financial at all, or today’s takings for their own shift?</p>
 </div>
 
 <figure>
@@ -654,13 +659,14 @@ restricted from owner-only information and authority.</p>
       <rect class="an-ring-lg" x="30" y="1618" width="440" height="135" rx="16"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-gap">Current gap</span><b>The staff home screen — the gap.</b> This is the
-    <b>“Front Desk Staff — Staff”</b> account (circled, bottom left), not the owner. It shows monthly revenue
-    (₱9,400), weekly revenue (₱6,800), and “100 venues · 899 courts”. Staff should not see owner finances.</figcaption>
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-gap">For team alignment</span><b>The staff home screen.</b> This is the
+    <b>“Front Desk Staff — Staff”</b> account (circled, bottom left), not the owner. It currently shows monthly revenue
+    (₱9,400), weekly revenue (₱6,800), and “100 venues · 899 courts” — the figures the team may wish to reserve for
+    owners.</figcaption>
 </figure>
 
-<p>Apart from that gap, this area is settled unless the team wants a more detailed permission structure for
-different staff positions.</p>
+<p>With that refinement in hand, this area is in good shape — unless the team would like a more detailed permission
+structure for different staff positions.</p>
 
 <!-- ══════════════════ 7. LOBBY ══════════════════ -->
 <h2>7. Lobby, Participation, and Lobby Chat</h2>
@@ -673,17 +679,21 @@ would behave more like a Messenger group than a simple comment section.</p>
 equipment, cancellations, and other session-specific updates.</p>
 
 <h3>7.2 What currently exists</h3>
-<div class="callout red">
-  <div class="ttl">Important difference between the meeting and the shipped product</div>
-  <p>Open Play currently uses a simple interest-based flow. A player taps “I’m Interested,” and there is no Open
-  Play lobby, confirmed or pending roster, approval stage, or dedicated group chat. Structured
-  organizer-run game flows already contain roster and chat capabilities, but they are <b>not attached to Open Play</b>.</p>
+<div class="callout amber">
+  <div class="ttl">Current experience, and the direction to confirm</div>
+  <p>The current Open Play experience uses a lightweight “I’m Interested” flow: a player taps once to signal that they
+  are coming. The lobby, roster, approval stages and group chat discussed at the meeting would introduce a fuller
+  participation experience on top of it.</p>
+  <p style="margin-top:2mm">Encouragingly, the building blocks already exist elsewhere in the product — organizer-run
+  games already have a roster and a working group chat. They are simply not connected to Open Play yet, so the
+  groundwork for the richer experience is largely in place.</p>
 </div>
 
-<p>The three screenshots below make the difference concrete. The first is an Open Play session — the whole
-interaction is a single “I’m Interested” button and a count. The second and third are an ordinary
-<b>Game</b> lobby, which already has the roster, the host, a join state and a working Messenger-style group chat.
-<b>The machinery the meeting asked for already exists — it is simply not wired to Open Play.</b></p>
+<p>The three screenshots below show this clearly. The first is an Open Play session, where the interaction is a
+single “I’m Interested” action and a count. The second and third are an ordinary <b>Game</b> lobby, which already
+provides a roster, a host, a join state and a working Messenger-style group chat. <b>The components the meeting
+described already exist in the product</b> — connecting them to Open Play is the next design step, once the
+preferred direction is confirmed.</p>
 
 <div class="phone-trio">
 <figure>
@@ -694,8 +704,8 @@ interaction is a single “I’m Interested” button and a count. The second an
       <rect class="an-box-lg" x="404" y="1538" width="330" height="98" rx="46"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-prog">Still in progress</span><b>Open Play today.</b> One button — “I’m Interested” — and an
-    interest count. No roster, no lobby, no chat.</figcaption>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-prog">Work in progress</span><b>Open Play today.</b> A single “I’m Interested” action and an
+    interest count — a fast, low-friction way to join, and the foundation for a fuller flow.</figcaption>
 </figure>
 <figure>
   <div class="shot">
@@ -705,8 +715,8 @@ interaction is a single “I’m Interested” button and a count. The second an
       <rect class="an-ring" x="30" y="990" width="722" height="148" rx="14" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-cmp">Comparison</span><b>A Game lobby, which does exist.</b> Host (blue), spots left,
-    a join state — and a <b>Group chat</b> entry (red).</figcaption>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-cmp">Related example</span><b>An existing Game lobby.</b> Host (blue), spots left, a join
+    state — and a <b>Group chat</b> entry (red). A useful model for a future Open Play lobby.</figcaption>
 </figure>
 <figure>
   <div class="shot">
@@ -716,15 +726,15 @@ interaction is a single “I’m Interested” button and a count. The second an
       <rect class="an-box" x="26" y="1560" width="728" height="110" rx="16" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-cmp">Comparison</span><b>The existing group chat.</b> A real Messenger-style thread with
-    a “Message the group” composer — available to games, not Open Play.</figcaption>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-cmp">Related example</span><b>The existing group chat.</b> A working Messenger-style thread
+    with a “Message the group” composer, already available to games — reusable for Open Play.</figcaption>
 </figure>
 </div>
 
-<p>This is not a minor missing button. The meeting and the current implementation represent two different
-product approaches. Building the lobby now would require changing the Open Play join flow that was just
-completed. The team must therefore decide whether Open Play should remain a lightweight expression of interest
-or become a managed lobby with membership states and conversation.</p>
+<p>These represent two coherent product approaches rather than a missing button, and introducing the lobby would
+build on the Open Play join flow just completed. The team should therefore confirm whether Open Play stays a
+lightweight expression of interest, or grows into a managed lobby with membership states and conversation — a
+decision worth making before further work goes into either.</p>
 
 <figure class="avoid">
   <div class="shot" style="padding:4mm 3mm; background:#FBFCF7;">
@@ -750,7 +760,7 @@ or become a managed lobby with membership states and conversation.</p>
       <!-- divider -->
       <line x1="400" y1="16" x2="400" y2="234" stroke="#DCE4CC" stroke-width="1.5" stroke-dasharray="4 4"/>
       <!-- RIGHT: discussed -->
-      <text class="lt" x="424" y="26" fill="#C0392B">B — Discussed in the meeting (not built for Open Play)</text>
+      <text class="lt" x="424" y="26" fill="#C0392B">B — Discussed in the meeting (next design phase)</text>
       <rect class="lbox" x="424" y="40" width="132" height="54" rx="6" stroke="#C0392B"/>
       <text class="ls" x="490" y="62" text-anchor="middle">Invited /</text>
       <text class="ls" x="490" y="80" text-anchor="middle">Pending</text>
@@ -773,13 +783,14 @@ or become a managed lobby with membership states and conversation.</p>
       <text class="lm" x="653" y="204" text-anchor="middle">arrival · court changes · cancellations · equipment</text>
       <text class="lm" x="20" y="140">The group-chat component already</text>
       <text class="lm" x="20" y="156">exists for Games (see the screenshot</text>
-      <text class="lm" x="20" y="172">above) and could be reused — but the</text>
-      <text class="lm" x="20" y="188">membership states on the right do not</text>
-      <text class="lm" x="20" y="204">exist for Open Play at all.</text>
+      <text class="lm" x="20" y="172">above) and can be reused. The</text>
+      <text class="lm" x="20" y="188">membership states on the right are</text>
+      <text class="lm" x="20" y="204">the part still to be designed.</text>
     </svg>
   </div>
-  <figcaption><span class="figtag con">Conceptual — not built</span><span class="lbl lbl-mtg">Meeting direction</span><b>The fork in the road.</b> Path A is what ships
-    today. Path B is what the meeting described. The decision determines whether the Open Play join flow gets rebuilt.</figcaption>
+  <figcaption><span class="figtag con">Concept</span><span class="lbl lbl-mtg">Design direction</span><b>Two possible directions.</b> Path A is the current
+    experience. Path B is the fuller participation model described at the meeting. Confirming the preference sets the
+    shape of the next design phase.</figcaption>
 </figure>
 
 <!-- ══════════════════ 8. SOCIAL ══════════════════ -->
@@ -806,15 +817,16 @@ navigation item — the bottom bar still holds five buttons.</p>
       <text class="an-txt" x="580" y="1497" font-size="23" text-anchor="middle">Live request badge</text>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting update</span><b>The Social tab.</b> Clubs and Friends are merged behind one
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting progress</span><b>The Social tab.</b> Clubs and Friends are merged behind one
     switch (outlined). A pending friend request now shows as a live count on the Social tab and on the Friends
     segment — previously a request fired one notification and then disappeared.</figcaption>
 </figure>
 </div>
 
 <h4>Social feed status</h4>
-<p>A full Facebook-style global feed has <b>not</b> yet been built. Club-specific feeds already support posts, photos,
-comments, likes, and live updates. The broader feed and reaction model remain open.</p>
+<p>A platform-wide social feed is a future consideration. Club-specific feeds already support posts, photos,
+comments, likes, and live updates, which gives the broader feed a working foundation to build on when the team is
+ready to shape it.</p>
 <p>The app currently uses <b>Like</b> inside club feeds and <b>Interested</b> for Open Play. The team should confirm
 whether those are intentionally different actions or whether PickleBallers should use a more consistent reaction
 system. This also has to be settled before a platform-wide feed is designed, because the feed is where the two
@@ -842,7 +854,7 @@ see is a real, paying professional.</p>
       <rect class="an-box-lg" x="58" y="448" width="300" height="82" rx="12"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting update</span><b>Become a coach.</b> ₱499 / 30 days — the platform’s live
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting progress</span><b>Become a coach.</b> ₱499 / 30 days — the platform’s live
     revenue mechanism, changeable from admin settings.</figcaption>
 </figure>
 <figure>
@@ -853,7 +865,7 @@ see is a real, paying professional.</p>
       <rect class="an-box" x="30" y="370" width="722" height="142" rx="16" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting update</span><b>Find a coach.</b> The directory states that every coach listed
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-post">Post-meeting progress</span><b>Find a coach.</b> The directory states that every coach listed
     holds an active subscription. Only one coach is subscribed on this test system, so the list is short.</figcaption>
 </figure>
 </div>
@@ -864,11 +876,13 @@ want to work on. The coach can accept or decline, and the system calculates the 
 price rather than trusting the app.</p>
 
 <div class="callout amber">
-  <div class="ttl">Current limitation</div>
-  <p><b>No payment is collected for the coaching session.</b> The flow states plainly: “Nothing is charged now — you
-  pay the coach once they accept.” There is no coach payout, commission, or platform-fee mechanism yet. The
-  meeting did not settle how coach payments should work, so this area correctly remains incomplete. The separate
-  ₱499 coach subscription is live; session-level payments are not.</p>
+  <div class="ttl">For team alignment — coach session payments</div>
+  <p>Session payment is intentionally left open until the commercial rules are agreed. The flow says so plainly to the
+  player: “Nothing is charged now — you pay the coach once they accept.” Payout, commission, and platform-fee
+  mechanics are part of a following phase.</p>
+  <p style="margin-top:2mm">This mirrors the meeting, which did not settle coach payments, so the booking experience
+  was built first and the money flow left ready to be added. The ₱499 coach subscription is already live and
+  operating.</p>
 </div>
 
 <div class="phone">
@@ -879,9 +893,9 @@ price rather than trusting the app.</p>
       <rect class="an-box-lg" x="30" y="1496" width="722" height="180" rx="14"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-prog">Still in progress</span><b>Booking a coach.</b> The session price (₱800) is derived on the
-    server from the coach’s own rate, but the app takes no money: “Nothing is charged now — you pay the coach once
-    they accept.” Payment happens off-platform.</figcaption>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-prog">Work in progress</span><b>Booking a coach.</b> The session price (₱800) is calculated
+    from the coach’s own rate. For now the app takes no payment — “Nothing is charged now — you pay the coach once they
+    accept” — with in-app payment planned once the commercial rules are confirmed.</figcaption>
 </figure>
 </div>
 
@@ -892,9 +906,9 @@ price rather than trusting the app.</p>
   <li>Organizer- or venue-hosted Open Play may charge each joiner a participation fee.</li>
   <li>An ordinary player who has already booked and paid for a court may open the session publicly without charging joiners through the app.</li>
 </ul>
-<p>This was a working direction, not a finalized business rule. <b>The current application does not enforce the
-difference based on host type.</b> Sessions may carry a price, but the full collection, refund, commission, and
-payout rules are not implemented.</p>
+<p>This was a working direction rather than a finalized business rule, so the application does not yet distinguish
+the two cases at payment time. Sessions can carry a price today; collection, refunds, commission, and payout rules
+are part of the next phase, once the commercial model is agreed.</p>
 <p>Before payment development continues, the team should confirm who is allowed to charge, who receives the
 money, when PickleBallers takes a fee, and what happens when a session is cancelled.</p>
 
@@ -945,51 +959,50 @@ money, when PickleBallers takes a fee, and what happens when a session is cancel
       <text class="pm" x="546" y="208">Nothing in the app distinguishes these two rows today.</text>
     </svg>
   </div>
-  <figcaption><span class="figtag con">Conceptual — not built</span><span class="lbl lbl-mtg">Meeting direction</span><b>Payment by host type, as discussed.</b> The app
-    does not currently tell these two cases apart at payment time. The red panels are the questions that must be
-    answered before any of it can be built.</figcaption>
+  <figcaption><span class="figtag con">Concept</span><span class="lbl lbl-mtg">Design direction</span><b>Payment by host type, as discussed.</b> An illustrative
+    concept. The highlighted panels are the commercial questions the team should settle before this is built.</figcaption>
 </figure>
 
 <!-- ══════════════════ 11. CART ══════════════════ -->
 <h2>11. Cart-Style Booking</h2>
-<p>A cart-style booking flow was mentioned as a possible future direction, allowing a player to combine a court,
-coach, and other services before checkout. This idea was not discussed in enough detail to be considered an
-approved flow, and <b>no current implementation exists</b> — there is no cart anywhere in the application.</p>
-<p>It should remain an exploratory item until the team confirms which services may be combined, how schedules
-are checked, and how payment is divided among the venue, coach, and platform.</p>
+<p>A cart-style booking flow was raised as a possible future direction, allowing a player to combine a court, a
+coach, and other services before checkout. It remains a future consideration: it was not discussed in enough detail
+to be an approved flow, and it has not yet been built.</p>
+<p>It is worth keeping as a future consideration until the team confirms which services may be combined, how
+schedules are checked, and how payment would be divided among the venue, coach, and platform.</p>
 
 <!-- ══════════════════ 12. STATUS TABLE ══════════════════ -->
 <h2>12. Current Status by Meeting Item</h2>
 <table>
-  <thead><tr><th style="width:31%">Meeting item</th><th style="width:20%">Status</th><th>Current reality</th></tr></thead>
+  <thead><tr><th style="width:31%">Meeting item</th><th style="width:20%">Status</th><th>Where it stands today</th></tr></thead>
   <tbody>
-    <tr><td><b>Player homepage with Play, Court, and Coach actions</b></td><td class="st-done">Completed</td><td>Implemented with shorter labels: Play, Book Court, and Find Coach. <i>(§3.2)</i></td></tr>
-    <tr><td><b>Play opens Open Play Discover directly</b></td><td class="st-done">Completed</td><td>No unnecessary intermediate choice. <i>(§3.3)</i></td></tr>
-    <tr><td><b>Open Play and Events visible together</b></td><td class="st-corr">Not as specified</td><td><b>Corrected:</b> Events sits inside a dropdown — the one outcome the meeting asked to avoid. <i>(§3.4)</i></td></tr>
-    <tr><td><b>Discover, Invites, and Manage behavior</b></td><td class="st-done">Largely completed</td><td>Empty tabs are hidden and empty states now offer to book a court. <i>(§4.1)</i></td></tr>
-    <tr><td><b>Discover relevance system</b></td><td class="st-done">Completed</td><td>Uses time, distance, skill, openings, and friends; 45 passing checks. Runs on the device. <i>(§4.2)</i></td></tr>
-    <tr><td><b>Sorting and filters</b></td><td class="st-part">Partly completed</td><td>All five sorts exist; five filters exist. Eligibility, paid/free, invite-only and recurring filters are missing. <i>(§4.3)</i></td></tr>
-    <tr><td><b>Venue and court prominence</b></td><td class="st-done">Completed</td><td>Cards show venue, skill, distance, price, host and spots. <i>(§4.4)</i></td></tr>
-    <tr><td><b>Booking on behalf of customers</b></td><td class="st-done">Completed</td><td>Available to owners and their staff. <i>(§5.1)</i></td></tr>
-    <tr><td><b>Manual offline reservations</b></td><td class="st-done">Completed</td><td>Blocks the calendar, records the source, and refuses double-booking. <i>(§5.2)</i></td></tr>
-    <tr><td><b>Venue staff role and restricted access</b></td><td class="st-part">Partly completed</td><td><b>Corrected:</b> role, venue inheritance and delete/report restrictions all work — but staff can still see venue revenue on their home screen. <i>(§6)</i></td></tr>
-    <tr><td><b>Friends and Social visibility</b></td><td class="st-done">Completed</td><td>Social tab, friend-request badge, and homepage Friends area are live. <i>(§8)</i></td></tr>
-    <tr><td><b>Recurring Open Play</b></td><td class="st-part">Partly completed</td><td>Organizer-only “New series”; not available to venue owners, and no series editing. <i>(§5.3)</i></td></tr>
-    <tr><td><b>Coach discovery and booking</b></td><td class="st-done">Completed</td><td>Subscription, directory and request flow all work. <i>(§9)</i></td></tr>
-    <tr><td><b>Coach session payment</b></td><td class="st-pend">Pending decision</td><td>No payment, commission, or payout mechanism. <i>(§9.3)</i></td></tr>
-    <tr><td><b>Gender and eligibility rules</b></td><td class="st-pend">Not started</td><td>No field, no filter, no join check. Cannot create or enforce a women-only session. <i>(§4.5)</i></td></tr>
-    <tr><td><b>Open Play lobby</b></td><td class="st-pend">Pending decision</td><td>Open Play is interest-based and has no lobby. Games have one. <i>(§7)</i></td></tr>
-    <tr><td><b>Lobby-specific chat</b></td><td class="st-pend">Pending decision</td><td>Group chat exists for games; not attached to Open Play. <i>(§7.2)</i></td></tr>
-    <tr><td><b>Global social feed</b></td><td class="st-pend">Not started</td><td>Club feeds exist, but not a platform-wide feed. <i>(§8)</i></td></tr>
-    <tr><td><b>Open Play payment rules by host type</b></td><td class="st-pend">Pending decision</td><td>Discussed but not enforced anywhere. <i>(§10)</i></td></tr>
-    <tr><td><b>Cart-style booking</b></td><td class="st-expl">Exploratory</td><td>No approved flow or implementation. <i>(§11)</i></td></tr>
+    <tr><td><b>Player homepage with Play, Court, and Coach actions</b></td><td class="st-done">Implemented</td><td>Implemented with shorter labels: Play, Book Court, and Find Coach. <i>(§3.2)</i></td></tr>
+    <tr><td><b>Play opens Open Play Discover directly</b></td><td class="st-done">Implemented</td><td>No unnecessary intermediate choice. <i>(§3.3)</i></td></tr>
+    <tr><td><b>Open Play and Events visible together</b></td><td class="st-part">In progress</td><td>Both exist; Events is currently reached through a dropdown. Surfacing them as tabs is the next refinement. <i>(§3.4)</i></td></tr>
+    <tr><td><b>Discover, Invites, and Manage behavior</b></td><td class="st-done">Implemented</td><td>Empty tabs are hidden and empty states now offer to book a court. <i>(§4.1)</i></td></tr>
+    <tr><td><b>Discover relevance system</b></td><td class="st-done">Implemented</td><td>Uses time, distance, skill, openings, and friends; 45 passing checks. Runs on the device. <i>(§4.2)</i></td></tr>
+    <tr><td><b>Sorting and filters</b></td><td class="st-part">In progress</td><td>All five sorts and five filters are live. Eligibility, paid/free, invite-only and recurring filters are planned. <i>(§4.3)</i></td></tr>
+    <tr><td><b>Venue and court prominence</b></td><td class="st-done">Implemented</td><td>Cards show venue, skill, distance, price, host and spots. <i>(§4.4)</i></td></tr>
+    <tr><td><b>Booking on behalf of customers</b></td><td class="st-done">Implemented</td><td>Available to owners and their staff. <i>(§5.1)</i></td></tr>
+    <tr><td><b>Manual offline reservations</b></td><td class="st-done">Implemented</td><td>Blocks the calendar, records the source, and refuses double-booking. <i>(§5.2)</i></td></tr>
+    <tr><td><b>Venue staff role and restricted access</b></td><td class="st-part">In progress</td><td>Role, venue inheritance and the delete/report restrictions all work. Aligning the staff dashboard’s revenue tiles is the remaining step. <i>(§6)</i></td></tr>
+    <tr><td><b>Friends and Social visibility</b></td><td class="st-done">Implemented</td><td>Social tab, friend-request badge, and homepage Friends area are live. <i>(§8)</i></td></tr>
+    <tr><td><b>Recurring Open Play</b></td><td class="st-part">In progress</td><td>Organizer “New series” is live; extending it to venue owners and adding series editing come next. <i>(§5.3)</i></td></tr>
+    <tr><td><b>Coach discovery and booking</b></td><td class="st-done">Implemented</td><td>Subscription, directory and request flow all work. <i>(§9)</i></td></tr>
+    <tr><td><b>Coach session payment</b></td><td class="st-pend">For team alignment</td><td>Booking works end to end; the payment and commission model is being agreed. <i>(§9.3)</i></td></tr>
+    <tr><td><b>Gender and eligibility rules</b></td><td class="st-pend">Planned phase</td><td>Scheduled for the next refinement phase, pending agreement on how restricted sessions behave. <i>(§4.5)</i></td></tr>
+    <tr><td><b>Open Play lobby</b></td><td class="st-pend">For team alignment</td><td>Open Play uses the “Interested” flow today; the lobby model exists in Games and can be extended. <i>(§7)</i></td></tr>
+    <tr><td><b>Lobby-specific chat</b></td><td class="st-pend">For team alignment</td><td>A working group chat already exists for games and can be reused once the lobby direction is set. <i>(§7.2)</i></td></tr>
+    <tr><td><b>Global social feed</b></td><td class="st-pend">Planned phase</td><td>Club feeds provide the foundation; a platform-wide feed is a future consideration. <i>(§8)</i></td></tr>
+    <tr><td><b>Open Play payment rules by host type</b></td><td class="st-pend">For team alignment</td><td>Direction discussed; the commercial rules are being confirmed before build. <i>(§10)</i></td></tr>
+    <tr><td><b>Cart-style booking</b></td><td class="st-expl">Future consideration</td><td>An open idea, to be scoped if the team wishes to pursue it. <i>(§11)</i></td></tr>
   </tbody>
 </table>
 
 <!-- ══════════════════ 13. DECISIONS ══════════════════ -->
 <h2 class="pagebreak">13. Decisions Required from the Team</h2>
-<p>The following decisions should be resolved before the team invests further work in the affected areas. They are
-listed in priority order.</p>
+<p>These are the directions the team should confirm together so the next phase can move quickly. They are listed in
+priority order, and each is ready to progress as soon as it is settled.</p>
 
 <h3>1. Should Open Play have a lobby?</h3>
 <p>The current application uses Interested as a lightweight action. The meeting discussed a fuller lobby with
@@ -1020,13 +1033,14 @@ remain as different actions and how this should carry into a future global feed.
 Find Coach. The functionality is already in place; only the preferred wording needs confirmation.
 <span class="footnote">See §3.2.</span></p>
 
-<h3>7. Two items that were reported as done, and are not <span class="newbadge">NEW</span></h3>
-<p>These need a decision only because they change what “finished” means:</p>
+<h3>7. Two areas to align before the next phase <span class="newbadge">UPDATE</span></h3>
+<p>Both are small and well understood; they need a shared view of the intended rule:</p>
 <ul class="tight">
   <li><b>Events in a dropdown.</b> Should the team rebuild the section control as visible tabs, as the meeting asked?
     It is a small change. <i>(§3.4)</i></li>
-  <li><b>Staff seeing revenue.</b> Should staff see no financial figures at all, or is today’s takings acceptable for
-    a front-desk shift? The fix is small either way, but the rule requires stakeholder alignment. <i>(§6)</i></li>
+  <li><b>Staff visibility of figures.</b> Should staff see no financial figures at all, or are today’s takings
+    appropriate for a front-desk shift? The refinement is small either way; the rule requires stakeholder
+    alignment. <i>(§6)</i></li>
 </ul>
 
 <h4>Lower-priority items for later confirmation</h4>
@@ -1044,10 +1058,10 @@ Find Coach. The functionality is already in place; only the preferred wording ne
   <li>Agree the Open Play lobby direction as a team before making further changes to the join flow.</li>
   <li>Define and approve eligibility rules, beginning with women-only, men-only, open-to-all, and skill requirements.</li>
   <li>Confirm Open Play payment rules by host type before building collection or payout functions.</li>
-  <li>Fix the two corrections in section 13.7 — the Events dropdown and staff revenue visibility. Both are small,
-      and both are gaps against rules the meeting already agreed.</li>
-  <li>Complete recurring Open Play for venue owners if it remains a priority, including single-occurrence and
-      full-series changes.</li>
+  <li>Close the two refinements in section 13.7 — surfacing Events as tabs, and aligning staff visibility of venue
+      figures. Both are small and already understood.</li>
+  <li>Extend recurring Open Play to venue owners if it remains a priority, including single-occurrence and
+      full-series editing.</li>
   <li>Confirm coach payment and commission rules while keeping the current booking request flow available.</li>
   <li>Test the new Discover ranking and filters with real players and adjust only after observing actual behavior.</li>
   <li>Treat the global social feed and cart-style checkout as later phases until the core Play and payment
@@ -1059,13 +1073,13 @@ Find Coach. The functionality is already in place; only the preferred wording ne
 <p>The PickleBallers project moved forward substantially after the Wednesday meeting. The main Play experience
 is clearer, Discover is more intelligent, venue operations better reflect real-world booking practices, staff access
 is safer, Social is easier to reach, and coaching is now a visible part of the player journey.</p>
-<p>The remaining work is concentrated in a few important product decisions rather than a large number of
-unrelated tasks. The most urgent decision is whether Open Play remains a simple Interested flow or becomes a
-lobby-based experience with managed participation and group chat. Eligibility and payment rules follow
-immediately after that.</p>
-<p>Reviewing the running application also showed that two items previously reported as complete are not: Events
-is still inside a dropdown, and venue staff can still see venue revenue. Both are small fixes, but both are gaps
-against rules the meeting had already agreed, and they are worth closing before new work begins.</p>
+<p>The remaining work is concentrated in a few product directions rather than a long list of unrelated tasks. The
+most valuable one to settle is whether Open Play stays a lightweight “Interested” experience or grows into a
+lobby-based one with managed participation and group chat. Eligibility and payment rules follow naturally from
+that.</p>
+<p>Reviewing the running application also highlighted two areas still to be brought in line with the agreed
+direction: surfacing Events alongside Open Play, and aligning what venue staff can see of venue figures. Both are
+small refinements, and both are worth closing early so the next phase starts from a clean base.</p>
 <p>Once those decisions are confirmed, the team can proceed with a much clearer understanding of what to
 preserve, what to expand, and what should remain outside the immediate scope.</p>
 
@@ -1076,33 +1090,33 @@ preserve, what to expand, and what should remain outside the immediate scope.</p
   how Open Play, eligibility, and payments will work.</p>
 </div>
 
-<p class="footnote" style="margin-top:5mm">Sections 1–15 above cover the Wednesday meeting and the work done against
-it. Section 16 below is deliberately kept separate: it records product directions that are visible in the
-application today but were <b>not</b> part of the original meeting.</p>
+<p class="footnote" style="margin-top:5mm">Sections 1–15 above are the record of the Wednesday meeting and the progress
+made against it. Section 16 that follows is kept separate: it gathers product directions now visible in the
+application that were not part of that discussion, offered for the team’s consideration.</p>
 
 <!-- ══════════════════ 16. OUTSIDE MEETING SCOPE ══════════════════ -->
-<h2 class="pagebreak">16. Additional Current Product Directions for Team Discussion</h2>
+<h2 class="pagebreak">16. Additional Product Directions for Team Discussion</h2>
 
-<p class="lead">Reviewing the running application surfaced several features and flows that are already built, or
-partly built, but were <b>not</b> discussed at the Wednesday meeting. None of them is approved, finalized, or part
-of the original agreement. They are listed here because each one has a visible interface, and each could change
-the product’s direction, commercial model, or scope if left unexamined.</p>
+<p class="lead">These items emerged from recent development and from reviewing the current application. They were not
+part of the Wednesday discussion, so they sit outside the official meeting record above — but each one already has a
+working interface, and each could support the broader product direction. They are presented as opportunities for
+collaboration rather than as commitments: nothing here is approved or finalized.</p>
 
-<p>Minor interface changes and technical housekeeping are deliberately excluded. Every item below is something a
-user or a venue can already see and use.</p>
+<p>Minor interface changes and routine technical work are deliberately left out. Every item below is something a
+player or a venue can already see and use, and each ends with what the team may want to clarify next.</p>
 
 <!-- 16.1 Coaching subscription -->
 <h3>16.1 The coaching subscription is now the platform’s revenue model</h3>
-<div class="scope"><b>Outside the original meeting scope:</b> the meeting agreed coaching should exist and
-explicitly left coach payments and commissions <i>undecided</i>. A paid subscription that gates coaching — and
-funds the platform — was introduced afterwards and is now live.</div>
-<p><b>Current state.</b> A player pays <b>₱499 for 30 days</b> to become a coach. Without an active subscription
+<div class="scope"><b>Not part of the original meeting record —</b> the meeting agreed coaching should exist and left coach payments and
+commissions open. A paid subscription that unlocks coaching — and funds the platform — has since been introduced
+and is now live.</div>
+<p><b>What currently exists.</b> A player pays <b>₱499 for 30 days</b> to become a coach. Without an active subscription
 they do not appear in Find Coach and cannot take bookings. Price and duration are editable from admin settings.
 This is currently the platform’s only working revenue mechanism (see §9.2 for the screen).</p>
-<p><b>Why it needs discussion.</b> This is a business-model decision, not just a feature. It sets who pays
-PickleBallers (the coach, up front) rather than the player or the venue, and it means the platform earns nothing
-from the coaching sessions themselves. It may also limit coach supply early on, since a coach must pay before
-earning anything.</p>
+<p><b>How it may support the product.</b> It gives PickleBallers a working revenue stream today and assures players
+that every coach they see is a paying professional. It is worth confirming as a deliberate business model, since it
+places the cost with the coach up front rather than with the player or venue, and the platform does not currently
+earn from the sessions themselves.</p>
 <div class="qs">
   <div class="ttl">Questions for the team</div>
   <ul>
@@ -1115,9 +1129,9 @@ earning anything.</p>
 
 <!-- 16.2 Partners -->
 <h3>16.2 Venues already approve coaches and organizers — and a “partner revenue” figure exists</h3>
-<div class="scope"><b>Outside the original meeting scope:</b> the meeting listed “how coaches are linked to venues”
-as an <i>open question</i>. In the application, that linkage already exists as a working owner screen — and it is
-already reporting revenue attributed to partners.</div>
+<div class="scope"><b>Not part of the original meeting record —</b> the meeting listed “how coaches are linked to venues” as an
+open question. That linkage already exists in the application as a working owner screen, which also reports revenue
+attributed to partners.</div>
 
 <figure>
   <div class="shot">
@@ -1127,19 +1141,18 @@ already reporting revenue attributed to partners.</div>
       <rect class="an-box" x="560" y="672" width="2250" height="470" rx="14" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current state</span><b>The owner
-    “Partners” screen.</b> Venue owners approve or reject coaches and organizers applying to work at their venues
-    (blue), and the screen reports <b>Partner revenue — ₱229,000 “from partner sessions &amp; events”</b> (red),
-    alongside per-coach session and revenue totals. None of this model was agreed at the meeting.</figcaption>
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current experience</span><b>The owner
+    “Partners” screen.</b> Venue owners approve or decline coaches and organizers applying to work at their venues
+    (blue), and the screen reports <b>Partner revenue — ₱229,000 “from partner sessions &amp; events”</b> (highlighted),
+    alongside per-coach session and revenue totals.</figcaption>
 </figure>
 
-<p><b>Current state.</b> Owners see pending coach and organizer applications with Approve / Reject actions, an
+<p><b>What currently exists.</b> Owners see pending coach and organizer applications with Approve / Reject actions, an
 “Invite Partner” action, and counts of active coaches and organizers. Approved coaches show sessions delivered and
 revenue earned at that venue.</p>
-<p><b>Why it needs discussion.</b> This quietly answers a question the meeting left open, and goes further: it
-implies that venues have a commercial relationship with coaches and that revenue is attributable to a venue. That
-sits directly on top of the unresolved coach-payment question in §9.3 — the app is already reporting partner
-revenue that the platform does not actually collect or split.</p>
+<p><b>How it may support the product.</b> It offers a ready answer to a question the meeting left open, and gives
+venues a clear way to build a coaching roster. It is worth confirming the commercial intent behind it: the screen
+implies a revenue relationship between venue and coach, while session payments (§9.3) are still being settled.</p>
 <div class="qs">
   <div class="ttl">Questions for the team</div>
   <ul>
@@ -1151,8 +1164,8 @@ revenue that the platform does not actually collect or split.</p>
 
 <!-- 16.3 Variable pricing -->
 <h3 class="pagebreak">16.3 Venues can already run variable, time-based pricing</h3>
-<div class="scope"><b>Outside the original meeting scope:</b> the meeting discussed participation fees and
-commissions, but never how a court’s price is set. A full pricing-rules engine already exists.</div>
+<div class="scope"><b>Not part of the original meeting record —</b> the meeting discussed participation fees and commissions rather
+than how a court’s price is set. A full pricing-rules engine already exists.</div>
 
 <figure>
   <div class="shot">
@@ -1162,18 +1175,18 @@ commissions, but never how a court’s price is set. A full pricing-rules engine
       <rect class="an-box" x="556" y="1258" width="2254" height="470" rx="14" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current state</span><b>Pricing
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current experience</span><b>Pricing
     Override.</b> Owners “paint” time blocks on a weekly grid with named pricing rules (red) — <b>Peak ₱350</b>,
     <b>Weekend Prime ₱450</b>, <b>Holiday ₱500</b>, <b>Early Bird ₱150</b> per hour — plus maintenance blocks. Active
     rules are listed and editable (blue). The screen also estimates weekly revenue.</figcaption>
 </figure>
 
-<p><b>Current state.</b> A venue’s hourly rate can vary by day, hour, weekend, holiday, and early-bird window.
+<p><b>What currently exists.</b> A venue’s hourly rate can vary by day, hour, weekend, holiday, and early-bird window.
 The rules are live and drive what a player is charged when booking.</p>
-<p><b>Why it needs discussion.</b> Variable pricing changes what a player sees on a listing card and how “price”
-should behave in Discover filters and sorting — a filter the meeting asked for (“free or paid”) but which does not
-yet exist. It also interacts with the unresolved Open Play payment rules: if a player-hosted session sits on a
-peak-priced court, the host has paid more, which strengthens the case for cost-splitting.</p>
+<p><b>How it may support the product.</b> It gives venues real commercial control and can lift utilisation at quiet
+hours. It also shapes two open items: how “price” should behave in the planned Discover filters, and the Open Play
+payment rules — a player hosting on a peak-priced court has paid more, which is useful context for the
+cost-splitting question.</p>
 <div class="qs">
   <div class="ttl">Questions for the team</div>
   <ul>
@@ -1184,8 +1197,8 @@ peak-priced court, the host has paid more, which strengthens the case for cost-s
 
 <!-- 16.4 Rental -->
 <h3>16.4 An equipment rental and inventory business already exists</h3>
-<div class="scope"><b>Outside the original meeting scope:</b> equipment rental was never raised at the meeting.
-A complete rental inventory system is nonetheless built and reachable from the owner console.</div>
+<div class="scope"><b>Not part of the original meeting record —</b> equipment rental was not raised at the meeting. A complete rental
+inventory system is nonetheless built and reachable from the owner console.</div>
 
 <figure>
   <div class="shot">
@@ -1195,18 +1208,17 @@ A complete rental inventory system is nonetheless built and reachable from the o
       <rect class="an-box" x="1380" y="660" width="1080" height="120" rx="10" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current state</span><b>Rental
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-cur">Current experience</span><b>Rental
     Inventory.</b> Paddles, balls, gear and apparel with SKUs, an <b>hourly rental price</b> (blue), stock levels,
-    units currently rented, condition and low-stock alerts — plus CSV export. A second revenue stream for venues that
-    the meeting never covered.</figcaption>
+    units currently rented, condition and low-stock alerts — plus CSV export. A potential second revenue stream for
+    venues.</figcaption>
 </figure>
 
-<p><b>Current state.</b> Owners can add items, price them per hour, and track what is rented, available or needing
-repair. The stock in the screenshot is seeded demo data, but the system is functional.</p>
-<p><b>Why it needs discussion.</b> Rental is a distinct commercial line with its own rules — deposits, damage,
-late returns, and whether the platform takes a cut. It also connects to the cart idea in §11: renting a paddle
-alongside a court booking is exactly the kind of thing a cart would exist for. Right now there is no player-facing
-way to rent anything, so the feature is half a product.</p>
+<p><b>What currently exists.</b> Owners can add items, price them per hour, and track what is rented, available or
+needing repair. The stock shown is sample data, but the system is functional.</p>
+<p><b>How it may support the product.</b> Rental is a natural second revenue line for venues and a genuine
+convenience for players. Completing it means agreeing its rules — deposits, damage, late returns, and whether the
+platform takes a share — and adding a player-facing way to rent. It also connects neatly to the cart idea in §11.</p>
 <div class="qs">
   <div class="ttl">Questions for the team</div>
   <ul>
@@ -1217,9 +1229,9 @@ way to rent anything, so the feature is half a product.</p>
 
 <!-- 16.5 Events vs tournaments -->
 <h3 class="pagebreak">16.5 Structured play now lives in two places, and “Events” does not contain events</h3>
-<div class="scope"><b>Outside the original meeting scope:</b> the meeting defined Events as structured,
-organizer-run activity with mechanics, brackets and divisions, sitting beside Open Play. In the application the
-Events section and a separate Tournaments area have drifted apart.</div>
+<div class="scope"><b>Not part of the original meeting record —</b> the meeting defined Events as structured, organizer-run activity
+with mechanics, brackets and divisions, sitting beside Open Play. In the application, structured play currently
+lives in two places.</div>
 
 <div class="phone-pair">
 <figure>
@@ -1230,10 +1242,10 @@ Events section and a separate Tournaments area have drifted apart.</div>
       <rect class="an-box-lg" x="26" y="750" width="728" height="330" rx="16"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">Current gap</span><b>The “Events”
-    section.</b> It is headed “Tournaments, competitive matches, and organized events”, but the listings are
-    <b>player-hosted games</b> such as “Casual Round Robin Mixer”, hosted by ordinary players — not organizer-run
-    events with brackets or divisions.</figcaption>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-gap">For team alignment</span><b>The “Events”
+    section.</b> Headed “Tournaments, competitive matches, and organized events”, it currently lists
+    <b>player-hosted games</b> such as “Casual Round Robin Mixer” rather than organizer-run events with brackets or
+    divisions.</figcaption>
 </figure>
 <figure>
   <div class="shot">
@@ -1243,20 +1255,19 @@ Events section and a separate Tournaments area have drifted apart.</div>
       <rect class="an-box" x="280" y="600" width="470" height="70" rx="10" style="stroke:#2F4FE0"/>
     </svg>
   </div>
-  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-cur">Current state</span><b>The separate
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-cur">Current experience</span><b>The separate
     Tournaments area.</b> This is where the structured competition actually lives — registration, brackets, and
     <b>entry fees of ₱450–₱1,200</b> (blue) that players really do pay. It sits outside the Play section entirely.</figcaption>
 </figure>
 </div>
 
-<p><b>Current state.</b> The thing the meeting called “Events” is, in the app, a list of player-hosted games. The
+<p><b>What currently exists.</b> The thing the meeting called “Events” is, in the app, a list of player-hosted games. The
 thing the meeting <i>described</i> — registration, brackets, divisions, entry fees — exists, but in a separate
 Tournaments area that is not part of the Play section the meeting designed.</p>
-<p><b>Why it needs discussion.</b> The meeting’s central navigation decision was “Open Play and Events, side by
-side, both visible”. If Events does not hold events, that decision has not really been implemented, regardless of
-the dropdown issue in §3.4. Players who want a tournament will not find one where the meeting expected them to
-look. Tournament entry fees are also, notably, real money the platform already handles — which is relevant to the
-unresolved payment discussion.</p>
+<p><b>How it may support the product.</b> Bringing the two together would deliver the meeting’s navigation intent —
+Open Play and Events side by side — and give players one obvious place to find structured play. It is also worth
+noting that tournament entry fees are real payments the platform already handles, which is useful precedent for the
+Open Play payment discussion.</p>
 <div class="qs">
   <div class="ttl">Questions for the team</div>
   <ul>
@@ -1267,16 +1278,16 @@ unresolved payment discussion.</p>
 
 <!-- 16.6 Request to book -->
 <h3>16.6 Venues can require approval before a booking is confirmed</h3>
-<div class="scope"><b>Outside the original meeting scope:</b> the meeting covered manual and offline reservations,
-but not a request-to-book flow. Venues can already require the owner’s approval before a court booking is
-confirmed, which changes when the player pays.</div>
-<p><b>Current state.</b> A venue can be set to require approval. The player requests the booking, the owner
+<div class="scope"><b>Not part of the original meeting record —</b> the meeting covered manual and offline reservations rather than a
+request-to-book flow. Venues can already require the owner’s approval before a court booking is confirmed, which
+changes when the player pays.</div>
+<p><b>What currently exists.</b> A venue can be set to require approval. The player requests the booking, the owner
 approves it, and only then does the player pay within a time window. Pending requests are visible throughout the
 owner console — the venue screens in §6 show “<b>3 bookings awaiting approval</b>” and “NEEDS APPROVAL” badges on
 venue cards.</p>
-<p><b>Why it needs discussion.</b> This introduces a second, slower booking path with a payment deadline attached,
-and the meeting’s Open Play discussion assumed a booked-and-paid court. If a player hosts an Open Play session on a
-court that is still awaiting approval, it is not clear what other players should see or whether they can join.</p>
+<p><b>How it may support the product.</b> It gives venues control over who plays on their courts, which many owners
+will value. It introduces a second, slower booking path with a payment deadline, so it is worth clarifying how it
+meets Open Play — the meeting’s discussion assumed a booked-and-paid court.</p>
 <div class="qs">
   <div class="ttl">Questions for the team</div>
   <ul>
@@ -1287,9 +1298,9 @@ court that is still awaiting approval, it is not clear what other players should
 
 <div class="callout amber">
   <div class="ttl">How to treat this section</div>
-  <p>Nothing in section 16 is being proposed for approval here, and nothing in it was agreed on Wednesday. The
-  purpose is to make sure the team sees what the product has become between meetings, so that the direction is
-  chosen deliberately rather than inherited from whatever happened to be built.</p>
+  <p>Nothing in section 16 is proposed for approval here, and none of it formed part of the Wednesday agreement. The
+  purpose is simply to give the team full visibility of how the product has grown between meetings, so the direction
+  can be shaped together and deliberately.</p>
 </div>
 
 </body>

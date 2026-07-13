@@ -11,7 +11,7 @@ const head=`<div style="width:100%;font-family:'Nunito Sans',sans-serif;font-siz
   PICKLEBALLERS &nbsp;|&nbsp; UPDATED MEETING MINUTES</div>`;
 const foot=`<div style="width:100%;font-family:'Nunito Sans',sans-serif;font-size:7pt;color:#8A9A7A;
   padding:0 16mm;display:flex;justify-content:space-between;">
-  <span>Prepared for Marvin and the PickleBallers Team &nbsp;•&nbsp; Updated 12 July 2026</span>
+  <span>PickleBallers — Updated Meeting Minutes &nbsp;•&nbsp; Updated 12 July 2026</span>
   <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`;
 await p.pdf({path:OUT,format:'A4',printBackground:true,displayHeaderFooter:true,
   headerTemplate:head,footerTemplate:foot,
