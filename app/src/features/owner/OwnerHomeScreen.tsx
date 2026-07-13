@@ -140,7 +140,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   // through the front desk, calendar, and per-venue inbox instead.
   const canReports = userHasPermission(user, 'owner.reports.view');
   const {
-    canAnalytics, venues, status, retry, combined, combinedRevenueDaily,
+    venues, status, retry, combined, combinedRevenueDaily,
     monthBookings, structural, statsReady, glanceFor, pending, upcoming, removeBooking,
   } = useOwnerDashboard({ withBookings: canBookings });
   const [toast, setToast] = useState(false);
@@ -241,8 +241,11 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
         </div>
       ) : (
         <div className="ohome-container">
-          {/* Revenue hero → v2.1 blue stats-banner */}
-          {canAnalytics && (
+          {/* Revenue hero → v2.1 blue stats-banner. Gated on owner.reports.view,
+              not owner.analytics.view: this is the business-wide revenue headline,
+              which is the owner's business — staff hold analytics (they need the
+              per-venue operational numbers) but not reports. */}
+          {canReports && (
             <button className="ohome-revenue" onClick={() => onNavigate('owner-venues')}>
               <div className="ohome-rb-eyebrow">Revenue • This month</div>
               <div className="ohome-rb-amount-row">
@@ -276,8 +279,12 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
             ))}
           </section>
 
-          {/* My revenue (combined KPIs) */}
-          {canAnalytics && (
+          {/* My revenue (combined KPIs). Gated on owner.reports.view, not
+              owner.analytics.view: these are the owner's business-wide takings, so
+              staff don't get the section at all. They lose only the two counters —
+              the live approval queue and the bookings list below are untouched, so
+              the work itself is unaffected. */}
+          {canReports && (
             <section className="ohome-section">
               <div className="ohome-section-head">
                 <h2>My revenue</h2>
@@ -296,12 +303,12 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
                   <span className="ohome-kpi-value">{statsReady ? money(combined.week) : '—'}</span>
                   <span className="ohome-kpi-label">Revenue this week</span>
                 </button>
-                <button className="ohome-kpi" onClick={() => { if (canReports) onNavigate('owner-bookings', {}); else onNavigate('owner-insights'); }}>
+                <button className="ohome-kpi" onClick={() => onNavigate('owner-bookings', {})}>
                   <span className="ohome-kpi-icon ohome-kpi-ic-neutral"><CalendarIco size={18} /></span>
                   <span className="ohome-kpi-value">{statsReady ? combined.todayBookings : '—'}</span>
                   <span className="ohome-kpi-label">Bookings today</span>
                 </button>
-                <button className="ohome-kpi" onClick={() => { if (canReports) onNavigate('owner-bookings', { status: 'pending_approval' }); else onNavigate('owner-insights'); }}>
+                <button className="ohome-kpi" onClick={() => onNavigate('owner-bookings', { status: 'pending_approval' })}>
                   <span className="ohome-kpi-icon ohome-kpi-ic-coral"><Bell size={18} /></span>
                   <span className="ohome-kpi-value">{statsReady ? pendingCount : '—'}</span>
                   <span className="ohome-kpi-label">Awaiting approval</span>
