@@ -485,6 +485,10 @@ function AppInner() {
   // player capabilities (player.games.create etc.) like every other role, so the
   // Create CTA can't be gated on a permission without taking it from players too.
   const isStaff = currentUser?.roles.includes('staff') ?? false;
+  // Social (Clubs + Friends) is a PUBLIC surface — guests browse it holding no
+  // permissions at all — so it can't hang off a permission without taking it from
+  // guests and players too. Role-gated instead, like the Tournament tab.
+  const canSeeSocial = !isStaff;
   // Desktop sidebar layout for admin/owner/organizer: the frame cap is lifted so
   // the app can grow past 1024 px, activating the existing @container queries
   // that swap the bottom tab bars for a fixed sidebar.
@@ -576,9 +580,14 @@ function AppInner() {
       case 'tournament-chat':
         return <TournamentChatScreen key={screen.params.id} tournamentId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'social':
+        // Deep-link safety — the tab is already hidden from staff nav, but the
+        // URL still resolves, so the screen itself has to refuse.
+        if (!canSeeSocial) return <OwnerHomeScreen onNavigate={navigate} />;
         return <SocialScreen chrome={v2Chrome} tab={screen.params?.tab} />;
-      // `/clubs` and `/friends` are back-compat aliases onto the Social tab.
+      // `/clubs` and `/friends` are back-compat aliases onto the Social tab — they
+      // resolve to the same screen, so they need the same gate or they're a hole.
       case 'clubs':
+        if (!canSeeSocial) return <OwnerHomeScreen onNavigate={navigate} />;
         return <SocialScreen chrome={v2Chrome} tab="clubs" />;
       case 'profile':
         // Owners get their own profile dashboard; everyone else uses the v2 profile.
@@ -669,6 +678,7 @@ function AppInner() {
       case 'notifications':
         return <NotificationsScreen onNavigate={navigate} onBack={goBack} />;
       case 'friends':
+        if (!canSeeSocial) return <OwnerHomeScreen onNavigate={navigate} />;
         return <SocialScreen chrome={v2Chrome} tab="friends" />;
       case 'messages':
         return <ConversationsScreen onNavigate={navigate} onBack={goBack} />;
@@ -766,13 +776,13 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} showTournaments={canSeeTournaments} isOwner={isOwner} isOrganizer={isOrganizer} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} />
       )}
 
       <main className="app-main">{renderScreen()}</main>
 
       {showTabBar && (
-        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} isOrganizer={isOrganizer} showTournaments={canSeeTournaments} />
+        <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} isOrganizer={isOrganizer} showTournaments={canSeeTournaments} showSocial={canSeeSocial} />
       )}
 
       {/* Tab screens only: detail/wizard screens carry a sticky bottom CTA the

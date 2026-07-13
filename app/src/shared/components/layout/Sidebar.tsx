@@ -43,6 +43,9 @@ interface SidebarProps {
   shopActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
+  /** Whether the Social (Clubs + Friends) tab is offered. Hidden from staff —
+   *  a delegated work account runs the owner's courts, it doesn't socialise. */
+  showSocial?: boolean;
   /** Owners get owner-specific labels (Venues instead of Nearby, Bookings instead of Games, etc.). */
   isOwner?: boolean;
   /** Organizers get organizer-specific labels (Organize instead of Today, etc.). */
@@ -85,11 +88,13 @@ const organizerTabs: SideTab[] = [
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, isOwner = false, isOrganizer = false }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
-  const visibleTabs = roleTabs.filter((t) => t.id !== 'tournaments' || showTournaments);
+  const visibleTabs = roleTabs
+    .filter((t) => t.id !== 'tournaments' || showTournaments)
+    .filter((t) => t.id !== 'social' || showSocial);
   const showOwnerCalendar = userHasPermission(currentUser, 'owner.access') && onOpenCalendar;
   const showOwnerPricing = userHasPermission(currentUser, 'owner.pricing.manage') && onOpenPricing;
   const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;
