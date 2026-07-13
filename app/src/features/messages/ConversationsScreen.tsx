@@ -392,6 +392,18 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
     });
   }, [user?.id]);
 
+  // A colleague opened or answered a thread in a venue inbox we share — it's
+  // handled, so drop our unread badge for it (the server already cleared the
+  // stored read mark for the whole venue side; this just avoids a refetch).
+  useEffect(() => {
+    return onRealtime('conversation.read', (payload: unknown) => {
+      if (!isRecord(payload)) return;
+      const cid = typeof payload.conversationId === 'string' ? payload.conversationId : null;
+      if (!cid) return;
+      setItems((prev) => prev.map((c) => (c.id === cid && c.unread > 0 ? { ...c, unread: 0 } : c)));
+    });
+  }, []);
+
   useEffect(() => {
     return onRealtime('message.deleted', (payload: unknown) => {
       const p = realtimeDeletePayload(payload);

@@ -110,36 +110,72 @@ async function canAccess(conv: any, user: any): Promise<boolean> {
   return (await managedVenueIds(user)).includes(String(conv.contextId));
 }
 
+/** The two sides of a thread: everyone who works the venue, and the customer. */
+async function threadSides(conv: any): Promise<{ venueSide: string[]; playerId: string | null }> {
+  if (conv.contextType !== 'venue' || !conv.contextId) return { venueSide: [], playerId: null };
+  const venue: any = await Venue.findById(conv.contextId).select('ownerUserId').lean();
+  const ownerId = venue?.ownerUserId ? String(venue.ownerUserId) : null;
+  return {
+    venueSide: await venueSideUserIds(String(conv.contextId), ownerId),
+    playerId: playerParticipantId(conv, ownerId),
+  };
+}
+
 /**
  * The other SIDE of the thread — the audience for a read receipt or a typing
- * indicator. These must never cross within a side: a colleague opening the venue
- * inbox must not mark the venue's replies "Seen", because the customer hasn't
- * seen them.
+ * indicator. A receipt must never cross within a side: a colleague opening the
+ * venue inbox is not the customer seeing the reply.
  */
-async function otherSideUserIds(conv: any, user: any): Promise<string[]> {
-  if (conv.contextType === 'venue' && conv.contextId) {
-    const venue: any = await Venue.findById(conv.contextId).select('ownerUserId').lean();
-    const ownerId = venue?.ownerUserId ? String(venue.ownerUserId) : null;
-    const side = await venueSideUserIds(String(conv.contextId), ownerId);
-    if (side.includes(String(user.sub))) {
-      const pid = playerParticipantId(conv, ownerId);
-      return pid && pid !== String(user.sub) ? [pid] : [];
-    }
-    return side;
+function otherSideOf(sides: { venueSide: string[]; playerId: string | null }, conv: any, me: string): string[] {
+  const { venueSide, playerId } = sides;
+  if (venueSide.length) {
+    if (venueSide.includes(me)) return playerId && playerId !== me ? [playerId] : [];
+    return venueSide;
   }
-  const other = otherParticipantId(conv, user.sub);
+  const other = otherParticipantId(conv, me);
   return other ? [other] : [];
 }
 
 /** Everyone who can see the thread — both participants plus the venue's staff. */
 async function threadViewerIds(conv: any): Promise<string[]> {
   const ids = new Set<string>((conv.participantIds ?? []).map((p: any) => String(p)));
-  if (conv.contextType === 'venue' && conv.contextId) {
-    const venue: any = await Venue.findById(conv.contextId).select('ownerUserId').lean();
-    const side = await venueSideUserIds(String(conv.contextId), venue?.ownerUserId ? String(venue.ownerUserId) : null);
-    for (const uid of side) ids.add(uid);
-  }
+  for (const uid of (await threadSides(conv)).venueSide) ids.add(uid);
   return [...ids];
+}
+
+/**
+ * Mark the thread read for the viewer — and, on a venue thread, for the WHOLE
+ * venue side. The inbox is shared, so once the owner or any staff member opens
+ * it the enquiry is handled: the badge (and the message notification) must clear
+ * for the rest of them, live, or they'd all keep chasing the same message.
+ *
+ * Two different signals go out, and conflating them would lie to someone:
+ *   • `message.read` → the other SIDE: a genuine "Seen" receipt.
+ *   • `conversation.read` → my own side: "a colleague has this" — it clears their
+ *     badge but must NOT tick the venue's replies as seen by the customer.
+ */
+async function markThreadRead(conv: any, user: any, readAt: Date): Promise<void> {
+  const me = String(user.sub);
+  const sides = await threadSides(conv);
+  const meOnVenueSide = sides.venueSide.includes(me);
+  const readers = meOnVenueSide ? sides.venueSide : [me];
+
+  conv.reads = [
+    ...(conv.reads ?? []).filter((r: any) => !readers.includes(String(r.userId))),
+    ...readers.map((uid) => ({ userId: uid, at: readAt })),
+  ] as any;
+  await conv.save();
+
+  // The user has seen the messages, so the notification badge should drop too.
+  // Message notifications carry a linkUrl of `/messages/:conversationId`.
+  await Notification.updateMany(
+    { userId: { $in: readers }, type: 'message', linkUrl: `/messages/${String(conv._id)}`, isRead: false },
+    { $set: { isRead: true } },
+  );
+
+  const payload = { conversationId: String(conv._id), readerId: me, readAt };
+  for (const uid of otherSideOf(sides, conv, me)) publishUserEvent(uid, 'message.read', payload);
+  for (const uid of readers.filter((uid) => uid !== me)) publishUserEvent(uid, 'conversation.read', payload);
 }
 
 /** The player on a venue thread — the participant who isn't the venue's owner. */
@@ -402,34 +438,13 @@ export async function getConversation(c: any) {
   const other = otherId ? await User.findById(otherId).select('displayName avatarUrl lastActiveAt').lean() : null;
   const messages = await Message.find({ conversationId: conv._id }).sort({ createdAt: 1 }).limit(200).lean();
 
-  // Mark this thread read for the current user (upsert their read timestamp).
+  // Mark this thread read (for the whole venue side, if that's who's reading).
   // Use the later of now and the newest loaded message's createdAt so that even
   // future-dated seed messages are captured as "read" on the next unread tally.
   const now = new Date();
   const newestMsg = messages.length ? new Date(messages[messages.length - 1].createdAt).getTime() : 0;
   const readAt = newestMsg > now.getTime() ? new Date(newestMsg) : now;
-  conv.reads = [
-    ...(conv.reads ?? []).filter((r: any) => String(r.userId) !== user.sub),
-    { userId: user.sub, at: readAt },
-  ] as any;
-  await conv.save();
-
-  // Also mark the related in-app notifications as read — the user has seen the
-  // messages, so the badge should drop. Message notifications carry a linkUrl of
-  // `/messages/:conversationId` (set by notifyUser in sendMessage / startConversation).
-  await Notification.updateMany(
-    { userId: user.sub, type: 'message', linkUrl: `/messages/${id}`, isRead: false },
-    { $set: { isRead: true } },
-  );
-
-  // Tell the other SIDE we read it (a colleague's read isn't the customer's).
-  for (const uid of await otherSideUserIds(conv, user)) {
-    publishUserEvent(uid, 'message.read', {
-      conversationId: String(conv._id),
-      readerId: user.sub,
-      readAt: now,
-    });
-  }
+  await markThreadRead(conv, user, readAt);
 
   // Collect replyToMessageIds and fetch the referenced messages + their senders.
   const replyIds = [...new Set(messages.map((m: any) => m.replyToMessageId?.toString()).filter(Boolean))] as string[];
@@ -529,18 +544,16 @@ export async function sendMessage(c: any) {
     }
   }
 
-  // Update the thread preview + mark it read for the sender. New activity also
-  // un-hides the thread for anyone who'd soft-deleted it (it reappears).
+  // Update the thread preview, then mark it read for the sender — and, if they're
+  // venue side, for their colleagues too: answering IS handling it, so nobody else
+  // should be left with a badge chasing a message that's already been dealt with.
+  // New activity also un-hides the thread for anyone who'd soft-deleted it.
   conv.lastBody = body;
   conv.lastSenderId = user.sub as any;
   conv.lastAt = now;
   conv.lastDeletedBy = null;
   conv.hiddenFor = [] as any;
-  conv.reads = [
-    ...(conv.reads ?? []).filter((r: any) => String(r.userId) !== user.sub),
-    { userId: user.sub as any, at: now },
-  ] as any;
-  await conv.save();
+  await markThreadRead(conv, user, now);
 
   // ── Fan the message out ──────────────────────────────────────────────────
   // A venue thread is a shared inbox: it's seen by the player AND everyone who
@@ -653,25 +666,7 @@ export async function markConversationRead(c: any) {
   }
 
   const now = new Date();
-  conv.reads = [
-    ...(conv.reads ?? []).filter((r: any) => String(r.userId) !== user.sub),
-    { userId: user.sub, at: now },
-  ] as any;
-  await conv.save();
-
-  // Also mark the related in-app notifications as read (same rationale as getConversation).
-  await Notification.updateMany(
-    { userId: user.sub, type: 'message', linkUrl: `/messages/${id}`, isRead: false },
-    { $set: { isRead: true } },
-  );
-
-  for (const uid of await otherSideUserIds(conv, user)) {
-    publishUserEvent(uid, 'message.read', {
-      conversationId: String(conv._id),
-      readerId: user.sub,
-      readAt: now,
-    });
-  }
+  await markThreadRead(conv, user, now);
 
   return c.json({ data: { readAt: now } });
 }
@@ -687,7 +682,7 @@ export async function sendTyping(c: any) {
   if (!conv || !(await canAccess(conv, user))) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
   }
-  for (const uid of await otherSideUserIds(conv, user)) {
+  for (const uid of otherSideOf(await threadSides(conv), conv, String(user.sub))) {
     publishUserEvent(uid, 'message.typing', {
       conversationId: String(conv._id),
       userId: user.sub,

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { apiUrl, getAccessToken } from '../lib/api';
 import { emitRealtime } from '../lib/realtimeBus';
 import { useNotificationStore } from '../lib/notificationStore';
+import { useMessageStore } from '../lib/messageStore';
 
 // Opens ONE app-wide EventSource to GET /api/v1/me/stream while logged in, so
 // new notifications and incoming direct messages arrive in realtime instead of
@@ -41,6 +42,15 @@ export function useRealtimeStream(enabled: boolean) {
       let data: any = null;
       try { data = JSON.parse(ev.data); } catch { /* ignore */ }
       if (data) emitRealtime('message.read', data);
+    };
+    // A colleague opened (or answered) a thread in a venue inbox we share — it's
+    // handled, so our badge for it clears. Deliberately NOT 'message.read': that
+    // one is a "Seen" receipt from the customer, and a colleague isn't the customer.
+    const onConversationRead = (ev: MessageEvent) => {
+      let data: any = null;
+      try { data = JSON.parse(ev.data); } catch { /* ignore */ }
+      if (data) emitRealtime('conversation.read', data);
+      void useMessageStore.getState().refresh();
     };
     const onGameMessage = (ev: MessageEvent) => {
       let data: any = null;
@@ -87,6 +97,7 @@ export function useRealtimeStream(enabled: boolean) {
       es.addEventListener('message.created', onMessage);
       es.addEventListener('message.deleted', onMessageDeleted);
       es.addEventListener('message.read', onMessageRead);
+      es.addEventListener('conversation.read', onConversationRead);
       es.addEventListener('game.message.created', onGameMessage);
       es.addEventListener('tournament.message.created', onTournamentMessage);
       es.addEventListener('club.message.created', onClubMessage);
