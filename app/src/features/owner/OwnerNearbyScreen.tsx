@@ -95,6 +95,7 @@ function byAttention(a: VenueRow, b: VenueRow): number {
 export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
   const user = useAuthStore((s) => s.user);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
+  const canPricing = userHasPermission(user, 'owner.pricing.manage');
   const canReports = userHasPermission(user, 'owner.reports.view');
   const canCreate = userHasPermission(user, 'owner.venues.create');
   const canClaim = userHasPermission(user, 'owner.venues.claim');
@@ -199,13 +200,15 @@ export function OwnerNearbyScreen({ onNavigate }: OwnerNearbyScreenProps) {
       {header}
 
       <div className="px-5 mt-4 space-y-5">
-        <button
-          type="button"
-          onClick={() => onNavigate('owner-pricing')}
-          className="w-full h-11 rounded-full bg-[#0d131b] text-white font-extrabold text-[13px] flex items-center justify-center gap-2 shadow-[var(--shadow-card)] active:scale-[0.98]"
-        >
-          <Icon name="bolt" size={16} /> Manage venues pricing
-        </button>
+        {canPricing && (
+          <button
+            type="button"
+            onClick={() => onNavigate('owner-pricing')}
+            className="w-full h-11 rounded-full bg-[#0d131b] text-white font-extrabold text-[13px] flex items-center justify-center gap-2 shadow-[var(--shadow-card)] active:scale-[0.98]"
+          >
+            <Icon name="bolt" size={16} /> Manage venues pricing
+          </button>
+        )}
 
         {/* Map of your venues — status pins, today's count inside each */}
         {mappable.length > 0 ? (

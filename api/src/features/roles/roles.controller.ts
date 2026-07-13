@@ -39,7 +39,7 @@ const SYSTEM_PERMISSION_BACKFILLS: Record<string, string[]> = {
   // already-seeded owner rows (insert-only seeding can't reach them) so existing
   // owners aren't locked out of the pages their role is meant to have.
   owner: [
-    'owner.venues.claim',
+    'owner.venues.claim', 'owner.pricing.manage',
     'owner.bookings.manage', 'owner.analytics.view', 'owner.reports.view', 'owner.games.view',
     'owner.market.view', 'owner.notifications.view',
     'owner.coaches.manage', 'owner.tournaments.manage', 'owner.staff.manage',

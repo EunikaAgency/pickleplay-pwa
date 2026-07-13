@@ -139,7 +139,9 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'owner-bookings': 'owner.reports.view',
   'owner-front-desk': 'owner.bookings.manage',
   'owner-manual-reservation': 'owner.bookings.manage',
-  'owner-pricing': 'owner.access',
+  // /owner/pricing — the rates players are charged. Owner-only, same reasoning as
+  // /owner/reports: staff run the courts, they don't set the business's prices.
+  'owner-pricing': 'owner.pricing.manage',
   'owner-insights': 'owner.analytics.view',
   'owner-notifications': 'user.notifications.manage',
   'owner-staff': 'owner.staff.manage',

@@ -88,7 +88,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, isLoggedIn
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
   const visibleTabs = roleTabs.filter((t) => t.id !== 'tournaments' || showTournaments);
   const showOwnerCalendar = userHasPermission(currentUser, 'owner.access') && onOpenCalendar;
-  const showOwnerPricing = userHasPermission(currentUser, 'owner.access') && onOpenPricing;
+  const showOwnerPricing = userHasPermission(currentUser, 'owner.pricing.manage') && onOpenPricing;
   const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;
   const showOwnerPartners = userHasPermission(currentUser, 'owner.access') && onOpenPartners;
   const footName = currentUser?.displayName ?? 'Guest';

@@ -92,6 +92,7 @@ function sameScopeOverride(ov: SlotPriceOverride, courtId: string): boolean {
 export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: OwnerManualReservationScreenProps) {
   const user = useAuthStore((s) => s.user);
   const canManage = userHasPermission(user, 'owner.bookings.manage');
+  const canPricing = userHasPermission(user, 'owner.pricing.manage');
   const { venues, status, retry } = useOwnerDashboard({ withBookings: false, withAnalytics: false });
 
   // Which venue we're reserving on: the deep-linked one, else the first managed.
@@ -439,7 +440,9 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
                   <div className="text-[11px] text-[var(--muted)] leading-tight">Across all your venues</div>
                 </div>
               </div>
-              <button type="button" onClick={() => onNavigate('owner-pricing')} className="text-[11px] font-extrabold text-[#f59e0b] shrink-0">Pricing grid</button>
+              {canPricing && (
+                <button type="button" onClick={() => onNavigate('owner-pricing')} className="text-[11px] font-extrabold text-[#f59e0b] shrink-0">Pricing grid</button>
+              )}
             </div>
 
             {bkStatus === 'loading' ? (

@@ -11,6 +11,7 @@ export const ALL_PERMISSIONS = [
   'owner.venues.claim',
   'owner.venues.manage',
   'owner.bookings.manage',
+  'owner.pricing.manage',
   'owner.analytics.view',
   'owner.reports.view',
   'owner.games.view',
@@ -104,6 +105,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.venues.claim',
     'owner.venues.manage',
     'owner.bookings.manage',
+    'owner.pricing.manage',
     'owner.analytics.view',
     'owner.reports.view',
     'owner.games.view',
@@ -123,10 +125,11 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // console for ALL of their creating owner's venues, bookings, and clubs (scoped
   // server-side by parentOwnerUserId → effectiveOwnerId), but cannot create more
   // staff (owner.staff.manage), nor create/claim new venues, nor open the
-  // cross-venue revenue report at /owner/reports (owner.reports.view) — those
-  // stay the owner's own administrative actions. The operational owner.* set
-  // mirrors the owner role minus those four keys. Staff still work bookings via
-  // the front desk, calendar, and per-venue inbox.
+  // cross-venue revenue report at /owner/reports (owner.reports.view), nor set
+  // the rates players are charged at /owner/pricing (owner.pricing.manage) —
+  // those stay the owner's own administrative actions. The operational owner.*
+  // set mirrors the owner role minus those five keys. Staff still work bookings
+  // via the front desk, calendar, and per-venue inbox.
   staff: [
     ...PLAYER_BASE_PERMISSIONS,
     'owner.access',
@@ -179,6 +182,7 @@ export const PERMISSION_CATALOGUE: Array<{
   { key: 'owner.venues.claim', group: 'Owner', label: 'Claim a venue', description: 'Claim an existing unclaimed directory listing as its owner — submitted for admin review.' },
   { key: 'owner.venues.manage', group: 'Owner', label: 'Manage own venues', description: 'Edit venues they own.' },
   { key: 'owner.bookings.manage', group: 'Owner', label: 'Manage bookings', description: 'View, confirm, cancel, and mark paid bookings on owned venues.' },
+  { key: 'owner.pricing.manage', group: 'Owner', label: 'Set court pricing', description: 'Open the pricing override grid at /owner/pricing and set the hourly rates players are charged. Withheld from staff sub-accounts.' },
   { key: 'owner.analytics.view', group: 'Owner', label: 'View venue analytics', description: 'See revenue, bookings, occupancy, and customer analytics for owned venues.' },
   { key: 'owner.reports.view', group: 'Owner', label: 'View business reports', description: 'Open the cross-venue revenue/KPI report at /owner/reports. Withheld from staff sub-accounts.' },
   { key: 'owner.games.view', group: 'Owner', label: 'View venue games', description: 'See games and court activity scheduled at owned venues.' },
