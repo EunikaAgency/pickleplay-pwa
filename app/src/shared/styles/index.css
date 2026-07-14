@@ -766,6 +766,12 @@
 .sticky-cta .btn-join.joined { background: var(--primary); color: white; box-shadow: 0 6px 18px -6px rgba(0,64,224,0.55); }
 .sticky-cta .btn-join.btn-leave { background: var(--coral-soft); color: var(--coral); box-shadow: none; }
 .sticky-cta .btn-join:disabled { opacity: 0.85; cursor: default; }
+/* Locked out (a men-only / women-only game the viewer can't join): read as
+   unavailable rather than as a lime call-to-action they keep tapping. */
+.sticky-cta .btn-join.btn-locked {
+  background: var(--surface); color: var(--muted);
+  border: 0.5px solid var(--hairline); box-shadow: none;
+}
 
 /* ─── Detail hero ─── */
 .detail-hero {

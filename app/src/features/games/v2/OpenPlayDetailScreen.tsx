@@ -313,7 +313,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           <div className="eyebrow">Interested</div>
           <div className="amount">{interestedCount}</div>
         </div>
-        <button className={`btn-join ${isInterested ? 'btn-leave' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
+        <button className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
           {busy ? (
             <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
           ) : blockedReason ? (

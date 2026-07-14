@@ -580,7 +580,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </button>
               )
             ) : (
-              <button className="btn-join" onClick={handleJoin} disabled={joining || isFull || !!blockedReason}>
+              <button className={`btn-join ${blockedReason ? 'btn-locked' : ''}`} onClick={handleJoin} disabled={joining || isFull || !!blockedReason}>
                 {joining ? (
                   <>
                     <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
