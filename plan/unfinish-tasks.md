@@ -1,4 +1,4 @@
-# Unfinished — everything still open after Phase 1 (14 July 2026)
+# Unfinished — everything still open
 
 Phase 1 of the 8 July minutes is closed (5/5). This file is the honest list of what is **not**
 done, and what each item is waiting on.
@@ -10,7 +10,7 @@ Client-facing report: [`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md
 
 ---
 
-## 0. An open question that has to be settled first
+## 1. An open question that has to be settled first
 
 **Does the team actually want venue-hosted Open Play?**
 
@@ -33,18 +33,18 @@ venue/organizer-hosted** (no booking behind them; a per-player fee of ₱300–�
 "recurring Open Play for venue owners" — built more of the venue-hosted kind, at the team's
 instruction.**
 
-**This has to be resolved before item 1 below means anything.** Two ways out:
+**This has to be resolved before item 2 below means anything.** Two ways out:
 
-- **Confirm it** — venues run their own sessions and sell seats. Then item 1 is a real gap and the
+- **Confirm it** — venues run their own sessions and sell seats. Then item 2 is a real gap and the
   biggest one on this list.
 - **Reject it** — only players host, by booking a court. Then Task 3 was built on a false premise
   and should be removed, along with the venue-run session type.
 
-Do not build item 1 until this is answered.
+Do not build item 2 until this is answered.
 
 ---
 
-## 1. Eligibility is only half built
+## 2. Eligibility is only half built
 
 **Done, and done properly — for anything a PLAYER hosts (including player-hosted open play):**
 
@@ -67,11 +67,11 @@ Do not build item 1 until this is answered.
 from you entirely**. The build picked the first. Nobody signed that off. If the team wanted it
 hidden, it is a rework across the listing, the filters, the ranking and the join button together.
 
-*Blocked on: decision 3 — and on item 0 above.*
+*Blocked on: decision 3 — and on item 1 above.*
 
 ---
 
-## 2. Open Play has no lobby
+## 3. Open Play has no lobby
 
 Today it is one tap ("I'm Interested") and a count. No confirmed roster, no invited/pending states,
 no group chat for the session.
@@ -87,7 +87,7 @@ confirmed / host approval) and connecting what already exists — not building a
 
 ---
 
-## 3. There are no rules for money
+## 4. There are no rules for money
 
 Who may charge, where the money goes, whether PickleBallers takes a cut, what happens on a refund or
 a cancellation. Same question again for coaching — the app currently tells the player, in plain
@@ -102,7 +102,7 @@ handled today. When the rules land, that is the mechanism to extend — not a ne
 
 ---
 
-## 4. Two things Phase 1 exposed
+## 5. Two things Phase 1 exposed
 
 **The "Events" tab has no events in it.** Making it a visible tab (as the meeting asked) made this
 *more* obvious, not less. What is inside it is ordinary players' games. The real competition —
@@ -119,7 +119,7 @@ deliberately: what the card *should* say depends on who is meant to be charging 
 
 ---
 
-## 5. Deferred by design
+## 6. Deferred by design
 
 Not started, and correctly so — these should wait until the core Play and payment rules are settled.
 
@@ -131,7 +131,7 @@ Not started, and correctly so — these should wait until the core Play and paym
 
 ---
 
-## 6. The decisions, all still unanswered
+## 7. The decisions, all still unanswered
 
 **The three that unblock the most:**
 
@@ -156,7 +156,7 @@ Not started, and correctly so — these should wait until the core Play and paym
   a price range or a live price? Do surge rules need a platform-level cap?
 - A complete **equipment rental inventory** with no player-facing way to rent. Who owns deposits,
   damage, late returns?
-- **Tournaments living outside Play** (see item 4).
+- **Tournaments living outside Play** (see item 5).
 - **Request-to-book** — may a court still awaiting the owner's approval host a public Open Play
   session? What happens to players who joined a session whose booking is later rejected?
 
@@ -164,8 +164,8 @@ Not started, and correctly so — these should wait until the core Play and paym
 
 ## What to do next
 
-1. **Answer item 0.** Everything about eligibility hangs off it, and it may mean deleting work.
+1. **Answer item 1.** Everything about eligibility hangs off it, and it may mean deleting work.
 2. **Get decisions 1, 2 and 3 in one short meeting.** Nothing substantial can start until they land.
 3. Then build payments by **extending the tournament entry-fee flow**, which already handles real
    money.
-4. Leave section 5 alone until the above is settled.
+4. Leave section 6 alone until the above is settled.
