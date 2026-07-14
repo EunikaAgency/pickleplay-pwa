@@ -125,8 +125,11 @@ test.describe('Discover filters (§4.3)', () => {
     expect(after).toBeGreaterThan(0);
     expect(after).toBeLessThan(before);
 
-    // A filter that empties the feed with no way back is the failure mode here.
-    await page.getByRole('button', { name: /clear|reset/i }).first().click();
+    // A filter that narrows the feed with no way back is the failure mode here.
+    // (Applying closes the sheet, so it has to be reopened to reach Reset.)
+    await page.getByRole('button', { name: /filter/i }).first().click();
+    await page.getByRole('button', { name: /reset/i }).first().click();
+    await page.getByRole('button', { name: /show/i }).last().click();
     await page.waitForTimeout(500);
     expect(await page.locator('.game-card').count()).toBe(before);
   });

@@ -74,6 +74,16 @@ src/
                        #   user flips Sort (soonest/nearest/spots-left/newest are pure reorderings
                        #   of a set we already hold — a round-trip per tap would only feel slower),
                        #   plus the PlayItem/ScoredPlayItem types re-exported from api.ts.
+                       #   The Play tab's SECTION control (Open Play | Events) is a visible tab
+                       #   row now (§3.4) — it was a dropdown that read only "Open Play", so a
+                       #   player who never opened it had no way of knowing Events existed. A bare
+                       #   /games also opens on OPEN PLAY, not Events (§3.3): both the URL parser's
+                       #   default and syncTabUrl's omit-the-default rule had to flip together, or
+                       #   picking Events writes nothing to the URL and a reload bounces you back.
+                       #   gameFilters gained §4.3's four: cost / access / repeat / venue. `cost`
+                       #   keys off ScoredPlayItem.joinFee, NOT priceLabel — on a GAME the label is
+                       #   the VENUE's hourly rate (the host paid it), so a "Free" filter built on
+                       #   the label would hide games that are in fact free to join.
                        #   Open Play (gameType 'open') = INTEREST board, no lobby: v2/OpenPlayDetail
                        #   shows an "I'm Interested" toggle (toggleGameInterest) + who's interested,
                        #   not slots (applies to organizer sessions too). Public game (gameType

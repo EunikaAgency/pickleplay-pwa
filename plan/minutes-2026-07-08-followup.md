@@ -60,9 +60,27 @@ by how much they unblock.
 
 ---
 
-## Phase 1 — Buildable now, no decision needed
+## Phase 1 — ✅ DONE (14 July 2026)
 
-### Task 1 — Surface Events alongside Open Play as visible tabs (§3.4, §13.7) — **S**
+All five closed. Two bugs surfaced only by *running* the code, not by types:
+
+- **Recurring Open Play was booking the wrong weekday.** `generateSessionDates` picked
+  the right local day and then serialised it with `toISOString()` — which is UTC, and
+  local midnight in Manila is 16:00 the previous day. Ask for Tuesday, get a series of
+  Mondays. Every recurring session ever created was one day early. Fixed via a local
+  `ymd()`; three call sites in `content.controller.ts` had the same fault.
+- **The Play card shows a price you don't pay.** On a GAME, `priceLabel` is the
+  *venue's hourly rate* — the host paid it, and the app has no way to charge a joiner.
+  A Free/Paid filter built on that label would have hidden games that are free to join.
+  The filter keys off a new `joinFee` instead (`null` = no join fee exists).
+
+Two PDF claims were also wrong: §13.7 (staff revenue) was **already fixed** by `dfb2d18`,
+and §3.3's "tapping Play lands on Open Play — this works today" was **false** — it landed
+on Events.
+
+## Phase 1 — the original plan
+
+### Task 1 — Surface Events alongside Open Play as visible tabs (§3.4) — ✅ **DONE**
 
 The meeting asked for Open Play and Events side by side; today they hide behind a dropdown, so a
 player who never opens it does not know Events exists.
@@ -78,7 +96,7 @@ player who never opens it does not know Events exists.
 > prominent tab makes the mislabel *more* visible, not less — a headline tab called "Events" that
 > contains no events. Merge Tournaments into it, or rename the tab, as part of the same change.
 
-### Task 2 — Centralise the Discover relevance ranking (§4.2) — **M**
+### Task 2 — Centralise the Discover relevance ranking (§4.2) — ✅ **DONE**
 
 Ranking (time 30% / proximity 25% / skill 20% / spots 15% / friends 10%) currently runs on-device in
 [`app/src/features/games/playRanking.ts`](../app/src/features/games/playRanking.ts). Devices can
@@ -89,7 +107,7 @@ disagree, and tuning the weights needs an app release.
   renormalise, rather than producing a misleading order).
 - The 45 existing passing checks are the port's safety net — keep them green.
 
-### Task 3 — Extend recurring Open Play to venue owners (§5.3) — **M**
+### Task 3 — Extend recurring Open Play to venue owners (§5.3) — ✅ **DONE**
 
 "Recurring sessions" / "New series" is organizer-console only today.
 
@@ -97,7 +115,7 @@ disagree, and tuning the weights needs an app release.
 - Add the editing controls that do not exist yet: edit **this occurrence**, **this and future**, or
   the **whole series**.
 
-### Task 4 — Add the decision-free Discover filters (§4.3) — **S/M**
+### Task 4 — Add the decision-free Discover filters (§4.3) — ✅ **DONE**
 
 Live today: date, skill level, play type, openings, distance. Buildable now without any decision:
 
@@ -108,7 +126,7 @@ Live today: date, skill level, play type, openings, distance. Buildable now with
 
 > **Gender eligibility is the one filter that must wait** for Phase 0 decision 3.
 
-### Task 5 — Close out the staff-permissions item (§6, §13.7) — **XS**
+### Task 5 — Close out the staff-permissions item (§6, §13.7) — ✅ **DONE**
 
 Already implemented (`dfb2d18` and friends). Confirm the staff dashboard now matches the owner-only
 Reports rule, then mark §13.7 closed in the next status note so the PDF's open item does not get

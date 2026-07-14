@@ -113,6 +113,20 @@ src/
                              #   Never exposes email/phone/postal address.
     tournament-applications/ # organizers request a venue+slot for a tournament; owners approve/reject
     content/                 # editorial / CMS content + organizer tournaments AND open play
+                             #   RECURRING open play is no longer organizer-only (§5.3): a venue
+                             #   OWNER/staff can run a series at a venue they MANAGE (canRunSeriesAt
+                             #   = organizer.events.manage OR managedVenueIds contains it) — an owner
+                             #   needs that one capability, not the whole organizer role. Create,
+                             #   list (/mine), cancel and the new EDIT endpoints all share that gate;
+                             #   widening create but not /mine greeted owners with a 403 on load.
+                             #   PATCH /open-play/:id edits ONE occurrence ('just this week',
+                             #   notifies whoever joined); PATCH /open-play/series/:id?scope=future|all
+                             #   edits the template + its occurrences (future = today on, so a price
+                             #   rise never rewrites what last week's players paid).
+                             #   ⚠ Dates are built with ymd(), never toISOString(): local midnight in
+                             #   Manila is 16:00 the PREVIOUS day in UTC, and the generator was
+                             #   writing every recurring session one day early — ask for Tuesday, get
+                             #   a series of Mondays.
                              #   Tournaments: create/edit/cancel/mine, open-registration,
                              #     register/withdraw/participants, registration mgmt
                              #     (check-in/approve/decline/paid), announcements (broadcast
