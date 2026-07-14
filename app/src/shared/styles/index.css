@@ -1605,6 +1605,14 @@
 }
 .time-pick:active { transform: scale(0.96); }
 .time-pick.active { background: var(--ink); color: white; border-color: var(--ink); }
+/* A row whose labels must stay on one line ("Women only" wraps at the default
+   14px inside a third of the frame). Shrinks the type instead of the meaning. */
+.time-pick.one-line {
+  white-space: nowrap;
+  font-size: 13px;
+  padding: 12px 4px;
+  letter-spacing: -0.01em;
+}
 
 /* Notifications list */
 .notif {

@@ -1066,7 +1066,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                     <button
                       key={g.v}
                       type="button"
-                      className={`time-pick ${genderPolicy === g.v ? 'active' : ''}`}
+                      className={`time-pick one-line ${genderPolicy === g.v ? 'active' : ''}`}
                       onClick={() => setGenderPolicy(g.v)}
                     >
                       <span className="mr-1">{g.icon}</span>{g.label}
@@ -1216,7 +1216,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 <button
                   key={g.v}
                   type="button"
-                  className={`time-pick ${genderPolicy === g.v ? 'active' : ''}`}
+                  className={`time-pick one-line ${genderPolicy === g.v ? 'active' : ''}`}
                   onClick={() => setGenderPolicy(g.v)}
                 >
                   <span className="mr-1">{g.icon}</span>{g.label}
