@@ -2078,11 +2078,17 @@
   gap: 10px;
   padding: 4px 12px 22px;
 }
+/* The brand icon carries its own lime + blue, so it sits on the bare sidebar
+   rather than in a lime chip (which would swallow the ball). */
 .sidebar .brand-mark {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: var(--lime); color: var(--lime-ink);
+  width: 36px; height: 36px;
   display: inline-flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+}
+.sidebar .brand-mark img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .sidebar .brand-name {
   font-family: var(--font-heading);

@@ -109,7 +109,7 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-brand">
         <span className="brand-mark">
-          <Icon name="paddle" size={20} />
+          <img src="/brand-icon.png" alt="" />
         </span>
         <span className="brand-name">PickleBallers</span>
       </div>
