@@ -2,10 +2,13 @@
 
 Phase 1 is done (5/5). This is what's left.
 
-> **Updated 14 July.** The four big questions were answered — see the `Decided` blocks below. The
-> headline: **Open Play is player-booked, gets a real lobby, and is free to join unless a subscribed
-> organizer charges.** The work turns out to be a **merge** (`OpenPlaySession` → `Game`), not a
-> rebuild. **One answer still gates the build** — whether PickleBallers cuts an organizer's join fee.
+> **Updated 14 July — Open Play is fully decided. Nothing gates the build.** See the `Decided` blocks
+> below. The headline: **Open Play is player-booked, gets a real lobby with a player-set cap, and is
+> free to join unless a subscribed organizer charges — in which case they keep every peso.** The work
+> turns out to be a **merge** (`OpenPlaySession` → `Game`), not a rebuild.
+>
+> What's left open (items 5 and 7) touches coaching, the Events tab, and wording — **none of it blocks
+> Open Play.**
 
 ---
 
@@ -86,11 +89,14 @@ Not hard to build. We just don't know the rules. Real money already moves throug
 >
 > - **PickleBallers' cut is on the BOOKING only** — the court fee the host pays. Already built and
 >   live: `serviceFeePercent`, **7%**, on every `Booking`. Nothing to change here.
+> - **PickleBallers takes NO cut of the organizer's join fee.** Confirmed 14 July. The organizer keeps
+>   every peso of it. The 7% on the booking is the platform's *only* earning on an Open Play.
 > - The organizer subscription is **already in the code and purchasable — with zero subscribers.**
-> - ❓ **Still open:** does PickleBallers take a cut of the organizer's *join fee* too? Reading "a
->   percentage **only** when booking" as **no — the organizer keeps all of it.** Confirm.
 > - ❓ **Still open:** coach payments. Unchanged — the app still tells the player to pay the coach
 >   afterwards.
+>
+> **Worked example.** An organizer books a ₱800 court and charges ₱150/head. Six join.
+> → Organizer keeps **₱900**, in full. PickleBallers earns **7% of ₱800 ≈ ₱56**. Nothing else.
 
 ## 5. Two things Phase 1 exposed
 
@@ -114,8 +120,8 @@ the Play ranking.
 
 1. ~~Does Open Play get a lobby?~~ → ✅ **Yes**, with a cap. (item 3)
 2. ~~Who charges for Open Play, and does PickleBallers take a cut?~~ → ✅ **Free to join** unless the
-   host is a subscribed organizer, who sets the fee and keeps it. **PickleBallers takes 7% on the
-   booking only** — already live. (item 4)
+   host is a subscribed organizer, who sets the fee and **keeps all of it**. **PickleBallers takes 7%
+   on the booking only** — already live. (item 4)
 3. ~~Hide games you can't join, or show them marked?~~ → ✅ **Show them, marked — and disable the
    card.**
 
@@ -127,12 +133,10 @@ the Play ranking.
 > So whoever chose "show it, marked" chose **right** — but only half-built it. Today you can still
 > open the game and see a live Join button. **To do:** disable the card itself.
 
-**Still open — the short list:**
-1. **Does PickleBallers cut the organizer's join fee**, or does the organizer keep all of it?
-   (item 4)
-2. **Coach payments** — unchanged, still "pay the coach afterwards".
-3. **The "Events" tab** — merge or rename? (item 5)
-4. Is "Like" different from "Interested" · final homepage wording.
+**Still open — nothing here blocks the Open Play build:**
+1. **Coach payments** — unchanged, still "pay the coach afterwards".
+2. **The "Events" tab** — merge or rename? (item 5)
+3. Is "Like" different from "Interested" · final homepage wording.
 
 **And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
 thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
@@ -144,9 +148,11 @@ inventory, Tournaments sitting outside Play, and request-to-book.
 
 ---
 
-**Next:** items 1, 3, 4 and the show-vs-hide question are all settled. The work is now a **merge**
-(`OpenPlaySession` → `Game`), not a rebuild. One answer still gates the build: **whether
-PickleBallers cuts the organizer's join fee**.
+**Next: Open Play is settled — the build can start.** Items 1, 3, 4 and show-vs-hide are all answered.
+The work is a **merge** (`OpenPlaySession` → `Game`), not a rebuild.
+
+What's still open — coach payments, the Events tab, "Like" vs "Interested", homepage wording, and the
+seven unapproved live things — **blocks none of it.**
 
 *Detail, if you want it: [`minutes-2026-07-08-followup.md`](minutes-2026-07-08-followup.md) ·
 [`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)*
@@ -158,11 +164,14 @@ PickleBallers cuts the organizer's join fee**.
 
 Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 
-> **Na-update 14 Hulyo.** Nasagot na ang apat na malaking tanong — nasa mga `Desisyon` na kahon sa
-> baba. Ang buod: **player ang nagbo-book ng Open Play, bibigyan ito ng tunay na lobby, at libre ang
-> sumali maliban kung may sinisingil na subscribed organizer.** **Pagsasanib** pala ang trabaho
-> (`OpenPlaySession` → `Game`), hindi paggawa ng bago. **Isang sagot na lang ang humaharang** —
-> kukunan ba ng PickleBallers ang join fee ng organizer.
+> **Na-update 14 Hulyo — kumpleto na ang desisyon sa Open Play. Wala nang humaharang.** Nasa mga
+> `Desisyon` na kahon sa baba. Ang buod: **player ang nagbo-book ng Open Play, may tunay na lobby na
+> siya rin ang naglagay ng cap, at libre ang sumali — maliban kung may sinisingil na subscribed
+> organizer, at buo sa kanya yun.** **Pagsasanib** pala ang trabaho (`OpenPlaySession` → `Game`),
+> hindi paggawa ng bago.
+>
+> Ang natitirang bukas (items 5 at 7) ay tungkol sa coaching, sa Events tab, at sa wording — **wala
+> sa kanila ang humaharang sa Open Play.**
 
 ---
 
@@ -247,11 +256,14 @@ Hindi mahirap gawin. **Hindi lang namin alam ang rules.** May dumadaan nang toto
 >
 > - **Sa BOOKING lang kumukuha ang PickleBallers** — sa bayad sa court ng nag-host. Buhay na ito:
 >   `serviceFeePercent`, **7%**, sa bawat `Booking`. Walang babaguhin dito.
+> - **Walang kinukuha ang PickleBallers sa join fee ng organizer.** Kumpirmado 14 Hulyo. **Buo sa
+>   organizer** ang bawat piso. Ang 7% sa booking ang **tanging** kita ng platform sa Open Play.
 > - Ang organizer subscription ay **nasa code na at pwedeng bilhin — pero wala ni isang subscriber.**
-> - ❓ **Bukas pa:** kukunan din ba ng 7% ang *join fee* ng organizer? Ang basa namin sa "porsyento
->   **lang** pag nag-book": **hindi — buo sa organizer.** Kumpirmahin.
 > - ❓ **Bukas pa:** bayad sa coach. Hindi nagbago — sinasabi pa rin ng app na bayaran mo na lang siya
 >   pagkatapos.
+>
+> **Halimbawa.** Nag-book ang organizer ng ₱800 na court, sinisingil ng ₱150 kada tao. Anim ang sumali.
+> → **₱900** ang sa organizer, buo. **7% ng ₱800 ≈ ₱56** ang sa PickleBallers. Wala nang iba.
 
 ## 5. Dalawang bagay na lumabas dahil sa Phase 1
 
@@ -277,8 +289,8 @@ pag-adjust ng ranking.
 
 1. ~~Gagawan ba ng lobby ang Open Play?~~ → ✅ **Oo**, may cap. (item 3)
 2. ~~Sino ang magsisingil sa Open Play, at may kukunin ba ang PickleBallers?~~ → ✅ **Libre ang
-   sumali**, maliban kung subscribed organizer ang nag-host — siya ang magtatakda, sa kanya ang bayad.
-   **Sa booking lang kumukuha ng 7% ang PickleBallers** — buhay na. (item 4)
+   sumali**, maliban kung subscribed organizer ang nag-host — siya ang magtatakda, at **buo sa kanya**
+   ang bayad. **Sa booking lang kumukuha ng 7% ang PickleBallers** — buhay na. (item 4)
 3. ~~Itatago ba yung larong di mo pwedeng salihan, o ipapakita pero may marka?~~ → ✅ **Ipakita, may
    marka — at i-disable ang card.**
 
@@ -290,11 +302,10 @@ pag-adjust ng ranking.
 > Kaya yung pumili ng "ipakita, may marka" — **tama siya.** Kalahati lang ang nagawa. Ngayon,
 > nabubuksan mo pa rin ang laro at buhay pa rin ang Join button. **Gagawin:** i-disable ang card mismo.
 
-**Bukas pa — maikling listahan:**
-1. **Kukunan ba ng PickleBallers ang join fee ng organizer**, o buo sa organizer? (item 4)
-2. **Bayad sa coach** — hindi nagbago, "bayaran mo na lang siya pagkatapos" pa rin.
-3. **Yung "Events" tab** — pagsasamahin o papalitan ang pangalan? (item 5)
-4. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
+**Bukas pa — wala nang humaharang sa Open Play build:**
+1. **Bayad sa coach** — hindi nagbago, "bayaran mo na lang siya pagkatapos" pa rin.
+2. **Yung "Events" tab** — pagsasamahin o papalitan ang pangalan? (item 5)
+3. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
 
 **Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
 (yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
@@ -306,6 +317,8 @@ na hindi magamit, yung Tournaments na nasa labas ng Play, at yung request-to-boo
 
 ---
 
-**Susunod:** tapos na ang items 1, 3, 4, at ang itago-o-ipakita. **Pagsasanib** na ang trabaho
-(`OpenPlaySession` → `Game`), hindi paggawa ng bago. Isang sagot na lang ang humaharang: **kukunan ba
-ng PickleBallers ang join fee ng organizer.**
+**Susunod: tapos na ang Open Play — pwede nang simulan ang build.** Nasagot na ang items 1, 3, 4, at
+ang itago-o-ipakita. **Pagsasanib** ang trabaho (`OpenPlaySession` → `Game`), hindi paggawa ng bago.
+
+Ang natitirang bukas — bayad sa coach, Events tab, "Like" vs "Interested", wording ng homepage, at
+yung pitong bagay na walang nag-approve — **walang hinaharangan sa kanila.**
