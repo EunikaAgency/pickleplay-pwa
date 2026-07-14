@@ -92,11 +92,29 @@ Not hard to build. We just don't know the rules. Real money already moves throug
 > - **PickleBallers takes NO cut of the organizer's join fee.** Confirmed 14 July. The organizer keeps
 >   every peso of it. The 7% on the booking is the platform's *only* earning on an Open Play.
 > - The organizer subscription is **already in the code and purchasable — with zero subscribers.**
-> - ❓ **Still open:** coach payments. Unchanged — the app still tells the player to pay the coach
->   afterwards.
 >
 > **Worked example.** An organizer books a ₱800 court and charges ₱150/head. Six join.
 > → Organizer keeps **₱900**, in full. PickleBallers earns **7% of ₱800 ≈ ₱56**. Nothing else.
+>
+> ### Coach payments — decided 14 July
+> - **Lesson fees go through the app**, like a court booking. No more "pay the coach afterwards".
+> - **PickleBallers takes 0%** of the lesson fee. The coach already paid ₱499 to *be* a coach.
+>
+> ### The revenue model, stated plainly
+> | Money | PickleBallers takes |
+> |---|---|
+> | Court booking | **7%** |
+> | Organizer's join fee (₱999 sub) | **0%** |
+> | Coach's lesson fee (₱499 sub) | **0%** |
+>
+> **The subscription is the licence to charge.** The platform does not cut into what a partner earns.
+>
+> ### ⚠️ One consequence nobody has priced
+> Money that flows through the app at **0%** still costs a **payment-gateway fee (~2–3.5%)** — and
+> that comes out of **PickleBallers**, not the partner. So every coach lesson and every paid Open Play
+> booked in-app is a **small loss**, growing with volume. Options: absorb it, pass it to the player as
+> a visible fee, or raise the subscription to cover it. **❓ Needs a decision — but it does not block
+> the Open Play build.**
 
 ## 5. Two things Phase 1 exposed
 
@@ -134,7 +152,8 @@ the Play ranking.
 > open the game and see a live Join button. **To do:** disable the card itself.
 
 **Still open — nothing here blocks the Open Play build:**
-1. **Coach payments** — unchanged, still "pay the coach afterwards".
+1. **Who eats the payment-gateway fee** on 0%-cut money (coach lessons, organizer join fees)? As
+   decided, PickleBallers does — at a small loss per transaction. (item 4)
 2. **The "Events" tab** — merge or rename? (item 5)
 3. Is "Like" different from "Interested" · final homepage wording.
 
@@ -259,11 +278,31 @@ Hindi mahirap gawin. **Hindi lang namin alam ang rules.** May dumadaan nang toto
 > - **Walang kinukuha ang PickleBallers sa join fee ng organizer.** Kumpirmado 14 Hulyo. **Buo sa
 >   organizer** ang bawat piso. Ang 7% sa booking ang **tanging** kita ng platform sa Open Play.
 > - Ang organizer subscription ay **nasa code na at pwedeng bilhin — pero wala ni isang subscriber.**
-> - ❓ **Bukas pa:** bayad sa coach. Hindi nagbago — sinasabi pa rin ng app na bayaran mo na lang siya
->   pagkatapos.
 >
 > **Halimbawa.** Nag-book ang organizer ng ₱800 na court, sinisingil ng ₱150 kada tao. Anim ang sumali.
 > → **₱900** ang sa organizer, buo. **7% ng ₱800 ≈ ₱56** ang sa PickleBallers. Wala nang iba.
+>
+> ### Bayad sa coach — napagdesisyunan 14 Hulyo
+> - **Dadaan na sa app ang bayad sa lesson**, gaya ng booking ng court. Wala nang "bayaran mo na lang
+>   siya pagkatapos."
+> - **0% ang kukunin ng PickleBallers** sa lesson fee. Nagbayad na ng ₱499 ang coach para *maging* coach.
+>
+> ### Ang modelo ng kita, plano-plano
+> | Pera | Kukunin ng PickleBallers |
+> |---|---|
+> | Booking ng court | **7%** |
+> | Join fee ng organizer (₱999 sub) | **0%** |
+> | Lesson fee ng coach (₱499 sub) | **0%** |
+>
+> **Ang subscription ang bayad sa karapatang makasingil.** Hindi kumakagat ang platform sa kinikita ng
+> partner.
+>
+> ### ⚠️ Isang bunga na walang nakapansin
+> Ang perang dumadaan sa app kahit **0%** ang kuha, may **bayad pa rin sa payment gateway (~2–3.5%)** —
+> at **sa PickleBallers** yun manggagaling, hindi sa partner. Kaya bawat coach lesson at bawat bayad na
+> Open Play na dumaan sa app ay **maliit na lugi**, at lumalaki habang dumarami. Pagpipilian: sagutin
+> na lang, ipasa sa player bilang nakikitang fee, o taasan ang subscription para masakop. **❓
+> Kailangan ng desisyon — pero hindi ito humaharang sa Open Play build.**
 
 ## 5. Dalawang bagay na lumabas dahil sa Phase 1
 
@@ -303,7 +342,8 @@ pag-adjust ng ranking.
 > nabubuksan mo pa rin ang laro at buhay pa rin ang Join button. **Gagawin:** i-disable ang card mismo.
 
 **Bukas pa — wala nang humaharang sa Open Play build:**
-1. **Bayad sa coach** — hindi nagbago, "bayaran mo na lang siya pagkatapos" pa rin.
+1. **Sino ang sasagot sa bayad sa payment gateway** sa perang 0% ang kuha (coach lesson, join fee ng
+   organizer)? Sa napagkasunduan, ang PickleBallers — kaya maliit na lugi kada transaksyon. (item 4)
 2. **Yung "Events" tab** — pagsasamahin o papalitan ang pangalan? (item 5)
 3. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
 
