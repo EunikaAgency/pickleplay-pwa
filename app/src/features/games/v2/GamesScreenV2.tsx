@@ -354,6 +354,14 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     () => sortScored(discoverSearched.filter((i) => matchesPlayFilters(i, filters)), sort),
     [discoverSearched, filters, sort],
   );
+
+  // The venues the feed actually holds — offering the whole directory would fill the
+  // picker with venues that have nothing on. Derived from the UNfiltered feed, or
+  // picking a venue would immediately remove every other option from the list.
+  const venueOptions = useMemo(
+    () => [...new Set(discoverFeed.map((i) => i.venueName).filter(Boolean))].sort(),
+    [discoverFeed],
+  );
   const activeFilterCount = countActiveGameFilters(filters);
   // Distance controls are only meaningful once we know where the user is.
   const canFilterByDistance = userLoc != null;
@@ -731,6 +739,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           resultCount={discoverFiltered.length}
           showRadius={canFilterByDistance}
           typeOptions={typeOptions}
+          venueOptions={venueOptions}
         />
       )}
     </V2Shell>

@@ -82,6 +82,7 @@ export interface FeedGame {
   targetPlayers?: number | null;
   creator?: { displayName?: string } | null;
   creatorId?: string | null;
+  visibility?: string | null;
   courtImage?: string | null;
   createdAt?: string | Date | null;
   [k: string]: unknown;
@@ -106,6 +107,8 @@ export interface FeedSession {
   joinedCount?: number | null;
   organizerName?: string | null;
   price?: number | null;
+  isRecurring?: boolean | null;
+  seriesId?: unknown;
   createdAt?: string | Date | null;
   [k: string]: unknown;
 }
@@ -138,6 +141,23 @@ export interface PlayItem {
   fill: PlayFill;
   host: string | null;
   priceLabel: string | null;
+  /**
+   * What it costs the VIEWER to join — not what the court costs.
+   *
+   * `0` is free, `>0` is a real fee, and `null` means there is no join-fee mechanism
+   * for this kind of listing at all. Player-hosted games are `null` today: the host
+   * already booked and paid for the court, and the app has no way to charge a joiner
+   * (§10 of the 8 July minutes is the decision that would change that).
+   *
+   * This exists because `priceLabel` cannot answer the question. On a session it is
+   * the join fee; on a game it is the VENUE's hourly rate — so a "Free / Paid" filter
+   * built on the label would call a free-to-join game "₱350 paid".
+   */
+  joinFee: number | null;
+  /** 'invite' games are invitation-only. Venue sessions are always public. */
+  visibility: 'public' | 'invite';
+  /** Part of a repeating series (§4.3's recurring-vs-one-time filter). */
+  isRecurring: boolean;
   image: string | null;
   createdAt: string | null;
   /** The source row, for the card's navigation + type-specific rendering. */
@@ -200,6 +220,10 @@ export function gameToPlayItem(g: FeedGame): PlayItem {
       : { mode: 'capacity', joined, cap },
     host: g.creator?.displayName ?? null,
     priceLabel: v?.priceFromLabel ?? null,
+    // Null, not 0: there is no join fee to speak of on a game — see the field's note.
+    joinFee: null,
+    visibility: (g.visibility === 'invite' ? 'invite' : 'public'),
+    isRecurring: false,
     image: g.courtImage || v?.image || null,
     createdAt: asIso(g.createdAt),
     source: g,
@@ -223,6 +247,10 @@ export function sessionToPlayItem(s: FeedSession): PlayItem {
     fill: { mode: 'capacity', joined: s.joinedCount ?? 0, cap: s.capacity ?? 0 },
     host: s.organizerName ?? null,
     priceLabel: s.price != null ? (s.price === 0 ? 'Free' : `₱${s.price}`) : null,
+    // A session's price IS the join fee — a venue/organizer charges per player.
+    joinFee: s.price ?? 0,
+    visibility: 'public',
+    isRecurring: !!(s.isRecurring || s.seriesId),
     image: s.venueImage ?? null,
     createdAt: asIso(s.createdAt),
     source: s,

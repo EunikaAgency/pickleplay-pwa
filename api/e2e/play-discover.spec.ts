@@ -15,6 +15,7 @@
 import { test, expect, type Page, type Request } from '@playwright/test';
 
 const APP = 'http://localhost:9000';
+const API_BASE = 'http://localhost:9002/api/v1';
 
 // The launch splash is a once-per-session overlay that sits on top of everything
 // until "Let's Play" is tapped. Locators still FIND elements behind it, so an
@@ -90,6 +91,59 @@ test.describe('Play Discover — server-ranked feed', () => {
 
     // Same viewer, same inputs, same order.
     expect(await page.locator('.game-card').first().innerText()).toBe(first);
+  });
+});
+
+test.describe('Discover filters (§4.3)', () => {
+  async function openFilters(page: Page) {
+    await page.goto(`${APP}/games`);
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('.game-card').first()).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: /filter/i }).first().click();
+  }
+
+  test('the four new filters are offered', async ({ page }) => {
+    await openFilters(page);
+    // The meeting asked for free/paid, public/invite-only, recurring/one-time, venue.
+    await expect(page.getByText('Cost to join')).toBeVisible();
+    await expect(page.getByText('Who can join')).toBeVisible();
+    await expect(page.getByText('How often')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Venue' })).toBeVisible();
+  });
+
+  test('"Weekly" narrows the feed to recurring sessions, and clearing restores it', async ({ page }) => {
+    await openFilters(page);
+    const before = await page.locator('.game-card').count();
+
+    await page.getByRole('button', { name: 'Weekly', exact: true }).click();
+    await page.getByRole('button', { name: /show|apply/i }).last().click();
+    await page.waitForTimeout(500);
+
+    const after = await page.locator('.game-card').count();
+    expect(after).toBeGreaterThan(0);
+    expect(after).toBeLessThan(before);
+
+    // A filter that empties the feed with no way back is the failure mode here.
+    await page.getByRole('button', { name: /clear|reset/i }).first().click();
+    await page.waitForTimeout(500);
+    expect(await page.locator('.game-card').count()).toBe(before);
+  });
+
+  test('"Free" keeps the free-to-join games whose card shows the venue\'s court rate', async ({ page }) => {
+    // The whole point of joinFee: a player-hosted game is free to join even when its
+    // card reads "₱350" — that is what the COURT cost the host, not what you pay.
+    const res = await page.request.get(`${API_BASE}/play/discover?section=open-play&pageSize=200`);
+    const items = (await res.json()).data as { joinFee: number | null; priceLabel: string | null }[];
+    const freeButPriced = items.filter((i) => i.joinFee === null && i.priceLabel);
+    expect(freeButPriced.length).toBeGreaterThan(0); // the trap exists in real data
+
+    await openFilters(page);
+    await page.getByRole('button', { name: 'Free', exact: true }).click();
+    await page.getByRole('button', { name: /show|apply/i }).last().click();
+    await page.waitForTimeout(500);
+
+    // Had the filter been built on priceLabel, these would all have been hidden.
+    expect(await page.locator('.game-card').count()).toBeGreaterThanOrEqual(freeButPriced.length);
   });
 });
 

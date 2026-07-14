@@ -30,6 +30,9 @@ function item(over: Partial<ScoredPlayItem> = {}): ScoredPlayItem {
     fill: { mode: 'capacity', joined: 0, cap: 4 },
     host: null,
     priceLabel: null,
+    joinFee: null,
+    visibility: 'public',
+    isRecurring: false,
     image: null,
     createdAt: null,
     source: { id: 'g1', gameType: 'doubles' } as ApiGame,
@@ -154,6 +157,62 @@ describe('matchesPlayFilters — "Pick a date"', () => {
 
   it('excludes a dateless listing when a specific day is requested', () => {
     expect(matchesPlayFilters(item({ date: null }), f({ when: 'custom', customDate: '2026-07-10' }), NOW)).toBe(false);
+  });
+});
+
+describe('matchesPlayFilters — cost to join (§4.3)', () => {
+  // The trap this filter exists to avoid. A GAME's priceLabel is the VENUE's hourly
+  // rate — the host already paid it, and the app has no way to charge a joiner — so a
+  // "Free" filter built on the label would hide a game that is genuinely free to join.
+  // `joinFee: null` means "no join fee exists", and that is free.
+  it('counts a player-hosted game as free even when its card shows the court rate', () => {
+    const game = item({ joinFee: null, priceLabel: '₱350' });
+    expect(matchesPlayFilters(game, f({ cost: 'free' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(game, f({ cost: 'paid' }), NOW)).toBe(false);
+  });
+
+  it('counts a ₱0 session as free', () => {
+    const free = item({ kind: 'session', joinFee: 0, priceLabel: 'Free' });
+    expect(matchesPlayFilters(free, f({ cost: 'free' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(free, f({ cost: 'paid' }), NOW)).toBe(false);
+  });
+
+  it('counts a session with a real fee as paid', () => {
+    const paid = item({ kind: 'session', joinFee: 350, priceLabel: '₱350' });
+    expect(matchesPlayFilters(paid, f({ cost: 'paid' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(paid, f({ cost: 'free' }), NOW)).toBe(false);
+  });
+});
+
+describe('matchesPlayFilters — access, repeat, venue (§4.3)', () => {
+  it('separates open listings from invitation-only ones', () => {
+    expect(matchesPlayFilters(item({ visibility: 'invite' }), f({ access: 'invite' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(item({ visibility: 'invite' }), f({ access: 'public' }), NOW)).toBe(false);
+    expect(matchesPlayFilters(item({ visibility: 'public' }), f({ access: 'public' }), NOW)).toBe(true);
+  });
+
+  it('separates a weekly series from a one-off', () => {
+    expect(matchesPlayFilters(item({ isRecurring: true }), f({ repeat: 'recurring' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(item({ isRecurring: true }), f({ repeat: 'one-time' }), NOW)).toBe(false);
+    expect(matchesPlayFilters(item({ isRecurring: false }), f({ repeat: 'one-time' }), NOW)).toBe(true);
+  });
+
+  it('narrows to one venue', () => {
+    expect(matchesPlayFilters(item({ venueName: 'Makati Courts' }), f({ venue: 'Makati Courts' }), NOW)).toBe(true);
+    expect(matchesPlayFilters(item({ venueName: 'Pasig Courts' }), f({ venue: 'Makati Courts' }), NOW)).toBe(false);
+  });
+
+  it('leaves every listing alone when none of them is set', () => {
+    expect(matchesPlayFilters(item(), f(), NOW)).toBe(true);
+    expect(countActiveGameFilters(f())).toBe(0);
+  });
+
+  it('badges each of the four when set', () => {
+    expect(countActiveGameFilters(f({ cost: 'free' }))).toBe(1);
+    expect(countActiveGameFilters(f({ access: 'invite' }))).toBe(1);
+    expect(countActiveGameFilters(f({ repeat: 'recurring' }))).toBe(1);
+    expect(countActiveGameFilters(f({ venue: 'Makati Courts' }))).toBe(1);
+    expect(countActiveGameFilters(f({ cost: 'free', access: 'invite', repeat: 'recurring', venue: 'X' }))).toBe(4);
   });
 });
 

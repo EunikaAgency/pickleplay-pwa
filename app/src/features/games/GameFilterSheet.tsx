@@ -2,9 +2,11 @@ import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Button } from '../../shared/components/ui/Button';
 import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicker';
 import { Chip } from '../../shared/components/ui/Chip';
+import { FormSelect } from '../../shared/components/forms/FormSelect';
 import {
   type GameFilters, makeDefaultGameFilters,
   WHEN_OPTIONS, SKILL_OPTIONS, TYPE_OPTIONS, GENDER_OPTIONS, RADIUS_OPTIONS,
+  COST_OPTIONS, ACCESS_OPTIONS, REPEAT_OPTIONS,
 } from './gameFilters';
 
 interface GameFilterSheetProps {
@@ -20,6 +22,9 @@ interface GameFilterSheetProps {
   /** Narrow the play-type choices — the Events section holds no open-play games,
    *  so offering that option there guarantees an empty result. */
   typeOptions?: typeof TYPE_OPTIONS;
+  /** The venues actually present in the current feed. Offering the whole directory
+   *  would fill the picker with venues that have nothing on. Empty ⇒ the row hides. */
+  venueOptions?: string[];
 }
 
 /** Today as YYYY-MM-DD in local time (not toISOString, which is UTC and would shift
@@ -29,7 +34,7 @@ function todayYmd(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function GameFilterSheet({ open, onClose, value, onChange, resultCount, showRadius = false, typeOptions = TYPE_OPTIONS }: GameFilterSheetProps) {
+export function GameFilterSheet({ open, onClose, value, onChange, resultCount, showRadius = false, typeOptions = TYPE_OPTIONS, venueOptions = [] }: GameFilterSheetProps) {
   const set = (patch: Partial<GameFilters>) => onChange({ ...value, ...patch });
 
   return (
@@ -116,6 +121,56 @@ export function GameFilterSheet({ open, onClose, value, onChange, resultCount, s
               </Chip>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* The four §4.3 asked for. "Cost to join" is worded deliberately: a game card
+          can show the venue's ₱350 court rate while being free to JOIN — the host
+          already paid it — so the label has to say which number it means. */}
+      <div className="field mt-[18px]">
+        <div className="lbl">Cost to join</div>
+        <div className="flex gap-2 flex-wrap">
+          {COST_OPTIONS.map((c) => (
+            <Chip key={c.value} selected={value.cost === c.value} onClick={() => set({ cost: c.value })}>
+              {c.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="field mt-[18px]">
+        <div className="lbl">Who can join</div>
+        <div className="flex gap-2 flex-wrap">
+          {ACCESS_OPTIONS.map((a) => (
+            <Chip key={a.value} selected={value.access === a.value} onClick={() => set({ access: a.value })}>
+              {a.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="field mt-[18px]">
+        <div className="lbl">How often</div>
+        <div className="flex gap-2 flex-wrap">
+          {REPEAT_OPTIONS.map((r) => (
+            <Chip key={r.value} selected={value.repeat === r.value} onClick={() => set({ repeat: r.value })}>
+              {r.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      {venueOptions.length > 0 && (
+        <div className="field mt-[18px]">
+          <FormSelect
+            label="Venue"
+            value={value.venue ?? ''}
+            onChange={(e) => set({ venue: e.target.value || null })}
+            options={[
+              { value: '', label: 'Any venue' },
+              ...venueOptions.map((v) => ({ value: v, label: v })),
+            ]}
+          />
         </div>
       )}
 

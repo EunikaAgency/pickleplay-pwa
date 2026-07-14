@@ -3505,6 +3505,13 @@ export interface PlayItem {
   fill: PlayFill;
   host: string | null;
   priceLabel: string | null;
+  /** What it costs the VIEWER to join. 0 = free, >0 = a real fee, null = this kind of
+   *  listing has no join fee at all (a player-hosted game: the host paid the court and
+   *  the app cannot charge a joiner). `priceLabel` can't answer this — on a game it is
+   *  the venue's hourly rate, so a Free/Paid filter built on it would be wrong. */
+  joinFee: number | null;
+  visibility: 'public' | 'invite';
+  isRecurring: boolean;
   image: string | null;
   createdAt: string | null;
   source: ApiGame | ApiOpenPlaySession;

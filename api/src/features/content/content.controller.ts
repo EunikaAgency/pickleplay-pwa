@@ -846,14 +846,31 @@ export async function createOpenPlaySeries(c: any) {
 
 // GET /api/v1/open-play/mine — the organizer's series + all their session
 // instances (the console groups sessions under their series).
+/**
+ * GET /api/v1/open-play/mine — the recurring play this user is responsible for.
+ *
+ * For an organizer that means the series they created. For a venue owner it also
+ * means anything running ON THEIR OWN COURTS, whoever set it up — they are the one
+ * who has to open the gate on a Tuesday night.
+ *
+ * This gate has to match the create/edit ones or the screen greets an owner with
+ * "Organizer events permission required" the moment it loads, which is exactly what
+ * it did until the list was widened alongside them.
+ */
 export async function getMyOpenPlay(c: any) {
   const user = c.get('user');
-  if (!hasPermission(user, EVENTS_PERM)) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Organizer events permission required' } }, 403);
+  const venueIds = await managedVenueIds(user);
+  if (!hasPermission(user, EVENTS_PERM) && venueIds.length === 0) {
+    return c.json({
+      error: { code: 'FORBIDDEN', message: 'Run recurring Open Play at a venue you manage, or hold the organizer events permission' },
+    }, 403);
   }
+  const scope: Record<string, any> = venueIds.length
+    ? { $or: [{ organizerUserId: user.sub }, { venueId: { $in: venueIds } }] }
+    : { organizerUserId: user.sub };
   const [series, sessions] = await Promise.all([
-    OpenPlaySeries.find({ organizerUserId: user.sub }).populate('venueId', 'displayName slug').sort({ createdAt: -1 }).lean(),
-    OpenPlaySession.find({ organizerUserId: user.sub }).populate('venueId', 'displayName slug').sort({ date: 1 }).lean(),
+    OpenPlaySeries.find(scope).populate('venueId', 'displayName slug').sort({ createdAt: -1 }).lean(),
+    OpenPlaySession.find(scope).populate('venueId', 'displayName slug').sort({ date: 1 }).lean(),
   ]);
   return c.json({ data: { series: series.map(seriesView), sessions: sessions.map(sessionView) } });
 }
