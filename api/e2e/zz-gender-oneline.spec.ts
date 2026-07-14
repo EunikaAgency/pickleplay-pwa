@@ -76,6 +76,23 @@ for (const mode of ['Open play session', 'Hosted game'] as const) {
     const tops = await chips.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)));
     expect(new Set(tops).size, 'all three chips sit on the same row').toBe(1);
 
+    // Parity with the Vibe row above it: same type size, same height, same left
+    // edge (the row used .time-grid, whose extra 20px inset pushed it right), and
+    // the last chip must stay inside the frame (nowrap blew the columns out).
+    const vibeRef = page.getByRole('button', { name: /Casual/i }).first();
+    const competitive = page.getByRole('button', { name: /Competitive/i }).first();
+    const box = (el: typeof vibeRef) => el.evaluate((n) => {
+      const r = n.getBoundingClientRect();
+      return { left: r.left, right: r.right, height: r.height, font: getComputedStyle(n).fontSize };
+    });
+    const [vibeL, vibeR, first, last] = await Promise.all([
+      box(vibeRef), box(competitive), box(chips.first()), box(chips.last()),
+    ]);
+    expect(first.font, 'same type size as the Vibe chips').toBe(vibeL.font);
+    expect(Math.abs(first.height - vibeL.height), 'same height as the Vibe chips').toBeLessThan(1);
+    expect(Math.abs(first.left - vibeL.left), 'left edge lines up with the Vibe row').toBeLessThan(1);
+    expect(Math.abs(last.right - vibeR.right), 'right edge lines up with the Vibe row').toBeLessThan(1);
+
     await page.locator('.field', { hasText: 'Who can play' }).first()
       .screenshot({ path: `test-results/gender-oneline-${mode.split(' ')[0].toLowerCase()}.png` });
     await ctx.close();

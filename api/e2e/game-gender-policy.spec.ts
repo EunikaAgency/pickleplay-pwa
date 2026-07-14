@@ -18,9 +18,10 @@ const VENUE = '6a4f11a0a63522a6e14a427c';
 const FEMALE = { email: 'johnkenneth.tan.dev+player@gmail.com', password: 'password123' };
 const MALE = { email: 'ccdfa3b7.walker@example.com', password: 'password123' };
 
-// The picker's accessible names (icon + label, as rendered). Matched exactly:
-// a /Men only/ regex would also match "Wo-men only" and hit two buttons.
-const GENDER_BTN = { all: '🌍Open to all', men: '👨Men only', women: '👩Women only' } as const;
+// The picker's accessible names (icon + label, as rendered). One word each: three
+// chips across a phone can't hold the full phrase at the row's shared type size.
+// Matched exactly — a /Men/ regex would also match "Wo-men" and hit two buttons.
+const GENDER_BTN = { all: '🌍Everyone', men: '👨Men', women: '👩Women' } as const;
 
 async function tokens(creds: { email: string; password: string }) {
   const res = await fetch(`${API}/api/v1/auth/login`, {

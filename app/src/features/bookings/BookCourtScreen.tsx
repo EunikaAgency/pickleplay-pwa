@@ -59,13 +59,16 @@ const MIN_SLOTS = 2;
 const MAX_SLOTS = 16;
 
 // ── Who can play — the server matches these against the joiner's profile gender.
-const GENDER_OPTIONS: { v: GenderPolicy; label: string; icon: string }[] = [
-  { v: 'all', label: 'Open to all', icon: '🌍' },
-  { v: 'men', label: 'Men only', icon: '👨' },
-  { v: 'women', label: 'Women only', icon: '👩' },
+// The chip carries one word, like the Vibe row it sits under: three across, the
+// full phrase ("Open to all") doesn't fit a third of a phone at the shared 14px.
+// `full` is the wording everywhere there's room for it — the summary, the badges.
+const GENDER_OPTIONS: { v: GenderPolicy; label: string; full: string; icon: string }[] = [
+  { v: 'all', label: 'Everyone', full: 'Open to all', icon: '🌍' },
+  { v: 'men', label: 'Men', full: 'Men only', icon: '👨' },
+  { v: 'women', label: 'Women', full: 'Women only', icon: '👩' },
 ];
 const genderPolicyLabel = (p: GenderPolicy) =>
-  GENDER_OPTIONS.find((o) => o.v === p)?.label ?? 'Open to all';
+  GENDER_OPTIONS.find((o) => o.v === p)?.full ?? 'Open to all';
 
 /** A venue is bookable only if it has a rate (decision: require a price). */
 function isBookable(v: ApiVenue): boolean {
@@ -1061,7 +1064,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
               <div className="field mt-4">
                 <div className="lbl">Who can play</div>
-                <div className="time-grid">
+                <div className="grid grid-cols-3 gap-2">
                   {GENDER_OPTIONS.map((g) => (
                     <button
                       key={g.v}
@@ -1211,7 +1214,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
           <div className="field">
             <div className="lbl">Who can play</div>
-            <div className="time-grid">
+            <div className="grid grid-cols-3 gap-2">
               {GENDER_OPTIONS.map((g) => (
                 <button
                   key={g.v}

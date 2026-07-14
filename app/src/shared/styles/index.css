@@ -1605,13 +1605,13 @@
 }
 .time-pick:active { transform: scale(0.96); }
 .time-pick.active { background: var(--ink); color: white; border-color: var(--ink); }
-/* A row whose labels must stay on one line ("Women only" wraps at the default
-   14px inside a third of the frame). Shrinks the type instead of the meaning. */
+/* A three-across row that must read like the two-across ones (Vibe): same type
+   size, same height, never wrapping. Only the side padding gives — a third of a
+   phone is narrow, and the label must not spill past its own chip. */
 .time-pick.one-line {
   white-space: nowrap;
-  font-size: 13px;
-  padding: 12px 4px;
-  letter-spacing: -0.01em;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 /* Notifications list */
