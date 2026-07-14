@@ -60,9 +60,31 @@ by how much they unblock.
 
 ---
 
+## Status at a glance (14 July 2026)
+
+| | Item | Status |
+|---|---|---|
+| **Phase 1** | 1 — Events + Open Play as visible tabs (§3.4) | ✅ **DONE** |
+| | 2 — Server-side Discover ranking (§4.2) | ✅ **DONE** |
+| | 3 — Recurring Open Play for owners + series editing (§5.3) | ✅ **DONE** |
+| | 4 — Decision-free Discover filters (§4.3) | ✅ **DONE** |
+| | 5 — Staff can't see owner revenue (§13.7) | ✅ **DONE** (was already fixed by `dfb2d18`) |
+| **Phase 2** | 2A — Eligibility (§4.5) | 🟡 **PART DONE** — gender on player-hosted games only |
+| | 2B — Open Play lobby (§7) | ❌ Not started — needs decision 1 |
+| | 2C — Payments (§10, §9.3) | ❌ Not started — needs decisions 2 and 4 |
+| **Phase 3** | Social feed, cart, rental, staff levels, weight tuning | ❌ Deferred by design |
+| **Phase 0** | The six decisions + the six §16 questions | ❌ **Still unanswered** |
+
+Report for the client: [`reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)
+
+---
+
 ## Phase 1 — ✅ DONE (14 July 2026)
 
-All five closed. Two bugs surfaced only by *running* the code, not by types:
+All five closed. Verified with 72 unit checks (39 server / 33 app), 15 API checks and 13 browser
+checks — 100 passing.
+
+Two bugs surfaced only by *running* the code, not by types:
 
 - **Recurring Open Play was booking the wrong weekday.** `generateSessionDates` picked
   the right local day and then serialised it with `toISOString()` — which is UTC, and
@@ -136,18 +158,30 @@ re-worked.
 
 ## Phase 2 — Unblocked the moment the decisions land
 
-### 2A — Eligibility (needs decision 3)
+### 2A — Eligibility (§4.5) — 🟡 PART DONE
 
-One coherent change set. Building it piecemeal will hurt, because eligibility touches four surfaces
-at once:
+Built, for **player-hosted games only**:
 
-1. Add an eligibility rule to the session model (gender + skill band).
-2. Surface it on the Discover cards.
-3. Add the eligibility filter to the filter sheet.
-4. **Enforce it on join server-side** — a hidden button is not enforcement.
-5. Apply the hide-vs-mark-unavailable choice consistently across listing, filters *and* ranking.
+- ✅ `genderPolicy` (all / men / women) on the Game model + the create/edit form.
+- ✅ `gender` on the user profile + sign-up.
+- ✅ **Enforced server-side on join** (`genderBlock`) — a greyed-out button is not enforcement, and
+  this one is real. `GENDER_REQUIRED` steers a player with no gender set to their profile rather
+  than dead-ending them.
+- ✅ Shown on the Discover card + a "Who can play" filter.
 
-### 2B — Open Play lobby (needs decision 1)
+Still missing:
+
+- ❌ **Venue-run Open Play sessions carry no eligibility at all.** `OpenPlaySession` has no
+  `genderPolicy` field, so a venue cannot run a women-only session — only a *player* can. That is
+  backwards from the meeting, where §4.5's examples were venue/organizer sessions.
+- ❌ **Skill-band eligibility** ("beginner-only", "3.0–3.5 only") does not exist. Today a skill band
+  is a *hint* used for ranking, not a rule that stops you joining.
+- ⚠️ **Decision 3 was made by implementation, not by the team.** The build chose *"show it, marked
+  not eligible"* (Option B). Nobody signed that off — it just happened. If the team wanted
+  ineligible sessions **hidden**, this has to be revisited across the listing, the filters, the
+  ranking and the join button together.
+
+### 2B — Open Play lobby (§7) — ❌ NOT STARTED (needs decision 1)
 
 The good news from §7.2: **the components already exist.** Games already have a working roster and a
 Messenger-style group chat. The work is not building a chat.
@@ -156,7 +190,7 @@ Messenger-style group chat. The work is not building a chat.
 2. Wire the existing Games group chat to Open Play sessions.
 3. Decide the fate of the existing "I'm Interested" signal — replaced, or kept as a soft pre-join?
 
-### 2C — Payments (needs decisions 2 and 4)
+### 2C — Payments (§10, §9.3) — ❌ NOT STARTED (needs decisions 2 and 4)
 
 Collection, refunds, commission, payout — for both Open Play and coach sessions.
 
@@ -175,10 +209,34 @@ Collection, refunds, commission, payout — for both Open Play and coach session
 
 ---
 
-## Recommended order
+## What's left, and what it's waiting on
 
-1. Get decisions **1, 2 and 3** in a single short session. Everything expensive hangs off them.
-2. Run Phase 1 **Tasks 2, 3 and 4** in parallel while waiting — none of them need an answer.
-3. Answer **§16.5**, then ship Task 1 (tabs) with the Events/Tournaments question already resolved.
-4. Start Phase 2A (eligibility) as the first decision-gated build — it is the highest-value item in
-   the next phase per §4.5.
+Phase 1 is closed. **Everything remaining is waiting on the team, not on engineering.** There is no
+buildable work left that doesn't first need an answer.
+
+### The two loose ends Phase 1 created
+
+1. **§16.5 — the "Events" tab has no events in it.** Making it a visible tab (as the meeting asked)
+   made this *more* obvious, not less. Real structured competition lives in a separate Tournaments
+   area outside Play; the Play tab's "Events" is a list of player-hosted games. **Merge Tournaments
+   in, or rename the tab.**
+2. **§10 — a game's card still shows a price you don't pay.** It shows the venue's hourly court
+   rate, which the *host* paid. The Free/Paid filter now handles this correctly (`joinFee`), but the
+   card still reads as though joining costs ₱350. What the card *should* say depends on the payment
+   rules, so it was left alone rather than guessed at.
+
+### Finish what 2A started
+
+3. **Venue-run sessions can't be women-only** — only player-hosted games can. That's backwards from
+   the meeting's own examples. Add `genderPolicy` to `OpenPlaySession`.
+4. **Skill-band eligibility doesn't exist** — a skill band is still only a ranking hint, not a rule.
+5. **Confirm decision 3 retroactively** — the build picked "show it, marked not eligible". If the
+   team wanted ineligible sessions *hidden*, that's a rework across four surfaces.
+
+### Then, in order
+
+6. Get decisions **1, 2 and 4** (lobby, Open Play payments, coach payments) in one short session.
+   Everything expensive hangs off them, and nothing else can start until they land.
+7. Build 2C (payments) by **extending the tournament entry-fee flow**, which already handles real
+   money — not by inventing a new mechanism.
+8. Leave Phase 3 alone until the core Play and payment rules are settled.
