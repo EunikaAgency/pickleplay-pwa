@@ -44,6 +44,9 @@ const updateProfileSchema = z.object({
   firstName: z.string().max(50).optional(),
   lastName: z.string().max(50).optional(),
   phone: z.string().max(20).optional(),
+  // Optional to send, but there's no way to send a blank one — clearing an
+  // already-set gender isn't a thing the profile editor offers.
+  gender: z.enum(['male', 'female', 'other']).optional(),
   skillLevel: z.string().optional(),
   skillLevelLabel: z.string().max(20).optional(),
   modePreference: z.enum(['player', 'owner', 'coach', 'organizer']).optional(),
@@ -151,6 +154,7 @@ async function authUserPayload(user: any) {
     isActive: user.isActive !== false,
     modePreference: user.modePreference,
     phone: user.phone,
+    gender: user.gender ?? null,
     skillLevel: user.skillLevel,
     skillLevelLabel: user.skillLevelLabel,
     homeCityId: user.homeCityId,

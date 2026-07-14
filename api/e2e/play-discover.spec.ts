@@ -30,7 +30,8 @@ test.describe('Play Discover — server-ranked feed', () => {
     const errors: string[] = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
-    await page.goto(`${APP}/games`);
+    // A bare `/games` opens on Events; the section lives in `?section=`.
+    await page.goto(`${APP}/games?section=open-play`);
     await page.waitForLoadState('networkidle');
 
     // The screen asked the server to rank, rather than ranking on the device.
@@ -70,24 +71,22 @@ test.describe('Play Discover — server-ranked feed', () => {
     expect(publicGameCalls).toEqual([]);
   });
 
-  test('switching to Events refetches the ranked feed for that section', async ({ page }) => {
+  test('each section asks the server for its own ranked feed', async ({ page }) => {
     const calls = trackDiscover(page);
 
-    await page.goto(`${APP}/games`);
+    await page.goto(`${APP}/games?section=open-play`);
     await page.waitForLoadState('networkidle');
-    const before = calls.length;
+    expect(calls.at(-1)!.url()).toContain('section=open-play');
 
-    // The section control is the dropdown the 8 July minutes asked to become tabs.
-    await page.getByRole('button', { name: /open play/i }).first().click();
-    await page.getByText('Events', { exact: true }).first().click();
+    // Events is a different product with a different candidate set — it must be
+    // ranked as one, not sliced out of the Open Play feed on the device.
+    await page.goto(`${APP}/games?section=games`);
     await page.waitForLoadState('networkidle');
-
-    expect(calls.length).toBeGreaterThan(before);
-    expect(calls[calls.length - 1].url()).toContain('section=events');
+    expect(calls.at(-1)!.url()).toContain('section=events');
   });
 
-  test('the ranked order survives a sort change and a reload — it is the server\'s', async ({ page }) => {
-    await page.goto(`${APP}/games`);
+  test('the ranked order is stable across a reload — it is the server\'s, not the device\'s', async ({ page }) => {
+    await page.goto(`${APP}/games?section=open-play`);
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.game-card').first()).toBeVisible({ timeout: 10_000 });
 
@@ -97,8 +96,7 @@ test.describe('Play Discover — server-ranked feed', () => {
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.game-card').first()).toBeVisible({ timeout: 10_000 });
 
-    // Same viewer, same inputs, same order. A device-side scorer with a local
-    // `new Date()` could reshuffle here; the server's score cannot.
+    // Same viewer, same inputs, same order.
     expect(await page.locator('.game-card').first().innerText()).toBe(first);
   });
 });

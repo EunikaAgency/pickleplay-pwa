@@ -149,6 +149,26 @@ src/
                              #   leave enforces the LOBBY_LEAVE_GRACE_PERIOD_DAYS rule: a non-host
                              #   can't leave a FULL lobby within the window (409 LOBBY_LOCKED).
                              #   No vote/lobby flow — games are joinable on creation.
+    play/                    # THE PLAY TAB'S DISCOVER FEED — no model of its own; it ranks the
+                             #   rows `games/` and `content/` already own. GET /play/discover
+                             #   merges public games + venue Open Play sessions into ONE
+                             #   relevance-ordered list. playRanking.ts is the scorer (pure, no
+                             #   Hono/Mongoose): time fit 30% / proximity 25% / skill fit 20% /
+                             #   spots left 15% / friends 10%, and a signal whose INPUT is missing
+                             #   is dropped and the rest renormalised (so a signed-out user with no
+                             #   location or rating still gets a sane order, not a flat one).
+                             #   ?section=open-play|events, ?lat=&lng= (only the browser knows the
+                             #   viewer's coords; skill + friends come from the token).
+                             #   It scores the whole upcoming catalogue (CANDIDATE_CAP) and
+                             #   truncates AFTER — the app used to rank the ~50 rows the server had
+                             #   already picked BY DATE, so "nearest" meant "nearest among the
+                             #   soonest". Excludes listings the viewer already hosts/joined.
+                             #   Two wire hazards it handles, both found by running it: `id` comes
+                             #   off the session serializer as a raw ObjectId (the sort's
+                             #   localeCompare throws on one), and an open-ended '4.0+' band is
+                             #   [4, Infinity] — which JSON silently turns into null.
+                             #   Moved here from the app (app/src/features/games/playRanking.ts),
+                             #   which now only re-sorts what this returns.
     clubs/                   # Discord-style clubs + Facebook-style realtime feed. 6 models
                              #   (Club/ClubMembership/ClubPost[recursive]/ClubPostReaction/
                              #   ClubJoinRequest/ClubMessage); CRUD + join/leave + private
@@ -263,6 +283,7 @@ src/
                              #     venues/courts missing a mainImageUrl),
                              #   link-owner-venues.ts, download-images.ts, index.ts
     lib/                     # framework-agnostic helpers: jwt.ts, permissions.ts,
+                             #   geo.ts (haversineKm — the Play feed's proximity signal),
                              #   cursor.ts (compound createdAt|_id keyset pagination),
                              #   push.ts (Web Push send/VAPID), notify.ts (in-app
                              #   Notification + push together — the usual notify entry point;
@@ -312,6 +333,7 @@ src/
 | Clubs / club feed / SSE realtime | `features/clubs/` (`clubs.controller.ts`, `clubs.model.ts`, `clubs.events.ts` = SSE bus); cursor in `shared/lib/cursor.ts` |
 | Per-user realtime (chat + notifs) | `shared/lib/userEvents.ts` (bus) + `GET /me/stream` in `features/interactions/`; published by `shared/lib/notify.ts` + `features/messages/` |
 | Bracket / seeding / advancement logic | `features/brackets/bracketEngine.ts` (pure, tested), then `brackets.controller.ts` |
+| Play tab Discover ranking / relevance weights | `features/play/playRanking.ts` (pure, 39 tests) — retune `RANK_WEIGHTS` here and every device picks it up with no app release; the feed itself is `play.controller.ts` |
 | Auth / tokens / gating | `shared/middleware/auth.ts`, `shared/lib/jwt.ts`, `features/auth/*` |
 | Roles & permissions | `shared/lib/permissions.ts`, `features/roles/*` |
 | Owner staff sub-accounts (delegation) | `features/staff/*`, `shared/lib/permissions.ts` (`effectiveOwnerId`); scope honored in `features/venues/venues.controller.ts` + `features/clubs/clubs.controller.ts` |

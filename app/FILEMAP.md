@@ -66,6 +66,14 @@ src/
                        #   player.games.chat), GameFilterSheet + gameFilters (when/skill/type/openings
                        #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
                        #   list/detail/join/kick/group-chat; invite-send still demo).
+                       #   playRanking.ts NO LONGER SCORES — the Discover feed is ranked by the
+                       #   SERVER (getPlayDiscover → GET /api/v1/play/discover; the scorer lives in
+                       #   api/src/features/play/), so every device gets the same order and the
+                       #   weights retune without an app release. What's left here is the client's
+                       #   own job: sortScored() re-orders the ranked set the server sent when the
+                       #   user flips Sort (soonest/nearest/spots-left/newest are pure reorderings
+                       #   of a set we already hold — a round-trip per tap would only feel slower),
+                       #   plus the PlayItem/ScoredPlayItem types re-exported from api.ts.
                        #   Open Play (gameType 'open') = INTEREST board, no lobby: v2/OpenPlayDetail
                        #   shows an "I'm Interested" toggle (toggleGameInterest) + who's interested,
                        #   not slots (applies to organizer sessions too). Public game (gameType

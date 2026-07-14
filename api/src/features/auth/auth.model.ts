@@ -12,6 +12,8 @@ export interface IUser {
   lastName?: string;
   avatarUrl?: string;
   phone?: string;
+  /** Self-reported gender. The app's profile editor requires one to be set. */
+  gender?: string;
   skillLevel?: number;
   skillLevelLabel?: string;
   homeCityId?: Types.ObjectId;
@@ -82,6 +84,10 @@ const userSchema = new Schema({
   lastName:        { type: String, maxlength: 50 },
   avatarUrl:       String,
   phone:           { type: String, maxlength: 20 },
+  // Not `required` at the model level: every pre-existing account was created
+  // without one, and a schema-level requirement would fail their next save.
+  // The profile editor is what enforces that a value gets set.
+  gender:          { type: String, enum: ['male', 'female', 'other'] },
   skillLevel:      Number,
   skillLevelLabel: { type: String, maxlength: 20 },
   homeCityId:      { type: Schema.Types.ObjectId, ref: 'City' },

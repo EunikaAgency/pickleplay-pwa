@@ -174,6 +174,14 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 /** Who can see the player's profile. Persisted on the account via `PATCH /me`. */
 export type PrivacySetting = 'public' | 'friends' | 'private';
 
+export type Gender = 'male' | 'female' | 'other';
+
+export const genderOptions: Array<{ value: Gender; label: string }> = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+];
+
 export interface AppUser {
   id: string;
   email: string;
@@ -184,6 +192,9 @@ export interface AppUser {
   skillLevel?: number;
   skillLevelLabel?: string;
   bio?: string;
+  /** Unset on accounts created before the field existed; the profile editor
+   *  makes the user pick one before they can save. */
+  gender?: Gender;
   /** Postal address. Required before subscribing as a coach or organizer. */
   address1?: string;
   address2?: string;

@@ -45,7 +45,11 @@ const discoverQuery = z.object({
   // 'open-play' = interest-based open games + venue-run sessions.
   // 'events'    = the lobby games (singles / doubles / public formats).
   section: z.enum(['open-play', 'events']).default('open-play'),
-  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  // Up to the candidate cap: the client re-sorts and filters the returned set
+  // locally (instant, no round-trip per tap), so it has to hold enough of the feed
+  // for "Spots left" or a date filter to mean something. Truncating to a token 50
+  // here would just move the old truncation bug one layer out.
+  pageSize: z.coerce.number().int().min(1).max(CANDIDATE_CAP).default(50),
 });
 
 /** Today in the process timezone (Asia/Manila, pinned in ecosystem.config.json) —

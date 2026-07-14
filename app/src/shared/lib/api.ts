@@ -5,7 +5,7 @@
 // live on different subdomains, so set VITE_API_BASE_URL to the API origin
 // (e.g. https://pickleballer-api.eunika.xyz) — CORS already allows the PWA host.
 
-import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, type AppUser, type PrivacySetting, type UserPreferences } from './permissions';
+import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, type AppUser, type Gender, type PrivacySetting, type UserPreferences } from './permissions';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const AUTH_PREFIX = '/api/v1/auth';
@@ -221,6 +221,7 @@ export interface ApiUser {
   skillLevel?: number | null;
   skillLevelLabel?: string | null;
   bio?: string | null;
+  gender?: string | null;
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
@@ -253,6 +254,12 @@ function normalizePrivacy(value?: string | null): PrivacySetting {
   return value === 'private' || value === 'friends' ? value : 'public';
 }
 
+/** Accounts predating the field have no gender — leave it unset rather than
+ *  guessing one, so the profile editor can require the user to pick. */
+function normalizeGender(value?: string | null): Gender | undefined {
+  return value === 'male' || value === 'female' || value === 'other' ? value : undefined;
+}
+
 export function toAppUser(api: ApiUser): AppUser {
   const sourceRoles = api.roles?.length ? api.roles : [api.roleDefault ?? api.role ?? 'player'];
   const roles = [...new Set(sourceRoles.map(normalizeRole))];
@@ -268,6 +275,7 @@ export function toAppUser(api: ApiUser): AppUser {
     skillLevel: typeof api.skillLevel === 'number' ? api.skillLevel : undefined,
     skillLevelLabel: api.skillLevelLabel ?? undefined,
     bio: api.bio ?? undefined,
+    gender: normalizeGender(api.gender),
     address1: api.address1 ?? undefined,
     address2: api.address2 ?? undefined,
     city: api.city ?? undefined,
@@ -391,6 +399,7 @@ export interface ProfileUpdate {
   firstName?: string;
   lastName?: string;
   bio?: string;
+  gender?: Gender;
   address1?: string;
   address2?: string;
   city?: string;
@@ -3453,6 +3462,8 @@ export async function listOpenPlaySessions(params: { venueId?: string; date?: st
   return (env.data ?? []).map(normalizeOpenPlaySession);
 }
 
+const PLAY_PREFIX = '/api/v1/play';
+
 /* ── The Play tab's Discover feed ──────────────────────────────────────────────
  * Ranking lives on the SERVER (api/src/features/play/). It used to run here, which
  * meant two players could see the same sessions in a different order, and retuning
@@ -3515,7 +3526,7 @@ export interface PlayDiscoverResult {
 export async function getPlayDiscover(
   params: { section?: 'open-play' | 'events'; lat?: number; lng?: number; pageSize?: number } = {},
 ): Promise<PlayDiscoverResult> {
-  const env = await rawRequest<Record<string, unknown>[]>(`/play/discover${toQuery({ ...params })}`, { auth: true });
+  const env = await rawRequest<Record<string, unknown>[]>(`${PLAY_PREFIX}/discover${toQuery({ ...params })}`, { auth: true });
   const items = (env.data ?? []).map((raw) => {
     const i = raw as unknown as ScoredPlayItem & { skillBand: [number, number | null] | null };
     return {

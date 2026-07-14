@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { FormField } from '../../shared/components/forms/FormField';
+import { FormSelect } from '../../shared/components/forms/FormSelect';
 import { FormTierPicker } from '../../shared/components/forms/FormTierPicker';
 import { AvatarCropper } from '../../shared/components/ui/AvatarCropper';
 import { useForm } from '../../shared/hooks/useForm';
@@ -11,7 +12,7 @@ import { getInitials } from '../../shared/lib/initials';
 import { MapPinPicker } from '../../shared/components/ui/MapPinPicker';
 import { ApiError, reverseGeocode, uploadAvatar } from '../../shared/lib/api';
 import { getCurrentLocation } from '../../shared/lib/geo';
-import { userHasPermission } from '../../shared/lib/permissions';
+import { genderOptions, userHasPermission, type Gender } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
 
 interface EditProfileScreenProps {
@@ -71,6 +72,9 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
     initial: {
       firstName: currentUser?.firstName?.trim() || nameParts[0] || '',
       lastName: nameParts.slice(1).join(' '),
+      // Accounts predating the field have none, so this starts blank and the
+      // validator below holds the save until they pick one.
+      gender: (currentUser?.gender ?? '') as Gender | '',
       bio: currentUser?.bio ?? '',
       address1: currentUser?.address1 ?? '',
       address2: currentUser?.address2 ?? '',
@@ -82,6 +86,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
     validators: {
       firstName: (v) => (!v || !(v as string).trim() ? 'First name is required.' : undefined),
       lastName: (v) => (!v || !(v as string).trim() ? 'Last name is required.' : undefined),
+      gender: (v) => (!v ? 'Gender is required.' : undefined),
     },
   });
 
@@ -166,6 +171,8 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         lastName,
         // Keep the visible name in sync with the edited first/last name.
         displayName: `${firstName} ${lastName}`.trim(),
+        // Never blank: the validator gates the submit on a gender being picked.
+        gender: form.values.gender as Gender,
         bio: form.values.bio.trim(),
         address1: form.values.address1.trim(),
         address2: form.values.address2.trim(),
@@ -239,6 +246,18 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             onChange={(e) => form.setField('lastName', e.target.value)}
             onBlur={() => form.setTouched('lastName')}
             error={form.touched.lastName ? form.errors.lastName : undefined}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <FormSelect
+            label="Gender"
+            value={form.values.gender}
+            onChange={(e) => form.setField('gender', e.target.value as Gender)}
+            options={genderOptions}
+            placeholder="Select your gender"
+            hint="Required to save your profile."
             required
           />
         </div>
