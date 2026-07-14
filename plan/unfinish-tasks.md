@@ -119,11 +119,28 @@ Not hard to build. We just don't know the rules. Real money already moves throug
 ## 5. Two things Phase 1 exposed
 
 - **The "Events" tab has no events in it** — it's full of ordinary players' games. The real
-  competition sits outside Play. Merge, or rename? — ❓ **still open**
+  competition sits outside Play. Merge, or rename?
 - **A price shows on games that costs you nothing** — it's the court rate the host already paid. The
   filter is fixed; the listing still misleads. Can't fix it until we know who charges whom.
 
-> ### ✅ Unblocked by item 4.
+> ### Decided 14 July — the first bullet was wrong. **Leave "Events" alone.**
+> Two corrections first:
+> - **It isn't a tab.** It's a segment inside the **Play** tab, beside Open Play —
+>   [`GamesScreenV2.tsx:40`](../app/src/features/games/v2/GamesScreenV2.tsx#L40). Play lands on Open
+>   Play; Events is the other half.
+> - **The name is deliberate, not a typo.** "Events" is a *container for competitive formats* —
+>   round-robin, mini tournament, bracketing — not a synonym for "tournament". It reads empty only
+>   because the public game is currently the *only* format built.
+>
+> The schema already anticipates this: [`games.model.ts:17`](../api/src/features/games/games.model.ts#L17)
+> carries `format: 'bracketing' | 'round_robin' | 'mini_tournament'` on `gameType: 'public'` (8 rows
+> today). **The name is right; the contents are just early.**
+>
+> - **Do NOT rename it.** **Do NOT merge Tournaments into it.**
+> - **Tournaments is skipped for now** — the public game serves as the mini tournament.
+> - Building out the other formats is future work, not a fix.
+
+> ### ✅ Second bullet — unblocked by item 4.
 > A listing shows **Free** unless a subscribed organizer set a join fee — in which case it shows
 > **that** fee, never the court rate. The court rate is the host's cost, not the joiner's.
 
@@ -154,16 +171,17 @@ the Play ranking.
 **Still open — nothing here blocks the Open Play build:**
 1. **Who eats the payment-gateway fee** on 0%-cut money (coach lessons, organizer join fees)? As
    decided, PickleBallers does — at a small loss per transaction. (item 4)
-2. **The "Events" tab** — merge or rename? (item 5)
-3. Is "Like" different from "Interested" · final homepage wording.
+2. Is "Like" different from "Interested" · final homepage wording.
 
 **And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
 thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
 inventory, Tournaments sitting outside Play, and request-to-book.
 
-> The **₱999 organizer subscription** is now a seventh — it is live and purchasable, with **zero
-> subscribers**. As of today's decision it is the *only* way anyone can charge for Open Play, so it
-> stops being dormant and starts being load-bearing.
+> - **Tournaments outside Play — parked, 14 July.** Deliberately skipped for now; the public game
+>   serves as the mini tournament. Not a question anymore.
+> - **The ₱999 organizer subscription** is a seventh — live and purchasable, with **zero subscribers**.
+>   As of today's decision it is the *only* way anyone can charge for Open Play, so it stops being
+>   dormant and starts being load-bearing.
 
 ---
 
@@ -307,12 +325,29 @@ Hindi mahirap gawin. **Hindi lang namin alam ang rules.** May dumadaan nang toto
 ## 5. Dalawang bagay na lumabas dahil sa Phase 1
 
 - **Yung "Events" tab, walang events sa loob** — puro laro ng ordinaryong player. Yung totoong
-  tournaments, nasa ibang lugar. Pagsasamahin ba, o papalitan ang pangalan? — ❓ **bukas pa**
+  tournaments, nasa ibang lugar. Pagsasamahin ba, o papalitan ang pangalan?
 - **May presyong lumalabas sa laro pero hindi mo naman babayaran** — presyo yun ng court na bayad na
   ng nag-host. Naayos na yung filter; yung nakasulat sa card, hindi pa. Hindi namin maaayos hangga't
   di alam kung sino ang magsisingil.
 
-> ### ✅ Nabuksan ng item 4.
+> ### Desisyon 14 Hulyo — **mali ang unang bullet. Wag galawin ang "Events".**
+> Dalawang pagtatama muna:
+> - **Hindi siya tab.** Segment siya sa loob ng **Play** tab, katabi ng Open Play —
+>   [`GamesScreenV2.tsx:40`](../app/src/features/games/v2/GamesScreenV2.tsx#L40). Sa Open Play bumabagsak
+>   ang Play; ang Events ang kabilang kalahati.
+> - **Sinadya ang pangalan, hindi typo.** Ang "Events" ay **lalagyan ng mga format ng kompetisyon** —
+>   round-robin, mini tournament, bracketing. Hindi siya katumbas ng "tournament". Mukha lang siyang
+>   walang laman kasi ang public game pa lang ang **tanging** format na nabubuo.
+>
+> Nakahanda na ito sa schema: [`games.model.ts:17`](../api/src/features/games/games.model.ts#L17) —
+> `format: 'bracketing' | 'round_robin' | 'mini_tournament'` sa `gameType: 'public'` (8 rows ngayon).
+> **Tama ang pangalan; maaga lang ang laman.**
+>
+> - **HUWAG palitan ang pangalan.** **HUWAG isama ang Tournaments dito.**
+> - **Ipagpapaliban muna ang Tournaments** — ang public game muna ang mini tournament.
+> - Ang pagbuo ng ibang format ay trabaho sa hinaharap, hindi pag-aayos ng sira.
+
+> ### ✅ Pangalawang bullet — nabuksan ng item 4.
 > **"Libre"** ang ipapakita sa card — maliban kung may in-set na join fee ang isang subscribed
 > organizer, at **yun** ang ipapakita. Hindi kailanman ang presyo ng court. Gastos yun ng nag-host,
 > hindi ng sasali.
@@ -344,16 +379,17 @@ pag-adjust ng ranking.
 **Bukas pa — wala nang humaharang sa Open Play build:**
 1. **Sino ang sasagot sa bayad sa payment gateway** sa perang 0% ang kuha (coach lesson, join fee ng
    organizer)? Sa napagkasunduan, ang PickleBallers — kaya maliit na lugi kada transaksyon. (item 4)
-2. **Yung "Events" tab** — pagsasamahin o papalitan ang pangalan? (item 5)
-3. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
+2. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
 
 **Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
 (yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
 na hindi magamit, yung Tournaments na nasa labas ng Play, at yung request-to-book.
 
-> Ang **₱999 na organizer subscription**, pampito na. Buhay na at pwedeng bilhin — pero **wala ni isang
-> subscriber.** Sa desisyon ngayong araw, **siya na lang ang tanging paraan** para makasingil ng
-> Open Play. Kaya hindi na siya tulog — magiging haligi na siya.
+> - **Tournaments sa labas ng Play — ipinarada, 14 Hulyo.** Sinadyang laktawan muna; ang public game
+>   muna ang mini tournament. Hindi na ito tanong.
+> - Ang **₱999 na organizer subscription**, pampito. Buhay na at pwedeng bilhin — pero **wala ni isang
+>   subscriber.** Sa desisyon ngayong araw, **siya na lang ang tanging paraan** para makasingil ng
+>   Open Play. Kaya hindi na siya tulog — magiging haligi na siya.
 
 ---
 
