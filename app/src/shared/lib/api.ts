@@ -1814,10 +1814,17 @@ export async function sendGameMessage(gameId: string, body: string): Promise<Api
   return request<ApiGameMessage>(`${GAMES_PREFIX}/${encodeURIComponent(gameId)}/messages`, { method: 'POST', body: { body }, auth: true });
 }
 
-/** Search players by name, for invites/people search. Excludes the current user. */
-export async function searchPlayers(q: string): Promise<ApiPlayer[]> {
+/**
+ * Search players by name, for invites/people search. Excludes the current user.
+ *
+ * Pass `invitable` from a game-invite surface: game invites only ever target
+ * players, so owner/staff/organizer accounts are dropped from the results (an
+ * owner can invite a player, but nobody invites an owner). Plain people-search —
+ * starting a DM, an owner adding a member — leaves it off and sees everyone.
+ */
+export async function searchPlayers(q: string, opts?: { invitable?: boolean }): Promise<ApiPlayer[]> {
   const env = await rawRequest<{ players?: ApiPlayer[] }>(
-    `/api/v1/search${toQuery({ q, type: 'players' })}`,
+    `/api/v1/search${toQuery({ q, type: 'players', invitable: opts?.invitable ? '1' : undefined })}`,
     { auth: true },
   );
   return env.data?.players ?? [];

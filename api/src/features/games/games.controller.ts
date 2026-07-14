@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Types } from 'mongoose';
-import { Game, GameMessage } from './games.model.js';
+import { Game, GameMessage, INVITABLE_ROLE } from './games.model.js';
 import { parseTimeLabel } from './gameTime.js';
 import { Booking } from '../bookings/bookings.model.js';
 import { User } from '../auth/auth.model.js';
@@ -679,6 +679,19 @@ export async function inviteToGame(c: any) {
   const targets = [...new Set(userIds)].filter((uid) => uid !== user.sub && !inRoster.has(uid));
   if (!targets.length) {
     return c.json({ data: { invited: 0 } });
+  }
+  // Invites only ever target players (see INVITABLE_ROLE): an owner may invite a
+  // player, but nobody invites an owner-side or organizer account. The search
+  // that feeds the invite sheet already hides them; this is the gate that a
+  // hand-crafted request hits.
+  const invitable = await User.find({ _id: { $in: targets }, roleDefault: INVITABLE_ROLE })
+    .select('_id')
+    .lean();
+  if (invitable.length !== targets.length) {
+    return c.json(
+      { error: { code: 'NOT_INVITABLE', message: 'You can only invite players to a game' } },
+      403,
+    );
   }
   // Record invitees (merge, dedupe) so re-invites don't pile up.
   // Each entry tracks { user, invitedBy } so the invitee can see who invited them.

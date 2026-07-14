@@ -55,7 +55,7 @@ export function InvitePlayersScreen({ gameId, onNavigate, onBack }: InvitePlayer
     const id = ++reqId.current;
     const t = setTimeout(async () => {
       try {
-        const found = await searchPlayers(q);
+        const found = await searchPlayers(q, { invitable: true });
         if (id === reqId.current) {
           setResults(found);
           setSearched(true);

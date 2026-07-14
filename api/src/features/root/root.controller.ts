@@ -97,7 +97,7 @@ export function listEndpoints(c: any) {
     {
       name: 'Discovery',
       endpoints: [
-        { path: '/api/v1/search', methods: ['GET'], description: 'Cross-entity search — requires ?q=; ?type=venues|coaches|players|games|clubs narrows it, ?type=all returns the full set (courts/games/players/clubs/coaches) for global search; no type = legacy venues+coaches', sampleQuery: '?q=zone' },
+        { path: '/api/v1/search', methods: ['GET'], description: 'Cross-entity search — requires ?q=; ?type=venues|coaches|players|games|clubs narrows it, ?type=all returns the full set (courts/games/players/clubs/coaches) for global search; no type = legacy venues+coaches. With ?type=players: ?invitable=1 returns only accounts a game invite may target (players — owner/staff/organizer/admin are dropped), ?ownerUserId= scopes to that owner\'s staff', sampleQuery: '?q=zone' },
         { path: '/api/v1/geocode', methods: ['GET'], description: 'Forward-geocode an address/place to coordinates (proxies OSM Nominatim) — requires ?q=, optional ?country=ph', sampleQuery: '?q=SM Mall of Asia' },
         { path: '/api/v1/geocode/suggest', methods: ['GET'], description: 'Type-ahead address suggestions — a ranked list of places (lat/lng + city/region/area/street line1/postcode) for an address being typed (proxies OSM Nominatim) — requires ?q=, optional ?country=ph&limit=', sampleQuery: '?q=SM Mall of&country=ph' },
         { path: '/api/v1/geocode/reverse', methods: ['GET'], description: 'Reverse-geocode coordinates to a place + nearest city/region + street line1/postcode (proxies OSM Nominatim) — requires ?lat=&lng=', sampleQuery: '?lat=14.5547&lng=121.0244' },
@@ -290,7 +290,7 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/games/:id/request-leave', methods: ['POST'], description: 'Ask the host for permission to leave a FULL lobby whose 1h free-leave window has closed (adds you to pendingLeaveUsers + notifies the host)', auth: 'user' },
         { path: '/api/v1/games/:id/approve-leave', methods: ['POST'], description: 'Host approves a pending leave request — body { userId }; removes the player from the roster + notifies them', auth: 'user' },
         { path: '/api/v1/games/:id/kick', methods: ['POST'], description: 'Host removes a player from the roster — body { userId } (auth, host)', auth: 'user' },
-        { path: '/api/v1/games/:id/invite', methods: ['POST'], description: 'Host invites players — body { userIds } — notifies each + records them on the game (auth, host, player.games.invite)', auth: 'user' },
+        { path: '/api/v1/games/:id/invite', methods: ['POST'], description: 'Host invites players — body { userIds } — notifies each + records them on the game (auth, host, player.games.invite). Invitees must be player accounts: an owner may invite a player, but nobody invites an owner/staff/organizer/admin — a batch containing one is refused whole (403 NOT_INVITABLE)', auth: 'user' },
         { path: '/api/v1/games/:id/messages', methods: ['GET', 'POST'], description: 'Game group chat — GET lists messages (roster only); POST sends one (body { body }; roster + player.games.chat) and realtime-fans-out game.message.created to the other roster members', auth: 'user' },
       ],
     },

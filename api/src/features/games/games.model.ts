@@ -69,6 +69,17 @@ gameSchema.index({ interestedUserIds: 1 });
 
 export const Game = model('Game', gameSchema);
 
+/**
+ * The only account kind a game invite may target (`User.roleDefault`).
+ *
+ * Invites run one way: an owner may invite a player, but a player may not invite
+ * an owner — owner-side accounts (owner/staff/admin) run venues rather than play
+ * in them, and organizers run events. So the rule collapses to "invitees are
+ * players", which needs no inviter-role branching. Coaches keep roleDefault
+ * 'player' (coach is a granted role), so they stay invitable.
+ */
+export const INVITABLE_ROLE = 'player';
+
 // Group chat for a game's roster (host + joined players). Distinct from the 1:1
 // `messages` feature — this is many-to-many scoped to one game. Read/post is
 // gated to roster members in the controller; realtime fan-out goes through the

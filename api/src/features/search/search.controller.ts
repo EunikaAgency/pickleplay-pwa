@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Venue } from '../venues/venues.model.js';
 import { Coach } from '../coaches/coaches.model.js';
 import { User } from '../auth/auth.model.js';
-import { Game } from '../games/games.model.js';
+import { Game, INVITABLE_ROLE } from '../games/games.model.js';
 import { Club } from '../clubs/clubs.model.js';
 
 const searchQuery = z.object({
@@ -16,6 +16,12 @@ const searchQuery = z.object({
   // this owner (roleDefault:'staff' + parentOwnerUserId match). Also used
   // without a query to return all staff of this owner (on-focus suggestions).
   ownerUserId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
+  // When set with type=players, returns only accounts that may be INVITED to a
+  // game (see INVITABLE_ROLE in games.controller). Owner-side accounts run
+  // venues, they don't get invited to play — an owner can invite a player, but
+  // nobody invites an owner. Off by default: plain people-search (new DM, owner
+  // "add member") must still surface every account.
+  invitable: z.enum(['1', 'true']).optional(),
 });
 
 async function searchVenues(q: string) {
@@ -63,14 +69,19 @@ async function searchCoaches(q: string) {
 /** Find players by display name, for invites and people search. Returns a lean
  *  public shape (no email/auth fields). The caller may exclude themselves.
  *  When ownerUserId is passed, scopes to staff accounts created by that owner
- *  (roleDefault:'staff' + parentOwnerUserId match). */
-async function searchPlayers(q: string, opts?: { excludeUserId?: string; ownerUserId?: string }) {
+ *  (roleDefault:'staff' + parentOwnerUserId match).
+ *  When invitableOnly is set, drops the accounts a game invite can't target. */
+async function searchPlayers(
+  q: string,
+  opts?: { excludeUserId?: string; ownerUserId?: string; invitableOnly?: boolean },
+) {
   const filter: Record<string, any> = {};
   if (q) {
     const regex = new RegExp(q, 'i');
     filter.$or = [{ displayName: regex }, { firstName: regex }, { lastName: regex }];
   }
   if (opts?.excludeUserId) filter._id = { $ne: opts.excludeUserId };
+  if (opts?.invitableOnly) filter.roleDefault = INVITABLE_ROLE;
   if (opts?.ownerUserId) {
     filter.roleDefault = 'staff';
     filter.parentOwnerUserId = opts.ownerUserId;
@@ -144,7 +155,7 @@ async function searchClubs(q: string) {
 }
 
 export async function search(c: any) {
-  const { q, type, ownerUserId } = searchQuery.parse(c.req.query());
+  const { q, type, ownerUserId, invitable } = searchQuery.parse(c.req.query());
   const user = c.get('user');
   const all = type === 'all';
   const results: Record<string, unknown[]> = {};
@@ -157,9 +168,14 @@ export async function search(c: any) {
   // keeps its venues+coaches shape for existing consumers. The current user is
   // excluded from their own people search.
   // When ownerUserId is provided, results are scoped to staff accounts created
-  // by that owner (used by the per-venue Staff tab).
+  // by that owner (used by the per-venue Staff tab). When invitable is set, the
+  // list is narrowed to the accounts a game invite can actually target.
   if (all || type === 'players') {
-    results.players = await searchPlayers(q || '', { excludeUserId: user?.sub, ownerUserId });
+    results.players = await searchPlayers(q || '', {
+      excludeUserId: user?.sub,
+      ownerUserId,
+      invitableOnly: Boolean(invitable),
+    });
   }
   return c.json({ data: results });
 }
