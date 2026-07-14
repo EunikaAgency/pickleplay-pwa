@@ -108,6 +108,18 @@ src/
                              #   (POST /:id/resume undoes it mid-term). Venue-scoped grants
                              #   are never touched. Price + term live in AppSettings.
                              #   NOTE: unrelated to `subscriptions/` (a newsletter list).
+    partners/                # GET /partners/owner — the owner's Partners screen: coach +
+                             #   organizer applications across their venues, each tagged
+                             #   with `kind`, + KPI counts and a REAL per-partner stats
+                             #   rollup (`stats`) — specialty/certification/rating from the
+                             #   Coach profile, sessions + revenue from COMPLETED
+                             #   CoachBookings, eventCount + revenue from PAID
+                             #   TournamentRegistrations. Batched (never per-partner).
+                             #   ⚠️ Never fabricate a stat here: until 2026-07-14 the APP
+                             #   invented revenue, star ratings and even "PPR Certified"
+                             #   from a hash of the partner's NAME and showed them to the
+                             #   owner approving that partner. No data → null → the client
+                             #   renders nothing.
     users/                   # GET /users/:id — another player's PUBLIC profile card
                              #   (roles, per-venue partner badges, live isCoach/isOrganizer).
                              #   Never exposes email/phone/postal address.

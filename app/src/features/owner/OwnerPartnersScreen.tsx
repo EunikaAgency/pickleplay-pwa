@@ -19,6 +19,7 @@ import {
   removeOrganizerApplication,
   startConversation,
   type ApiPartnerApplication,
+  type PartnerStats,
   type OwnerPartnersFeed,
   type PartnerKind,
 } from '../../shared/lib/api';
@@ -113,33 +114,25 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-// Demo revenue per partner (API doesn't carry a partner-payment rollup yet).
-// One source of truth so the cards and the "Partner revenue" KPI stay in sync.
-// Varies per name so cards don't all show the same number.
-function hashName(name: string): number {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
+// Every stat on this screen comes from the API (`app.stats`), computed from the
+// coach's profile, their completed lessons, and paid tournament entries.
+//
+// Until 2026-07-14 these were fabricated HERE from a hash of the partner's NAME
+// — revenue, star rating, and even "PPR Certified" — and shown to the venue
+// owner deciding whether to approve that partner. A stable hash made the numbers
+// survive reloads, which is exactly what made them believable. If a stat is
+// missing, render nothing. Never invent one.
+// Tolerates null/undefined on purpose: a missing number must never white-screen
+// the page. A stale server, a cached response, or a partner row from before the
+// stats rollup existed should render ₱0, not take the whole screen down.
+const peso = (n: number | null | undefined) => '₱' + (n ?? 0).toLocaleString();
 
-function demoRevenueFor(app: ApiPartnerApplication): number {
-  return (hashName(app.applicant.name) % 40 + 10) * 1000; // 10k–49k
-}
-
-function demoProfileFor(app: ApiPartnerApplication) {
-  const isCoach = app.kind === 'coach';
-  const h = hashName(app.applicant.name);
-  return {
-    specialty: isCoach
-      ? (['Beginner & Intermediate','Advanced & Competitive','All Levels','Junior Development','Adult Drills'])[h % 5]
-      : (['National Tournaments','Regional Leagues','Club Championships','Corporate Events','Mixed Doubles Series'])[h % 5],
-    certification: isCoach ? (['PPR Certified','IPTPA Certified','PCI Certified',null,null,null] as (string|null)[])[h % 6] : null,
-    eventCount: isCoach ? null : 8 + (h % 20),
-    rating: Math.min(5.0, 3.9 + ((h % 12) / 10)),
-    sessions: isCoach ? 45 + (h % 120) : null,
-    revenue: demoRevenueFor(app),
-  };
-}
+/** Stats for a partner whose row predates the server-side rollup. All empty — we
+ *  show nothing rather than guess. */
+const NO_STATS: PartnerStats = {
+  specialty: null, certification: null, rating: null,
+  reviewCount: 0, sessions: null, eventCount: null, revenue: 0,
+};
 
 function sinceLabel(app: ApiPartnerApplication): string {
   return app.createdAt
@@ -174,8 +167,8 @@ function PartnerCard({
   const kindChip = KIND_CHIP[app.kind];
   const isCoach = app.kind === 'coach';
 
-  // Demo data (API doesn't carry these yet)
-  const { specialty, certification, eventCount, rating, sessions, revenue } = demoProfileFor(app);
+  // Real, server-computed stats. Any of these may be null — show nothing then.
+  const { specialty, certification, eventCount, rating, reviewCount, sessions, revenue } = app.stats ?? NO_STATS;
   const since = sinceLabel(app);
 
   return (
@@ -217,53 +210,66 @@ function PartnerCard({
           </div>
         ) : isCoach ? (
           <>
-            <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
-              <TargetIco />
-              <span className="text-[var(--muted)]">Specialty:</span>
-              <span className="font-medium">{specialty}</span>
-            </div>
-            <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
-              <AwardIco />
-              <span className="text-[var(--muted)]">Level:</span>
-              <span className="font-medium">{certification}</span>
-            </div>
+            {specialty && (
+              <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
+                <TargetIco />
+                <span className="text-[var(--muted)]">Specialty:</span>
+                <span className="font-medium">{specialty}</span>
+              </div>
+            )}
+            {certification && (
+              <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
+                <AwardIco />
+                <span className="text-[var(--muted)]">Level:</span>
+                <span className="font-medium">{certification}</span>
+              </div>
+            )}
           </>
         ) : (
           <>
-            <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
-              <BriefcaseIco />
-              <span className="text-[var(--muted)]">Focus:</span>
-              <span className="font-medium">{specialty}</span>
-            </div>
-            <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
-              <CalendarIco />
-              <span className="text-[var(--muted)]">Events:</span>
-              <span className="font-medium">{eventCount} events organised</span>
-            </div>
+            {specialty && (
+              <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
+                <BriefcaseIco />
+                <span className="text-[var(--muted)]">Focus:</span>
+                <span className="font-medium">{specialty}</span>
+              </div>
+            )}
+            {eventCount !== null && (
+              <div className="flex items-center gap-2 text-[12px] text-[var(--ink-2)]">
+                <CalendarIco />
+                <span className="text-[var(--muted)]">Events:</span>
+                <span className="font-medium">
+                  {eventCount === 0 ? 'None yet' : `${eventCount} ${eventCount === 1 ? 'event' : 'events'} organised`}
+                </span>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {/* Rating — approved/rejected only */}
-      {app.status !== 'pending' && (
+      {/* Rating — only once someone has actually reviewed them */}
+      {app.status !== 'pending' && rating !== null && (
         <div className="flex items-center gap-1.5 px-4 mt-3">
-        <Stars rating={rating} />
-        <span className="text-[12px] font-semibold text-[var(--ink-2)]">{rating}</span>
-      </div>
+          <Stars rating={rating} />
+          <span className="text-[12px] font-semibold text-[var(--ink-2)]">{rating}</span>
+          <span className="text-[11px] text-[var(--muted)]">
+            ({reviewCount} {reviewCount === 1 ? 'review' : 'reviews'})
+          </span>
+        </div>
       )}
 
-      {/* Stats — no revenue for pending partners */}
+      {/* Stats — real figures only; ₱0 until they've earned something */}
       {app.status !== 'pending' && (
         <>
           <div className="mx-4 mt-3 border-t border-[var(--field-border)]" />
           {isCoach ? (
             <div className="grid grid-cols-3 gap-2 px-4 py-3">
               <div className="text-center">
-                <div className="text-[15px] font-bold text-[var(--ink)]">{sessions}</div>
+                <div className="text-[15px] font-bold text-[var(--ink)]">{sessions ?? '—'}</div>
                 <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">Sessions</div>
               </div>
               <div className="text-center">
-                <div className="text-[15px] font-bold text-[#F59E0B]">{'₱' + (revenue ?? 0).toLocaleString()}</div>
+                <div className="text-[15px] font-bold text-[#F59E0B]">{peso(revenue)}</div>
                 <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">Revenue</div>
               </div>
               <div className="text-center">
@@ -274,7 +280,7 @@ function PartnerCard({
           ) : (
             <div className="grid grid-cols-2 gap-2 px-4 py-3">
               <div className="text-center">
-                <div className="text-[15px] font-bold text-[#F59E0B]">{'₱' + (revenue ?? 0).toLocaleString()}</div>
+                <div className="text-[15px] font-bold text-[#F59E0B]">{peso(revenue)}</div>
                 <div className="text-[10px] text-[var(--muted)] uppercase tracking-wide">Revenue</div>
               </div>
               <div className="text-center">
@@ -551,19 +557,9 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
     return <div className="scroll safe-top safe-bottom">{header}<div className="px-5"><ErrorState title="Couldn't load partners" message="We couldn't reach your venues. Tap to retry." onRetry={() => void load(true)} /></div></div>;
   }
 
-  const kpis = feed?.kpis ?? { activeCoaches: 0, activeOrganizers: 0, pendingReview: 0, partnerRevenue: null };
-
-  // Partner revenue KPI — sum each distinct approved partner's revenue once
-  // (a partner at 5 venues counts once, not 5×). Same demo source as the cards.
-  const seenRevenue = new Set<string>();
-  let partnerRevenue = 0;
-  for (const p of partners) {
-    if (p.status !== 'approved') continue;
-    const key = `${p.kind}|${p.applicant.userId}`;
-    if (seenRevenue.has(key)) continue;
-    seenRevenue.add(key);
-    partnerRevenue += demoRevenueFor(p);
-  }
+  // The server owns the revenue rollup — it counts each distinct approved
+  // partner once and only from real earnings. Don't recompute it here.
+  const kpis = feed?.kpis ?? { activeCoaches: 0, activeOrganizers: 0, pendingReview: 0, partnerRevenue: 0 };
 
   return (
     <div className="scroll safe-top safe-bottom">
@@ -578,7 +574,7 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
           <KpiCard label="Active coaches" value={String(kpis.activeCoaches)} icon="school" tone="primary" sub="Approved at your venues" />
           <KpiCard label="Active organisers" value={String(kpis.activeOrganizers)} icon="trophy" tone="blue" sub="Approved at your venues" />
           <KpiCard label="Pending review" value={String(kpis.pendingReview)} icon="hourglass_top" tone="coral" sub="Awaiting your decision" />
-          <KpiCard label="Partner revenue" value={'₱' + partnerRevenue.toLocaleString()} icon="payments" tone="lime" sub="From partner sessions & events" />
+          <KpiCard label="Partner revenue" value={peso(kpis.partnerRevenue)} icon="payments" tone="lime" sub="From completed lessons & paid entries" />
         </div>
 
         {/* Kind tabs + search */}

@@ -4016,6 +4016,21 @@ export async function updateReceipt(id: string, body: UpdateReceiptPayload): Pro
 export type PartnerKind = 'coach' | 'organizer';
 export type PartnerApplicationStatus = 'pending' | 'approved' | 'rejected' | 'removed';
 
+/** A partner's real, server-computed track record. `null` means the API has no
+ *  data for it — render nothing, never a placeholder or a made-up value. */
+export interface PartnerStats {
+  specialty: string | null;
+  certification: string | null;
+  rating: number | null;
+  reviewCount: number;
+  /** Coaches: lessons completed. */
+  sessions: number | null;
+  /** Organizers: tournaments run. */
+  eventCount: number | null;
+  /** Completed lessons / paid tournament entries. ₱0 until they earn something. */
+  revenue: number;
+}
+
 /** One coach/organizer application row in the owner Partners feed. */
 export interface ApiPartnerApplication {
   id: string;
@@ -4025,15 +4040,16 @@ export interface ApiPartnerApplication {
   decidedAt: string | null;
   applicant: { userId: string; name: string; slug: string | null; avatar: string | null };
   venue: { id: string; name: string; slug: string; location: string; image: string | null } | null;
+  stats: PartnerStats;
 }
 
-/** KPI counts for the Partners screen's summary cards. `partnerRevenue` is a
- *  v1 placeholder — no partner-payment rollup exists yet, so it's always null. */
+/** KPI counts for the Partners screen's summary cards. `partnerRevenue` is the
+ *  real rollup of every distinct approved partner's earnings. */
 export interface OwnerPartnersKpis {
   activeCoaches: number;
   activeOrganizers: number;
   pendingReview: number;
-  partnerRevenue: number | null;
+  partnerRevenue: number;
 }
 
 export interface OwnerPartnersFeed {
