@@ -13,7 +13,7 @@ import type { Navigate } from '../../shared/lib/navigation';
 import {
   listAllVenues, createBooking, checkout, getSettings, getVenueAvailabilityRange,
   joinWaitlist, createGame,
-  type ApiVenue, type AppSettings, type CheckoutCard, type PaymentOption,
+  type ApiVenue, type AppSettings, type CheckoutCard, type GenderPolicy, type PaymentOption,
 } from '../../shared/lib/api';
 import { useVenueBookingContext } from './useVenueBookingContext';
 import { useBookingPricing } from './useBookingPricing';
@@ -57,6 +57,15 @@ const FORMAT_OPTIONS: { v: GameFormat; label: string; icon: string }[] = [
 ];
 const MIN_SLOTS = 2;
 const MAX_SLOTS = 16;
+
+// ── Who can play — the server matches these against the joiner's profile gender.
+const GENDER_OPTIONS: { v: GenderPolicy; label: string; icon: string }[] = [
+  { v: 'all', label: 'Open to all', icon: '🌍' },
+  { v: 'men', label: 'Men only', icon: '👨' },
+  { v: 'women', label: 'Women only', icon: '👩' },
+];
+const genderPolicyLabel = (p: GenderPolicy) =>
+  GENDER_OPTIONS.find((o) => o.v === p)?.label ?? 'Open to all';
 
 /** A venue is bookable only if it has a rate (decision: require a price). */
 function isBookable(v: ApiVenue): boolean {
@@ -137,6 +146,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [pgSkill, setPgSkill] = useState('Open');
   // Vibe applies to both open play and public games.
   const [gameVibe, setGameVibe] = useState<'casual' | 'competitive'>('casual');
+  // Who can play — matched against the joiner's profile gender by the server.
+  // Applies to both published modes; a private session admits nobody, so it's moot.
+  const [genderPolicy, setGenderPolicy] = useState<GenderPolicy>('all');
 
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -462,6 +474,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         venueId: selected?.id,
         gameType: 'open',
         vibe: gameVibe,
+        genderPolicy,
         skillLabel: opSkill,
         targetPlayers: opTarget,
         timeLabel: to12h(startTime),
@@ -488,6 +501,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         gameType: 'public',
         format: pgFormat ?? undefined,
         vibe: gameVibe,
+        genderPolicy,
         capacity: pgSlots,
         skillLabel: pgSkill,
         timeLabel: to12h(startTime),
@@ -1045,6 +1059,27 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 </div>
               </div>
 
+              <div className="field mt-4">
+                <div className="lbl">Who can play</div>
+                <div className="time-grid">
+                  {GENDER_OPTIONS.map((g) => (
+                    <button
+                      key={g.v}
+                      type="button"
+                      className={`time-pick ${genderPolicy === g.v ? 'active' : ''}`}
+                      onClick={() => setGenderPolicy(g.v)}
+                    >
+                      <span className="mr-1">{g.icon}</span>{g.label}
+                    </button>
+                  ))}
+                </div>
+                {genderPolicy !== 'all' && (
+                  <div className="text-[12px] font-semibold text-[var(--muted)] mt-2">
+                    Only players whose profile says {genderPolicy === 'women' ? 'female' : 'male'} can join.
+                  </div>
+                )}
+              </div>
+
               <div className="field">
                 <div className="lbl">Aiming for · {opTarget} players</div>
                 <div className="flex items-center gap-3">
@@ -1174,6 +1209,27 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             </div>
           </div>
 
+          <div className="field">
+            <div className="lbl">Who can play</div>
+            <div className="time-grid">
+              {GENDER_OPTIONS.map((g) => (
+                <button
+                  key={g.v}
+                  type="button"
+                  className={`time-pick ${genderPolicy === g.v ? 'active' : ''}`}
+                  onClick={() => setGenderPolicy(g.v)}
+                >
+                  <span className="mr-1">{g.icon}</span>{g.label}
+                </button>
+              ))}
+            </div>
+            {genderPolicy !== 'all' && (
+              <div className="text-[12px] font-semibold text-[var(--muted)] mt-2">
+                Only players whose profile says {genderPolicy === 'women' ? 'female' : 'male'} can join.
+              </div>
+            )}
+          </div>
+
           <div className="field mt-4">
             <div className="lbl">Game name (optional)</div>
             <input
@@ -1249,6 +1305,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
               <ReviewRow label="Skill level" value={opSkill} />
               <ReviewRow label="Vibe" value={gameVibe === 'casual' ? 'Casual' : 'Competitive'} />
+              <ReviewRow label="Who can play" value={genderPolicyLabel(genderPolicy)} />
               <ReviewRow label="Aiming for" value={`${opTarget} players`} />
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
@@ -1269,6 +1326,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               <ReviewRow label="Player slots" value={String(pgSlots)} />
               <ReviewRow label="Skill level" value={pgSkill} />
               <ReviewRow label="Vibe" value={gameVibe === 'casual' ? 'Casual' : 'Competitive'} />
+              <ReviewRow label="Who can play" value={genderPolicyLabel(genderPolicy)} />
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
                 <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">

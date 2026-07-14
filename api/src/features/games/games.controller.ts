@@ -13,6 +13,9 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 // Competitive format for a public game — how the session is run.
 const gameFormat = z.enum(['bracketing', 'round_robin', 'mini_tournament']);
 const vibeEnum = z.enum(['casual', 'competitive']);
+// Who the host admits. 'men'/'women' are matched against the player's profile
+// gender at join/interest time.
+const genderPolicyEnum = z.enum(['all', 'men', 'women']);
 // When a full lobby fills, the player has this many ms to leave freely.
 // After that window closes, the player must request host permission to leave.
 const FULL_LOBBY_LEAVE_GRACE_MS = 3_600_000; // 1 hour
@@ -30,6 +33,7 @@ const createSchema = z.object({
   gameType: z.enum(['singles', 'doubles', 'open', 'public']).default('doubles'),
   format: gameFormat.optional(),
   vibe: vibeEnum.optional(),
+  genderPolicy: genderPolicyEnum.default('all'),
   skillLabel: z.string().max(30).optional(),
   whenLabel: z.string().max(30).optional(),
   timeLabel: z.string().max(20).optional(),
@@ -61,6 +65,7 @@ const updateSchema = z.object({
   gameType: z.enum(['singles', 'doubles', 'open', 'public']).optional(),
   format: gameFormat.optional(),
   vibe: vibeEnum.optional(),
+  genderPolicy: genderPolicyEnum.optional(),
   skillLabel: z.string().max(30).optional(),
   capacity: z.number().int().min(2).max(16).optional(),
   targetPlayers: z.number().int().min(2).max(64).optional(),
@@ -94,6 +99,25 @@ const POPULATE = [
   // over the venue image (falls back to the venue image when the court has none).
   { path: 'bookingId', select: 'courtId', populate: { path: 'courtId', select: 'mainImageUrl' } },
 ];
+
+/** The profile gender each restricted policy admits. Anything else ('all', an
+ *  unset field, a legacy value) admits everyone. */
+const POLICY_GENDER: Record<string, string> = { men: 'male', women: 'female' };
+
+/** Why the player can't take a seat in a gender-restricted game — null when they
+ *  can. `other` and accounts predating the gender field match neither 'men' nor
+ *  'women', so they're steered to the profile rather than silently rejected. */
+async function genderBlock(policy: unknown, userId: string) {
+  const want = POLICY_GENDER[String(policy ?? 'all')];
+  if (!want) return null;
+  const me: any = await User.findById(userId).select('gender').lean();
+  const gender = me?.gender;
+  if (gender === want) return null;
+  const label = want === 'female' ? 'women' : 'men';
+  return gender
+    ? { code: 'NOT_ELIGIBLE', message: `This game is ${label} only.` }
+    : { code: 'GENDER_REQUIRED', message: `This game is ${label} only — set your gender in your profile to join.` };
+}
 
 /** Pull min/max DUPR out of a label like '3.0–3.5' or '4.0+' (best-effort). */
 function parseSkill(label?: string): { skillMin?: number; skillMax?: number } {
@@ -193,6 +217,8 @@ export function serialize(r: any, viewerUserId?: string) {
     spotsLeft: Math.max(0, capacity - participants.length),
     // Host-set vibe (casual or competitive) — surfaces on the lobby + cards.
     vibe: r.vibe ?? null,
+    // Who the host admits. Games created before the field default to open.
+    genderPolicy: r.genderPolicy ?? 'all',
     // Soft headcount goal for open play ("aiming for 8"). Not a cap.
     targetPlayers: r.targetPlayers ?? null,
     // Leave / join timing state (lobby games only).
@@ -302,6 +328,7 @@ export async function createGame(c: any) {
     format: body.gameType === 'public' ? (body.format || null) : null,
     // Vibe applies to any type (host picks casual or competitive at creation).
     vibe: body.vibe || null,
+    genderPolicy: body.genderPolicy,
     skillLabel: body.skillLabel || null,
     skillMin,
     skillMax,
@@ -415,6 +442,10 @@ export async function joinGame(c: any) {
   }
   const already = game.participantIds.some((p: any) => String(p) === user.sub);
   if (!already) {
+    // The host set a men-only / women-only game — check it against the player's
+    // profile gender before they can take a seat.
+    const blocked = await genderBlock((game as any).genderPolicy, user.sub);
+    if (blocked) return c.json({ error: blocked }, 403);
     if (game.participantIds.length >= (game.capacity ?? 0)) {
       return c.json({ error: { code: 'FULL', message: 'This game is full' } }, 409);
     }
@@ -509,6 +540,12 @@ export async function toggleGameInterest(c: any) {
   }
   const list = ((game as any).interestedUserIds ?? []) as any[];
   const already = list.some((p: any) => String(p) === user.sub);
+  // Only adding interest is gated — withdrawing it always works, even if the host
+  // narrowed the policy after the player signed up.
+  if (!already) {
+    const blocked = await genderBlock((game as any).genderPolicy, user.sub);
+    if (blocked) return c.json({ error: blocked }, 403);
+  }
   (game as any).interestedUserIds = already
     ? list.filter((p: any) => String(p) !== user.sub)
     : [...list, user.sub];

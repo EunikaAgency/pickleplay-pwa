@@ -16,7 +16,7 @@ import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
   dayParts, gameTitle, gameTypeLabel, gameFormatLabel, gameVibeLabel, timeLine, gameLocation, spotsLabel,
-  isLobbyFull, freeLeaveMsLeft, canLeaveLobby,
+  isLobbyFull, freeLeaveMsLeft, canLeaveLobby, genderBlockReason, genderPolicyLabel,
 } from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -111,7 +111,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   };
 
   const handleJoin = () => {
-    if (!game || isJoined || joining || lobbyFull) return;
+    if (!game || isJoined || joining || lobbyFull || blockedReason) return;
     // Browsing the game is free; committing to it requires an account. The server
     // enforces the re-join cooldown (leave twice → wait 1h) and returns a clear
     // message that lands in actionError.
@@ -185,6 +185,13 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   };
 
   const isFull = spotsLeft <= 0 && !isJoined;
+
+  // A men-only / women-only game only admits a matching profile gender. Players
+  // already on the roster (and the host) are past the gate.
+  const restrictedTo = genderPolicyLabel(game?.genderPolicy);
+  const blockedReason = isJoined || isHost
+    ? null
+    : genderBlockReason(game?.genderPolicy, me?.gender, !!me);
 
   const toggleSave = () => {
     if (!game) return;
@@ -321,6 +328,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 )}
                 <span className="tag">{gameTypeLabel(game)}</span>
                 {gameFormatLabel(game) && <span className="tag lime">{gameFormatLabel(game)}</span>}
+                {restrictedTo && <span className="tag">{game.genderPolicy === 'women' ? '👩' : '👨'} {restrictedTo}</span>}
                 {gameVibeLabel(game) && <span className="tag">{game.vibe === 'competitive' ? '🔥' : '😎'} {gameVibeLabel(game)}</span>}
                 {game.visibility === 'invite' && <span className="tag">Invite only</span>}
               </div>
@@ -572,11 +580,16 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </button>
               )
             ) : (
-              <button className="btn-join" onClick={handleJoin} disabled={joining || isFull}>
+              <button className="btn-join" onClick={handleJoin} disabled={joining || isFull || !!blockedReason}>
                 {joining ? (
                   <>
                     <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
                     Joining…
+                  </>
+                ) : blockedReason ? (
+                  <>
+                    <Icon name="lock" size={16} />
+                    {blockedReason}
                   </>
                 ) : isFull ? (
                   'Game full'

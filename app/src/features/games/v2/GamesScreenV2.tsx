@@ -12,7 +12,7 @@ import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
 import { formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
-import { canLeaveLobby, dateSectionHeader, gameFormatLabel, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
+import { canLeaveLobby, dateSectionHeader, gameFormatLabel, genderPolicyLabel, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
 import { GameFilterSheet } from '../GameFilterSheet';
 import {
   countActiveGameFilters, makeDefaultGameFilters, matchesPlayFilters, TYPE_OPTIONS, type GameFilters,
@@ -375,7 +375,11 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   // keeps tab switches out of the back stack. It survives browser Back too.
   const syncTabUrl = (nextSection: Section, nextView: View) => {
     onNavigate('games', {
-      section: nextSection === 'games' ? undefined : nextSection,
+      // Omit whichever value the URL already means by default, so a bare /games
+      // stays clean. That default is now OPEN PLAY (§3.3) — it used to be Events,
+      // and leaving the test the old way round meant picking Events wrote nothing
+      // to the URL and a reload silently bounced the player back to Open Play.
+      section: nextSection === 'open-play' ? undefined : nextSection,
       view: nextView === 'discover' ? undefined : nextView,
     }, { replace: true });
   };
@@ -821,6 +825,14 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
           <div className="game-meta-row">{CLOCK_SVG}{gameWhen(game)}</div>
           <div className="game-meta-row">{PIN_SVG}{gameVenue(game)}</div>
           {gameVenueLoc(game) && <div className="game-meta-loc">{gameVenueLoc(game)}</div>}
+          {/* Gender-restricted games say so on the card, so a player doesn't open
+              one only to find the join button locked. */}
+          {genderPolicyLabel(game.genderPolicy) && (
+            <div className="game-meta-row">
+              <span>{game.genderPolicy === 'women' ? '👩' : '👨'}</span>
+              {genderPolicyLabel(game.genderPolicy)}
+            </div>
+          )}
         </div>
         {showVisibility && <div className="vis-indicator public">Open Play</div>}
         {isOpenPlayGame(game) ? (

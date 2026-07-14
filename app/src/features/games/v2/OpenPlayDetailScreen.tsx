@@ -15,7 +15,7 @@ import {
 } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
-import { dayParts, gameTitle, gameTypeLabel, gameVibeLabel, gameLocation, interestLabel, interestWithTarget, timeLine } from '../gameDisplay';
+import { dayParts, gameTitle, gameTypeLabel, gameVibeLabel, gameLocation, genderBlockReason, genderPolicyLabel, interestLabel, interestWithTarget, timeLine } from '../gameDisplay';
 
 interface Props {
   source: 'auto' | 'game' | 'session';
@@ -139,8 +139,13 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
   const isInterested = !!(me && interested.some((p) => p.id === me.id));
   const interestedCount = game.interestedCount ?? interested.length;
 
+  // Men-only / women-only sessions admit only a matching profile gender. Already-
+  // interested players can always withdraw, so the block only guards signing up.
+  const restrictedTo = genderPolicyLabel(game.genderPolicy);
+  const blockedReason = isInterested ? null : genderBlockReason(game.genderPolicy, me?.gender, !!me);
+
   const toggleInterest = async () => {
-    if (!game || busy) return;
+    if (!game || busy || blockedReason) return;
     if (!isInterested && !chrome.requireAuth('show interest')) return;
     setBusy(true);
     setError(null);
@@ -195,6 +200,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           <div className="tag-row">
             {level !== 'All levels' && <span className="tag lime">{level}</span>}
             <span className="tag">Open Play</span>
+            {restrictedTo && <span className="tag">{game.genderPolicy === 'women' ? '👩' : '👨'} {restrictedTo}</span>}
             {gameVibeLabel(game) && <span className="tag">{game.vibe === 'competitive' ? '🔥' : '😎'} {gameVibeLabel(game)}</span>}
           </div>
           <h1>{title}</h1>
@@ -307,9 +313,11 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           <div className="eyebrow">Interested</div>
           <div className="amount">{interestedCount}</div>
         </div>
-        <button className={`btn-join ${isInterested ? 'btn-leave' : ''}`} onClick={toggleInterest} disabled={busy}>
+        <button className={`btn-join ${isInterested ? 'btn-leave' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
           {busy ? (
             <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
+          ) : blockedReason ? (
+            <><Icon name="lock" size={16} /> {blockedReason}</>
           ) : isInterested ? (
             <><Icon name="check" size={16} /> Interested</>
           ) : (

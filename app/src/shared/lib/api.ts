@@ -1603,6 +1603,9 @@ export interface ApiGameVenue {
 /** Game status. A game is created at a fixed venue and is immediately joinable. */
 export type GameStatus = 'published' | 'full' | 'cancelled';
 
+/** Who a game admits: everyone, or only players whose profile gender matches. */
+export type GenderPolicy = 'all' | 'men' | 'women';
+
 export interface ApiGame {
   id: string;
   title?: string | null;
@@ -1612,6 +1615,9 @@ export interface ApiGame {
   format?: 'bracketing' | 'round_robin' | 'mini_tournament' | string | null;
   /** Host-set vibe — casual drop-in or competitive session. */
   vibe?: 'casual' | 'competitive' | string | null;
+  /** Who the host admits. Matched against the player's profile gender when they
+   *  join (or show interest); games created before the field read as 'all'. */
+  genderPolicy?: GenderPolicy | string | null;
   skillLabel?: string | null;
   /** Numeric band parsed from `skillLabel` ('3.0–3.5' → 3.0 / 3.5). `skillMax` is
    *  absent for open-ended labels like '4.0+'. Drives skill-match ranking. */
@@ -1692,6 +1698,8 @@ export interface CreateGamePayload {
   format?: 'bracketing' | 'round_robin' | 'mini_tournament';
   /** Host-set vibe — casual or competitive (any type). */
   vibe?: 'casual' | 'competitive';
+  /** Who can play. Omitted reads as 'all' server-side. */
+  genderPolicy?: GenderPolicy;
   skillLabel?: string;
   whenLabel?: string;
   timeLabel?: string;

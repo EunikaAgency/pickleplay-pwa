@@ -17,6 +17,9 @@ const gameSchema = new Schema({
   format:        { type: String },                        // 'bracketing' | 'round_robin' | 'mini_tournament' | null
   // The vibe the host set — casual drop-in or competitive session.
   vibe:          { type: String },                        // 'casual' | 'competitive' | null
+  // Who the host will admit. 'men'/'women' match the player's profile gender, so a
+  // player with no gender set can't join a restricted game until they pick one.
+  genderPolicy:  { type: String, default: 'all' },        // 'all' | 'men' | 'women'
   skillLabel:    { type: String, maxlength: 30 },         // verbatim, e.g. '3.0–3.5'
   skillMin:      Number,                                  // best-effort parse of skillLabel
   skillMax:      Number,

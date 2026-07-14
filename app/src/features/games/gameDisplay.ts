@@ -3,6 +3,7 @@
 // fallback), so everything here degrades gracefully.
 
 import type { ApiGame } from '../../shared/lib/api';
+import type { Gender } from '../../shared/lib/permissions';
 
 const THUMBS = ['lime', 'blue', 'coral'] as const;
 export type GameThumb = (typeof THUMBS)[number];
@@ -179,4 +180,31 @@ export function statusMeta(status?: string | null): { label: string; tone: GameT
     case 'cancelled': return { label: 'Cancelled', tone: 'muted' };
     default:          return { label: 'Open', tone: 'blue' };
   }
+}
+
+/* ─── Who can play (gender policy) ───────────────────────────── */
+
+/** Badge label for a gender-restricted game; null when it's open to everyone
+ *  (including games created before the field existed). */
+export function genderPolicyLabel(policy?: string | null): string | null {
+  if (policy === 'men') return 'Men only';
+  if (policy === 'women') return 'Women only';
+  return null;
+}
+
+/** Why the viewer can't take a seat in this game — null when they can (or when
+ *  the game is open to all). A guest gets null: the auth sheet handles them, and
+ *  we don't know their gender until they sign in. */
+export function genderBlockReason(
+  policy: string | null | undefined,
+  viewerGender: Gender | undefined,
+  isSignedIn: boolean,
+): string | null {
+  const label = genderPolicyLabel(policy);
+  if (!label || !isSignedIn) return null;
+  const wants: Gender = policy === 'women' ? 'female' : 'male';
+  if (viewerGender === wants) return null;
+  return viewerGender
+    ? `Not eligible — ${label.toLowerCase()}`
+    : 'Set your gender in your profile to join';
 }
