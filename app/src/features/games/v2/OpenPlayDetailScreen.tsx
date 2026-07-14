@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
+import { Button } from '../../../shared/components/ui/Button';
+import { BottomSheet } from '../../../shared/components/ui/BottomSheet';
 import { CourtIllustration } from '../../../shared/components/ui/CourtIllustration';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
@@ -9,11 +11,12 @@ import { InvitePlayersSheet } from '../InvitePlayersSheet';
 import { GameDetailsScreen } from '../GameDetailsScreen';
 import { type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import {
-  getGame, toggleGameInterest, apiImageUrl,
+  getGame, toggleGameInterest, deleteGame, apiImageUrl,
   getOpenPlaySession, joinOpenPlaySession, leaveOpenPlaySession,
   type ApiGame, type ApiGamePerson, type ApiOpenPlaySession,
 } from '../../../shared/lib/api';
 import { useAuthStore } from '../../../shared/lib/authStore';
+import { userHasPermission } from '../../../shared/lib/permissions';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
 import { dayParts, gameTitle, gameTypeLabel, gameVibeLabel, gameLocation, genderBlockReason, genderPolicyLabel, interestLabel, interestWithTarget, timeLine } from '../gameDisplay';
 
@@ -130,6 +133,9 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelled, setCancelled] = useState<{ bookingId: string | null } | null>(null);
   const [saved, setSaved] = useState(() => {
     try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(initialGame.id); } catch { return false; }
   });
@@ -139,13 +145,19 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
   const isInterested = !!(me && interested.some((p) => p.id === me.id));
   const interestedCount = game.interestedCount ?? interested.length;
 
+  // The host doesn't sign up for their own session — they cancel it. Same gate as
+  // the game lobby's delete (GameDetailsScreen): host + `player.games.manage`.
+  const creatorId = game.creatorId || game.creator?.id;
+  const isHost = !!(me && creatorId && me.id === creatorId);
+  const canManageGame = isHost && userHasPermission(me, 'player.games.manage');
+
   // Men-only / women-only sessions admit only a matching profile gender. Already-
   // interested players can always withdraw, so the block only guards signing up.
   const restrictedTo = genderPolicyLabel(game.genderPolicy);
   const blockedReason = isInterested ? null : genderBlockReason(game.genderPolicy, me?.gender, !!me);
 
   const toggleInterest = async () => {
-    if (!game || busy || blockedReason) return;
+    if (!game || busy || blockedReason || isHost) return;
     if (!isInterested && !chrome.requireAuth('show interest')) return;
     setBusy(true);
     setError(null);
@@ -156,6 +168,22 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
       setError(e instanceof Error ? e.message : 'Could not update your interest.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Cancelling the session removes it from Open Play but leaves the court booked —
+  // the host then decides on the reservation itself in the refund/cancel flow.
+  const handleCancel = async () => {
+    if (!game || cancelling || !canManageGame) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      const res = await deleteGame(game.id, { keepBooking: true });
+      setConfirmCancelOpen(false);
+      setCancelled({ bookingId: res.bookingId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not cancel this session.');
+      setCancelling(false);
     }
   };
 
@@ -173,6 +201,35 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
   const when = [prettyDate(game.date), game.timeLabel || game.whenLabel].filter(Boolean).join(' · ') || 'Time TBA';
   const level = game.skillLabel || 'All levels';
   const hostName = game.creator?.displayName || 'Host';
+
+  if (cancelled) {
+    return (
+      <div className="scroll safe-top safe-bottom px-5 flex flex-col items-center justify-center text-center min-h-[78vh]">
+        <div className="w-16 h-16 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] flex items-center justify-center mb-4">
+          <Icon name="check" size={30} />
+        </div>
+        <h2 className="font-heading font-bold text-[20px] text-[var(--ink)]">Session cancelled</h2>
+        <p className="text-[14px] text-[var(--ink-2)] font-semibold mt-2 max-w-[300px]">
+          It's off Open Play and everyone who was interested has been notified. Your court is still
+          booked — you can request a refund or cancel it, or keep it and play anyway.
+        </p>
+        <div className="w-full max-w-[320px] mt-6 flex flex-col gap-2.5">
+          {cancelled.bookingId && (
+            <Button
+              fullWidth
+              variant="destructive"
+              onClick={() => chrome.onNavigate('booking-refund', { bookingId: cancelled.bookingId! }, { replace: true })}
+            >
+              <Icon name="logout" size={16} /> Refund or cancel booking
+            </Button>
+          )}
+          <Button fullWidth variant="outline" onClick={() => chrome.onNavigate('games', undefined, { replace: true })}>
+            Back to Open Play
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="scroll pb-[130px]">
@@ -269,8 +326,10 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           )}
           <p>
             {interestedCount > 0
-              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} interested so far — drop in if it suits you.`
-              : 'No one’s shown interest yet. Tap “I’m Interested” to let others know you might come.'}
+              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} interested so far${isHost ? '.' : ' — drop in if it suits you.'}`
+              : isHost
+                ? 'No one’s shown interest yet. Share it so players know it’s happening.'
+                : 'No one’s shown interest yet. Tap “I’m Interested” to let others know you might come.'}
           </p>
         </div>
 
@@ -313,18 +372,66 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           <div className="eyebrow">Interested</div>
           <div className="amount">{interestedCount}</div>
         </div>
-        <button className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
-          {busy ? (
-            <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
-          ) : blockedReason ? (
-            <><Icon name="lock" size={16} /> {blockedReason}</>
-          ) : isInterested ? (
-            <><Icon name="check" size={16} /> Interested</>
+        {isHost ? (
+          canManageGame ? (
+            <button
+              className="btn-join btn-leave"
+              onClick={() => { setError(null); setConfirmCancelOpen(true); }}
+              disabled={cancelling}
+            >
+              {cancelling ? (
+                <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Cancelling…</>
+              ) : (
+                <><Icon name="close" size={16} /> Cancel session</>
+              )}
+            </button>
           ) : (
-            <><Icon name="bolt" size={16} /> I'm Interested</>
-          )}
-        </button>
+            <button className="btn-join joined" disabled>
+              <Icon name="shield" size={16} /> You're hosting
+            </button>
+          )
+        ) : (
+          <button className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
+            {busy ? (
+              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
+            ) : blockedReason ? (
+              <><Icon name="lock" size={16} /> {blockedReason}</>
+            ) : isInterested ? (
+              <><Icon name="check" size={16} /> Interested</>
+            ) : (
+              <><Icon name="bolt" size={16} /> I'm Interested</>
+            )}
+          </button>
+        )}
       </div>
+
+      {canManageGame && (
+      <BottomSheet open={confirmCancelOpen} onClose={() => setConfirmCancelOpen(false)} title="Cancel this Open Play?">
+        <div className="px-1 pb-1">
+          <div className="rounded-2xl bg-[var(--coral-soft)] border-[0.5px] border-[var(--coral)]/30 px-4 py-3.5 flex items-start gap-3">
+            <Icon name="close" size={20} className="mt-0.5 shrink-0 text-[var(--coral)]" />
+            <div>
+              <div className="text-[14px] font-bold text-[var(--coral)] mb-0.5">It comes off Open Play</div>
+              <p className="text-[13px] font-semibold text-[var(--coral)] leading-snug">
+                {interestedCount > 0
+                  ? `${interestedCount} ${interestedCount === 1 ? 'player who is' : 'players who are'} interested will be notified. Your court stays booked — you can request a refund or cancel the reservation on the next screen.`
+                  : 'Your court stays booked — you can request a refund or cancel the reservation on the next screen.'}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <Button variant="outline" onClick={() => setConfirmCancelOpen(false)} disabled={cancelling}>Keep session</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
+              {cancelling ? (
+                <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Cancelling…</>
+              ) : (
+                'Cancel session'
+              )}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
+      )}
 
       <ShareLobbySheet
         open={shareOpen}

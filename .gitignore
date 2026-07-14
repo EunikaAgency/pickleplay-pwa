@@ -9,6 +9,8 @@ dist-ssr/
 .vite/
 **/.vite/
 .playwright-mcp/
+**/test-results/
+**/playwright-report/
 
 # Logs and local env files
 logs/
