@@ -1,171 +1,155 @@
-# Unfinished — everything still open
+# What's still unfinished
 
-Phase 1 of the 8 July minutes is closed (5/5). This file is the honest list of what is **not**
-done, and what each item is waiting on.
+Phase 1 is done (5/5). This is what's left.
 
-**The short version: nothing left is waiting on engineering. It is all waiting on a decision.**
-
-Full plan + Phase 1 detail: [`minutes-2026-07-08-followup.md`](minutes-2026-07-08-followup.md)
-Client-facing report: [`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)
+**Nothing here is waiting on us. It's all waiting on a decision.**
 
 ---
 
-## 1. An open question that has to be settled first
+## 1. Settle this first: do venues host their own sessions?
 
-**Does the team actually want venue-hosted Open Play?**
+Disputed on 14 July. Your minutes say yes (Sections 10 and 5.3). The app follows the minutes — 32 of
+the 39 Open Play listings today are run by a venue or organizer, not by a player who booked a court.
+The recurring-sessions work you asked us to finish built more of that kind.
 
-This was disputed on 14 July. The position raised was: *"a venue is just the building where the
-courts are — players book them, venues don't host games."*
+- **If yes** → item 2 is a real gap, and the biggest one here.
+- **If no** → that work was built on a wrong assumption and should be removed.
 
-The minutes say otherwise, twice, and put the two cases side by side:
+Don't start item 2 until this is answered.
 
-> **"Organizer- or venue-hosted Open Play may charge each joiner a participation fee."** (§10)
->
-> **"An ordinary player who has already booked and paid for a court may open the session publicly
-> without charging joiners through the app."** (§10)
->
-> **"The meeting added recurring Open Play as a requirement because many venues and organizers run
-> the same session every week or on selected days."** (§5.3)
+## 2. Restrictions are half built
 
-The app currently reflects the minutes. Of the ~39 Open Play listings live today, **32 are
-venue/organizer-hosted** (no booking behind them; a per-player fee of ₱300–₱500; capacity 15–21) and
-**7 are player-hosted** (a court the player booked and paid for; free to join). **Phase 1 Task 3 —
-"recurring Open Play for venue owners" — built more of the venue-hosted kind, at the team's
-instruction.**
+**Works:** a player who hosts can set men-only / women-only / open-to-all, and it's genuinely
+enforced — the wrong people can't get in.
 
-**This has to be resolved before item 2 below means anything.** Two ways out:
-
-- **Confirm it** — venues run their own sessions and sell seats. Then item 2 is a real gap and the
-  biggest one on this list.
-- **Reject it** — only players host, by booking a court. Then Task 3 was built on a false premise
-  and should be removed, along with the venue-run session type.
-
-Do not build item 2 until this is answered.
-
----
-
-## 2. Eligibility is only half built
-
-**Done, and done properly — for anything a PLAYER hosts (including player-hosted open play):**
-
-- A host can set men-only / women-only / open-to-all.
-- It is genuinely enforced on the server, on **both** joining and expressing interest. (That second
-  one is what makes it real for open play, which joins by interest, not by a join button.)
-- Someone with no gender on their profile is steered to set one, not dead-ended.
-- It shows on the listing, and there is a filter for it.
-
-**Not done:**
-
-- **Venue-hosted sessions carry no eligibility at all, and no check.** A venue cannot mark its
-  Tuesday night women-only — there is no setting. And even if there were, **nothing on the server
-  would stop an ineligible player joining.** This is the case §4.5's own examples described.
-- **No skill-band eligibility.** "Beginner only", "3.0–3.5 only" does not exist. A skill band still
-  only nudges the ranking; it never stops anyone.
-
-**⚠️ A decision was made by implementation, not by the team.** When you are not eligible, you
-**still see the listing** — it just tells you that you cannot join. The alternative was to **hide it
-from you entirely**. The build picked the first. Nobody signed that off. If the team wanted it
-hidden, it is a rework across the listing, the filters, the ranking and the join button together.
-
-*Blocked on: decision 3 — and on item 1 above.*
-
----
+**Doesn't work:**
+- Venue-run sessions have no restriction setting at all, and nothing stops the wrong people joining.
+- No skill restriction ("beginners only") anywhere.
+- **Someone chose "show it, marked ineligible" over "hide it" — nobody approved that.**
 
 ## 3. Open Play has no lobby
 
-Today it is one tap ("I'm Interested") and a count. No confirmed roster, no invited/pending states,
-no group chat for the session.
+One tap ("I'm Interested") and a headcount. No confirmed roster, no invites, no group chat.
 
-The meeting described something much richer. It has not been built, because the two are genuinely
-different products and the wrong guess is expensive.
+The pieces already exist elsewhere in the app. It's a matter of connecting them — not building from
+scratch.
 
-**Good news: this would not start from nothing.** Organizer-run games already have a working roster
-and a working Messenger-style group chat. The work is the membership states (invited / pending /
-confirmed / host approval) and connecting what already exists — not building a chat.
+## 4. No rules for money
 
-*Blocked on: decision 1.*
+Who charges, where it goes, does PickleBallers take a cut, what happens on refunds. Same for
+coaching — the app currently tells the player to pay the coach afterwards.
 
----
-
-## 4. There are no rules for money
-
-Who may charge, where the money goes, whether PickleBallers takes a cut, what happens on a refund or
-a cancellation. Same question again for coaching — the app currently tells the player, in plain
-words, *"Nothing is charged now — you pay the coach once they accept."*
-
-This is **not hard to build. We do not know the rules.**
-
-**Worth knowing: real money already moves through the app.** Tournament entry fees (₱450–₱1,200) are
-handled today. When the rules land, that is the mechanism to extend — not a new one to invent.
-
-*Blocked on: decisions 2 and 4.*
-
----
+Not hard to build. We just don't know the rules. Real money already moves through the app
+(tournament entry fees), so we'd extend that rather than invent something new.
 
 ## 5. Two things Phase 1 exposed
 
-**The "Events" tab has no events in it.** Making it a visible tab (as the meeting asked) made this
-*more* obvious, not less. What is inside it is ordinary players' games. The real competition —
-brackets, divisions, ₱450–₱1,200 entry fees — lives in a separate Tournaments area outside Play.
+- **The "Events" tab has no events in it** — it's full of ordinary players' games. The real
+  competition sits outside Play. Merge, or rename?
+- **A price shows on games that costs you nothing** — it's the court rate the host already paid. The
+  filter is fixed; the listing still misleads. Can't fix it until we know who charges whom.
 
-> **Merge Tournaments into the Play tab as Events, or rename the tab to something honest.** (§16.5)
+## 6. Left for later, on purpose
 
-**A price shows on games that costs you nothing.** When a player publishes a game, the card shows the
-venue's hourly court rate — **which the host already paid. Joining is free.** The filter now handles
-this correctly ("Free" shows you the right things), but the card still misleads. It was left alone
-deliberately: what the card *should* say depends on who is meant to be charging whom.
+Social feed · cart checkout · player-facing equipment rental · staff permission levels · re-tuning
+the Play ranking.
 
-*Blocked on: §16.5, and decision 2.*
+## 7. Decisions still needed
 
----
+**The three that matter most:**
+1. Does Open Play get a lobby?
+2. Who charges for Open Play, and does PickleBallers take a cut?
+3. Hide games you can't join, or show them marked?
 
-## 6. Deferred by design
+**Plus:** coach payments · is "Like" different from "Interested" · final homepage wording.
 
-Not started, and correctly so — these should wait until the core Play and payment rules are settled.
-
-- A platform-wide social feed (club feeds are the working foundation).
-- Cart-style checkout — court + coach + equipment in one basket.
-- A player-facing way to rent equipment (the owner-side inventory already exists and is unused).
-- More than one level of staff permission.
-- Re-tuning the ranking weights — only after watching real players use it, not before.
+**And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
+thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
+inventory, Tournaments sitting outside Play, and request-to-book.
 
 ---
 
-## 7. The decisions, all still unanswered
+**Next:** answer item 1, then get the three big decisions in one meeting. Nothing substantial starts
+until they land.
 
-**The three that unblock the most:**
+*Detail, if you want it: [`minutes-2026-07-08-followup.md`](minutes-2026-07-08-followup.md) ·
+[`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)*
 
-1. **Does Open Play get a lobby?**
-2. **Who charges for Open Play, and does PickleBallers take a cut?**
-3. **Should a session you cannot join be hidden from you, or shown and marked?**
+---
+---
 
-**The other three:**
+# Tagalog — Ano ang hindi pa tapos
 
-4. How are coach sessions paid — when, to whom, with what commission and refund rules?
-5. Are "Like" (on posts) and "Interested" (on Open Play) meant to be different things?
-6. Final homepage wording — "Play / Book Court / Find Coach", or the meeting's "Open Play / Book a
-   Court / Get a Coach"?
+Tapos na ang Phase 1 (5/5). Ito ang natitira.
 
-**Plus six things already live in the app that nobody approved** (§16 of the minutes):
-
-- The **₱499 / 30-day coach subscription** — currently the platform's only working revenue stream.
-  Is that the official model, or a stopgap?
-- A **"partner revenue ₱229,000"** figure on the owner console. What is it supposed to represent,
-  when coach sessions are paid off-platform?
-- A full **time-based pricing engine** (peak / weekend / holiday / early-bird). Should listings show
-  a price range or a live price? Do surge rules need a platform-level cap?
-- A complete **equipment rental inventory** with no player-facing way to rent. Who owns deposits,
-  damage, late returns?
-- **Tournaments living outside Play** (see item 5).
-- **Request-to-book** — may a court still awaiting the owner's approval host a public Open Play
-  session? What happens to players who joined a session whose booking is later rejected?
+**Wala nang naghihintay sa amin. Desisyon na lang ang hinihintay.**
 
 ---
 
-## What to do next
+## 1. Sagutin muna ito: nagpapatakbo ba ng sariling session ang venue?
 
-1. **Answer item 1.** Everything about eligibility hangs off it, and it may mean deleting work.
-2. **Get decisions 1, 2 and 3 in one short meeting.** Nothing substantial can start until they land.
-3. Then build payments by **extending the tournament entry-fee flow**, which already handles real
-   money.
-4. Leave section 6 alone until the above is settled.
+Pinagtalunan noong 14 Hulyo. Sabi ng minutes ninyo, oo (Section 10 at 5.3). Sinusunod ng app ang
+minutes — **32 sa 39** na Open Play ngayon ay pinapatakbo ng venue o organizer, hindi ng player na
+nag-book ng court. Ang recurring-sessions na ipinatapos mo ay nagdagdag pa ng ganitong uri.
+
+- **Kung oo** → tunay na butas ang item 2, at ito ang pinakamalaki dito.
+- **Kung hindi** → mali ang pinagbatayan ng trabahong iyon at dapat itong tanggalin.
+
+Huwag simulan ang item 2 hangga't walang sagot dito.
+
+## 2. Kalahati lang ang restriction
+
+**Gumagana:** kapag player ang nag-host, kaya niyang gawing pang-lalaki lang, pang-babae lang, o
+bukas sa lahat — at totoong naka-enforce ito. Hindi makakapasok ang hindi bagay.
+
+**Hindi gumagana:**
+- Ang mga session ng venue ay walang setting para dito, at walang pumipigil sa hindi bagay na sumali.
+- Walang skill restriction ("beginners lang") kahit saan.
+- **May pumili ng "ipakita pero markahan" imbes na "itago" — walang nag-approve niyan.**
+
+## 3. Walang lobby ang Open Play
+
+Isang pindot ("I'm Interested") at bilang ng tao. Walang listahan ng sigurado, walang imbitasyon,
+walang group chat.
+
+Umiiral na ang mga piyesa sa ibang bahagi ng app. Ikakabit lang — hindi gagawin mula sa wala.
+
+## 4. Walang patakaran sa pera
+
+Sino ang maniningil, saan mapupunta, may porsyento ba ang PickleBallers, ano ang mangyayari sa
+refund. Pati sa coach — sinasabi mismo ng app na bayaran mo ang coach pagkatapos.
+
+Hindi ito mahirap gawin. **Hindi lang namin alam ang patakaran.** May dumadaan nang tunay na pera sa
+app (bayad sa tournament), kaya iyon ang palalawakin — hindi mag-iimbento ng bago.
+
+## 5. Dalawang bagay na lumitaw dahil sa Phase 1
+
+- **Ang tab na "Events" ay walang events** — puro laro ng ordinaryong player ang laman. Ang tunay na
+  kompetisyon ay nasa labas ng Play. Pagsasamahin, o papalitan ang pangalan?
+- **May presyong lumalabas sa laro na hindi mo naman babayaran** — presyo iyon ng court na bayad na
+  ng host. Naayos na ang filter; ang listahan, hindi pa. Hindi ito maaayos hangga't hindi alam kung
+  sino ang maniningil.
+
+## 6. Sadyang ipinagpaliban
+
+Social feed · cart checkout · pagrenta ng gamit para sa player · antas ng pahintulot ng staff ·
+pag-tune ng ranking.
+
+## 7. Mga desisyong kailangan
+
+**Ang tatlong pinakamahalaga:**
+1. Magkakaroon ba ng lobby ang Open Play?
+2. Sino ang maniningil sa Open Play, at may kukunin ba ang PickleBallers?
+3. Itago ba ang larong hindi mo puwedeng salihan, o ipakita pero markahan?
+
+**Dagdag pa:** bayad sa coach · magkaiba ba ang "Like" at "Interested" · panghuling salita sa
+homepage.
+
+**At anim na bagay na buhay na sa app pero walang nag-approve:** ang ₱499 na coach subscription (ang
+tanging kumikita), ang "₱229,000 partner revenue", ang pricing engine, ang rental inventory na hindi
+magamit, ang Tournaments na nasa labas ng Play, at ang request-to-book.
+
+---
+
+**Susunod:** sagutin ang item 1, tapos kunin ang tatlong malaking desisyon sa isang meeting. Walang
+malaking masisimulan hangga't wala ang mga iyon.
