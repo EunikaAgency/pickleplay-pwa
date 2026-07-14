@@ -102,7 +102,20 @@ import { OpenPlayDetailScreen } from './features/games/v2/OpenPlayDetailScreen';
 import { CreateClubV2 } from './features/clubs/v2/CreateClubV2';
 import type { V2ScreenChrome } from './shared/components/layout/V2Chrome';
 
-const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
+/**
+ * A screen can be reachable by more than one route to the same job, in which case
+ * holding ANY of the listed permissions opens it. Recurring Open Play is the case
+ * that needed it: it is an organizer's event *or* an owner's own courts (§5.3), and
+ * an owner should not have to be handed the whole organizer role to run a weekly
+ * session at their venue. The server still enforces the real per-venue rule — this
+ * only decides whether the door is visible.
+ */
+function hasScreenPermission(user: Parameters<typeof userHasPermission>[0], req: Permission | Permission[] | undefined): boolean {
+  if (!req) return true;
+  return (Array.isArray(req) ? req : [req]).some((p) => userHasPermission(user, p));
+}
+
+const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> = {
   'create-game': 'player.games.create',
   'edit-game': 'player.games.manage',
   'my-games': 'player.games.manage',
@@ -152,8 +165,9 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission>> = {
   'organizer-tournament': 'organizer.tournaments.manage',
   'organizer-tournament-new': 'organizer.tournaments.manage',
   'organizer-bracket': 'organizer.brackets.manage',
-  'organizer-open-play': 'organizer.events.manage',
-  'organizer-session': 'organizer.events.manage',
+  // Organizers run events; owners run recurring play on their own courts (§5.3).
+  'organizer-open-play': ['organizer.events.manage', 'owner.venues.manage'],
+  'organizer-session': ['organizer.events.manage', 'owner.venues.manage'],
   'organizer-rosters': 'organizer.events.manage',
   'organizer-roster': 'organizer.events.manage',
   'organizer-venue-requests': 'organizer.tournaments.manage',
@@ -357,8 +371,7 @@ function AppInner() {
   };
 
   const navigate = ((id: ScreenId, params?: Record<string, unknown>, opts?: { replace?: boolean }) => {
-    const requiredPermission = SCREEN_PERMISSIONS[id];
-    if (requiredPermission && !userHasPermission(currentUser, requiredPermission)) {
+    if (!hasScreenPermission(currentUser, SCREEN_PERMISSIONS[id])) {
       // A guest hit a gated screen — prompt them to sign up instead of silently
       // dropping the tap. Logged-in users lacking the permission still no-op.
       if (!isLoggedIn) setAuthIntent(SCREEN_AUTH_INTENT[id] ?? 'do that');
@@ -426,8 +439,7 @@ function AppInner() {
   const screenId = screen.id;
   useEffect(() => {
     if (!restored) return;
-    const perm = SCREEN_PERMISSIONS[screenId];
-    if (perm && !userHasPermission(currentUser, perm)) {
+    if (!hasScreenPermission(currentUser, SCREEN_PERMISSIONS[screenId])) {
       routerNavigate(isLoggedIn ? '/' : pathFromScreen({ id: 'login' }), { replace: true });
     }
   }, [restored, screenId, currentUser, isLoggedIn]);

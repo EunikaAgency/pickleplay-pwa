@@ -12,7 +12,7 @@ import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
 import { formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
-import { canLeaveLobby, dateSectionHeader, gameFormatLabel, genderPolicyLabel, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
+import { canLeaveLobby, dateSectionHeader, gameFormatLabel, genderBlockReason, genderPolicyLabel, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
 import { GameFilterSheet } from '../GameFilterSheet';
 import {
   countActiveGameFilters, makeDefaultGameFilters, matchesPlayFilters, TYPE_OPTIONS, type GameFilters,
@@ -917,9 +917,16 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
  *  the "why" chips are what distinguish them — so a player can judge skill,
  *  distance, price, and host without tapping through. */
 function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: () => void; located: boolean }) {
+  const me = useAuthStore((s) => s.user);
   const badge = item.kind === 'session'
     ? { cls: 'badge-open', label: 'Open Play' }
     : typeBadge(item.source as ApiGame);
+  // Whether the viewer can join is decided on the card, not on the detail screen:
+  // a player shouldn't tap through to a men-only game to find out it's closed to
+  // them. Venue-run sessions carry no policy, so only games can be restricted.
+  const policy = item.kind === 'game' ? (item.source as ApiGame).genderPolicy : null;
+  const restricted = genderPolicyLabel(policy);
+  const ineligible = !!genderBlockReason(policy, me?.gender, !!me);
   const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
   const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // Three states, not two: a measured distance; "unknown" when we know where the
@@ -955,8 +962,20 @@ function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: (
           {(meta || item.venueLoc) && <div className="game-meta-loc">{meta || item.venueLoc}</div>}
         </div>
 
-        {item.why.length > 0 && (
+        {(restricted || item.why.length > 0) && (
           <div className="flex gap-1.5 flex-wrap mt-1.5">
+            {/* Leads the row: "can I even play this" outranks every "why you'd like it". */}
+            {restricted && (
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-pill)] ${
+                  ineligible
+                    ? 'bg-[var(--coral-soft)] text-[var(--coral)]'
+                    : 'bg-[var(--lime)] text-[var(--ink)]'
+                }`}
+              >
+                {ineligible ? `🔒 Not eligible · ${restricted}` : `${policy === 'women' ? '👩' : '👨'} ${restricted}`}
+              </span>
+            )}
             {item.why.map((w) => (
               <span key={w} className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--lime)] text-[var(--ink)]">{w}</span>
             ))}

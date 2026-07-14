@@ -64,6 +64,8 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   const currentTheme = THEMES.find((t) => t.id === theme);
   const unread = useNotificationStore((s) => s.unread);
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
+  // The same gate the recurring-Open-Play screen uses: whoever manages the venue.
+  const canManage = userHasPermission(user, 'owner.venues.manage');
   const canCreate = userHasPermission(user, 'owner.venues.create');
   const canStaff = userHasPermission(user, 'owner.staff.manage');
   const canNotifs = userHasPermission(user, 'owner.notifications.view');
@@ -96,6 +98,9 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     { key: 'members', icon: <UsersIco />, label: 'Members', sub: 'Your community & memberships', onClick: () => onNavigate('members') },
     { key: 'calendar', icon: <CalendarIco />, label: 'Calendar', sub: 'Court-by-court booking schedule', onClick: () => onNavigate('owner-calendar'), className: 'sm:hidden' },
     ...(canBookings ? [{ key: 'manual-reservation', icon: <Plus />, label: 'Manual reservation', sub: 'Record a phone / walk-in booking', onClick: () => onNavigate('owner-manual-reservation', {}), className: 'mtonly' } as Row] : []),
+    // §5.3 — recurring Open Play used to be organizer-only, so an owner running the
+    // same session every Tuesday had to re-create it by hand, week after week.
+    ...(canManage ? [{ key: 'recurring-open-play', icon: <CalendarIco />, label: 'Recurring Open Play', sub: 'Run the same session every week', onClick: () => onNavigate('organizer-open-play') } as Row] : []),
     { key: 'partners', icon: <UsersIco />, label: 'Partners', sub: 'Coaches & organisers at your venues', onClick: () => onNavigate('owner-partners'), className: 'sm:hidden' },
     ...(canReports ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
     ...(canStaff ? [{ key: 'staff', icon: <UsersIco />, label: 'Staff', sub: 'Accounts that manage your venues, bookings & clubs', onClick: () => onNavigate('owner-staff') } as Row] : []),

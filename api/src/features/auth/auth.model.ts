@@ -87,7 +87,7 @@ const userSchema = new Schema({
   // Not `required` at the model level: every pre-existing account was created
   // without one, and a schema-level requirement would fail their next save.
   // The profile editor is what enforces that a value gets set.
-  gender:          { type: String, enum: ['male', 'female', 'other'] },
+  gender:          { type: String, enum: ['male', 'female'] },
   skillLevel:      Number,
   skillLevelLabel: { type: String, maxlength: 20 },
   homeCityId:      { type: Schema.Types.ObjectId, ref: 'City' },

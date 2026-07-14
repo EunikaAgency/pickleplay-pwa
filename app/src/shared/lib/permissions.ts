@@ -174,12 +174,11 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 /** Who can see the player's profile. Persisted on the account via `PATCH /me`. */
 export type PrivacySetting = 'public' | 'friends' | 'private';
 
-export type Gender = 'male' | 'female' | 'other';
+export type Gender = 'male' | 'female';
 
 export const genderOptions: Array<{ value: Gender; label: string }> = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
-  { value: 'other', label: 'Other' },
 ];
 
 export interface AppUser {

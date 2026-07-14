@@ -25,7 +25,7 @@ const registerSchema = z.object({
   role: z.enum(REGISTERABLE_ROLES).default('player'),
   // Optional here, not required: `web` also registers through this endpoint and
   // doesn't collect a gender. The PWA's sign-up form is what requires one.
-  gender: z.enum(['male', 'female', 'other']).optional(),
+  gender: z.enum(['male', 'female']).optional(),
   phone: z.string().max(20).optional(),
   homeCityId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
   skillLevel: z.coerce.number().optional(),
@@ -49,7 +49,7 @@ const updateProfileSchema = z.object({
   phone: z.string().max(20).optional(),
   // Optional to send, but there's no way to send a blank one — clearing an
   // already-set gender isn't a thing the profile editor offers.
-  gender: z.enum(['male', 'female', 'other']).optional(),
+  gender: z.enum(['male', 'female']).optional(),
   skillLevel: z.string().optional(),
   skillLevelLabel: z.string().max(20).optional(),
   modePreference: z.enum(['player', 'owner', 'coach', 'organizer']).optional(),

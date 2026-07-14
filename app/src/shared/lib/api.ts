@@ -257,7 +257,7 @@ function normalizePrivacy(value?: string | null): PrivacySetting {
 /** Accounts predating the field have no gender — leave it unset rather than
  *  guessing one, so the profile editor can require the user to pick. */
 function normalizeGender(value?: string | null): Gender | undefined {
-  return value === 'male' || value === 'female' || value === 'other' ? value : undefined;
+  return value === 'male' || value === 'female' ? value : undefined;
 }
 
 export function toAppUser(api: ApiUser): AppUser {

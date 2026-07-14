@@ -7,13 +7,33 @@ import { User } from '../auth/auth.model.js';
 import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { resolveVenueId } from '../venues/venues.controller.js';
-import { hasPermission } from '../../shared/lib/permissions.js';
+import { Venue, VenueStaff } from '../venues/venues.model.js';
+import { hasPermission, effectiveOwnerId } from '../../shared/lib/permissions.js';
 
 const ORGANIZER_PERM = 'organizer.tournaments.manage' as const;
 const EVENTS_PERM = 'organizer.events.manage' as const;
 const JOIN_PERM = 'player.tournaments.join' as const;
 // Statuses a tournament can be in to surface publicly (e.g. on a venue page).
 const PUBLIC_TOURNAMENT_STATUSES = ['approved', 'registration_open', 'ongoing', 'completed', 'open'];
+
+/**
+ * A calendar date as YYYY-MM-DD in the PROCESS timezone (Asia/Manila, pinned in
+ * ecosystem.config.json) — never via `toISOString()`.
+ *
+ * This is not pedantry. `toISOString()` converts to UTC, and local midnight in Manila
+ * is 16:00 the PREVIOUS day in UTC, so `new Date(); d.setHours(0,0,0,0);
+ * d.toISOString().slice(0,10)` yields YESTERDAY. Recurring Open Play was picking the
+ * right weekday (`getDay()` is local) and then writing the date one day early: an
+ * owner scheduling Tuesday play got a series of Mondays, every single week.
+ */
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Today, same rules. */
+function todayStr(): string {
+  return ymd(new Date());
+}
 
 const listQuery = z.object({
   venueId: z.string().optional(), city: z.string().optional(), date: z.string().optional(),
@@ -30,7 +50,7 @@ export async function listOpenPlay(c: any) {
   const filter: Record<string, any> = { status: 'published' };
   if (filters.venueId) filter.venueId = filters.venueId;
   if (filters.date) filter.date = filters.date;
-  else filter.date = { $gte: new Date().toISOString().slice(0, 10) };
+  else filter.date = { $gte: todayStr() };
   const rows = await OpenPlaySession.find(filter)
     .populate('venueId', SESSION_VENUE_SELECT)
     .sort({ date: 1, startTime: 1 })
@@ -681,7 +701,7 @@ function generateSessionDates(daysOfWeek: number[], weeksAhead: number): string[
   const wanted = new Set(daysOfWeek.filter((d) => d >= 0 && d <= 6));
   const cur = new Date(start);
   while (cur <= end && out.length < 80) {
-    if (wanted.has(cur.getDay())) out.push(cur.toISOString().slice(0, 10));
+    if (wanted.has(cur.getDay())) out.push(ymd(cur));
     cur.setDate(cur.getDate() + 1);
   }
   return out;
@@ -753,14 +773,54 @@ async function hydratePlayers(regs: any[]) {
 }
 
 // POST /api/v1/open-play — create a recurring series + generate instances.
+/**
+ * Recurring Open Play is no longer organizer-only (§5.3 of the 8 July minutes).
+ *
+ * A venue owner may run a weekly session AT A VENUE THEY MANAGE — deliberately NOT
+ * by granting them `organizer.events.manage`, which would also hand them every other
+ * organizer power (tournaments, brackets, the lot). The capability an owner needs is
+ * narrower than the role: "run recurring play on my own courts". So the gate is the
+ * organizer permission OR ownership of *this* venue, checked per call.
+ *
+ * Staff are included: they already run the venue's day-to-day calendar, and a
+ * recurring session is calendar work.
+ */
+async function managedVenueIds(user: any): Promise<string[]> {
+  const ids = new Set<string>();
+  const ownerId = effectiveOwnerId(user);
+  const [owned, staffed] = await Promise.all([
+    ownerId ? Venue.find({ ownerUserId: ownerId }).select('_id').lean() : [],
+    VenueStaff.find({ userId: user.sub, status: 'active' }).select('venueId').lean(),
+  ]) as [any[], any[]];
+  for (const v of owned) ids.add(String(v._id));
+  for (const s of staffed) ids.add(String(s.venueId));
+  return [...ids];
+}
+
+/** May this user run (or edit) recurring Open Play at this venue? */
+async function canRunSeriesAt(user: any, venueId: string): Promise<boolean> {
+  if (hasPermission(user, EVENTS_PERM)) return true;
+  return (await managedVenueIds(user)).includes(String(venueId));
+}
+
+/** May this user manage THIS series? Its creator always can; so can whoever manages
+ *  the venue it runs at (an owner must not be locked out of a series on their own
+ *  courts just because an organizer created it). */
+async function canManageSeries(user: any, series: any): Promise<boolean> {
+  if (String(series.organizerUserId) === String(user.sub)) return true;
+  return canRunSeriesAt(user, String(series.venueId?._id ?? series.venueId));
+}
+
 export async function createOpenPlaySeries(c: any) {
   const user = c.get('user');
-  if (!hasPermission(user, EVENTS_PERM)) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Organizer events permission required' } }, 403);
-  }
   const body = seriesInput.parse(await c.req.json());
   const venueId = await resolveVenueId(body.venueId);
   if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
+  if (!(await canRunSeriesAt(user, venueId))) {
+    return c.json({
+      error: { code: 'FORBIDDEN', message: 'Run recurring Open Play at a venue you manage, or hold the organizer events permission' },
+    }, 403);
+  }
 
   const series = await OpenPlaySeries.create({ ...body, venueId, organizerUserId: user.sub, status: 'active' });
   const u = await User.findById(user.sub).select('displayName').lean();
@@ -800,16 +860,111 @@ export async function getMyOpenPlay(c: any) {
 
 // PATCH /api/v1/open-play/series/:id/cancel — cancel a series + its future
 // instances (past/completed ones are left as history).
+/** The fields an occurrence or a series can be edited on. The venue and the recurrence
+ *  DAYS are not here: moving a running series to another venue or another weekday is a
+ *  different series, and silently rewriting people's diaries is not an edit. */
+const seriesEdit = z.object({
+  title: z.string().min(1).max(200).optional(),
+  startTime: z.string().min(1).optional(),
+  endTime: z.string().optional(),
+  levelLabel: z.string().max(50).optional(),
+  skillLevelMin: z.coerce.number().optional(),
+  skillLevelMax: z.coerce.number().optional(),
+  price: z.coerce.number().min(0).optional(),
+  capacity: z.coerce.number().int().min(1).max(200).optional(),
+  description: z.string().optional(),
+});
+
+
+/**
+ * PATCH /api/v1/open-play/:id — edit ONE occurrence.
+ *
+ * The "just this week" case: the court is double-booked on the 14th, so that Tuesday
+ * starts an hour later. The series template is untouched, so next week is unaffected.
+ */
+export async function updateOpenPlaySession(c: any) {
+  const user = c.get('user');
+  const session: any = await OpenPlaySession.findById(c.req.param('id'));
+  if (!session) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
+
+  const owns = String(session.organizerUserId) === String(user.sub);
+  if (!owns && !(await canRunSeriesAt(user, String(session.venueId)))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not manage this session' } }, 403);
+  }
+  if (session.status === 'cancelled') {
+    return c.json({ error: { code: 'SESSION_CANCELLED', message: 'A cancelled session cannot be edited' } }, 409);
+  }
+
+  const patch = seriesEdit.parse(await c.req.json());
+  Object.assign(session, patch);
+  await session.save();
+
+  // Anyone who already said they're coming planned around the old details. Tell them.
+  const regs: any[] = await OpenPlayRegistration.find({ sessionId: session._id, status: 'registered' })
+    .select('userId').lean();
+  const uids = [...new Set(regs.map((r) => String(r.userId)).filter((id) => id !== String(user.sub)))];
+  if (uids.length) {
+    await notifyUsers(uids, {
+      type: 'open_play_updated',
+      title: `${session.title} was updated`,
+      body: 'The details of an Open Play session you joined have changed.',
+      linkUrl: `/open-play/${String(session._id)}`,
+    }).catch(() => {});
+  }
+  return c.json({ data: sessionView(session.toObject()) });
+}
+
+/**
+ * PATCH /api/v1/open-play/series/:id?scope=future|all — edit the SERIES.
+ *
+ * `future` (the default) rewrites the template and every occurrence from today on,
+ * leaving the past as it actually happened — a price rise must not retroactively
+ * change what last week's players were charged. `all` also rewrites past occurrences,
+ * which is only ever right for fixing a typo in the title.
+ *
+ * Cancelled occurrences are never resurrected by an edit.
+ */
+export async function updateOpenPlaySeries(c: any) {
+  const user = c.get('user');
+  const series: any = await OpenPlaySeries.findById(c.req.param('id'));
+  if (!series) return c.json({ error: { code: 'NOT_FOUND', message: 'Series not found' } }, 404);
+  if (!(await canManageSeries(user, series))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not manage this series' } }, 403);
+  }
+
+  const scope = c.req.query('scope') === 'all' ? 'all' : 'future';
+  const patch = seriesEdit.parse(await c.req.json());
+
+  Object.assign(series, patch);
+  await series.save();
+
+  const filter: Record<string, any> = { seriesId: series._id, status: 'published' };
+  if (scope === 'future') filter.date = { $gte: todayStr() };
+  const res = await OpenPlaySession.updateMany(filter, { $set: patch });
+
+  return c.json({
+    data: {
+      series: seriesView(series.toObject()),
+      scope,
+      // What actually changed. The caller can't infer this — "future" depends on
+      // today's date and on which occurrences are still published.
+      updatedSessions: (res as any).modifiedCount ?? 0,
+    },
+  });
+}
+
 export async function cancelOpenPlaySeries(c: any) {
   const user = c.get('user');
   const series = await OpenPlaySeries.findById(c.req.param('id'));
   if (!series) return c.json({ error: { code: 'NOT_FOUND', message: 'Series not found' } }, 404);
-  if (!hasPermission(user, EVENTS_PERM) || series.organizerUserId?.toString() !== user.sub) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not own this series' } }, 403);
+  // A venue owner can end a series running on their own courts — previously only the
+  // organizer who created it could, so an owner had no way to stop one.
+  if (!(await canManageSeries(user, series))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not manage this series' } }, 403);
   }
   series.status = 'cancelled';
   await series.save();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   await OpenPlaySession.updateMany(
     { seriesId: series._id, date: { $gte: today }, status: 'published' },
     { status: 'cancelled' },
@@ -821,10 +976,13 @@ export async function cancelOpenPlaySeries(c: any) {
 // notify everyone who joined (e.g. weather).
 export async function cancelOpenPlaySession(c: any) {
   const user = c.get('user');
-  const sess = await OpenPlaySession.findById(c.req.param('id'));
+  const sess: any = await OpenPlaySession.findById(c.req.param('id'));
   if (!sess) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
-  if (!hasPermission(user, EVENTS_PERM) || sess.organizerUserId?.toString() !== user.sub) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not own this session' } }, 403);
+  // Same widening as the series gates (§5.3): whoever manages the VENUE can manage a
+  // session running on their own courts, not only the organizer who created it. A
+  // flooded court is the owner's problem to act on.
+  if (String(sess.organizerUserId) !== String(user.sub) && !(await canRunSeriesAt(user, String(sess.venueId)))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not manage this session' } }, 403);
   }
   sess.status = 'cancelled';
   await sess.save();
@@ -881,10 +1039,13 @@ export async function leaveOpenPlay(c: any) {
 // or approves/declines a waitlisted player.
 export async function manageOpenPlayRegistration(c: any) {
   const user = c.get('user');
-  const sess = await OpenPlaySession.findById(c.req.param('id'));
+  const sess: any = await OpenPlaySession.findById(c.req.param('id'));
   if (!sess) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
-  if (!hasPermission(user, EVENTS_PERM) || sess.organizerUserId?.toString() !== user.sub) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not own this session' } }, 403);
+  // Same widening as the series gates (§5.3): whoever manages the VENUE can manage a
+  // session running on their own courts, not only the organizer who created it. A
+  // flooded court is the owner's problem to act on.
+  if (String(sess.organizerUserId) !== String(user.sub) && !(await canRunSeriesAt(user, String(sess.venueId)))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'You do not manage this session' } }, 403);
   }
   const reg = await OpenPlayRegistration.findOne({ _id: c.req.param('regId'), sessionId: sess._id });
   if (!reg) return c.json({ error: { code: 'NOT_FOUND', message: 'Registration not found' } }, 404);

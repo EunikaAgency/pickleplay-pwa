@@ -14,39 +14,11 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import { connectDb } from './index.js';
 import { User } from '../../features/auth/auth.model.js';
-
-const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-
-const FEMALE = new Set([
-  'allyssa', 'aly', 'anna', 'anne', 'antonia', 'apolonia', 'aubree', 'avery', 'brooke',
-  'carla', 'carol', 'cathy', 'chesney', 'clara', 'claudia', 'consuelo', 'eden', 'eliza',
-  'elizabeth', 'ellen', 'ellie', 'emily', 'eunika', 'eva', 'felicia', 'fennie', 'gina',
-  'giselle', 'graziella', 'hannah', 'harper', 'harley', 'heidi', 'ines', 'isabella', 'joyce',
-  'judy', 'julia', 'katie', 'kristin', 'layla', 'leah', 'lena', 'louise', 'lourdes', 'madison',
-  'malissa', 'margarita', 'mari', 'marie', 'martha', 'maya', 'mia', 'monica', 'nicole', 'nina',
-  'noemie', 'pearl', 'piper', 'purificacion', 'rocio', 'ruby', 'sara', 'sarah', 'sydnee', 'tara',
-  'thea', 'vicky', 'whitney', 'zoey', 'jojie', 'joy',
-].map(strip));
-
-const MALE = new Set([
-  'abdelhakim', 'aitor', 'alberto', 'alexander', 'antoine', 'archie', 'armando', 'beau', 'benito',
-  'benjo', 'billy', 'brad', 'bradley', 'brennan', 'cameron', 'carl', 'carter', 'charles', 'chris',
-  'christian', 'cristian', 'cullen', 'dan', 'darrell', 'darren', 'dylan', 'edu', 'eduardo', 'eloy',
-  'eric', 'ernesto', 'ethan', 'everett', 'federico', 'felix', 'fernando', 'glenn', 'herman',
-  'hudson', 'hunter', 'ivan', 'jaime', 'jake', 'james', 'jarryd', 'javier', 'jeffrey', 'jeremy',
-  'jesse', 'jobert', 'john', 'johnny', 'jonathan', 'joshua', 'julian', 'karl', 'kevin', 'kim',
-  'lachlan', 'larry', 'leander', 'lee', 'lennon', 'lucas', 'manny', 'marco', 'mark', 'mason',
-  'matthew', 'michael', 'micheal', 'mico', 'nathan', 'neil', 'nicolas', 'noah', 'noel', 'oscar',
-  'owen', 'pao', 'paul', 'raphael', 'ray', 'rowan', 'russell', 'samuel', 'souhail', 'steve',
-  'taran', 'tevin', 'thomas', 'timmothy', 'tony', 'troy', 'vicente', 'vittorio', 'willian',
-  'xavier', 'yuri',
-].map(strip));
+import { FEMALE, MALE, strip, genderFromName } from './name-gender.js';
 
 function genderFor(firstName: string, displayName: string): 'women' | 'men' {
-  const first = strip((firstName || displayName || '').split(/\s+/)[0] || '');
-  if (FEMALE.has(first)) return 'women';
-  if (MALE.has(first)) return 'men';
-  return 'men'; // unknown / test accounts default to men
+  // Unknown / test accounts default to men (an avatar always needs a picture).
+  return genderFromName(firstName, displayName) === 'female' ? 'women' : 'men';
 }
 
 async function main() {

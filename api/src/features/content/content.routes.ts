@@ -9,19 +9,24 @@ import {
   listTournamentMessages, sendTournamentMessage,
   manageTournamentRegistration,
   createOpenPlaySeries, getMyOpenPlay, getMyOpenPlayRegistrations, getOpenPlaySession, cancelOpenPlaySeries, cancelOpenPlaySession,
+  updateOpenPlaySeries, updateOpenPlaySession,
   joinOpenPlay, leaveOpenPlay, getOpenPlayRegistrations, manageOpenPlayRegistration,
 } from './content.controller.js';
 
 const contentRoutes = new Hono();
 
 contentRoutes.get('/open-play', listOpenPlay);
-// Organizer-managed recurring open play. Static segments before `:id` matchers.
+// Recurring open play — organizers AND venue owners/staff, the latter scoped to the
+// venues they manage (§5.3). Static segments before `:id` matchers.
 contentRoutes.post('/open-play', requireAuth, createOpenPlaySeries);
 contentRoutes.get('/open-play/mine', requireAuth, getMyOpenPlay);
 contentRoutes.get('/open-play/registrations/mine', requireAuth, getMyOpenPlayRegistrations);
 contentRoutes.get('/open-play/:id', optionalAuth, getOpenPlaySession);
+// `/series/:id` before `/:id` — otherwise "series" is swallowed as a session id.
 contentRoutes.patch('/open-play/series/:id/cancel', requireAuth, cancelOpenPlaySeries);
+contentRoutes.patch('/open-play/series/:id', requireAuth, updateOpenPlaySeries);
 contentRoutes.patch('/open-play/:id/cancel', requireAuth, cancelOpenPlaySession);
+contentRoutes.patch('/open-play/:id', requireAuth, updateOpenPlaySession);
 contentRoutes.get('/open-play/:id/registrations', requireAuth, getOpenPlayRegistrations);
 contentRoutes.patch('/open-play/:id/registrations/:regId', requireAuth, manageOpenPlayRegistration);
 contentRoutes.post('/open-play/:id/join', requireAuth, joinOpenPlay);
