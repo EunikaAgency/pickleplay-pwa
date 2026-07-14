@@ -549,6 +549,20 @@ export async function toggleGameInterest(c: any) {
   (game as any).interestedUserIds = already
     ? list.filter((p: any) => String(p) !== user.sub)
     : [...list, user.sub];
+  if (!already) {
+    // Accepting an Open Play invite lands here (the app's "Accept invite" calls
+    // interest, not join), so consume the invite — exactly as joinGame does for
+    // a lobby. Without this the invite survives the accept and the Invites tab
+    // re-lists the game on the next fetch; worse, this endpoint is a TOGGLE, so
+    // tapping "Accept invite" on the resurrected card silently withdrew the
+    // interest the player had just registered.
+    // Withdrawing interest does NOT restore the invite — an accepted invite is
+    // spent; declining is the separate DELETE /:id/invite.
+    (game as any).invitedUserIds = (game.invitedUserIds ?? []).filter((entry: any) => {
+      const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
+      return uid !== user.sub;
+    }) as any;
+  }
   await game.save();
   const populated = await Game.findById(id).populate(POPULATE).lean();
   return c.json({ data: serialize(populated, c.get('user')?.sub) });
