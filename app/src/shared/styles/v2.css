@@ -2217,59 +2217,36 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   gap: 8px;
   margin-bottom: 16px;
 }
-.pb-v2.v2-games .section-dropdown-wrap {
-  position: relative;
+/* The Play section tabs (Open Play | Events). Underline tabs, not the lime pill the
+   view row below uses — the two rows are different axes (which product vs which view
+   of it), and giving them the same shape read as a single four-item control.
+
+   The border-bottom has to out-specify the per-screen `.pb-v2.v2-games button
+   { border: none }` reset (0,2,1); these selectors are (0,3,0), so they win. */
+.pb-v2.v2-games .section-tabs {
   display: flex;
-  align-items: center;
   width: 100%;
+  gap: 4px;
+  border-bottom: 1.5px solid var(--border);
 }
-.pb-v2.v2-games .section-dropdown {
-  appearance: none;
-  -webkit-appearance: none;
-  background: var(--surface);
-  border: 1px solid var(--border, #CBD5E1);
-  border-radius: 8px;
-  padding: 10px 36px 10px 14px;
-  font-family: var(--font-body);
-  font-size: 14px;
+.pb-v2.v2-games .section-tab {
+  flex: 1;
+  padding: 10px 8px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1.5px; /* sit the indicator ON the rule, not under it */
+  font-family: 'Lexend', sans-serif;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--text-primary);
-  cursor: pointer;
-  width: 100%;
-  outline: none;
-  transition: border-color 150ms var(--ease-out);
-}
-.pb-v2.v2-games .section-dropdown:focus {
-  border-color: var(--lime-active);
-}
-/* The trigger is a <button> (see GamesScreenV2), so it needs the left alignment a
-   <select> gave for free. */
-.pb-v2.v2-games button.section-dropdown {
-  display: flex;
-  align-items: center;
-  text-align: left;
-}
-/* Full-width menu anchored under the trigger — unlike .sort-menu, which is a
-   narrow right-aligned popover. Item styling is shared (.sort-menu-item). */
-.pb-v2.v2-games .section-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 40;
-  margin: 0;
-  padding: 6px;
-  list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
-}
-.pb-v2.v2-games .section-dropdown-chevron {
-  position: absolute;
-  right: 12px;
-  pointer-events: none;
   color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 200ms var(--ease-out), border-color 200ms var(--ease-out);
+}
+.pb-v2.v2-games .section-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--lime);
 }
 .pb-v2.v2-games .tab-group {
   display: flex;

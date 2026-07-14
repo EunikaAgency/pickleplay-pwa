@@ -236,7 +236,10 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
         return {
           id: 'games',
           params: {
-            section: section === 'open-play' ? 'open-play' : 'games',
+            // A bare /games opens on OPEN PLAY (§3.3) — Events is opt-in via the
+            // tab or ?section=games. This used to be the other way round, which is
+            // why tapping Play greeted the player with tournaments.
+            section: section === 'games' ? 'games' : 'open-play',
             view: view === 'joined' || view === 'invites' || view === 'manage' ? view : 'discover',
           },
         };

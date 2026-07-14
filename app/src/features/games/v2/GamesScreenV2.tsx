@@ -34,7 +34,9 @@ const FALLBACK_GAME_IMG = '/fallback-game.png';
 /** The non-Discover tabs (Joined / Manage / Invites) still page the raw lists. */
 const DISCOVER_PAGE_SIZE = 500;
 
-const SECTION_KEYS: Section[] = ['games', 'open-play'];
+/** Open Play leads. It is the most common player need, and the meeting was explicit
+ *  that tapping Play should land on it rather than on a chooser. */
+const SECTION_KEYS: Section[] = ['open-play', 'games'];
 const SECTION_LABELS: Record<Section, string> = { games: 'Events', 'open-play': 'Open Play' };
 
 function gameImage(g: ApiGame): string {
@@ -105,7 +107,10 @@ function isActiveTournament(t: ApiTournament): boolean {
 }
 
 export function GamesScreenV2(chrome: GamesScreenV2Props) {
-  const { onNavigate, isLoggedIn, initialSection = 'games', initialView = 'discover' } = chrome;
+  // A bare Play tap opens on Open Play, not Events — §3.3 of the 8 July minutes.
+  // It used to default to Events, so the most common player need sat one hidden
+  // dropdown away while the least common one greeted them.
+  const { onNavigate, isLoggedIn, initialSection = 'open-play', initialView = 'discover' } = chrome;
   const me = useAuthStore((s) => s.user);
   const myId = me?.id ?? null;
 
@@ -130,8 +135,6 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [sort, setSort] = useState<SortKey>('best');
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement | null>(null);
-  const [sectionOpen, setSectionOpen] = useState(false);
-  const sectionRef = useRef<HTMLDivElement | null>(null);
 
   // The viewer's location, for distance ranking + the card's distance line. There
   // is no shared geolocation hook; this mirrors NearbyScreenV2's local state.
@@ -178,26 +181,21 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       .catch(() => setLocStatus('denied'));
   };
 
-  // Close the sort / section menus on an outside click or Escape, matching
-  // NearbyScreenV2. Both are custom listboxes, so neither gets this for free.
+  // Close the sort menu on an outside click or Escape, matching NearbyScreenV2 —
+  // it's a custom listbox, so it doesn't get this for free. (The section control
+  // used to need the same treatment; it's a plain tab row now.)
   useEffect(() => {
-    if (!sortOpen && !sectionOpen) return;
+    if (!sortOpen) return;
     const outside = (ref: React.RefObject<HTMLDivElement | null>, target: Node) =>
       !!ref.current && !ref.current.contains(target);
     const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (sortOpen && outside(sortRef, t)) setSortOpen(false);
-      if (sectionOpen && outside(sectionRef, t)) setSectionOpen(false);
+      if (outside(sortRef, e.target as Node)) setSortOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      setSortOpen(false);
-      setSectionOpen(false);
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSortOpen(false); };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [sortOpen, sectionOpen]);
+  }, [sortOpen]);
 
   useEffect(() => {
     let alive = true;
@@ -520,41 +518,27 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           <p className="games-subheading">{subheading}</p>
         </div>
 
+        {/* Open Play and Events, side by side — §3.4 of the 8 July minutes. They used
+            to hide behind a dropdown that read only "Open Play", so a player who never
+            opened it had no way of knowing Events existed at all.
+
+            Deliberately NOT the lime pill used by the row below: these tabs pick the
+            PRODUCT, that row picks the VIEW of it (Discover / Joined / Manage). Styled
+            alike, the two would read as one four-item control. */}
         <div className="tab-group-row">
-          {/* A custom listbox, not a native <select>: the browser draws a select's
-              popup at the viewport level, so it escaped the .app device frame and
-              rendered over the top-left of the page. Same reason NearbyScreenV2's
-              sort control is hand-rolled. */}
-          <div className="section-dropdown-wrap" ref={sectionRef}>
-            <button
-              type="button"
-              className="section-dropdown"
-              aria-haspopup="listbox"
-              aria-expanded={sectionOpen}
-              aria-label={`Play section: ${SECTION_LABELS[section]}`}
-              onClick={() => setSectionOpen((o) => !o)}
-            >
-              {SECTION_LABELS[section]}
-            </button>
-            <svg className="section-dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
-            {sectionOpen && (
-              <ul className="section-menu" role="listbox" aria-label="Play section">
-                {SECTION_KEYS.map((key) => (
-                  <li key={key} role="option" aria-selected={section === key}>
-                    <button
-                      type="button"
-                      className={`sort-menu-item${section === key ? ' active' : ''}`}
-                      onClick={() => { selectSection(key); setSectionOpen(false); }}
-                    >
-                      {SECTION_LABELS[key]}
-                      {section === key && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div className="section-tabs" role="tablist" aria-label="Play section">
+            {SECTION_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={section === key}
+                className={`section-tab${section === key ? ' active' : ''}`}
+                onClick={() => selectSection(key)}
+              >
+                {SECTION_LABELS[key]}
+              </button>
+            ))}
           </div>
         </div>
 
