@@ -5,8 +5,7 @@ Phase 1 is done (5/5). This is what's left.
 > **Updated 14 July.** The four big questions were answered — see the `Decided` blocks below. The
 > headline: **Open Play is player-booked, gets a real lobby, and is free to join unless a subscribed
 > organizer charges.** The work turns out to be a **merge** (`OpenPlaySession` → `Game`), not a
-> rebuild. **Two small answers still gate the build** — the lobby cap, and the cut on an organizer's
-> join fee.
+> rebuild. **One answer still gates the build** — whether PickleBallers cuts an organizer's join fee.
 
 ---
 
@@ -66,8 +65,10 @@ scratch.
 > ### Decided: **YES — Open Play gets a lobby.**
 > - **"I'm Interested" is replaced by a real lobby**, the same one `Game` already has: named roster,
 >   invites, group chat.
-> - **There is a cap** on how many can join.
-> - ❓ **Still open:** who sets the cap — the player in booking step 2, or the court's capacity?
+> - **The player sets the cap** — an option at booking, **and editable afterwards**. Not taken from
+>   the court's capacity.
+> - **Guard:** the cap can never be lowered below the number already joined. Nobody gets bumped by an
+>   edit.
 
 ## 4. No rules for money — ✅ ANSWERED 14 July
 
@@ -127,12 +128,11 @@ the Play ranking.
 > open the game and see a live Join button. **To do:** disable the card itself.
 
 **Still open — the short list:**
-1. **Who sets the lobby cap** — the player in booking step 2, or the court's capacity? (item 3)
-2. **Does PickleBallers cut the organizer's join fee**, or does the organizer keep all of it?
+1. **Does PickleBallers cut the organizer's join fee**, or does the organizer keep all of it?
    (item 4)
-3. **Coach payments** — unchanged, still "pay the coach afterwards".
-4. **The "Events" tab** — merge or rename? (item 5)
-5. Is "Like" different from "Interested" · final homepage wording.
+2. **Coach payments** — unchanged, still "pay the coach afterwards".
+3. **The "Events" tab** — merge or rename? (item 5)
+4. Is "Like" different from "Interested" · final homepage wording.
 
 **And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
 thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
@@ -145,8 +145,8 @@ inventory, Tournaments sitting outside Play, and request-to-book.
 ---
 
 **Next:** items 1, 3, 4 and the show-vs-hide question are all settled. The work is now a **merge**
-(`OpenPlaySession` → `Game`), not a rebuild. Two small answers still gate the build: **who sets the
-lobby cap**, and **whether PickleBallers cuts the organizer's join fee**.
+(`OpenPlaySession` → `Game`), not a rebuild. One answer still gates the build: **whether
+PickleBallers cuts the organizer's join fee**.
 
 *Detail, if you want it: [`minutes-2026-07-08-followup.md`](minutes-2026-07-08-followup.md) ·
 [`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)*
@@ -161,8 +161,8 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 > **Na-update 14 Hulyo.** Nasagot na ang apat na malaking tanong — nasa mga `Desisyon` na kahon sa
 > baba. Ang buod: **player ang nagbo-book ng Open Play, bibigyan ito ng tunay na lobby, at libre ang
 > sumali maliban kung may sinisingil na subscribed organizer.** **Pagsasanib** pala ang trabaho
-> (`OpenPlaySession` → `Game`), hindi paggawa ng bago. **Dalawang maliit na sagot na lang ang
-> humaharang** — ang cap sa lobby, at ang cut sa join fee ng organizer.
+> (`OpenPlaySession` → `Game`), hindi paggawa ng bago. **Isang sagot na lang ang humaharang** —
+> kukunan ba ng PickleBallers ang join fee ng organizer.
 
 ---
 
@@ -226,8 +226,10 @@ May ganito nang parts sa ibang bahagi ng app. Ikakabit lang — hindi na gagawin
 > ### Desisyon: **OO — bibigyan ng lobby ang Open Play.**
 > - **Papalitan ng tunay na lobby ang "I'm Interested"** — yung mismong meron na ang `Game`: nakikitang
 >   roster, invite, group chat.
-> - **May cap** kung ilan ang pwedeng sumali.
-> - ❓ **Bukas pa:** sino ang naglalagay ng cap — ang player sa booking step 2, o ang capacity ng court?
+> - **Ang player ang naglalagay ng cap** — may option sa booking, **at pwedeng baguhin mamaya** sa
+>   edit. Hindi galing sa capacity ng court.
+> - **Harang:** hindi pwedeng ibaba ang cap sa ilalim ng bilang ng nakasali na. Walang matatanggal na
+>   tao dahil lang sa edit.
 
 ## 4. Wala pang rules sa pera — ✅ NASAGOT 14 Hulyo
 
@@ -289,12 +291,10 @@ pag-adjust ng ranking.
 > nabubuksan mo pa rin ang laro at buhay pa rin ang Join button. **Gagawin:** i-disable ang card mismo.
 
 **Bukas pa — maikling listahan:**
-1. **Sino ang naglalagay ng cap sa lobby** — ang player sa booking step 2, o ang capacity ng court?
-   (item 3)
-2. **Kukunan ba ng PickleBallers ang join fee ng organizer**, o buo sa organizer? (item 4)
-3. **Bayad sa coach** — hindi nagbago, "bayaran mo na lang siya pagkatapos" pa rin.
-4. **Yung "Events" tab** — pagsasamahin o papalitan ang pangalan? (item 5)
-5. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
+1. **Kukunan ba ng PickleBallers ang join fee ng organizer**, o buo sa organizer? (item 4)
+2. **Bayad sa coach** — hindi nagbago, "bayaran mo na lang siya pagkatapos" pa rin.
+3. **Yung "Events" tab** — pagsasamahin o papalitan ang pangalan? (item 5)
+4. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
 
 **Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
 (yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
@@ -307,5 +307,5 @@ na hindi magamit, yung Tournaments na nasa labas ng Play, at yung request-to-boo
 ---
 
 **Susunod:** tapos na ang items 1, 3, 4, at ang itago-o-ipakita. **Pagsasanib** na ang trabaho
-(`OpenPlaySession` → `Game`), hindi paggawa ng bago. Dalawang maliit na sagot na lang ang humaharang:
-**sino ang naglalagay ng cap sa lobby**, at **kukunan ba ng PickleBallers ang join fee ng organizer.**
+(`OpenPlaySession` → `Game`), hindi paggawa ng bago. Isang sagot na lang ang humaharang: **kukunan ba
+ng PickleBallers ang join fee ng organizer.**
