@@ -15,6 +15,7 @@ import tournamentApplicationsRoutes from '../features/tournament-applications/to
 import partnersRoutes from '../features/partners/partners.routes.js';
 import bookingsRoutes from '../features/bookings/bookings.routes.js';
 import gamesRoutes from '../features/games/games.routes.js';
+import playRoutes from '../features/play/play.routes.js';
 import clubsRoutes from '../features/clubs/clubs.routes.js';
 import paymentsRoutes from '../features/payments/payments.routes.js';
 import mediaRoutes from '../features/media/media.routes.js';
@@ -65,6 +66,7 @@ v1.route('/tournament-applications', tournamentApplicationsRoutes);
 v1.route('/partners', partnersRoutes);
 v1.route('/bookings', bookingsRoutes);
 v1.route('/games', gamesRoutes);
+v1.route('/play', playRoutes);
 v1.route('/clubs', clubsRoutes);
 v1.route('/payments', paymentsRoutes);
 v1.route('/settings', settingsRoutes);

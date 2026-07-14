@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import {
-  apiImageUrl, createGame, declineGameInvite, deleteGame, joinGame, leaveGame, listBookings, listGames,
+  apiImageUrl, createGame, declineGameInvite, deleteGame, getPlayDiscover, joinGame, leaveGame, listBookings, listGames,
   listMyOpenPlayRegistrations, listMyTournamentRegistrations,
   listOpenPlaySessions, listPublicTournaments, toggleGameInterest,
   type ApiBooking, type ApiGame, type ApiOpenPlaySession, type ApiTournament,
@@ -18,7 +18,7 @@ import {
   countActiveGameFilters, makeDefaultGameFilters, matchesPlayFilters, TYPE_OPTIONS, type GameFilters,
 } from '../gameFilters';
 import {
-  rankPlayFeed, SORT_LABELS, type ScoredPlayItem, type SortKey,
+  sortScored, SORT_LABELS, type ScoredPlayItem, type SortKey,
 } from '../playRanking';
 
 type Section = 'games' | 'open-play';
@@ -31,14 +31,7 @@ interface GamesScreenV2Props extends V2ScreenChrome {
 
 const FALLBACK_GAME_IMG = '/fallback-game.png';
 
-/** Stable empty array — the Events feed has no sessions, and a fresh `[]` each
- *  render would invalidate the ranking memo on every keystroke. */
-const EMPTY_SESSIONS: ApiOpenPlaySession[] = [];
-
-/** The Play feed ranks client-side, so it asks for the whole upcoming window
- *  rather than a page of it — otherwise sorting by Distance or Spots left would
- *  only rank within the soonest N, since the server truncates by date. 500 is the
- *  server's runaway guard, not a product cap. */
+/** The non-Discover tabs (Joined / Manage / Invites) still page the raw lists. */
 const DISCOVER_PAGE_SIZE = 500;
 
 const SECTION_KEYS: Section[] = ['games', 'open-play'];
@@ -153,7 +146,9 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [tournamentRegs, setTournamentRegs] = useState<Set<string>>(new Set());
   const [openSessions, setOpenSessions] = useState<ApiOpenPlaySession[]>([]);
   const [openSessionRegs, setOpenSessionRegs] = useState<Set<string>>(new Set());
-  const [publicGames, setPublicGames] = useState<ApiGame[]>([]);
+  /** Discover, ranked by the server. Refetched when the section or the user's
+   *  location changes — those are the two inputs the server can't know on its own. */
+  const [discoverFeed, setDiscoverFeed] = useState<ScoredPlayItem[]>([]);
   const [mineGames, setMineGames] = useState<ApiGame[]>([]);
   const [invitedGames, setInvitedGames] = useState<ApiGame[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
@@ -216,18 +211,17 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     };
     Promise.all([
       listPublicTournaments().catch(() => [] as ApiTournament[]),
+      // Still fetched for the Joined tab — Discover comes ranked from the server now.
       listOpenPlaySessions({ pageSize: DISCOVER_PAGE_SIZE }).catch((e) => { onFeedError(e); return [] as ApiOpenPlaySession[]; }),
-      listGames({ status: 'published', pageSize: DISCOVER_PAGE_SIZE }).catch((e) => { onFeedError(e); return [] as ApiGame[]; }),
       isLoggedIn ? listGames({ mine: true }).catch(() => [] as ApiGame[]) : Promise.resolve([] as ApiGame[]),
       isLoggedIn ? listGames({ invited: true }).catch(() => [] as ApiGame[]) : Promise.resolve([] as ApiGame[]),
       isLoggedIn ? listBookings().catch(() => [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
       isLoggedIn ? listMyTournamentRegistrations().catch(() => []) : Promise.resolve([]),
       isLoggedIn ? listMyOpenPlayRegistrations().catch(() => []) : Promise.resolve([]),
-    ]).then(([ts, sessions, games, mine, invited, bks, tRegs, sRegs]) => {
+    ]).then(([ts, sessions, mine, invited, bks, tRegs, sRegs]) => {
       if (!alive) return;
       setTournaments(ts);
       setOpenSessions(sessions);
-      setPublicGames(games);
       setMineGames(mine);
       setInvitedGames(invited);
       setBookings(bks);
@@ -236,6 +230,31 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [isLoggedIn, reloadKey]);
+
+  /* Discover, ranked by the server. Deliberately waits for the geolocation attempt
+   * to settle ('on' or 'denied') before firing: the viewer's coordinates are the one
+   * ranking input only the browser holds, and fetching while it is still 'locating'
+   * would rank a signed-in player's feed with proximity dropped, then visibly
+   * reshuffle it a moment later when the fix landed. One fetch, correctly ranked. */
+  useEffect(() => {
+    if (locStatus === 'locating') return;
+    let alive = true;
+    setLoading(true);
+    getPlayDiscover({
+      // This screen has always called the section 'games'; the API calls the same
+      // thing 'events', which is what the meeting named it and what the tab reads.
+      section: section === 'open-play' ? 'open-play' : 'events',
+      pageSize: DISCOVER_PAGE_SIZE,
+      ...(userLoc ? { lat: userLoc[0], lng: userLoc[1] } : {}),
+    })
+      .then((res) => { if (alive) { setDiscoverFeed(res.items); setFeedError(null); } })
+      // An empty feed and a failed feed look identical on screen ("No open plays
+      // available"), which would tell the user the catalogue is empty when the
+      // server actually errored. Say so instead.
+      .catch((e) => { if (alive) setFeedError(e instanceof Error ? e.message : 'Could not load plays.'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [section, userLoc, locStatus, isLoggedIn, reloadKey]);
 
   // Realtime: when a game.invited event arrives, refetch invited games.
   useEffect(() => {
@@ -248,16 +267,13 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
   const createdOpenGames = useMemo(() => mineGames.filter((g) => !!myId && g.creatorId === myId), [mineGames, myId]);
   const joinedOpenGames = useMemo(() => mineGames.filter((g) => !(myId && g.creatorId === myId)), [mineGames, myId]);
-  const mineGameIds = useMemo(() => new Set(mineGames.map((g) => g.id)), [mineGames]);
 
   // Public Games tab: only non-open gameType (singles / doubles — organizer-created, has lobby)
-  const gamesDiscover = useMemo(() => publicGames.filter((g) => !mineGameIds.has(g.id) && !isOpenPlayGame(g)), [publicGames, mineGameIds]);
   const gamesJoined = useMemo(() => joinedOpenGames.filter((g) => !isOpenPlayGame(g)), [joinedOpenGames]);
   const gamesManage = useMemo(() => createdOpenGames.filter((g) => !isOpenPlayGame(g)), [createdOpenGames]);
 
-  // Open Play tab: only open-type games + sessions (player-published bookings, no lobby)
-  const openDiscoverGames = useMemo(() => publicGames.filter((g) => !mineGameIds.has(g.id) && isOpenPlayGame(g)), [publicGames, mineGameIds]);
-  const openDiscoverSessions = useMemo(() => openSessions.filter((s) => !openSessionRegs.has(s.id)), [openSessions, openSessionRegs]);
+  // Open Play tab: only open-type games + sessions (player-published bookings, no lobby).
+  // Discover no longer derives from these — the server sends it ranked.
   const openJoinedGames = useMemo(() => joinedOpenGames.filter((g) => isOpenPlayGame(g)), [joinedOpenGames]);
   const openJoinedSessions = useMemo(() => openSessions.filter((s) => openSessionRegs.has(s.id)), [openSessions, openSessionRegs]);
   const openManageGames = useMemo(() => createdOpenGames.filter((g) => isOpenPlayGame(g)), [createdOpenGames]);
@@ -303,40 +319,42 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const filterSessions = (list: ApiOpenPlaySession[]) => !q ? list : list.filter((s) => matchText(s.title || '') || matchText(s.venueName || '') || matchText([s.venueArea, s.venueCity].filter(Boolean).join(' · ')) || matchText(s.levelLabel || '') || matchText(s.organizerName || ''));
   const filterBookings = (list: ApiBooking[]) => !q ? list : list.filter((b) => matchText(b.venueName || '') || matchText(b.courtName || ''));
 
-  const gamesDiscoverFiltered = useMemo(() => filterGames(gamesDiscover), [gamesDiscover, q]);
   const gamesJoinedFiltered = useMemo(() => filterGames(gamesJoined), [gamesJoined, q]);
   const gamesManageFiltered = useMemo(() => filterGames(gamesManage), [gamesManage, q]);
-  const openDiscoverGamesF = useMemo(() => filterGames(openDiscoverGames), [openDiscoverGames, q]);
-  const openDiscoverSessionsF = useMemo(() => filterSessions(openDiscoverSessions), [openDiscoverSessions, q]);
   const openJoinedGamesF = useMemo(() => filterGames(openJoinedGames), [openJoinedGames, q]);
   const openJoinedSessionsF = useMemo(() => filterSessions(openJoinedSessions), [openJoinedSessions, q]);
   const openManageGamesF = useMemo(() => filterGames(openManageGames), [openManageGames, q]);
   const openInvitedGamesF = useMemo(() => filterGames(openInvitedGames), [openInvitedGames, q]);
   const bookedFiltered = useMemo(() => filterBookings(privateBookings), [privateBookings, q]);
 
-  /* ── Discover: one merged, ranked, filtered feed (both sections) ───────────
+  /* ── Discover: one merged, ranked feed, scored by the SERVER ───────────────
    * Open Play mixes sessions and games, which used to render as two concatenated
    * blocks — a session weeks away sat above a game tonight. Events is games only
    * (singles/doubles/public lobbies). Both are scored by the same ranker.
    *
-   * Caveat, by design: the server hands back at most 50 of each, ordered by date,
-   * so this ranks a truncated candidate set. "Nearest" means nearest among the
-   * soonest — a later server-side feed fixes that. Don't imply otherwise in copy. */
-  const userSkill = me?.skillLevel ?? null;
+   * The ranking itself now lives in the API (`getPlayDiscover`). It used to run
+   * here, and that had a truncation bug this screen could not fix on its own: it
+   * could only ever rank the ~50 rows the server had already picked BY DATE, so
+   * "Nearest" really meant "nearest among the soonest". The server now scores the
+   * whole upcoming catalogue and truncates afterwards, which is the right way
+   * round — and every device gets the same order.
+   *
+   * Search, filters and the four non-relevance sorts stay local: they are pure
+   * reorderings/narrowings of a set we already hold, so a round-trip per keystroke
+   * or per Sort tap would only make them feel slower. */
   const isOpenPlaySection = section === 'open-play';
-  const discoverGames = isOpenPlaySection ? openDiscoverGamesF : gamesDiscoverFiltered;
-  const discoverSessions = isOpenPlaySection ? openDiscoverSessionsF : EMPTY_SESSIONS;
-  const discoverUnfiltered = isOpenPlaySection
-    ? openDiscoverGames.length + openDiscoverSessions.length
-    : gamesDiscover.length;
+  const discoverUnfiltered = discoverFeed.length;
 
-  const rankedDiscover = useMemo(
-    () => rankPlayFeed(discoverGames, discoverSessions, { now: new Date(), userLoc, userSkill }, sort),
-    [discoverGames, discoverSessions, userLoc, userSkill, sort],
-  );
+  const discoverSearched = useMemo(() => {
+    if (!q) return discoverFeed;
+    return discoverFeed.filter((i) =>
+      matchText(i.title) || matchText(i.venueName) || matchText(i.venueLoc)
+      || matchText(i.skillLabel || '') || matchText(i.host || ''));
+  }, [discoverFeed, q]);
+
   const discoverFiltered = useMemo(
-    () => rankedDiscover.filter((i) => matchesPlayFilters(i, filters)),
-    [rankedDiscover, filters],
+    () => sortScored(discoverSearched.filter((i) => matchesPlayFilters(i, filters)), sort),
+    [discoverSearched, filters, sort],
   );
   const activeFilterCount = countActiveGameFilters(filters);
   // Distance controls are only meaningful once we know where the user is.
@@ -461,10 +479,11 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setActionError(null);
     try {
       if (existingGame) {
-        // Make private: delete the open-play game, keep the court booking
+        // Make private: delete the open-play game, keep the court booking.
+        // No Discover update needed — the server never puts your OWN games in your
+        // Discover feed, so publishing or unpublishing one can't change it.
         await deleteGame(existingGame.id, { keepBooking: true });
         setMineGames((prev) => prev.filter((g) => g.id !== existingGame.id));
-        setPublicGames((prev) => prev.filter((g) => g.id !== existingGame.id));
       } else {
         // Make public: create an open-play game from this booking
         const game = await createGame({
@@ -477,7 +496,6 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           visibility: 'public',
         });
         setMineGames((prev) => [...prev, game]);
-        setPublicGames((prev) => [...prev, game]);
       }
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Could not update visibility.');

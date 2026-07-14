@@ -3453,6 +3453,84 @@ export async function listOpenPlaySessions(params: { venueId?: string; date?: st
   return (env.data ?? []).map(normalizeOpenPlaySession);
 }
 
+/* ── The Play tab's Discover feed ──────────────────────────────────────────────
+ * Ranking lives on the SERVER (api/src/features/play/). It used to run here, which
+ * meant two players could see the same sessions in a different order, and retuning
+ * the weights meant shipping an app release. These are the wire types it returns;
+ * `features/games/playRanking.ts` re-exports them for the cards and filters. */
+
+export type PlayKind = 'game' | 'session';
+
+/** How full a listing is. Sessions and lobby games have a hard `capacity`;
+ *  interest-based open games have none — only a count against an optional target. */
+export type PlayFill =
+  | { mode: 'capacity'; joined: number; cap: number }
+  | { mode: 'interest'; count: number; target: number | null };
+
+/** A game or session, normalised onto one shape so the feed can rank and render
+ *  both alike. */
+export interface PlayItem {
+  kind: PlayKind;
+  id: string;
+  title: string;
+  date: string | null;
+  startTime: string | null;
+  venueName: string;
+  venueLoc: string;
+  coords: [number, number] | null;
+  /** [min, max]; max is Infinity for an open-ended band like '4.0+' (the server
+   *  sends null there, since JSON has no Infinity — `getPlayDiscover` restores it). */
+  skillBand: [number, number] | null;
+  skillLabel: string | null;
+  fill: PlayFill;
+  host: string | null;
+  priceLabel: string | null;
+  image: string | null;
+  createdAt: string | null;
+  source: ApiGame | ApiOpenPlaySession;
+}
+
+export interface ScoredPlayItem extends PlayItem {
+  score: number;
+  distanceKm: number | null;
+  /** Short, human reasons this ranked where it did — rendered as a card chip. */
+  why: string[];
+}
+
+/** What the ranking actually saw, and which signals were live for this viewer. */
+export interface PlayDiscoverMeta {
+  section: 'open-play' | 'events';
+  candidates: number;
+  truncated: boolean;
+  signals: { timeFit: boolean; fillPressure: boolean; proximity: boolean; skillFit: boolean; social: boolean };
+}
+
+export interface PlayDiscoverResult {
+  items: ScoredPlayItem[];
+  meta: PlayDiscoverMeta;
+}
+
+/** The ranked Discover feed. The viewer's coordinates are passed in (only the
+ *  browser has them); skill and friends are read from the token server-side. */
+export async function getPlayDiscover(
+  params: { section?: 'open-play' | 'events'; lat?: number; lng?: number; pageSize?: number } = {},
+): Promise<PlayDiscoverResult> {
+  const env = await rawRequest<Record<string, unknown>[]>(`/play/discover${toQuery({ ...params })}`, { auth: true });
+  const items = (env.data ?? []).map((raw) => {
+    const i = raw as unknown as ScoredPlayItem & { skillBand: [number, number | null] | null };
+    return {
+      ...i,
+      // Restore the open-ended upper bound JSON could not carry. Without this the
+      // skill filter reads `null` as an upper bound and drops every '4.0+' listing.
+      skillBand: i.skillBand ? [i.skillBand[0], i.skillBand[1] ?? Infinity] : null,
+      source: i.kind === 'session'
+        ? normalizeOpenPlaySession(i.source as unknown as Record<string, unknown>)
+        : (i.source as ApiGame),
+    } as ScoredPlayItem;
+  });
+  return { items, meta: (env as unknown as { meta: PlayDiscoverMeta }).meta };
+}
+
 export async function getOpenPlaySession(id: string): Promise<ApiOpenPlaySession> {
   return normalizeOpenPlaySession(await request<Record<string, unknown>>(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}`, { auth: true }));
 }

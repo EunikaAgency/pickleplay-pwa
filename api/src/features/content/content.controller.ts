@@ -708,7 +708,7 @@ function seriesView(s: any) {
   return { id: _id, ...rest, venueName: s.venueId?.displayName, venueSlug: s.venueId?.slug };
 }
 
-function sessionView(s: any) {
+export function sessionView(s: any) {
   if (!s) return null;
   const { _id, ...rest } = s;
   const v = s.venueId && typeof s.venueId === 'object' ? s.venueId : null;

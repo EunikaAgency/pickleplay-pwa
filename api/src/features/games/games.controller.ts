@@ -143,8 +143,10 @@ function todayDate(): string {
   return computeDate();
 }
 
-/** Map a populated, lean Game doc onto the shape the app consumes. */
-function serialize(r: any, viewerUserId?: string) {
+/** Map a populated, lean Game doc onto the shape the app consumes. Exported so the
+ *  Play feed can rank the same rows the app already renders, rather than a parallel
+ *  projection that could drift from this one. */
+export function serialize(r: any, viewerUserId?: string) {
   const refPerson = (p: any) =>
     p && typeof p === 'object'
       ? { id: String(p._id), displayName: p.displayName, avatarUrl: p.avatarUrl ?? null }
