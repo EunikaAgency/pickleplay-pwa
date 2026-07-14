@@ -2,13 +2,20 @@
 
 Phase 1 is done (5/5). This is what's left.
 
-> **Updated 14 July — Open Play is fully decided. Nothing gates the build.** See the `Decided` blocks
-> below. The headline: **Open Play is player-booked, gets a real lobby with a player-set cap, and is
-> free to join unless a subscribed organizer charges — in which case they keep every peso.** The work
-> turns out to be a **merge** (`OpenPlaySession` → `Game`), not a rebuild.
+> **Updated 14 July — Open Play, money, and refunds are all decided. Nothing gates the build.** See
+> the `Decided` blocks below.
 >
-> What's left open (items 5 and 7) touches coaching, the Events tab, and wording — **none of it blocks
-> Open Play.**
+> **The headline:** Open Play is **player-booked** (any player, no role needed), gets a **real lobby**
+> with a player-set cap, and is **free to join** unless a subscribed organizer charges — in which case
+> **they keep every peso**. The work turns out to be a **merge** (`OpenPlaySession` → `Game`), not a
+> rebuild.
+>
+> **The revenue model, in one line:** the **subscription is the licence to charge**. PickleBallers
+> takes **7% on court bookings and nothing else**. The player pays the transaction fee. On a refund,
+> **whoever cancelled pays** — outside a **3-day free window**.
+>
+> **Still open:** homepage wording, and the seven live-but-unapproved things. **Neither blocks Open
+> Play.**
 
 ---
 
@@ -129,6 +136,14 @@ Not hard to build. We just don't know the rules. Real money already moves throug
 > The principle: **you pay for the damage you cause.** A player must never be left worse off by
 > someone *else's* cancellation than by never having booked.
 >
+> ### ⚠️ Warn the player BEFORE they confirm
+> When a player cancels and the fee will come off their refund, the confirmation must **say so, with
+> the real numbers, before the button is pressed** — "You paid ₱800. You will get back **₱773**. A
+> ₱27 transaction fee is deducted." Then they choose.
+>
+> **No surprises after the fact.** A deduction discovered *after* confirming is how you lose a player
+> for good. If we cannot show the exact figure, we do not take the deduction.
+>
 > ⚠️ **A refund is never free.** The gateway does not return the original processing fee when you
 > refund — that money is already spent — and some charge a further refund fee. Every refund costs
 > somebody; the table above only decides *who*.
@@ -199,9 +214,8 @@ the Play ranking.
 > dissolves with the merge.
 
 **Still open — nothing here blocks the Open Play build:**
-1. **Who eats the payment-gateway fee** on 0%-cut money (coach lessons, organizer join fees)? As
-   decided, PickleBallers does — at a small loss per transaction. (item 4)
-2. **Final homepage wording.**
+1. **Final homepage wording.**
+2. **The seven live-but-unapproved things below** — each still needs a keep-or-kill.
 
 **And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
 thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
@@ -215,11 +229,11 @@ inventory, Tournaments sitting outside Play, and request-to-book.
 
 ---
 
-**Next: Open Play is settled — the build can start.** Items 1, 3, 4 and show-vs-hide are all answered.
-The work is a **merge** (`OpenPlaySession` → `Game`), not a rebuild.
+**Next: the build can start.** Open Play, the revenue model, and refunds are all settled. The work is
+a **merge** (`OpenPlaySession` → `Game`), not a rebuild.
 
-What's still open — coach payments, the Events tab, "Like" vs "Interested", homepage wording, and the
-seven unapproved live things — **blocks none of it.**
+Only two things are still open — **homepage wording** and the **seven live-but-unapproved things** —
+and neither blocks a line of it.
 
 *Detail, if you want it: [`minutes-2026-07-08-followup.md`](minutes-2026-07-08-followup.md) ·
 [`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)*
@@ -231,14 +245,21 @@ seven unapproved live things — **blocks none of it.**
 
 Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 
-> **Na-update 14 Hulyo — kumpleto na ang desisyon sa Open Play. Wala nang humaharang.** Nasa mga
-> `Desisyon` na kahon sa baba. Ang buod: **player ang nagbo-book ng Open Play, may tunay na lobby na
-> siya rin ang naglagay ng cap, at libre ang sumali — maliban kung may sinisingil na subscribed
-> organizer, at buo sa kanya yun.** **Pagsasanib** pala ang trabaho (`OpenPlaySession` → `Game`),
-> hindi paggawa ng bago.
+> **Na-update 14 Hulyo — tapos na ang Open Play, ang pera, at ang refund. Wala nang humaharang.** Nasa
+> mga `Desisyon` na kahon sa baba.
 >
-> Ang natitirang bukas (items 5 at 7) ay tungkol sa coaching, sa Events tab, at sa wording — **wala
-> sa kanila ang humaharang sa Open Play.**
+> **Ang buod:** **player ang nagbo-book** ng Open Play (kahit sino, walang kailangang role), may
+> **tunay na lobby** na siya rin ang naglagay ng cap, at **libre ang sumali** — maliban kung may
+> sinisingil na subscribed organizer, at **buo sa kanya** ang bawat piso. **Pagsasanib** pala ang
+> trabaho (`OpenPlaySession` → `Game`), hindi paggawa ng bago.
+>
+> **Ang modelo ng kita, sa isang linya:** ang **subscription ang bayad sa karapatang makasingil**.
+> **7% sa booking ng court** ang kukunin ng PickleBallers, at wala nang iba. Ang player ang sasagot sa
+> transaction fee. Sa refund, **kung sino ang nagkansela, siya ang sasagot** — labas sa **3-araw na
+> libreng bintana**.
+>
+> **Bukas pa:** wording ng homepage, at yung pitong buhay-pero-walang-approval. **Wala sa kanila ang
+> humaharang sa Open Play.**
 
 ---
 
@@ -345,12 +366,43 @@ Hindi mahirap gawin. **Hindi lang namin alam ang rules.** May dumadaan nang toto
 > **Ang subscription ang bayad sa karapatang makasingil.** Hindi kumakagat ang platform sa kinikita ng
 > partner.
 >
-> ### ⚠️ Isang bunga na walang nakapansin
-> Ang perang dumadaan sa app kahit **0%** ang kuha, may **bayad pa rin sa payment gateway (~2–3.5%)** —
-> at **sa PickleBallers** yun manggagaling, hindi sa partner. Kaya bawat coach lesson at bawat bayad na
-> Open Play na dumaan sa app ay **maliit na lugi**, at lumalaki habang dumarami. Pagpipilian: sagutin
-> na lang, ipasa sa player bilang nakikitang fee, o taasan ang subscription para masakop. **❓
-> Kailangan ng desisyon — pero hindi ito humaharang sa Open Play build.**
+> ### Ang transaction fee — napagdesisyunan 14 Hulyo
+> **Ang player ang sasagot.** Ang buwis at kaltas sa booking ng court o sa lesson ng coach ay **sa
+> nagbo-book** manggagaling, at nakikita sa checkout. Hindi sasagutin ng PickleBallers, hindi
+> ikakaltas sa partner. Kaya ang 0% sa itaas ay **tunay ngang 0%** — walang nalulugi ang platform doon.
+>
+> ### Refund — napagdesisyunan 14 Hulyo
+> **Libreng bintana: 3 araw.** Kanselahin nang mahigit 3 araw bago, at **buo** ang refund — walang
+> kaltas, kahit sino pa ang nagkansela. Naibebenta pa ang slot; wala namang tunay na nasira.
+>
+> **Sa loob ng bintana, kung sino ang nagkansela, siya ang sasagot sa transaction fee.**
+>
+> | Sino ang nagkansela | Makukuha ng player | Sino ang kakaltasan |
+> |---|---|---|
+> | **Ang player** — nagbago ang isip | Bayad **bawas** ang fee | **Ang player** |
+> | **Host / organizer / coach** | **Buo. 100%.** | **Ang nagkansela** — bawas sa payout niya |
+> | **Venue, ulan, o kami** | **Buo. 100%.** | **PickleBallers** |
+>
+> Ang batayan: **ikaw ang magbabayad sa pinsalang ikaw ang may gawa.** Hindi kailanman dapat mas
+> masama ang kalalabasan ng player dahil sa kanselang **hindi niya** ginawa, kaysa sa hindi na lang
+> siya nag-book.
+>
+> ### ⚠️ Sabihan ang player BAGO siya magkumpirma
+> Kapag player ang nagkansela at may ikakaltas sa refund niya, **dapat nakasulat sa kumpirmasyon, may
+> totoong numero, bago pa niya mapindot** — "Nagbayad ka ng ₱800. Makukuha mo ang **₱773**. May ₱27 na
+> transaction fee na ikakaltas." Siya na ang bahalang pumili.
+>
+> **Walang gulat pagkatapos.** Ang kaltas na nadiskubre **matapos** magkumpirma — yun ang paraan para
+> tuluyang mawala ang isang player. Kung hindi natin maipapakita ang eksaktong halaga, **hindi tayo
+> kakaltas.**
+>
+> ⚠️ **Walang libreng refund.** Hindi ibinabalik ng gateway ang orihinal na processing fee kapag
+> nag-refund ka — gastos na yun — at may dagdag pang refund fee ang iba. **May gastos ang bawat
+> refund**; ang tanging pinagdedesisyunan ng talahanayan sa itaas ay **sino** ang sasagot.
+>
+> ### Gateway: **PayMongo — hindi pa naka-setup**
+> **Huwag i-hardcode ang porsyento ng fee.** Ilalagay siya sa settings, katabi ng `serviceFeePercent`,
+> at ilalagay ang totoong bilang pag na-wire na ang PayMongo. **Walang hulang numero sa code o sa UI.**
 
 ## 5. Dalawang bagay na lumabas dahil sa Phase 1
 
@@ -416,9 +468,8 @@ pag-adjust ng ranking.
 > tanong kasabay ng pagsasanib.
 
 **Bukas pa — wala nang humaharang sa Open Play build:**
-1. **Sino ang sasagot sa bayad sa payment gateway** sa perang 0% ang kuha (coach lesson, join fee ng
-   organizer)? Sa napagkasunduan, ang PickleBallers — kaya maliit na lugi kada transaksyon. (item 4)
-2. **Anong ilalagay sa homepage.**
+1. **Anong ilalagay sa homepage.**
+2. **Yung pitong buhay-pero-walang-approval sa baba** — bawat isa, kailangan ng "itago o tanggalin".
 
 **Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
 (yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
@@ -432,8 +483,8 @@ na hindi magamit, yung Tournaments na nasa labas ng Play, at yung request-to-boo
 
 ---
 
-**Susunod: tapos na ang Open Play — pwede nang simulan ang build.** Nasagot na ang items 1, 3, 4, at
-ang itago-o-ipakita. **Pagsasanib** ang trabaho (`OpenPlaySession` → `Game`), hindi paggawa ng bago.
+**Susunod: pwede nang simulan ang build.** Tapos na ang Open Play, ang modelo ng kita, at ang refund.
+**Pagsasanib** ang trabaho (`OpenPlaySession` → `Game`), hindi paggawa ng bago.
 
-Ang natitirang bukas — bayad sa coach, Events tab, "Like" vs "Interested", wording ng homepage, at
-yung pitong bagay na walang nag-approve — **walang hinaharangan sa kanila.**
+Dalawang bagay na lang ang bukas — **wording ng homepage** at yung **pitong buhay-pero-walang-approval**
+— at wala ni isang linyang hinaharangan ng dalawang yun.
