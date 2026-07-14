@@ -213,9 +213,17 @@ the Play ranking.
 > And **"Interested" is being deleted anyway** — the lobby replaces it (item 3). The question
 > dissolves with the merge.
 
-**Still open — nothing here blocks the Open Play build:**
-1. **Final homepage wording.**
-2. **The seven live-but-unapproved things below** — each still needs a keep-or-kill.
+> ### Homepage wording — settled 14 July
+> The existing copy is **fine as it stands** — "Ready to play, [name]?", "Discover Games", "Find a
+> game". No change wanted.
+>
+> **One line must change, and only because of today's decisions:** the cards read **"5 interested"**
+> ([`HomeScreenV2.tsx:305`](../app/src/features/home/v2/HomeScreenV2.tsx#L305)). Interest dies with the
+> lobby (item 3). It becomes **"3 spots left"** — what a player actually needs before tapping is
+> whether there is *room*, not how many people are curious.
+
+**Still open — one thing, and it blocks nothing:**
+1. **The seven live-but-unapproved things below** — each still needs a keep-or-kill.
 
 **And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
 thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
@@ -467,9 +475,18 @@ pag-adjust ng ranking.
 > At **mawawala na rin ang "Interested"** — pinapalitan siya ng lobby (item 3). Kusang nawawala ang
 > tanong kasabay ng pagsasanib.
 
-**Bukas pa — wala nang humaharang sa Open Play build:**
-1. **Anong ilalagay sa homepage.**
-2. **Yung pitong buhay-pero-walang-approval sa baba** — bawat isa, kailangan ng "itago o tanggalin".
+> ### Wording ng homepage — tapos na 14 Hulyo
+> **Ayos na ang nakasulat ngayon** — "Ready to play, [pangalan]?", "Discover Games", "Find a game".
+> Walang babaguhin.
+>
+> **Isang linya lang ang kailangang palitan, at dahil lang sa desisyon natin ngayon:** ang mga card ay
+> nagsasabing **"5 interested"**
+> ([`HomeScreenV2.tsx:305`](../app/src/features/home/v2/HomeScreenV2.tsx#L305)). Mamamatay ang
+> "interested" kasabay ng lobby (item 3). Magiging **"3 spots left"** — dahil ang totoong kailangang
+> malaman ng player bago pumindot ay kung **may pwesto pa ba**, hindi kung ilan ang nagtataka.
+
+**Bukas pa — isa na lang, at wala itong hinaharangan:**
+1. **Yung pitong buhay-pero-walang-approval sa baba** — bawat isa, kailangan ng "itago o tanggalin".
 
 **Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
 (yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
