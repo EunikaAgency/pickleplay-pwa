@@ -23,6 +23,9 @@ const registerSchema = z.object({
   firstName: z.string().max(50).optional(),
   lastName: z.string().max(50).optional(),
   role: z.enum(REGISTERABLE_ROLES).default('player'),
+  // Optional here, not required: `web` also registers through this endpoint and
+  // doesn't collect a gender. The PWA's sign-up form is what requires one.
+  gender: z.enum(['male', 'female', 'other']).optional(),
   phone: z.string().max(20).optional(),
   homeCityId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
   skillLevel: z.coerce.number().optional(),
@@ -211,6 +214,7 @@ export async function register(c: any) {
     email: body.email, passwordHash, displayName: body.displayName,
     firstName: body.firstName || null, lastName: body.lastName || null,
     roleDefault: body.role,
+    gender: body.gender || undefined,
     phone: body.phone || undefined,
     homeCityId: body.homeCityId || undefined,
     skillLevel: body.skillLevel,

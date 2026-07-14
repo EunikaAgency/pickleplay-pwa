@@ -5,6 +5,7 @@ import { FormField } from '../../shared/components/forms/FormField';
 import { FormSelect } from '../../shared/components/forms/FormSelect';
 import { useForm } from '../../shared/hooks/useForm';
 import { ApiError, type RegisterRole } from '../../shared/lib/api';
+import { genderOptions, type Gender } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { ROLE_META } from '../../shared/lib/roleDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -41,6 +42,8 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
   const [mode, setMode] = useState<'signin' | 'register'>('signin');
   const [name, setName] = useState('');
   const [role, setRole] = useState<RegisterRole>('player');
+  // Required to register. Blank until picked, which holds the submit below.
+  const [gender, setGender] = useState<Gender | ''>('');
   const [nameTouched, setNameTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -79,7 +82,14 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
     setSubmitError(null);
     setLoading(true);
     try {
-      await register({ email: form.values.email.trim(), password: form.values.password, displayName: name.trim(), role });
+      await register({
+        email: form.values.email.trim(),
+        password: form.values.password,
+        displayName: name.trim(),
+        role,
+        // Never blank: the submit is gated on a gender being picked.
+        gender: gender as Gender,
+      });
       onLoginSuccess();
     } catch (err) {
       setSubmitError(
@@ -103,7 +113,7 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
     e.preventDefault();
     if (mode === 'register') {
       setNameTouched(true);
-      if (!name.trim() || !form.isValid) return;
+      if (!name.trim() || !gender || !form.isValid) return;
       void createAccount();
     } else {
       if (!form.isValid) return;
@@ -153,6 +163,19 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
                 placeholder="Your name"
                 leadingIcon="user"
                 error={nameTouched && !name.trim() ? 'Name is required.' : undefined}
+              />
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div className="field">
+              <FormSelect
+                label="Gender"
+                options={genderOptions}
+                value={gender}
+                onChange={(e) => setGender(e.target.value as Gender)}
+                placeholder="Select your gender"
+                required
               />
             </div>
           )}
@@ -229,7 +252,7 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
           )}
 
           <div className="px-5 mt-4">
-            <Button type="submit" fullWidth disabled={loading || !form.isValid || (mode === 'register' && !name.trim())}>
+            <Button type="submit" fullWidth disabled={loading || !form.isValid || (mode === 'register' && (!name.trim() || !gender))}>
               {loading ? (
                 <>
                   <span className="inline-flex animate-spin">

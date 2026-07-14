@@ -320,6 +320,7 @@ export interface RegisterPayload {
   lastName?: string;
   /** Defaults to `player` server-side when omitted. */
   role?: RegisterRole;
+  gender?: Gender;
 }
 
 /** Create a new account (role defaults to player), then sign in: stores tokens + returns the user. */
