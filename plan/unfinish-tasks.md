@@ -168,10 +168,19 @@ the Play ranking.
 > So whoever chose "show it, marked" chose **right** — but only half-built it. Today you can still
 > open the game and see a live Join button. **To do:** disable the card itself.
 
+> ### "Like" vs "Interested" — answered from the code 14 July. **No decision needed.**
+> They were never the same thing, and never met:
+> - **"Interested"** exists only on **Open Play** (`interestedCount` / `interestedUsers`).
+> - **"Like"** exists only on **club posts** in Social (`reactionCount` / `viewerReacted`). It does
+>   not appear on games at all.
+>
+> And **"Interested" is being deleted anyway** — the lobby replaces it (item 3). The question
+> dissolves with the merge.
+
 **Still open — nothing here blocks the Open Play build:**
 1. **Who eats the payment-gateway fee** on 0%-cut money (coach lessons, organizer join fees)? As
    decided, PickleBallers does — at a small loss per transaction. (item 4)
-2. Is "Like" different from "Interested" · final homepage wording.
+2. **Final homepage wording.**
 
 **And six things already live that nobody signed off on:** the ₱499 coach subscription (the only
 thing earning money), the "₱229,000 partner revenue" figure, the pricing engine, the unused rental
@@ -376,10 +385,19 @@ pag-adjust ng ranking.
 > Kaya yung pumili ng "ipakita, may marka" — **tama siya.** Kalahati lang ang nagawa. Ngayon,
 > nabubuksan mo pa rin ang laro at buhay pa rin ang Join button. **Gagawin:** i-disable ang card mismo.
 
+> ### "Like" vs "Interested" — nasagot sa code 14 Hulyo. **Walang kailangang desisyon.**
+> Hindi sila kailanman naging pareho, at hindi sila nagkikita:
+> - **"Interested"** — nasa **Open Play** lang (`interestedCount` / `interestedUsers`).
+> - **"Like"** — nasa **club posts** lang sa Social (`reactionCount` / `viewerReacted`). Wala siya sa
+>   laro kahit saan.
+>
+> At **mawawala na rin ang "Interested"** — pinapalitan siya ng lobby (item 3). Kusang nawawala ang
+> tanong kasabay ng pagsasanib.
+
 **Bukas pa — wala nang humaharang sa Open Play build:**
 1. **Sino ang sasagot sa bayad sa payment gateway** sa perang 0% ang kuha (coach lesson, join fee ng
    organizer)? Sa napagkasunduan, ang PickleBallers — kaya maliit na lugi kada transaksyon. (item 4)
-2. Magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
+2. **Anong ilalagay sa homepage.**
 
 **Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
 (yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
