@@ -160,26 +160,33 @@ re-worked.
 
 ### 2A — Eligibility (§4.5) — 🟡 PART DONE
 
-Built, for **player-hosted games only**:
+*(Verified by a full scan of every file touching `genderPolicy` / `genderBlock`, not by grep-and-guess.)*
 
-- ✅ `genderPolicy` (all / men / women) on the Game model + the create/edit form.
+Built, and built properly, for **everything a PLAYER hosts — including player-hosted open play**:
+
+- ✅ `genderPolicy` (all / men / women) on the **Game** model. The Book-a-court flow publishes open
+  play as `createGame({ gameType: 'open', genderPolicy })`, so a player's open-play drop-in carries
+  it too — it is not "games only".
 - ✅ `gender` on the user profile + sign-up.
-- ✅ **Enforced server-side on join** (`genderBlock`) — a greyed-out button is not enforcement, and
-  this one is real. `GENDER_REQUIRED` steers a player with no gender set to their profile rather
-  than dead-ending them.
+- ✅ **Enforced server-side on BOTH `joinGame` and `toggleGameInterest`.** That second one matters:
+  open play joins by *interest*, not by *join*, so a gate on `joinGame` alone would have been
+  decorative. `GENDER_REQUIRED` steers a player with no gender set to their profile instead of
+  dead-ending them.
 - ✅ Shown on the Discover card + a "Who can play" filter.
 
-Still missing:
+Missing — and it is the half the meeting actually asked for:
 
-- ❌ **Venue-run Open Play sessions carry no eligibility at all.** `OpenPlaySession` has no
-  `genderPolicy` field, so a venue cannot run a women-only session — only a *player* can. That is
-  backwards from the meeting, where §4.5's examples were venue/organizer sessions.
-- ❌ **Skill-band eligibility** ("beginner-only", "3.0–3.5 only") does not exist. Today a skill band
-  is a *hint* used for ranking, not a rule that stops you joining.
-- ⚠️ **Decision 3 was made by implementation, not by the team.** The build chose *"show it, marked
-  not eligible"* (Option B). Nobody signed that off — it just happened. If the team wanted
-  ineligible sessions **hidden**, this has to be revisited across the listing, the filters, the
-  ranking and the join button together.
+- ❌ **VENUE-hosted Open Play sessions have no eligibility at all, and no server-side check.**
+  `OpenPlaySession` carries only `skillLevelMin`/`skillLevelMax`, which are *ranking hints*, not
+  rules. `joinOpenPlay` performs **no eligibility check whatsoever** — so even if a venue could mark
+  a session women-only, anyone could still join it. This is backwards from §4.5, whose examples of
+  women-only / men-only play were **venue and organizer sessions**.
+- ❌ **Skill-band eligibility** ("beginner-only", "3.0–3.5 only") does not exist anywhere. A skill
+  band still only influences ranking; it never stops anyone joining.
+- ⚠️ **Decision 3 was settled by implementation, not by the team.** The build chose *"show it,
+  marked not eligible"* (Option B). Nobody signed that off. If the team wanted ineligible sessions
+  **hidden**, it is a rework across the listing, the filters, the ranking and the join button
+  together.
 
 ### 2B — Open Play lobby (§7) — ❌ NOT STARTED (needs decision 1)
 
