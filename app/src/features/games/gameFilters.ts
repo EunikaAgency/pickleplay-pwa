@@ -13,6 +13,10 @@ export type SkillFilter = 'Any' | 'Beginner' | '2.5–3.0' | '3.0–3.5' | '3.5�
 export type TypeFilter = 'Any' | 'doubles' | 'singles' | 'open';
 /** Who a listing admits — mirrors the host's own "Who can play" picker. */
 export type GenderFilter = 'Any' | 'all' | 'men' | 'women';
+/** What it costs to JOIN — not what the court costs. See `ScoredPlayItem.joinFee`. */
+export type CostFilter = 'Any' | 'free' | 'paid';
+export type AccessFilter = 'Any' | 'public' | 'invite';
+export type RepeatFilter = 'Any' | 'recurring' | 'one-time';
 
 /** The applied Games filters. */
 export interface GameFilters {
@@ -28,6 +32,15 @@ export interface GameFilters {
   /** The day picked when `when === 'custom'` (YYYY-MM-DD). Null until one is chosen,
    *  in which case the `when` filter is inert rather than matching nothing. */
   customDate: string | null;
+  /* ── §4.3 of the 8 July minutes: the filters the meeting asked for next ───── */
+  /** Free to join vs carries a fee. */
+  cost: CostFilter;
+  /** Open to anyone vs invitation-only. */
+  access: AccessFilter;
+  /** Part of a weekly series vs a one-off. */
+  repeat: RepeatFilter;
+  /** Exact venue name. Null = any venue. */
+  venue: string | null;
 }
 
 export const WHEN_OPTIONS: { value: WhenFilter; label: string }[] = [
@@ -47,11 +60,34 @@ export const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: 'open', label: 'Open Play' },
 ];
 
+// One word each, plain text — the sheet's other rows read that way (Any /
+// Doubles / Singles / Open Play), and the full phrases wrapped this row onto a
+// second line. The heading above them carries the meaning.
 export const GENDER_OPTIONS: { value: GenderFilter; label: string }[] = [
   { value: 'Any', label: 'Any' },
-  { value: 'all', label: '🌍 Open to all' },
-  { value: 'men', label: '👨 Men only' },
-  { value: 'women', label: '👩 Women only' },
+  { value: 'all', label: 'Everyone' },
+  { value: 'men', label: 'Men' },
+  { value: 'women', label: 'Women' },
+];
+
+// "Free" means free TO JOIN. A player-hosted game is free even when its card shows
+// the venue's ₱350 court rate — the host paid that, not the joiner.
+export const COST_OPTIONS: { value: CostFilter; label: string }[] = [
+  { value: 'Any', label: 'Any' },
+  { value: 'free', label: 'Free' },
+  { value: 'paid', label: 'Paid' },
+];
+
+export const ACCESS_OPTIONS: { value: AccessFilter; label: string }[] = [
+  { value: 'Any', label: 'Any' },
+  { value: 'public', label: 'Open' },
+  { value: 'invite', label: 'Invite only' },
+];
+
+export const REPEAT_OPTIONS: { value: RepeatFilter; label: string }[] = [
+  { value: 'Any', label: 'Any' },
+  { value: 'recurring', label: 'Weekly' },
+  { value: 'one-time', label: 'One-off' },
 ];
 
 export const RADIUS_OPTIONS: { value: number | null; label: string }[] = [
@@ -72,6 +108,10 @@ export const makeDefaultGameFilters = (radiusKm: number | null = null): GameFilt
   openings: false,
   radiusKm,
   customDate: null,
+  cost: 'Any',
+  access: 'Any',
+  repeat: 'Any',
+  venue: null,
 });
 
 /** How many filters are currently narrowing the list (for the badge / chips).
@@ -87,6 +127,10 @@ export function countActiveGameFilters(f: GameFilters): number {
   if (f.genderPolicy !== 'Any') n++;
   if (f.openings) n++;
   if (f.radiusKm != null) n++;
+  if (f.cost !== 'Any') n++;
+  if (f.access !== 'Any') n++;
+  if (f.repeat !== 'Any') n++;
+  if (f.venue) n++;
   return n;
 }
 
@@ -152,6 +196,19 @@ export function matchesPlayFilters(item: ScoredPlayItem, f: GameFilters, now: Da
   }
 
   if (f.genderPolicy !== 'Any' && policyOf(item) !== f.genderPolicy) return false;
+
+  // Cost is what it takes to JOIN, and `joinFee` is the only field that knows.
+  // A game's `priceLabel` is the VENUE's hourly rate — the host paid it, so filtering
+  // "Free" on the label would hide games that are, in fact, free to join.
+  if (f.cost === 'free' && !(item.joinFee == null || item.joinFee === 0)) return false;
+  if (f.cost === 'paid' && !(item.joinFee != null && item.joinFee > 0)) return false;
+
+  if (f.access !== 'Any' && item.visibility !== f.access) return false;
+
+  if (f.repeat === 'recurring' && !item.isRecurring) return false;
+  if (f.repeat === 'one-time' && item.isRecurring) return false;
+
+  if (f.venue && item.venueName !== f.venue) return false;
 
   // Interest-based listings have no capacity, so they always have room.
   if (f.openings && item.fill.mode === 'capacity' && item.fill.cap > 0 && item.fill.joined >= item.fill.cap) {

@@ -64,18 +64,19 @@ test('the filter sheet narrows the feed by who can play', async ({ browser }) =>
     await expect(ladies).toBeVisible({ timeout: 25_000 });
     await expect(everyone).toBeVisible();
 
-    // Women only → the open-to-all game drops out.
+    // Women → the open-to-all game drops out. (Exact names: a /Men/ regex would
+    // also match "Wo-men" and hit two chips.)
     await page.getByRole('button', { name: /^Filter/ }).click();
     await expect(page.getByText('Who can play')).toBeVisible();
-    await page.getByRole('button', { name: '👩 Women only', exact: true }).click();
+    await page.getByRole('button', { name: 'Women', exact: true }).click();
     await page.getByRole('button', { name: /Show \d+ plays?/ }).click();
     await expect(ladies).toBeVisible();
     await expect(everyone).toHaveCount(0);
     await page.screenshot({ path: 'test-results/gender-filter-women.png' });
 
-    // Open to all → the women-only game drops out instead.
+    // Everyone → the women-only game drops out instead.
     await page.getByRole('button', { name: /^Filter/ }).click();
-    await page.getByRole('button', { name: '🌍 Open to all', exact: true }).click();
+    await page.getByRole('button', { name: 'Everyone', exact: true }).click();
     await page.getByRole('button', { name: /Show \d+ plays?/ }).click();
     await expect(everyone).toBeVisible();
     await expect(ladies).toHaveCount(0);
