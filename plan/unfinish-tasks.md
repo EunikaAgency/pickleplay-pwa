@@ -109,12 +109,33 @@ Not hard to build. We just don't know the rules. Real money already moves throug
 >
 > **The subscription is the licence to charge.** The platform does not cut into what a partner earns.
 >
-> ### ⚠️ One consequence nobody has priced
-> Money that flows through the app at **0%** still costs a **payment-gateway fee (~2–3.5%)** — and
-> that comes out of **PickleBallers**, not the partner. So every coach lesson and every paid Open Play
-> booked in-app is a **small loss**, growing with volume. Options: absorb it, pass it to the player as
-> a visible fee, or raise the subscription to cover it. **❓ Needs a decision — but it does not block
-> the Open Play build.**
+> ### The transaction fee — decided 14 July
+> **The player pays it.** Tax and transaction charges on a court booking or a coaching lesson are
+> borne by **the person booking**, shown at checkout. They are not absorbed by PickleBallers and not
+> deducted from the partner. So the 0% cut above stays a true 0% — the platform loses nothing on it.
+>
+> ### Refunds — decided 14 July
+> **Free-cancellation window: 3 days.** Cancel more than 3 days out and the refund is **whole** — no
+> deduction, whoever cancels. The slot can still be resold; nothing was really lost.
+>
+> **Inside the window, whoever cancels pays the transaction fee.**
+>
+> | Who cancelled | Player gets back | Who eats the fee |
+> |---|---|---|
+> | **The player** — changed their mind | Amount **minus** the fee | **The player** |
+> | **Host / organizer / coach** | **100%, whole** | **The canceller** — off their payout |
+> | **Venue, weather, or us** | **100%, whole** | **PickleBallers** |
+>
+> The principle: **you pay for the damage you cause.** A player must never be left worse off by
+> someone *else's* cancellation than by never having booked.
+>
+> ⚠️ **A refund is never free.** The gateway does not return the original processing fee when you
+> refund — that money is already spent — and some charge a further refund fee. Every refund costs
+> somebody; the table above only decides *who*.
+>
+> ### Gateway: **PayMongo — not set up yet**
+> **Do not hardcode a fee percentage.** It goes in settings beside `serviceFeePercent`, and the real
+> numbers get filled in when PayMongo is actually wired. No guessed figures in the code or the UI.
 
 ## 5. Two things Phase 1 exposed
 
