@@ -78,78 +78,79 @@ until they land.
 ---
 ---
 
-# Tagalog — Ano ang hindi pa tapos
+# Tagalog — Ano pa ang kulang
 
-Tapos na ang Phase 1 (5/5). Ito ang natitira.
+Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 
-**Wala nang naghihintay sa amin. Desisyon na lang ang hinihintay.**
+**Wala nang hinihintay sa amin. Desisyon niyo na lang ang kulang.**
 
 ---
 
-## 1. Sagutin muna ito: nagpapatakbo ba ng sariling session ang venue?
+## 1. Sagutin muna to: nagpapatakbo ba ng sarili nilang session ang mga venue?
 
-Pinagtalunan noong 14 Hulyo. Sabi ng minutes ninyo, oo (Section 10 at 5.3). Sinusunod ng app ang
-minutes — **32 sa 39** na Open Play ngayon ay pinapatakbo ng venue o organizer, hindi ng player na
-nag-book ng court. Ang recurring-sessions na ipinatapos mo ay nagdagdag pa ng ganitong uri.
+Nagkaiba tayo ng pagkakaintindi dito noong July 14. Sabi ng minutes niyo, oo (Section 10 at 5.3).
+Sinusunod ng app ang minutes — **32 sa 39** na Open Play ngayon ay venue o organizer ang nagpapatakbo,
+hindi player na nag-book ng court. Yung recurring sessions na pinatapos mo, mas marami pang ganito
+ang nadagdag.
 
-- **Kung oo** → tunay na butas ang item 2, at ito ang pinakamalaki dito.
-- **Kung hindi** → mali ang pinagbatayan ng trabahong iyon at dapat itong tanggalin.
+- **Kung oo** → totoong kulang ang item 2, at ito ang pinakamalaki dito.
+- **Kung hindi** → mali pala ang naging basehan ng trabahong yun, at dapat tanggalin.
 
-Huwag simulan ang item 2 hangga't walang sagot dito.
+Wag munang simulan ang item 2 hangga't walang sagot dito.
 
-## 2. Kalahati lang ang restriction
+## 2. Kalahati pa lang ang restriction
 
-**Gumagana:** kapag player ang nag-host, kaya niyang gawing pang-lalaki lang, pang-babae lang, o
-bukas sa lahat — at totoong naka-enforce ito. Hindi makakapasok ang hindi bagay.
+**Gumagana:** kapag player ang nag-host, kaya na niyang gawing lalaki lang, babae lang, o pwede lahat
+— at totoong hindi makakapasok yung hindi bagay.
 
-**Hindi gumagana:**
-- Ang mga session ng venue ay walang setting para dito, at walang pumipigil sa hindi bagay na sumali.
-- Walang skill restriction ("beginners lang") kahit saan.
-- **May pumili ng "ipakita pero markahan" imbes na "itago" — walang nag-approve niyan.**
+**Hindi pa gumagana:**
+- Yung mga session ng venue, walang ganitong setting. At kahit ilagay natin, walang pumipigil sa
+  hindi bagay na sumali.
+- Wala pang "beginners lang" na restriction kahit saan.
+- **May pumili ng "ipakita pero markahan" imbes na "itago" — walang nag-approve nun.**
 
-## 3. Walang lobby ang Open Play
+## 3. Wala pang lobby ang Open Play
 
-Isang pindot ("I'm Interested") at bilang ng tao. Walang listahan ng sigurado, walang imbitasyon,
-walang group chat.
+Isang pindot lang ("I'm Interested") tapos bilang ng tao. Hindi mo makikita kung sino ang sigurado,
+walang invite, walang group chat.
 
-Umiiral na ang mga piyesa sa ibang bahagi ng app. Ikakabit lang — hindi gagawin mula sa wala.
+May ganito nang parts sa ibang bahagi ng app. Ikakabit lang — hindi na gagawin from scratch.
 
-## 4. Walang patakaran sa pera
+## 4. Wala pang rules sa pera
 
-Sino ang maniningil, saan mapupunta, may porsyento ba ang PickleBallers, ano ang mangyayari sa
-refund. Pati sa coach — sinasabi mismo ng app na bayaran mo ang coach pagkatapos.
+Sino ang magsisingil, saan mapupunta, may kukunin ba ang PickleBallers, paano kapag nag-refund.
+Ganun din sa coach — sinasabi mismo ng app na bayaran mo na lang ang coach pagkatapos.
 
-Hindi ito mahirap gawin. **Hindi lang namin alam ang patakaran.** May dumadaan nang tunay na pera sa
-app (bayad sa tournament), kaya iyon ang palalawakin — hindi mag-iimbento ng bago.
+Hindi mahirap gawin. **Hindi lang namin alam ang rules.** May dumadaan nang totoong pera sa app
+(bayad sa tournament), kaya yun ang gagamitin — hindi na mag-iimbento ng bago.
 
-## 5. Dalawang bagay na lumitaw dahil sa Phase 1
+## 5. Dalawang bagay na lumabas dahil sa Phase 1
 
-- **Ang tab na "Events" ay walang events** — puro laro ng ordinaryong player ang laman. Ang tunay na
-  kompetisyon ay nasa labas ng Play. Pagsasamahin, o papalitan ang pangalan?
-- **May presyong lumalabas sa laro na hindi mo naman babayaran** — presyo iyon ng court na bayad na
-  ng host. Naayos na ang filter; ang listahan, hindi pa. Hindi ito maaayos hangga't hindi alam kung
-  sino ang maniningil.
+- **Yung "Events" tab, walang events sa loob** — puro laro ng ordinaryong player. Yung totoong
+  tournaments, nasa ibang lugar. Pagsasamahin ba, o papalitan ang pangalan?
+- **May presyong lumalabas sa laro pero hindi mo naman babayaran** — presyo yun ng court na bayad na
+  ng nag-host. Naayos na yung filter; yung nakasulat sa card, hindi pa. Hindi namin maaayos hangga't
+  di alam kung sino ang magsisingil.
 
-## 6. Sadyang ipinagpaliban
+## 6. Ipinagpaliban muna
 
-Social feed · cart checkout · pagrenta ng gamit para sa player · antas ng pahintulot ng staff ·
-pag-tune ng ranking.
+Social feed · cart checkout · pagrenta ng gamit para sa player · levels ng staff permission ·
+pag-adjust ng ranking.
 
 ## 7. Mga desisyong kailangan
 
-**Ang tatlong pinakamahalaga:**
-1. Magkakaroon ba ng lobby ang Open Play?
-2. Sino ang maniningil sa Open Play, at may kukunin ba ang PickleBallers?
-3. Itago ba ang larong hindi mo puwedeng salihan, o ipakita pero markahan?
+**Tatlo ang pinakaimportante:**
+1. Gagawan ba ng lobby ang Open Play?
+2. Sino ang magsisingil sa Open Play, at may kukunin ba ang PickleBallers?
+3. Itatago ba yung larong di mo pwedeng salihan, o ipapakita pero may marka?
 
-**Dagdag pa:** bayad sa coach · magkaiba ba ang "Like" at "Interested" · panghuling salita sa
-homepage.
+**Meron pang:** bayad sa coach · magkaiba ba ang "Like" at "Interested" · anong ilalagay sa homepage.
 
-**At anim na bagay na buhay na sa app pero walang nag-approve:** ang ₱499 na coach subscription (ang
-tanging kumikita), ang "₱229,000 partner revenue", ang pricing engine, ang rental inventory na hindi
-magamit, ang Tournaments na nasa labas ng Play, at ang request-to-book.
+**Tapos anim na bagay na buhay na sa app pero walang nag-approve:** yung ₱499 na coach subscription
+(yun lang ang kumikita), yung "₱229,000 partner revenue", yung pricing engine, yung rental inventory
+na hindi magamit, yung Tournaments na nasa labas ng Play, at yung request-to-book.
 
 ---
 
-**Susunod:** sagutin ang item 1, tapos kunin ang tatlong malaking desisyon sa isang meeting. Walang
-malaking masisimulan hangga't wala ang mga iyon.
+**Susunod:** sagutin ang item 1, tapos kunin ang tatlong malaking desisyon sa isang meeting. Wala
+kaming masisimulan hangga't wala pa yun.
