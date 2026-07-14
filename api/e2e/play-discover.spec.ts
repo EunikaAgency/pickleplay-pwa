@@ -105,10 +105,12 @@ test.describe('Discover filters (§4.3)', () => {
   test('the four new filters are offered', async ({ page }) => {
     await openFilters(page);
     // The meeting asked for free/paid, public/invite-only, recurring/one-time, venue.
+    // (Scoped by exact name: the feed's cards are role=button too, and their labels
+    // contain venue names.)
     await expect(page.getByText('Cost to join')).toBeVisible();
     await expect(page.getByText('Who can join')).toBeVisible();
     await expect(page.getByText('How often')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Venue' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Venue', exact: true })).toBeVisible();
   });
 
   test('"Weekly" narrows the feed to recurring sessions, and clearing restores it', async ({ page }) => {

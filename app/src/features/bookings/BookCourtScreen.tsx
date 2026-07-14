@@ -96,6 +96,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [step, setStep] = useState(0);
   const [bookingMode, setBookingMode] = useState<BookingMode>(intent === 'lobby' ? 'public_game' : 'open_play');
 
+  // Every step renders inside the same scroll container, so without this a long
+  // step (court list + calendar) leaves the next one scrolled to its bottom.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [step]);
+
   // Bookable venues (priced only) for the picker. The full directory is pulled
   // only when the picker is actually shown (no deep-linked venue, or the user taps
   // "Change") — a deep link uses the venue-detail fetch instead (see #5).
@@ -710,7 +717,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   };
 
   return (
-    <div className="scroll pb-[100px] pt-[calc(20px+env(safe-area-inset-top))]">
+    <div ref={scrollRef} className="scroll pb-[100px] pt-[calc(20px+env(safe-area-inset-top))]">
       <ScreenHeader
         onBack={back}
         backIcon={step === 0 ? 'close' : 'back'}
