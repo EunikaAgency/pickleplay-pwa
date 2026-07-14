@@ -4,7 +4,7 @@ import { CalendarDatePicker } from '../../shared/components/ui/CalendarDatePicke
 import { Chip } from '../../shared/components/ui/Chip';
 import {
   type GameFilters, makeDefaultGameFilters,
-  WHEN_OPTIONS, SKILL_OPTIONS, TYPE_OPTIONS, RADIUS_OPTIONS,
+  WHEN_OPTIONS, SKILL_OPTIONS, TYPE_OPTIONS, GENDER_OPTIONS, RADIUS_OPTIONS,
 } from './gameFilters';
 
 interface GameFilterSheetProps {
@@ -90,6 +90,17 @@ export function GameFilterSheet({ open, onClose, value, onChange, resultCount, s
           {typeOptions.map((t) => (
             <Chip key={t.value} selected={value.gameType === t.value} onClick={() => set({ gameType: t.value })}>
               {t.label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="field mt-[18px]">
+        <div className="lbl">Who can play</div>
+        <div className="flex gap-2 flex-wrap">
+          {GENDER_OPTIONS.map((g) => (
+            <Chip key={g.value} selected={value.genderPolicy === g.value} onClick={() => set({ genderPolicy: g.value })}>
+              {g.label}
             </Chip>
           ))}
         </div>

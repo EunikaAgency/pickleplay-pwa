@@ -11,12 +11,16 @@ import type { ScoredPlayItem } from './playRanking';
 export type WhenFilter = 'any' | 'today' | 'tomorrow' | 'weekend' | 'custom';
 export type SkillFilter = 'Any' | 'Beginner' | '2.5–3.0' | '3.0–3.5' | '3.5–4.0' | '4.0+';
 export type TypeFilter = 'Any' | 'doubles' | 'singles' | 'open';
+/** Who a listing admits — mirrors the host's own "Who can play" picker. */
+export type GenderFilter = 'Any' | 'all' | 'men' | 'women';
 
 /** The applied Games filters. */
 export interface GameFilters {
   when: WhenFilter;
   skill: SkillFilter;
   gameType: TypeFilter;
+  /** Who the listing admits (men-only / women-only / open to all). */
+  genderPolicy: GenderFilter;
   /** Only games that still have a free spot (`spotsLeft > 0`). */
   openings: boolean;
   /** Max distance in km. Null = no radius filter (or the user shared no location). */
@@ -43,6 +47,13 @@ export const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: 'open', label: 'Open Play' },
 ];
 
+export const GENDER_OPTIONS: { value: GenderFilter; label: string }[] = [
+  { value: 'Any', label: 'Any' },
+  { value: 'all', label: '🌍 Open to all' },
+  { value: 'men', label: '👨 Men only' },
+  { value: 'women', label: '👩 Women only' },
+];
+
 export const RADIUS_OPTIONS: { value: number | null; label: string }[] = [
   { value: null, label: 'Any distance' },
   { value: 2, label: 'Within 2 km' },
@@ -57,6 +68,7 @@ export const makeDefaultGameFilters = (radiusKm: number | null = null): GameFilt
   when: 'any',
   skill: 'Any',
   gameType: 'Any',
+  genderPolicy: 'Any',
   openings: false,
   radiusKm,
   customDate: null,
@@ -72,9 +84,18 @@ export function countActiveGameFilters(f: GameFilters): number {
   if (f.when !== 'any' && !(f.when === 'custom' && !f.customDate)) n++;
   if (f.skill !== 'Any') n++;
   if (f.gameType !== 'Any') n++;
+  if (f.genderPolicy !== 'Any') n++;
   if (f.openings) n++;
   if (f.radiusKm != null) n++;
   return n;
+}
+
+/** Who a listing admits. Venue-run sessions carry no policy, and a game created
+ *  before the field has none either — both read as open to everyone. */
+function policyOf(item: ScoredPlayItem): 'all' | 'men' | 'women' {
+  if (item.kind === 'session') return 'all';
+  const p = (item.source as { genderPolicy?: string | null }).genderPolicy;
+  return p === 'men' || p === 'women' ? p : 'all';
 }
 
 /** The numeric band a SkillFilter option covers. Null for 'Any'. */
@@ -129,6 +150,8 @@ export function matchesPlayFilters(item: ScoredPlayItem, f: GameFilters, now: Da
       : ((item.source as { gameType?: string | null }).gameType || 'open').toLowerCase();
     if (type !== f.gameType) return false;
   }
+
+  if (f.genderPolicy !== 'Any' && policyOf(item) !== f.genderPolicy) return false;
 
   // Interest-based listings have no capacity, so they always have room.
   if (f.openings && item.fill.mode === 'capacity' && item.fill.cap > 0 && item.fill.joined >= item.fill.cap) {
