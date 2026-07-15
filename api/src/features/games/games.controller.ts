@@ -876,6 +876,13 @@ export async function updateGame(c: any) {
     if (game.status === 'full' && game.participantIds.length < body.capacity) game.status = 'published';
   }
   if (body.visibility !== undefined) game.visibility = body.visibility;
+  if (body.joinFee !== undefined) {
+    // Same gate as creation: an organizer keeps their fee; anyone else is forced
+    // to free, so a lapsed/never-subscribed host can't start charging via edit.
+    (game as any).joinFee = body.joinFee > 0 && await hasActivePartnerSubscription(user.sub, 'organizer')
+      ? body.joinFee
+      : 0;
+  }
 
   // Singles 1v1 / Doubles 2v2 have a fixed seat count regardless of what was sent.
   const fixedCap = game.gameType === 'singles' ? 2 : game.gameType === 'doubles' ? 4 : null;
