@@ -60,6 +60,11 @@ Phase 1 is done (5/5). This is what's left.
 > - **Refunds** — 3-day free-cancellation window: whole refund > 3 days out, else the canceller bears
 >   the transaction fee (`transactionFeePercent`, 0 until PayMongo). `GET /bookings/:id/refund-quote`
 >   drives the refund screen's real "You paid / fee / You'll get back" figures **before** the confirm.
+> - **Recurring in booking step 2** — a "Repeat this booking" picker (Weekdays / Weekends / MWF / Daily
+>   / custom days + weeks) on the private court-hold review step. `createBooking` fans out the future
+>   occurrences as `awaiting_payment` holds (reserve the slot, paid lazily from My Bookings as each
+>   nears; one booking + 7% each), skipping already-taken weeks. *(Scope: private court holds. Recurring
+>   Open Play **games** — one lobby per occurrence — pairs with the lobby cutover below.)*
 >
 > **🔲 Still to build**
 > 1. **The merge — app + data cutover** (foundation shipped above): route Open Play to the real lobby
@@ -67,8 +72,6 @@ Phase 1 is done (5/5). This is what's left.
 >    clean-slate the dummy `OpenPlaySession` rows and read the feed from `Game` only.
 > 2. **Money flows** (card gate + refunds shipped): charge the organizer join fee on a paid Open Play
 >    (pairs with the lobby cutover above); route the coach lesson fee through checkout.
-> 3. **Recurring in booking step 2** — multi-day (MWF / consecutive / weekdays / weekends / custom),
->    lazy one-booking-+-7%-per-occurrence.
 
 ---
 
@@ -367,6 +370,11 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 > - **Refunds** — 3-araw na libreng bintana: buong refund kung >3 araw pa; sa loob, ang nagkansela ang
 >   sasagot sa transaction fee (`transactionFeePercent`, 0 hanggang PayMongo). `GET /bookings/:id/refund-quote`
 >   ang nagpapakita ng totoong "You paid / fee / You'll get back" **bago** mag-confirm.
+> - **Recurring sa booking step 2** — "Repeat this booking" picker (Weekdays / Weekends / MWF / Daily /
+>   custom na araw + linggo) sa review step ng private court hold. Ang `createBooking` ay gumagawa ng
+>   mga susunod na okasyon bilang `awaiting_payment` (nire-reserve ang slot, babayaran nang lazy sa My
+>   Bookings habang papalapit; isang booking + 7% bawat isa), nilalaktawan ang mga slot na kuha na.
+>   *(Scope: private court holds. Ang recurring Open Play **games** — isang lobby kada okasyon — ay isasabay sa lobby cutover sa baba.)*
 >
 > **🔲 Gagawin pa**
 > 1. **Ang merge — app + data cutover** (tapos na ang foundation sa itaas): i-route ang Open Play sa
@@ -374,8 +382,6 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 >    editable-cap UI; tapos linisin ang dummy `OpenPlaySession` rows at feed = `Game` na lang.
 > 2. **Money flows** (tapos na ang card gate + refunds): singilin ang organizer join fee sa bayad na
 >    Open Play (isabay sa lobby cutover sa itaas); idaan ang coach lesson fee sa checkout.
-> 3. **Recurring sa booking step 2** — maramihang araw (MWF / consecutive / weekdays / weekends / custom),
->    lazy na isang-booking-+-7%-kada-okasyon.
 
 ---
 
