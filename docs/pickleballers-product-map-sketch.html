@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PickleBallers — Product Map (sketch)</title>
+<style>
+  :root{
+    --ink:#2A3350;
+    --paper:#FDFCF8;
+    --grid:#E7EAF2;
+    --brand:#1E56D6;
+    --font:"Lato","Nimbus Sans","DejaVu Sans",sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:var(--font);
+    color:var(--ink);
+    background:
+      repeating-linear-gradient(0deg, transparent 0 23px, var(--grid) 23px 24px),
+      repeating-linear-gradient(90deg, transparent 0 23px, var(--grid) 23px 24px),
+      var(--paper);
+  }
+  .sheet{
+    width:190mm;
+    margin:0 auto;
+    padding:14mm 8mm 10mm;
+    page-break-after:always;
+    break-after:page;
+  }
+  .sheet:last-child{ page-break-after:auto; break-after:auto; }
+
+  .kicker{
+    font-size:12px; font-weight:700; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--brand); margin:0 0 6px;
+  }
+  h1{
+    font-size:40px; font-weight:900; letter-spacing:-.5px; line-height:1.02;
+    margin:0 0 10px;
+  }
+  h2{
+    font-size:25px; font-weight:900; letter-spacing:-.3px; margin:0 0 2px;
+    display:inline-block; position:relative;
+  }
+  .squig{ display:block; margin:2px 0 6px; }
+  .cap{ font-size:14px; color:#586084; max-width:150mm; margin:2px 0 8px; line-height:1.5; }
+  .cap b{ color:var(--ink); }
+  .lead{ font-size:15px; color:#4a5273; max-width:150mm; line-height:1.55; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:10px 14px; margin:16px 0 0; }
+  .lg{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+  .sw{ width:22px; height:16px; border-radius:5px; border:2px solid; }
+  .note-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .tack{
+    font-size:12.5px; color:#4a5273; background:#fff; border:2px solid var(--ink);
+    border-radius:3px; padding:8px 11px; max-width:150mm; line-height:1.45;
+    box-shadow:2px 2px 0 rgba(42,51,80,.14); transform:rotate(-.5deg);
+  }
+  .tack b{ color:var(--ink); }
+  svg{ display:block; width:100%; height:auto; }
+  .board{ margin-top:4px; }
+  text{ font-family:var(--font); }
+</style>
+</head>
+<body>
+
+  <!-- ===== TITLE SHEET ===== -->
+  <section class="sheet">
+    <p class="kicker">Product map · boardroom sketch</p>
+    <h1>PickleBallers —<br>how the platform works</h1>
+    <svg class="squig" viewBox="0 0 320 12" width="240" height="10" aria-hidden="true">
+      <path d="M2 7 C 40 1, 70 12, 110 6 S 190 1, 230 8 S 300 4, 318 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/>
+    </svg>
+    <p class="lead">A plain-language map of the pickleball platform for players, venue owners, and coaches — traced from the live code. Each page is one whiteboard-simple diagram you could redraw with a marker; the detail sits in the notes underneath.</p>
+
+    <div class="legend" style="margin-top:22px">
+      <span class="lg"><span class="sw" style="background:#E4F6EA;border-color:#1F9E5A"></span>Implemented — live</span>
+      <span class="lg"><span class="sw" style="background:#FCEFD0;border-color:#C98A1E"></span>Partially built</span>
+      <span class="lg"><span class="sw" style="background:#E6E9FA;border-color:#4E57C4"></span>Planned</span>
+      <span class="lg"><span class="sw" style="background:#FBDFD6;border-color:#C6462A"></span>Needs confirmation</span>
+    </div>
+
+    <div class="note-row">
+      <div class="tack"><b>Money model:</b> PickleBallers takes 7% on court bookings only. Coaching &amp; organizer fees are unlocked by paid subscriptions (₱499 / ₱999); the partner keeps 100%. Live payments are test-mode for now.</div>
+    </div>
+    <div class="note-row">
+      <div class="tack" style="transform:rotate(.6deg)"><b>One account, many roles.</b> A login can be a player and also a coach, organizer, or owner. Role decides the home screen: player app · owner dashboard · organizer hub.</div>
+    </div>
+  </section>
+
+  <!-- ===== 1 ECOSYSTEM ===== -->
+  <section class="sheet">
+    <p class="kicker">01 · Overview</p>
+    <h2>The ecosystem at a glance</h2>
+    <svg class="squig" viewBox="0 0 200 10" width="150" height="8"><path d="M2 6 C 40 1, 70 10, 120 5 S 180 3, 198 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/></svg>
+    <p class="cap">One shared platform feeds every role. Players, owners, and coaches are the core three; organizers and admins/staff support them.</p>
+    <div class="board" id="b-eco"></div>
+    <div class="note-row">
+      <div class="tack"><b>Guest-first:</b> the app opens on Home as a guest — browse courts, games and clubs freely; sign-in is asked only when you commit to an action.</div>
+    </div>
+  </section>
+
+  <!-- ===== 2 ENTRY ===== -->
+  <section class="sheet">
+    <p class="kicker">02 · Shared entry</p>
+    <h2>Register → log in → land by role</h2>
+    <svg class="squig" viewBox="0 0 200 10" width="150" height="8"><path d="M2 6 C 40 1, 70 10, 120 5 S 180 3, 198 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/></svg>
+    <p class="cap">Everyone enters the same door. What differs is where “commit” takes you and which home the account’s role opens.</p>
+    <div class="board" id="b-entry"></div>
+    <div class="note-row">
+      <div class="tack"><b>Live:</b> login, session restore, saved profile &amp; remembered onboarding. <b>To confirm:</b> multi-role sign-up currently lives on the website, not the app.</div>
+    </div>
+  </section>
+
+  <!-- ===== 3 PLAYER ===== -->
+  <section class="sheet">
+    <p class="kicker">03 · Player</p>
+    <h2>Player — five tabs, main journeys</h2>
+    <svg class="squig" viewBox="0 0 200 10" width="150" height="8"><path d="M2 6 C 40 1, 70 10, 120 5 S 180 3, 198 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/></svg>
+    <p class="cap"><b>Home · Map · Play · Social · Profile.</b> Coaches and organizers see this too — they’re players underneath.</p>
+    <div class="board" id="b-player"></div>
+    <div class="note-row">
+      <div class="tack"><b>Three ways to play:</b> <b>Book</b> a private court · <b>Open Play</b> a public listing others join (today an “interested” board; a real lobby is planned) · <b>Game</b> = a hosted lobby with roster, chat &amp; invites.</div>
+    </div>
+  </section>
+
+  <!-- ===== 4 OWNER ===== -->
+  <section class="sheet">
+    <p class="kicker">04 · Venue owner</p>
+    <h2>Venue owner — an operations console</h2>
+    <svg class="squig" viewBox="0 0 200 10" width="150" height="8"><path d="M2 6 C 40 1, 70 10, 120 5 S 180 3, 198 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/></svg>
+    <p class="cap">Owners get dashboards, not the player app. Below: the console, then how a booking that needs approval flows through.</p>
+    <div class="board" id="b-owner"></div>
+    <div class="board" id="b-life" style="margin-top:10px"></div>
+    <div class="note-row">
+      <div class="tack"><b>Also:</b> phone / walk-in / Messenger bookings are entered at the front desk; staff can run the console but can’t set prices or see business-wide revenue.</div>
+    </div>
+  </section>
+
+  <!-- ===== 5 COACH ===== -->
+  <section class="sheet">
+    <p class="kicker">05 · Coach</p>
+    <h2>Coach — become one, then take bookings</h2>
+    <svg class="squig" viewBox="0 0 200 10" width="150" height="8"><path d="M2 6 C 40 1, 70 10, 120 5 S 180 3, 198 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/></svg>
+    <p class="cap">A coach is a player with a paid subscription and an inbox — no separate app on mobile.</p>
+    <div class="board" id="b-coach"></div>
+    <div class="note-row">
+      <div class="tack"><b>Live:</b> subscribe, owner-approved venue badge, server-priced bookings. <b>Planned:</b> collecting the lesson fee in-app (today: pay the coach directly).</div>
+    </div>
+  </section>
+
+  <!-- ===== 6 CROSS-ROLE ===== -->
+  <section class="sheet">
+    <p class="kicker">06 · Cross-role</p>
+    <h2>How the roles hand off to each other</h2>
+    <svg class="squig" viewBox="0 0 200 10" width="150" height="8"><path d="M2 6 C 40 1, 70 10, 120 5 S 180 3, 198 6" fill="none" stroke="#1E56D6" stroke-width="3" stroke-linecap="round" filter="url(#rough)"/></svg>
+    <p class="cap">The roles are only useful because they connect — and notifications close every loop.</p>
+    <div class="board" id="b-cross"></div>
+    <div class="note-row">
+      <div class="tack"><b>Loops:</b> booking (player↔owner) · lesson (player↔coach) · coach application (coach→owner) · tournament (organizer→owner→players).</div>
+    </div>
+  </section>
+
+<script>
+/* ---------- shared defs (filter + arrowhead) injected once per svg ---------- */
+const NS="http://www.w3.org/2000/svg";
+const PAL={
+  brand:{f:"#E4ECFF",s:"#1E56D6",t:"#12204B"},
+  done: {f:"#E4F6EA",s:"#1F9E5A",t:"#123A22"},
+  partial:{f:"#FCEFD0",s:"#C98A1E",t:"#4A3607"},
+  planned:{f:"#E6E9FA",s:"#4E57C4",t:"#1E2450"},
+  needs:{f:"#FBDFD6",s:"#C6462A",t:"#4A1508"},
+  dark:{f:"#2A3350",s:"#2A3350",t:"#FFFFFF"},
+  plain:{f:"#FFFFFF",s:"#2A3350",t:"#2A3350"}
+};
+function el(tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h);}
+
+function svgBoard(id,w,h){
+  const svg=el("svg",{viewBox:`0 0 ${w} ${h}`,preserveAspectRatio:"xMidYMid meet"});
+  const defs=el("defs",{});
+  defs.innerHTML=
+    '<filter id="rough" x="-20%" y="-20%" width="140%" height="140%">'+
+    '<feTurbulence type="turbulence" baseFrequency="0.017" numOctaves="2" seed="7" result="t"/>'+
+    '<feDisplacementMap in="SourceGraphic" in2="t" scale="3.4" xChannelSelector="R" yChannelSelector="G"/>'+
+    '</filter>'+
+    '<marker id="ah" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">'+
+    '<path d="M1 1 L11 6 L1 11 L4 6 Z" fill="#2A3350"/></marker>';
+  svg.appendChild(defs);
+  document.getElementById(id).appendChild(svg);
+  return svg;
+}
+
+/* rectangle border point in the direction of (tx,ty) */
+function border(n,tx,ty){
+  const dx=tx-n.cx, dy=ty-n.cy;
+  if(dx===0&&dy===0)return{x:n.cx,y:n.cy};
+  const hw=n.w/2, hh=n.h/2;
+  const sx=dx===0?Infinity:hw/Math.abs(dx);
+  const sy=dy===0?Infinity:hh/Math.abs(dy);
+  const s=Math.min(sx,sy);
+  return{x:n.cx+dx*s, y:n.cy+dy*s};
+}
+
+function drawNode(svg,n){
+  const p=PAL[n.cls||"plain"];
+  const x=n.cx-n.w/2, y=n.cy-n.h/2;
+  const rot=((hash(n.id)%100)/100-0.5)*2.0;
+  const g=el("g",{transform:`rotate(${rot} ${n.cx} ${n.cy})`});
+  const gs=el("g",{filter:"url(#rough)"});
+  let shape;
+  if(n.shape==="diamond"){
+    const pts=`${n.cx},${y} ${x+n.w},${n.cy} ${n.cx},${y+n.h} ${x},${n.cy}`;
+    shape=el("polygon",{points:pts, fill:p.f, stroke:p.s, "stroke-width":2.4, "stroke-linejoin":"round"});
+  }else{
+    shape=el("rect",{x, y, width:n.w, height:n.h, rx:14, ry:14, fill:p.f, stroke:p.s, "stroke-width":2.4});
+  }
+  gs.appendChild(shape); g.appendChild(gs);
+  // text (crisp, on top)
+  const lines=n.lines; const lh=n.sub?15:16;
+  const total=lines.length; const startY=n.cy-((total-1)*lh)/2;
+  lines.forEach((ln,i)=>{
+    const isTitle=(i===0);
+    const t=el("text",{x:n.cx,y:startY+i*lh,"text-anchor":"middle","dominant-baseline":"middle",
+      fill:p.t, "font-size":isTitle?13.5:11.5, "font-weight":isTitle?800:600});
+    t.textContent=ln; g.appendChild(t);
+  });
+  if(n.icon){
+    const ic=el("text",{x:x+14,y:y+16,"font-size":13}); ic.textContent=n.icon; g.appendChild(ic);
+  }
+  svg.appendChild(g);
+}
+
+function drawEdge(svg,a,b,opt={}){
+  const p1=border(a,b.cx,b.cy), p2=border(b,a.cx,a.cy);
+  const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+  const dx=p2.x-p1.x, dy=p2.y-p1.y; const len=Math.hypot(dx,dy)||1;
+  const nx=-dy/len, ny=dx/len; const bow=opt.bow||0;
+  const cx=mx+nx*bow, cy=my+ny*bow;
+  const path=el("path",{d:`M${p1.x} ${p1.y} Q ${cx} ${cy} ${p2.x} ${p2.y}`,
+    fill:"none", stroke:opt.rel?"#8890AE":"#2A3350", "stroke-width":opt.rel?2:2.2,
+    "stroke-linecap":"round", filter:"url(#rough)"});
+  if(!opt.rel) path.setAttribute("marker-end","url(#ah)");
+  if(opt.dashed) path.setAttribute("stroke-dasharray","2 6");
+  svg.appendChild(path);
+  if(opt.label){
+    const lx=(p1.x+2*cx+p2.x)/4, ly=(p1.y+2*cy+p2.y)/4;
+    const w=opt.label.length*6.0+10;
+    svg.appendChild(el("rect",{x:lx-w/2,y:ly-9,width:w,height:16,rx:5,fill:"#FDFCF8",opacity:.92}));
+    const t=el("text",{x:lx,y:ly+1,"text-anchor":"middle","dominant-baseline":"middle",fill:"#3a4267","font-size":10.5,"font-weight":700});
+    t.textContent=opt.label; svg.appendChild(t);
+  }
+}
+
+/* small helper to build node objects */
+function N(id,cx,cy,lines,cls,opt={}){return Object.assign({id,cx,cy,w:opt.w||156,h:opt.h||52,lines,cls,shape:opt.shape,icon:opt.icon,sub:true},opt);}
+
+/* =================== 1 ECOSYSTEM =================== */
+(function(){
+  const svg=svgBoard("b-eco",820,300);
+  const core=N("core",410,66,["PickleBallers","shared API · data"],"dark",{w:250,h:66});
+  const spokes=[
+    N("player",95,235,["PLAYER","find · book · play"],"brand",{w:150}),
+    N("owner",255,235,["VENUE OWNER","list · fulfil"],"brand",{w:150}),
+    N("coach",410,235,["COACH","sell lessons"],"brand",{w:150}),
+    N("org",570,235,["ORGANIZER","events"],"planned",{w:150}),
+    N("admin",730,235,["ADMIN / STAFF","moderation"],"planned",{w:150}),
+  ];
+  [core,...spokes].forEach(n=>drawNode(svg,n));
+  spokes.forEach(s=>drawEdge(svg,core,s,{rel:true}));
+})();
+
+/* =================== 2 ENTRY =================== */
+(function(){
+  const svg=svgBoard("b-entry",820,720);
+  const open=N("open",410,44,["Open the app"],"dark",{w:170,h:46});
+  const guest=N("guest",410,140,["Home — browse","as a guest"],"brand",{w:180});
+  const commit=N("commit",410,258,["Join · book","· host?"],"plain",{w:150,h:78,shape:"diamond"});
+  const login=N("login",410,378,["Log in / Register"],"brand",{w:190});
+  const role=N("role",410,496,["Account","role?"],"plain",{w:150,h:78,shape:"diamond"});
+  const ph=N("ph",200,620,["Player Home"],"done",{w:170});
+  const oh=N("oh",410,620,["Owner Dashboard"],"done",{w:180});
+  const orh=N("orh",620,620,["Organizer Hub"],"done",{w:170});
+  const shared=N("shared",410,690,["Shared by all: Notifications · Profile · Messages · Search"],"partial",{w:470,h:44});
+  [open,guest,commit,login,role,ph,oh,orh,shared].forEach(n=>drawNode(svg,n));
+  drawEdge(svg,open,guest);
+  drawEdge(svg,guest,commit);
+  drawEdge(svg,commit,login,{label:"yes"});
+  drawEdge(svg,commit,guest,{label:"no",bow:150});
+  drawEdge(svg,login,role);
+  drawEdge(svg,role,ph,{label:"player / coach"});
+  drawEdge(svg,role,oh,{label:"owner"});
+  drawEdge(svg,role,orh,{label:"organizer"});
+  drawEdge(svg,ph,shared,{rel:true,dashed:true});
+  drawEdge(svg,oh,shared,{rel:true,dashed:true});
+  drawEdge(svg,orh,shared,{rel:true,dashed:true});
+})();
+
+/* =================== 3 PLAYER =================== */
+(function(){
+  const svg=svgBoard("b-player",820,700);
+  const home=N("home",410,46,["🏠 HOME"],"dark",{w:150,h:46});
+  const map=N("map",120,168,["📍 MAP"],"brand",{w:140});
+  const play=N("play",340,168,["🎾 PLAY"],"brand",{w:140});
+  const social=N("social",545,168,["👥 SOCIAL"],"brand",{w:140});
+  const profile=N("profile",720,168,["👤 PROFILE"],"brand",{w:140});
+  const court=N("court",120,300,["Court detail"],"done",{w:150});
+  const bookact=N("bookact",120,404,["Book / request","a court"],"done",{w:150});
+  const disc=N("disc",340,300,["Discover","open play"],"done",{w:150});
+  const viewg=N("viewg",340,404,["View game /","session"],"done",{w:150});
+  const act=N("act",340,520,["Join or","host?"],"plain",{w:140,h:76,shape:"diamond"});
+  const lobby=N("lobby",340,636,["Lobby:","roster · chat"],"done",{w:160});
+  const cf=N("cf",545,300,["Clubs &","Friends"],"done",{w:150});
+  const coach=N("coach",720,300,["Find / become","a coach"],"partial",{w:150});
+  const acct=N("acct",720,404,["Bookings ·","payments"],"done",{w:150});
+  [home,map,play,social,profile,court,bookact,disc,viewg,act,lobby,cf,coach,acct].forEach(n=>drawNode(svg,n));
+  [map,play,social,profile].forEach(t=>drawEdge(svg,home,t));
+  drawEdge(svg,map,court); drawEdge(svg,court,bookact);
+  drawEdge(svg,play,disc); drawEdge(svg,disc,viewg); drawEdge(svg,viewg,act);
+  drawEdge(svg,act,lobby,{label:"join / host"});
+  drawEdge(svg,social,cf);
+  drawEdge(svg,profile,coach); drawEdge(svg,profile,acct,{bow:-30});
+})();
+
+/* =================== 4 OWNER =================== */
+(function(){
+  const svg=svgBoard("b-owner",820,360);
+  const dash=N("dash",410,50,["🏠 OWNER HOME","revenue · KPIs"],"dark",{w:210,h:56});
+  const opsmap=N("opsmap",130,175,["📍 Ops map"],"brand",{w:150});
+  const courts=N("courts",320,175,["🎾 Courts","schedule"],"brand",{w:150});
+  const console=N("console",560,175,["👤 Console hub"],"brand",{w:160});
+  const venues=N("venues",130,315,["Venues &","courts"],"done",{w:150});
+  const bookings=N("bookings",320,315,["Bookings &","front desk"],"done",{w:150});
+  const customers=N("customers",510,315,["Members ·","analytics"],"done",{w:150});
+  const people=N("people",700,315,["Staff &","partners"],"done",{w:150});
+  [dash,opsmap,courts,console,venues,bookings,customers,people].forEach(n=>drawNode(svg,n));
+  [opsmap,courts,console].forEach(t=>drawEdge(svg,dash,t));
+  [venues,bookings,customers,people].forEach(c=>drawEdge(svg,console,c));
+})();
+
+/* ---- booking lifecycle strip ---- */
+(function(){
+  const svg=svgBoard("b-life",880,240);
+  const req=N("req",110,70,["Player requests","(card saved)"],"brand",{w:170});
+  const rev=N("rev",360,70,["Owner","approves?"],"plain",{w:150,h:78,shape:"diamond"});
+  const pay=N("pay",600,70,["Player pays"],"partial",{w:160});
+  const conf=N("conf",790,70,["Confirmed ✓"],"done",{w:150});
+  const dec=N("dec",360,190,["Declined"],"needs",{w:150});
+  [req,rev,pay,conf,dec].forEach(n=>drawNode(svg,n));
+  drawEdge(svg,req,rev);
+  drawEdge(svg,rev,pay,{label:"approve"});
+  drawEdge(svg,pay,conf);
+  drawEdge(svg,rev,dec,{label:"decline"});
+})();
+
+/* =================== 5 COACH =================== */
+(function(){
+  const svg=svgBoard("b-coach",840,620);
+  const start=N("start",190,48,["Profile →","Coaching"],"brand",{w:160});
+  const sub=N("sub",190,158,["Subscribe","₱499"],"done",{w:150});
+  const apply=N("apply",190,268,["Apply to","a venue"],"done",{w:150});
+  const owner=N("owner",190,392,["Owner","approves?"],"plain",{w:150,h:78,shape:"diamond"});
+  const listed=N("listed",190,522,["Listed in","Find Coach"],"done",{w:160});
+  const again=N("again",400,392,["Reapply"],"partial",{w:130});
+  const booked=N("booked",470,522,["Player books","a session"],"done",{w:160});
+  const inbox=N("inbox",690,522,["Coach inbox"],"done",{w:150});
+  const decide=N("decide",690,392,["Accept /","decline"],"plain",{w:150,h:78,shape:"diamond"});
+  const player=N("player",470,158,["Uses the","player app too"],"brand",{w:170});
+  [start,sub,apply,owner,listed,again,booked,inbox,decide,player].forEach(n=>drawNode(svg,n));
+  drawEdge(svg,start,sub); drawEdge(svg,sub,apply); drawEdge(svg,apply,owner);
+  drawEdge(svg,owner,listed,{label:"yes"});
+  drawEdge(svg,owner,again,{label:"no"});
+  drawEdge(svg,listed,booked); drawEdge(svg,booked,inbox); drawEdge(svg,inbox,decide);
+  drawEdge(svg,sub,player,{label:"still a player",dashed:true,rel:true});
+})();
+
+/* =================== 6 CROSS-ROLE =================== */
+(function(){
+  const svg=svgBoard("b-cross",760,540);
+  const player=N("player",160,95,["PLAYER"],"brand",{w:150,h:56});
+  const owner=N("owner",600,95,["OWNER"],"brand",{w:150,h:56});
+  const coach=N("coach",160,320,["COACH"],"brand",{w:150,h:56});
+  const org=N("org",600,320,["ORGANIZER"],"brand",{w:160,h:56});
+  const notif=N("notif",380,470,["🔔 Notifications + Push","close every loop"],"done",{w:240,h:52});
+  [player,owner,coach,org,notif].forEach(n=>drawNode(svg,n));
+  drawEdge(svg,player,owner,{label:"books a court",bow:26});
+  drawEdge(svg,owner,player,{label:"approves & fulfils",bow:26});
+  drawEdge(svg,player,coach,{label:"books a lesson"});
+  drawEdge(svg,coach,owner,{label:"applies to venue"});
+  drawEdge(svg,org,owner,{label:"requests a venue"});
+  drawEdge(svg,org,player,{label:"opens registration"});
+  drawEdge(svg,owner,notif,{dashed:true,rel:true});
+  drawEdge(svg,coach,notif,{dashed:true,rel:true});
+  drawEdge(svg,org,notif,{dashed:true,rel:true});
+  drawEdge(svg,notif,player,{dashed:true});
+})();
+
+window.__ready=true;
+</script>
+</body>
+</html>
