@@ -117,6 +117,15 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [section, setSection] = useState<Section>(initialSection);
   const [view, setView] = useState<View>(initialView);
   const [loading, setLoading] = useState(true);
+  // Discover has its own load flag so the ranked feed can wait on geolocation
+  // without holding up the list-based views (Joined / Manage / Invites), which
+  // key off `loading`. `refetching` is a *background* refresh (session restore or
+  // location settling) that updates the feed in place instead of blanking it.
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [refetching, setRefetching] = useState(false);
+  // Signature of the last *primary* Discover load (section + retry key). A run
+  // whose signature is unchanged is a background refetch, not a primary load.
+  const discoverLoadSig = useRef<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -237,7 +246,14 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   useEffect(() => {
     if (locStatus === 'locating') return;
     let alive = true;
-    setLoading(true);
+    // A primary load (first fetch, a section switch, or an explicit retry) shows
+    // the feed skeleton. A run triggered only by the session restoring or the
+    // location settling reuses the same signature — it refreshes the ranked feed
+    // in place, so the screen doesn't blank and "twitch" a second time on reload.
+    const sig = `${section}|${reloadKey}`;
+    const isPrimary = discoverLoadSig.current !== sig;
+    discoverLoadSig.current = sig;
+    if (isPrimary) setFeedLoading(true); else setRefetching(true);
     getPlayDiscover({
       // This screen has always called the section 'games'; the API calls the same
       // thing 'events', which is what the meeting named it and what the tab reads.
@@ -250,7 +266,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       // available"), which would tell the user the catalogue is empty when the
       // server actually errored. Say so instead.
       .catch((e) => { if (alive) setFeedError(e instanceof Error ? e.message : 'Could not load plays.'); })
-      .finally(() => { if (alive) setLoading(false); });
+      .finally(() => { if (alive) { setFeedLoading(false); setRefetching(false); } });
     return () => { alive = false; };
   }, [section, userLoc, locStatus, isLoggedIn, reloadKey]);
 
@@ -556,9 +572,13 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
 
         <div className="tab-group-row">
           <div className="tab-group" role="tablist" aria-label="Play view">
+            {/* The tab SET is stable across load cycles: Joined/Invites appear only
+                when they actually have something (or are the active view), never
+                keyed on `loading`. Keying them on `loading` made the row expand to
+                all tabs and then collapse on every re-fetch — the reload "twitch". */}
             {(section === 'open-play'
-              ? (['discover', 'joined', 'invites', 'manage'] as View[]).filter(k => (k !== 'joined' || loading || hasOpenPlayJoined) && (k !== 'invites' || loading || hasOpenPlayInvites))
-              : (['discover', 'joined', 'manage'] as View[]).filter(k => k !== 'joined' || loading || hasGamesJoined)
+              ? (['discover', 'joined', 'invites', 'manage'] as View[]).filter(k => (k !== 'joined' || hasOpenPlayJoined || view === 'joined') && (k !== 'invites' || hasOpenPlayInvites || view === 'invites'))
+              : (['discover', 'joined', 'manage'] as View[]).filter(k => k !== 'joined' || hasGamesJoined || view === 'joined')
             ).map((key) => (
                 <button key={key} className={'seg-btn' + (view === key ? ' active' : '')} role="tab" aria-selected={view === key} onClick={() => selectView(key as View)}>
                   {key === 'discover' ? 'Discover' : key === 'joined' ? 'Joined' : key === 'invites' ? (
@@ -639,7 +659,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           )}
         </div>
 
-        <div className="games-list-scroll">
+        <div className="games-list-scroll" aria-busy={feedLoading || loading || refetching}>
           {/* Location denied/unavailable: proximity has dropped out of the ranking
               and the Distance sort is gone. Say so, and offer the way back. */}
           {isDiscoverFeed && locStatus === 'denied' && !locDismissed && (
@@ -653,9 +673,9 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               </div>
             </div>
           )}
-          {loading ? <V2Skeleton variant="game-list" count={5} /> : null}
+          {(isDiscoverFeed ? feedLoading : loading) ? <V2Skeleton variant="game-list" count={5} /> : null}
           {/* A failed fetch is not an empty catalogue. Say so, and offer a retry. */}
-          {!loading && isDiscoverFeed && feedError && (
+          {!feedLoading && isDiscoverFeed && feedError && (
             <Empty
               icon="⚠️"
               title="Couldn’t load plays"
@@ -663,7 +683,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               action={{ label: 'Try again', onClick: () => setReloadKey((k) => k + 1) }}
             />
           )}
-          {!loading && !feedError && section === 'games' && view === 'discover' && (
+          {!feedLoading && !feedError && section === 'games' && view === 'discover' && (
             <DiscoverFeed
               items={discoverFiltered}
               onOpen={(i) => onNavigate('game-details', { id: i.id })}
@@ -690,7 +710,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesManageFiltered.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
           )}
-          {!loading && !feedError && section === 'open-play' && view === 'discover' && (
+          {!feedLoading && !feedError && section === 'open-play' && view === 'discover' && (
             <DiscoverFeed
               items={discoverFiltered}
               onOpen={(i) => onNavigate('open-play-detail', { source: i.kind, id: i.id })}

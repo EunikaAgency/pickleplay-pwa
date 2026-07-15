@@ -100,7 +100,9 @@ import { SettingsScreenV2 } from './features/profile/v2/SettingsScreenV2';
 import { CreateGameV2 } from './features/games/v2/CreateGameV2';
 import { OpenPlayDetailScreen } from './features/games/v2/OpenPlayDetailScreen';
 import { CreateClubV2 } from './features/clubs/v2/CreateClubV2';
-import type { V2ScreenChrome } from './shared/components/layout/V2Chrome';
+import { V2Shell, type V2ScreenChrome } from './shared/components/layout/V2Chrome';
+import { V2Skeleton } from './shared/components/ui/V2Skeleton';
+import { hasStoredSession } from './shared/lib/api';
 
 /**
  * A screen can be reachable by more than one route to the same job, in which case
@@ -482,6 +484,15 @@ function AppInner() {
   // Clubs/Profile/Settings/Create, so `playerV2` is simply "any non-owner".
   const isOwner = userHasPermission(currentUser, 'owner.access');
   const isOrganizer = userHasPermission(currentUser, 'organizer.access') && !isOwner;
+
+  // A stored session is present but not yet validated: we hold a token, but the
+  // user (and therefore the role) isn't known until `restore()`'s /me lands. A
+  // cached session seeds `currentUser` synchronously (authStore), so this is only
+  // true on a cold reload whose cached user is missing — never for a guest (no
+  // token) and never once restore has settled. While true, the role-branched tab
+  // roots below would render the guest/player screen and then swap to the
+  // owner/organizer one when /me returns; hold a skeleton instead.
+  const sessionPending = !restored && !currentUser && hasStoredSession();
   // v2.1 is the player design; owners get their dedicated dashboards, and
   // organizers get the owner-style chrome (bottom TabBar + desktop Sidebar)
   // instead of the player v2 flow.
@@ -554,6 +565,20 @@ function AppInner() {
     }
     if (screen.id === 'reset-password') {
       return <ResetPasswordScreen onNavigate={navigate} onBack={goBack} token={screen.params.token} />;
+    }
+
+    // While a stored session is validating, the role isn't known yet — hold a
+    // chrome-stable skeleton on the role-branched tab roots (home / nearby /
+    // games) rather than briefly rendering the guest/player screen and then
+    // swapping to the owner/organizer one (or re-running loads) when /me lands.
+    if (sessionPending && (screen.id === 'home' || screen.id === 'nearby' || screen.id === 'games')) {
+      if (screen.id === 'home') {
+        return <V2Shell screen="v2-home" chrome={v2Chrome} hideBack><div className="page-content"><V2Skeleton variant="home-featured" /><V2Skeleton variant="home-discover" count={4} /></div></V2Shell>;
+      }
+      if (screen.id === 'nearby') {
+        return <V2Shell screen="v2-nearby" chrome={v2Chrome}><div className="page-content"><V2Skeleton variant="court-list" count={5} /></div></V2Shell>;
+      }
+      return <V2Shell screen="v2-games" chrome={v2Chrome}><div className="page-content"><V2Skeleton variant="game-list" count={5} /></div></V2Shell>;
     }
 
     // Everything below is browsable as a guest; commit actions inside each

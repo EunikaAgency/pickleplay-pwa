@@ -100,11 +100,16 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
   const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;
   const showOwnerPartners = userHasPermission(currentUser, 'owner.access') && onOpenPartners;
   const footName = currentUser?.displayName ?? 'Guest';
-  const footSub = currentUser
-    ? currentUser.skillLevel != null
-      ? `DUPR ${currentUser.skillLevel}`
-      : currentUser.skillLevelLabel ?? ROLE_META[primaryRole(currentUser)].label
-    : 'Browsing as guest';
+  // Staff aren't players, so show their role ("Staff") under the name rather
+  // than a DUPR rating (which they may still carry on the account).
+  const isStaff = currentUser?.roleDefault === 'staff';
+  const footSub = !currentUser
+    ? 'Browsing as guest'
+    : isStaff
+      ? ROLE_META[primaryRole(currentUser)].label
+      : currentUser.skillLevel != null
+        ? `DUPR ${currentUser.skillLevel}`
+        : currentUser.skillLevelLabel ?? ROLE_META[primaryRole(currentUser)].label;
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-brand">

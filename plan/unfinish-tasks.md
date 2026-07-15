@@ -295,11 +295,13 @@ inventory, Tournaments sitting outside Play, and request-to-book.
 
 ---
 
-**Next: the build can start.** Open Play, the revenue model, and refunds are all settled. The work is
-a **merge** (`OpenPlaySession` → `Game`), not a rebuild.
+**Status (15 July): the build is well underway.** 10 of the plan's pieces are shipped (see the Build
+status block up top) — skill restriction, item 7, the merge's API foundation, homepage wording, rental
+"Coming soon", smart-pricing removal, admin money settings, the demo card gate, refunds, and recurring.
 
-Only two things are still open — **homepage wording** and the **seven live-but-unapproved things** —
-and neither blocks a line of it.
+**Two groups remain:** the **Open Play lobby cutover + migration** (route Open Play to the real lobby,
+create it via a court booking, player-set cap, then clean-slate the dummy rows), and the **two money
+flows** that pair with it (the organizer join fee, and the coach lesson through checkout).
 
 *Detail, if you want it: [`minutes-2026-07-08-followup.md`](minutes-2026-07-08-followup.md) ·
 [`../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md`](../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md)*
@@ -616,8 +618,10 @@ na hindi magamit, yung Tournaments na nasa labas ng Play, at yung request-to-boo
 
 ---
 
-**Susunod: pwede nang simulan ang build.** Tapos na ang Open Play, ang modelo ng kita, at ang refund.
-**Pagsasanib** ang trabaho (`OpenPlaySession` → `Game`), hindi paggawa ng bago.
+**Status (15 Hulyo): malayo na ang build.** 10 na piraso ng plano ang tapos na (tingnan ang Build
+status sa itaas) — skill restriction, item 7, ang API foundation ng merge, homepage wording, rental
+"Coming soon", pagtanggal ng smart-pricing, admin money settings, ang demo card gate, refunds, at recurring.
 
-Dalawang bagay na lang ang bukas — **wording ng homepage** at yung **pitong buhay-pero-walang-approval**
-— at wala ni isang linyang hinaharangan ng dalawang yun.
+**Dalawang grupo na lang ang natitira:** ang **Open Play lobby cutover + migration** (i-route ang Open
+Play sa tunay na lobby, gawin via court booking, player-set cap, tapos linisin ang dummy rows), at ang
+**dalawang money flow** na kaakibat nito (ang organizer join fee, at ang coach lesson sa checkout).

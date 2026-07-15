@@ -854,12 +854,16 @@ export async function unreadMessageCount(c: any) {
     ],
     hiddenFor: { $ne: user.sub },
   }).select('reads').lean();
-  let count = 0;
-  await Promise.all(
+  // Count each thread independently, then sum. NB: `count += await …` inside
+  // Promise.all is a race — every callback reads `count` before its await, so
+  // the total collapses to whichever query resolves last (badge showed 1–2
+  // instead of the real 4). Summing the resolved array is order-independent.
+  const perConversation = await Promise.all(
     convs.map(async (cv: any) => {
       const since = new Date(readAtMs(cv, user.sub));
-      count += await Message.countDocuments({ conversationId: cv._id, senderId: { $ne: user.sub }, deleted: { $ne: true }, createdAt: { $gt: since } });
+      return Message.countDocuments({ conversationId: cv._id, senderId: { $ne: user.sub }, deleted: { $ne: true }, createdAt: { $gt: since } });
     }),
   );
+  const count = perConversation.reduce((sum, n) => sum + n, 0);
   return c.json({ data: { count } });
 }
