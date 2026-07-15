@@ -92,6 +92,18 @@ export async function checkout(c: any) {
   const amount = typeof body.amount === 'number' ? body.amount : parseFloat(body.amount);
   const testMode = await isPaymentTestMode();
 
+  // Demo card gate: in test mode a card whose number isn't the canonical test card
+  // is declined, so the form behaves like a real gateway — right card → paid, wrong
+  // card → error. Expiry/CVC are not checked (any values pass). A checkout with no
+  // card at all (e.g. paying an already-approved booking off its saved card) skips
+  // this and follows the normal path.
+  if (testMode && body.card?.number) {
+    const entered = body.card.number.replace(/\D/g, '');
+    if (entered !== '4242424242424242') {
+      return c.json({ error: { code: 'CARD_DECLINED', message: 'Card declined. Use the demo test card 4242 4242 4242 4242 (any future expiry, any CVC).' } }, 402);
+    }
+  }
+
   // Request-to-book lifecycle guard: an approval-required booking can only be
   // paid once the owner has accepted it, and only before its pay-window lapses.
   // (Instant-book bookings are already 'confirmed', so these checks no-op.)

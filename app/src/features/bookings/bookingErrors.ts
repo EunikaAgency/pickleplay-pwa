@@ -23,6 +23,8 @@ export function mapBookingError(e: unknown): MappedBookingError {
       return { message: 'That time has already passed — please pick a later time.', backToStep0: true };
     case 'PRICE_MISMATCH':
       return { message: 'The price changed while you were booking — please review the updated total and try again.', backToStep0: true };
+    case 'CARD_DECLINED':
+      return { message: e instanceof ApiError && e.message ? e.message : 'Card declined — in demo mode use the test card 4242 4242 4242 4242.', backToStep0: false };
     case 'NOT_FOUND':
       return { message: 'This court is no longer available.', backToStep0: false };
     default:
