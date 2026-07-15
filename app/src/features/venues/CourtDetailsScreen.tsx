@@ -1133,11 +1133,35 @@ function CourtDetail({
                   : reapplySub ?? row.sub;
                 return (
                   <div key={row.kind}>
+                    {isPending ? (
+                      // Pending: not tappable-to-cancel any more — an explicit
+                      // "Cancel request" button sits beside the Pending badge, so
+                      // the row is a plain card (can't nest a button in a button).
+                      <div className="w-full flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)]">
+                        <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center shrink-0">
+                          <Icon name={row.icon} size={15} />
+                        </span>
+                        <span className="min-w-0 text-left">
+                          <span className="block">{row.label}</span>
+                          <span className="block text-[12px] font-medium text-[var(--muted)]">Application pending — waiting for the venue to approve</span>
+                        </span>
+                        <span className="ml-auto flex items-center gap-2 shrink-0">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF3E0] text-[#E65100] border border-[#FFB74D] whitespace-nowrap">Pending</span>
+                          <button
+                            type="button"
+                            onClick={() => { if (applyBusy === '') void cancelPartner(row.kind); }}
+                            disabled={applyBusy !== ''}
+                            className="px-2.5 py-1 rounded-full text-[11px] font-bold text-[var(--coral)] border border-[var(--coral)] disabled:opacity-60 whitespace-nowrap"
+                          >
+                            {applyBusy === row.kind ? 'Cancelling…' : 'Cancel request'}
+                          </button>
+                        </span>
+                      </div>
+                    ) : (
                     <button
                       className="w-full flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)] disabled:opacity-60"
                       onClick={() => {
                         if (disabled) return;
-                        if (isPending) { void cancelPartner(row.kind); return; }
                         void applyPartner(row.kind);
                       }}
                       disabled={disabled}
@@ -1149,15 +1173,13 @@ function CourtDetail({
                         <span className="block">{mainLabel}</span>
                         <span className="block text-[12px] font-medium text-[var(--muted)]">{subLabel}</span>
                       </span>
-                      {isPending && (
-                        <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF3E0] text-[#E65100] border border-[#FFB74D] whitespace-nowrap">Pending</span>
-                      )}
                       {isApproved && (
                         <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#81C784] whitespace-nowrap">Approved</span>
                       )}
                       {needsSub && <Icon name="lock" size={14} className="ml-auto text-[var(--muted)]" />}
-                      {!isPending && !isApproved && !needsSub && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
+                      {!isApproved && !needsSub && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
                     </button>
+                    )}
                     {needsSub && (
                       <button
                         type="button"
