@@ -124,13 +124,11 @@ function joinedOf(g: ApiGame): { joined: number; cap: number; pct: number; almos
   const pct = cap > 0 ? Math.min(100, Math.round((joined / cap) * 100)) : 0;
   return { joined, cap, pct, almost: cap > 0 && g.spotsLeft != null && g.spotsLeft <= 1 };
 }
-// Open Play games are interest-based (no roster/slots). Inlined locally — home
-// doesn't cross-import the games slice's gameDisplay.
+// Open Play now has a real lobby (roster + cap), so the home rail shows spots
+// like any game; `isOpenPlayGame` only routes to the right detail screen.
+// Inlined locally — home doesn't cross-import the games slice's gameDisplay.
 function isOpenPlayGame(g: ApiGame): boolean {
   return ((g.gameType || '').toLowerCase() || 'open') === 'open';
-}
-function interestOf(g: ApiGame): number {
-  return g.interestedCount ?? g.interestedUsers?.length ?? 0;
 }
 function levelClass(g: ApiGame): { cls: string; label: string } {
   const s = (g.skillLabel || '').toLowerCase();
@@ -300,13 +298,9 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
             <div className="featured">
               <div className="featured-media" style={gameImage(featured) ? { backgroundImage: `url(${gameImage(featured)})` } : undefined}>
                 <span className="badge-pill">{featured.whenLabel || 'Upcoming'}</span>
-                {isOpenPlayGame(featured)
-                  ? interestOf(featured) > 0 && (
-                      <span className="spots-badge">{interestOf(featured)} interested</span>
-                    )
-                  : featured.spotsLeft != null && featured.spotsLeft > 0 && (
-                      <span className="spots-badge">{featured.spotsLeft} spot{featured.spotsLeft === 1 ? '' : 's'} left!</span>
-                    )}
+                {featured.spotsLeft != null && featured.spotsLeft > 0 && (
+                  <span className="spots-badge">{featured.spotsLeft} spot{featured.spotsLeft === 1 ? '' : 's'} left!</span>
+                )}
                 <div className="featured-overlay-text"><h2>{gameTitle(featured)}</h2></div>
               </div>
               <div className="featured-content">
@@ -317,9 +311,7 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
                 </div>
                 <div className="avatar-row">
                   <span className="avatar-label">
-                    {isOpenPlayGame(featured)
-                      ? `${interestOf(featured)} interested`
-                      : `${joinedOf(featured).joined} of ${joinedOf(featured).cap || '?'} joined`}
+                    {`${joinedOf(featured).joined} of ${joinedOf(featured).cap || '?'} joined`}
                   </span>
                 </div>
                 <div className="cta-row">
@@ -354,16 +346,10 @@ export function HomeScreenV2(chrome: V2ScreenChrome) {
                     <div className="game-body">
                       <h3>{gameTitle(g)}</h3>
                       <div className="meta-row"><span>{gameWhen(g)}</span></div>
-                      {isOpenPlayGame(g) ? (
-                        <div className="slots-row">
-                          <span className="slots-label">{interestOf(g)} interested</span>
-                        </div>
-                      ) : (
-                        <div className="slots-row">
-                          <div className="slots-bar"><div className={`slots-fill${slot.almost ? ' almost' : ''}`} style={{ width: `${slot.pct}%` }} /></div>
-                          <span className="slots-label">{slot.joined}/{slot.cap || '?'} spots</span>
-                        </div>
-                      )}
+                      <div className="slots-row">
+                        <div className="slots-bar"><div className={`slots-fill${slot.almost ? ' almost' : ''}`} style={{ width: `${slot.pct}%` }} /></div>
+                        <span className="slots-label">{slot.joined}/{slot.cap || '?'} spots</span>
+                      </div>
                     </div>
                   </article>
                 );

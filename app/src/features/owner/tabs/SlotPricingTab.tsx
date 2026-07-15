@@ -11,7 +11,6 @@ import {
   type SlotPriceOverride, type ApiCourt, type ApiVenue,
 } from '../../../shared/lib/api';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
-import { PricingSuggestionsCard } from './PricingSuggestionsCard';
 
 interface SlotPricingTabProps {
   venueId: string;
@@ -100,9 +99,6 @@ export function SlotPricingTab({ venueId }: SlotPricingTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Demand-based pricing suggestions (AI-generated from booking data). */}
-      <PricingSuggestionsCard venueId={venueId} />
-
       {/* Auto dynamic pricing — owner opt-in for hands-off demand-based adjustments. */}
       <AutoPricingToggle venueId={venueId} />
 

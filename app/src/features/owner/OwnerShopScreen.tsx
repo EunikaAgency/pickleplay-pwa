@@ -140,7 +140,25 @@ function MobileCard({ item, onView, onEdit, onArchive }: { item: ApiRentalInvent
 
 // ── Main Screen ─────────────────────────────────────────────────────────────
 
-export function OwnerShopScreen({ onNavigate: _onNavigate, onBack }: OwnerShopScreenProps) {
+// Rental inventory is built but not launched yet — the screen shows a "Coming soon"
+// placeholder (decision, 15 Jul: keep it, don't hide/delete, surface as coming soon).
+// The full manager (OwnerShopManager, below) is preserved unrendered for when it ships.
+export function OwnerShopScreen({ onBack }: OwnerShopScreenProps) {
+  return (
+    <div className="pb-v2">
+      <ScreenHeader onBack={onBack} title="Shop / Rental" subtitle="Equipment stock and rentals" />
+      <div className="px-5 py-16 flex flex-col items-center text-center">
+        <div className="text-[12px] font-extrabold uppercase tracking-wide text-[var(--ink)] bg-[var(--surface-2)] px-3 py-1 rounded-full mb-4">Coming soon</div>
+        <h2 className="text-[20px] font-extrabold text-[var(--ink)] mb-2">Shop &amp; equipment rental</h2>
+        <p className="text-[14px] font-semibold text-[var(--muted)] max-w-[320px]">
+          Rent out paddles, balls, and gear from your venue. We&rsquo;re putting the finishing touches on it — check back soon.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function OwnerShopManager({ onNavigate: _onNavigate, onBack }: OwnerShopScreenProps) {
   const { venues } = useOwnerDashboard();
 
   // Data state

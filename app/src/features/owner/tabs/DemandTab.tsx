@@ -4,7 +4,6 @@ import { ErrorState } from '../../../shared/components/ui/ErrorState';
 import { Chip } from '../../../shared/components/ui/Chip';
 import { OwnerStat } from '../components/OwnerStat';
 import { OwnerSection } from '../components/OwnerSection';
-import { PricingSuggestionsCard } from './PricingSuggestionsCard';
 import { getVenueDemand, type VenueDemandReport } from '../../../shared/lib/api';
 
 interface DemandTabProps {
@@ -301,9 +300,6 @@ export function DemandTab({ venueId }: DemandTabProps) {
           </p>
         )}
       </OwnerSection>
-
-      {/* Inline pricing suggestions (already built) */}
-      <PricingSuggestionsCard venueId={venueId} />
     </div>
   );
 }

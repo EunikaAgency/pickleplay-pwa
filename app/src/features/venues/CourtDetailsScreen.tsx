@@ -8,6 +8,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { MembershipSheet } from './MembershipSheet';
+import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import type { Navigate } from '../../shared/lib/navigation';
 import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, submitCoachApplication, getMyCoachApplicationForVenue, cancelCoachApplication, submitOrganizerApplication, getMyOrganizerApplicationForVenue, cancelOrganizerApplication, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
@@ -426,6 +427,9 @@ function CourtDetail({
   const [coachApp, setCoachApp] = useState<{ id: string; status: string } | null>(null);
   const [orgApp, setOrgApp] = useState<{ id: string; status: string } | null>(null);
   const [applyBusy, setApplyBusy] = useState<'' | 'coach' | 'organizer'>('');
+  // Which partner application the user is confirming a cancel for — drives an
+  // in-app confirmation sheet instead of a native window.confirm().
+  const [confirmCancel, setConfirmCancel] = useState<'' | 'coach' | 'organizer'>('');
   useEffect(() => {
     if (!canApplyPartner) return;
     let cancelled = false;
@@ -470,7 +474,6 @@ function CourtDetail({
   const cancelPartner = async (kind: 'coach' | 'organizer') => {
     const app = kind === 'coach' ? coachApp : orgApp;
     if (!app || app.status !== 'pending') return;
-    if (!window.confirm(`Cancel your ${kind === 'coach' ? 'coach' : 'organiser'} application?`)) return;
     setApplyBusy(kind);
     try {
       if (kind === 'coach') { await cancelCoachApplication(app.id); setCoachApp(null); }
@@ -1100,7 +1103,7 @@ function CourtDetail({
                 <div className="hd-2 mt-1">Coach or organise here</div>
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               {([
                 { kind: 'coach' as const, icon: 'school', label: 'Become a coach', sub: 'Run clinics & lessons at this venue', status: coachApp?.status ?? null, noun: 'a coach' },
                 { kind: 'organizer' as const, icon: 'trophy', label: 'Become an organizer', sub: 'Host tournaments & events here', status: orgApp?.status ?? null, noun: 'an organiser' },
@@ -1131,13 +1134,17 @@ function CourtDetail({
                 const subLabel = isPending ? 'Application pending — tap to cancel'
                   : isApproved ? 'Partnership active'
                   : reapplySub ?? row.sub;
+                // Each entry is a distinct, always-visible card. Locked/approved
+                // states are conveyed by the lock icon + note / badge — not by
+                // fading the whole card — so both cards read clearly.
+                const cardClass = 'w-full flex items-center gap-3 bg-[var(--surface)] border border-[var(--hairline)] rounded-[16px] px-4 py-3.5 text-[14px] font-bold text-[var(--ink)] shadow-[0_2px_8px_rgba(26,33,56,0.06)]';
                 return (
                   <div key={row.kind}>
                     {isPending ? (
                       // Pending: not tappable-to-cancel any more — an explicit
                       // "Cancel request" button sits beside the Pending badge, so
                       // the row is a plain card (can't nest a button in a button).
-                      <div className="w-full flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)]">
+                      <div className={cardClass}>
                         <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center shrink-0">
                           <Icon name={row.icon} size={15} />
                         </span>
@@ -1149,7 +1156,7 @@ function CourtDetail({
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF3E0] text-[#E65100] border border-[#FFB74D] whitespace-nowrap">Pending</span>
                           <button
                             type="button"
-                            onClick={() => { if (applyBusy === '') void cancelPartner(row.kind); }}
+                            onClick={() => { if (applyBusy === '') setConfirmCancel(row.kind); }}
                             disabled={applyBusy !== ''}
                             className="px-2.5 py-1 rounded-full text-[11px] font-bold text-[var(--coral)] border border-[var(--coral)] disabled:opacity-60 whitespace-nowrap"
                           >
@@ -1159,7 +1166,7 @@ function CourtDetail({
                       </div>
                     ) : (
                     <button
-                      className="w-full flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)] disabled:opacity-60"
+                      className={`${cardClass} disabled:cursor-default`}
                       onClick={() => {
                         if (disabled) return;
                         void applyPartner(row.kind);
@@ -1343,6 +1350,30 @@ function CourtDetail({
         onCancel={membershipMode === 'invite' ? declineInvite : cancelMembership}
         apiPlans={apiPlans}
       />
+
+      {/* Cancel-application confirmation (replaces the native window.confirm). */}
+      <BottomSheet
+        open={confirmCancel !== ''}
+        onClose={() => setConfirmCancel('')}
+        title="Cancel this application?"
+        flushFooter
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" fullWidth onClick={() => setConfirmCancel('')}>Keep it</Button>
+            <Button
+              variant="danger"
+              fullWidth
+              onClick={() => { const k = confirmCancel; setConfirmCancel(''); if (k) void cancelPartner(k); }}
+            >
+              Yes, cancel
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-[14px] text-[var(--ink-2)] leading-relaxed pb-2">
+          This withdraws your {confirmCancel === 'organizer' ? 'organiser' : 'coach'} application at {venue.displayName}. You can apply again anytime.
+        </p>
+      </BottomSheet>
 
       {/* ── FAQs ── */}
       {venue.faqs && venue.faqs.length > 0 && (
