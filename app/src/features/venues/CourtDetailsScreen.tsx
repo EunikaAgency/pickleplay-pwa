@@ -1375,7 +1375,7 @@ function CourtDetail({
           </div>
         }
       >
-        <p className="text-[14px] text-[var(--ink-2)] leading-relaxed pb-2">
+        <p className="px-5 pb-2 text-[14px] text-[var(--ink-2)] leading-relaxed">
           This withdraws your {confirmCancel === 'organizer' ? 'organiser' : 'coach'} application at {venue.displayName}. You can apply again anytime.
         </p>
       </BottomSheet>

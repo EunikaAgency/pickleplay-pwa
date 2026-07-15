@@ -188,7 +188,15 @@ const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove }: ConvR
         )}
       </div>
       <div className="meta min-w-0">
-        {(c.contextType === 'venue' || c.contextType === 'booking') && (
+        {/* Above the name: the player sees a generic Venue/Booking chip; the
+            venue side (staff/owner) sees which venue this thread belongs to —
+            small but readable, since they work many venues. */}
+        {c.viewerIsVenueSide && c.contextLabel ? (
+          <div className="flex items-center min-w-0" style={{ color: 'var(--muted)', marginBottom: 1, fontSize: 11, gap: 3 }}>
+            <Icon name="sports_tennis" size={10} />
+            <span className="truncate min-w-0">{c.contextLabel}</span>
+          </div>
+        ) : (c.contextType === 'venue' || c.contextType === 'booking') ? (
           <div className="truncate" style={{ color: 'var(--muted)', marginBottom: 1, fontSize: 11 }}>
             {c.contextType === 'venue' ? (
               <span className="inline-flex items-center" style={{ gap: 3 }}>
@@ -202,7 +210,7 @@ const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove }: ConvR
               </span>
             )}
           </div>
-        )}
+        ) : null}
         <div className="flex items-center justify-between gap-2">
           <div className="name truncate">{name}</div>
           <div className="t-sm shrink-0">{timeAgo(c.lastAt)}</div>
