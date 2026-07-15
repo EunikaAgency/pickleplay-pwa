@@ -57,16 +57,18 @@ Phase 1 is done (5/5). This is what's left.
 >   all editable via the settings API (the admin-dashboard UI is a `web/` follow-up).
 > - **Demo card gate** — a wrong card is declined at checkout (402 `CARD_DECLINED`); the test card
 >   4242 4242 4242 4242 passes (any expiry/CVC).
+> - **Refunds** — 3-day free-cancellation window: whole refund > 3 days out, else the canceller bears
+>   the transaction fee (`transactionFeePercent`, 0 until PayMongo). `GET /bookings/:id/refund-quote`
+>   drives the refund screen's real "You paid / fee / You'll get back" figures **before** the confirm.
 >
 > **🔲 Still to build**
 > 1. **The merge — app + data cutover** (foundation shipped above): route Open Play to the real lobby
 >    (roster/chat), create Open Play via a court booking, add the player-set editable-cap UI; then
 >    clean-slate the dummy `OpenPlaySession` rows and read the feed from `Game` only.
-> 2. **Recurring in booking step 2** — multi-day (MWF / consecutive / weekdays / weekends / custom),
+> 2. **Money flows** (card gate + refunds shipped): charge the organizer join fee on a paid Open Play
+>    (pairs with the lobby cutover above); route the coach lesson fee through checkout.
+> 3. **Recurring in booking step 2** — multi-day (MWF / consecutive / weekdays / weekends / custom),
 >    lazy one-booking-+-7%-per-occurrence.
-> 3. **Money flows** (the card gate is shipped): charge the organizer join fee on a paid Open Play;
->    route the coach lesson fee through checkout.
-> 4. **Refunds** — 3-day free window + a pre-confirm warning that shows the real deducted numbers.
 
 ---
 
@@ -362,16 +364,18 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 >   lahat editable sa settings API (ang admin-dashboard UI ay `web/` follow-up).
 > - **Demo card gate** — maling card → declined sa checkout (402 `CARD_DECLINED`); ang test card
 >   4242 4242 4242 4242 → pumapasa (kahit anong expiry/CVC).
+> - **Refunds** — 3-araw na libreng bintana: buong refund kung >3 araw pa; sa loob, ang nagkansela ang
+>   sasagot sa transaction fee (`transactionFeePercent`, 0 hanggang PayMongo). `GET /bookings/:id/refund-quote`
+>   ang nagpapakita ng totoong "You paid / fee / You'll get back" **bago** mag-confirm.
 >
 > **🔲 Gagawin pa**
 > 1. **Ang merge — app + data cutover** (tapos na ang foundation sa itaas): i-route ang Open Play sa
 >    tunay na lobby (roster/chat), gawin ang Open Play via court booking, idagdag ang player-set na
 >    editable-cap UI; tapos linisin ang dummy `OpenPlaySession` rows at feed = `Game` na lang.
-> 2. **Recurring sa booking step 2** — maramihang araw (MWF / consecutive / weekdays / weekends / custom),
+> 2. **Money flows** (tapos na ang card gate + refunds): singilin ang organizer join fee sa bayad na
+>    Open Play (isabay sa lobby cutover sa itaas); idaan ang coach lesson fee sa checkout.
+> 3. **Recurring sa booking step 2** — maramihang araw (MWF / consecutive / weekdays / weekends / custom),
 >    lazy na isang-booking-+-7%-kada-okasyon.
-> 3. **Money flows** (tapos na ang card gate): singilin ang organizer join fee sa bayad na Open Play;
->    idaan ang coach lesson fee sa checkout.
-> 4. **Refunds** — 3-araw na libreng bintana + babala bago mag-confirm na may totoong numero ng kaltas.
 
 ---
 
