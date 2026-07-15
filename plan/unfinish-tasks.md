@@ -47,22 +47,26 @@ Phase 1 is done (5/5). This is what's left.
 > - **Skill restriction (item 2)** — server + app: skill band enforced on join **and** Open Play
 >   interest **and** venue-session join; `"Beginner"` is now a real band (DUPR ≤ 3.0), not an empty one.
 > - **Item 7 — ineligible Discover cards are locked**: not clickable, Join disabled (second guard).
+> - **Merge API foundation** — `Game.joinFee` (0 = free; only a subscribed organizer can set > 0 and
+>   keeps all of it) + Open Play now takes a **real roster seat** (gender/skill/capacity guards apply),
+>   the old "I'm Interested"-only join removed. Cap-guard on edit already enforced.
+> - **Homepage** — Open Play shows real spots/joined (was "N interested").
+> - **Rental inventory** → **"Coming soon"** placeholder (full manager preserved for later).
+> - **Pricing engine** — demand-based smart-pricing **suggestions** removed (analytics/heatmap kept).
+> - **Admin-configurable money** — new `transactionFeePercent` (₱0 default) + coach/organizer prices,
+>   all editable via the settings API (the admin-dashboard UI is a `web/` follow-up).
+> - **Demo card gate** — a wrong card is declined at checkout (402 `CARD_DECLINED`); the test card
+>   4242 4242 4242 4242 passes (any expiry/CVC).
 >
-> **🔲 To build (the rest of this plan)**
-> 1. **The merge** — Open Play becomes a `Game`: every one goes through a **court booking**, gets the
->    **real lobby** (roster/invites/chat) replacing "I'm Interested", a **player-set cap** (editable,
->    never below the joined count), and an optional **organizer join fee**. Clean-slate the dummy
->    `OpenPlaySession` rows.
+> **🔲 Still to build**
+> 1. **The merge — app + data cutover** (foundation shipped above): route Open Play to the real lobby
+>    (roster/chat), create Open Play via a court booking, add the player-set editable-cap UI; then
+>    clean-slate the dummy `OpenPlaySession` rows and read the feed from `Game` only.
 > 2. **Recurring in booking step 2** — multi-day (MWF / consecutive / weekdays / weekends / custom),
 >    lazy one-booking-+-7%-per-occurrence.
-> 3. **Demo payment** — validate the test card (wrong card → error); route join fee, coach lesson, and
->    refunds through the same demo checkout.
-> 4. **Admin-configurable money** — new `transactionFeePercent` (₱0 default) + surface the coach ₱499 /
->    organizer ₱999 prices, all in the admin dashboard.
-> 5. **Refunds** — 3-day free window + a pre-confirm warning that shows the real deducted numbers.
-> 6. **Rental inventory** → **"Coming soon"** placeholder.
-> 7. **Pricing engine** — remove the demand-based smart-pricing **suggestions** (keep the analytics).
-> 8. **Homepage** — "5 interested" → "3 spots left".
+> 3. **Money flows** (the card gate is shipped): charge the organizer join fee on a paid Open Play;
+>    route the coach lesson fee through checkout.
+> 4. **Refunds** — 3-day free window + a pre-confirm warning that shows the real deducted numbers.
 
 ---
 
@@ -348,22 +352,26 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 > - **Skill restriction (item 2)** — server + app: skill band ipinapatupad sa join **at** sa Open Play
 >   interest **at** sa venue-session join; ang `"Beginner"` ay tunay nang band (DUPR ≤ 3.0), hindi walang laman.
 > - **Item 7 — naka-lock na ang Discover cards na hindi mo pwedeng salihan**: hindi mapipindot, disabled ang Join.
+> - **Merge API foundation** — `Game.joinFee` (0 = libre; subscribed organizer lang ang makakapag-set
+>   > 0 at buo sa kanya) + ang Open Play ay **tunay nang roster seat** (gender/skill/capacity guards),
+>   tinanggal ang lumang "I'm Interested"-lang na join. Cap-guard sa edit — ipinapatupad na.
+> - **Homepage** — Open Play → tunay na spots/joined (dating "N interested").
+> - **Rental inventory** → **"Coming soon"** na placeholder (buo pa ang manager para sa hinaharap).
+> - **Pricing engine** — tinanggal ang demand-based smart-pricing **suggestions** (analytics/heatmap nanatili).
+> - **Admin-configurable na pera** — bagong `transactionFeePercent` (₱0 default) + coach/organizer prices,
+>   lahat editable sa settings API (ang admin-dashboard UI ay `web/` follow-up).
+> - **Demo card gate** — maling card → declined sa checkout (402 `CARD_DECLINED`); ang test card
+>   4242 4242 4242 4242 → pumapasa (kahit anong expiry/CVC).
 >
-> **🔲 Gagawin pa (ang natitira sa plano)**
-> 1. **Ang merge** — ang Open Play ay magiging `Game`: bawat isa ay dadaan sa **court booking**, may
->    **tunay na lobby** (roster/invite/chat) kapalit ng "I'm Interested", **cap na set ng player**
->    (editable, hindi kailanman mas mababa sa nakasali), at opsyonal na **organizer join fee**.
->    Linisin ang dummy na `OpenPlaySession` rows.
+> **🔲 Gagawin pa**
+> 1. **Ang merge — app + data cutover** (tapos na ang foundation sa itaas): i-route ang Open Play sa
+>    tunay na lobby (roster/chat), gawin ang Open Play via court booking, idagdag ang player-set na
+>    editable-cap UI; tapos linisin ang dummy `OpenPlaySession` rows at feed = `Game` na lang.
 > 2. **Recurring sa booking step 2** — maramihang araw (MWF / consecutive / weekdays / weekends / custom),
 >    lazy na isang-booking-+-7%-kada-okasyon.
-> 3. **Demo payment** — i-validate ang test card (maling card → error); idaan ang join fee, coach lesson,
->    at refunds sa parehong demo checkout.
-> 4. **Admin-configurable na pera** — bagong `transactionFeePercent` (₱0 default) + i-surface ang coach
->    ₱499 / organizer ₱999 na presyo, lahat sa admin dashboard.
-> 5. **Refunds** — 3-araw na libreng bintana + babala bago mag-confirm na may totoong numero ng kaltas.
-> 6. **Rental inventory** → **"Coming soon"** na placeholder.
-> 7. **Pricing engine** — alisin ang demand-based smart-pricing **suggestions** (panatilihin ang analytics).
-> 8. **Homepage** — "5 interested" → "3 spots left".
+> 3. **Money flows** (tapos na ang card gate): singilin ang organizer join fee sa bayad na Open Play;
+>    idaan ang coach lesson fee sa checkout.
+> 4. **Refunds** — 3-araw na libreng bintana + babala bago mag-confirm na may totoong numero ng kaltas.
 
 ---
 
