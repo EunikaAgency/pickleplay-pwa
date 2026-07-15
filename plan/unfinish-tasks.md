@@ -17,6 +17,10 @@ Phase 1 is done (5/5). This is what's left.
 > **Still open:** homepage wording, and the seven live-but-unapproved things. **Neither blocks Open
 > Play.**
 
+> **✓ Verified against the codebase — 15 July.** Every item below was checked against `api/` and
+> `app/`. **One thing changed since this plan was written:** the **skill restriction** (item 2)
+> shipped on **15 July** — server and app. Everything else still stands as described.
+
 ---
 
 ## 1. Settle this first: do venues host their own sessions? — ✅ ANSWERED 14 July
@@ -55,13 +59,15 @@ enforced — the wrong people can't get in.
 
 **Doesn't work:**
 - Venue-run sessions have no restriction setting at all, and nothing stops the wrong people joining.
-- No skill restriction ("beginners only") anywhere.
+- ~~No skill restriction ("beginners only") anywhere.~~ ✅ **SHIPPED 15 July** (server + app).
 - **Someone chose "show it, marked ineligible" over "hide it" — nobody approved that.**
 
 > ### Decided:
 > - The first bullet **dissolves with the merge**. Once every Open Play is a `Game`, it inherits the
 >   restrictions that already work. Nothing new to build there.
-> - **Skill restriction ("beginners only") still to build.**
+> - **✅ Skill restriction ("beginners only") — SHIPPED 15 July** (server + app, the day after this
+>   plan). Enforced on join *and* on Open Play interest — `skillBlock` in
+>   [`games.controller.ts`](../api/src/features/games/games.controller.ts#L122).
 > - **Show-vs-hide: settled — see item 7's decision below.** The direction that was already built is
 >   right; the build is incomplete.
 
@@ -269,6 +275,10 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 > **Bukas pa:** wording ng homepage, at yung pitong buhay-pero-walang-approval. **Wala sa kanila ang
 > humaharang sa Open Play.**
 
+> **✓ Tiningnan sa codebase — 15 Hulyo.** Bawat item sa baba ay tiningnan sa `api/` at `app/`.
+> **Isang bagay ang nagbago mula nang isulat ang plano:** ang **skill restriction** (item 2) ay
+> na-ship na noong **15 Hulyo** — server at app. Ang lahat ng iba, tama pa rin gaya ng nakasulat.
+
 ---
 
 ## 1. Sagutin muna to: nagpapatakbo ba ng sarili nilang session ang mga venue? — ✅ NASAGOT 14 Hulyo
@@ -311,13 +321,15 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 **Hindi pa gumagana:**
 - Yung mga session ng venue, walang ganitong setting. At kahit ilagay natin, walang pumipigil sa
   hindi bagay na sumali.
-- Wala pang "beginners lang" na restriction kahit saan.
+- ~~Wala pang "beginners lang" na restriction kahit saan.~~ ✅ **NA-SHIP 15 Hulyo** (server + app).
 - **May pumili ng "ipakita pero markahan" imbes na "itago" — walang nag-approve nun.**
 
 > ### Desisyon:
 > - Yung unang bullet, **mawawala sa pagsasanib.** Pag naging `Game` na ang lahat ng Open Play,
 >   makukuha na nila ang restriction na gumagana na. Wala nang bagong gagawin doon.
-> - **Yung "beginners lang" na restriction, gagawin pa.**
+> - **✅ Yung "beginners lang" na restriction — NA-SHIP 15 Hulyo** (server + app, kinabukasan matapos
+>   isulat ang plano). Ipinatutupad sa join *at* sa Open Play interest — `skillBlock` sa
+>   [`games.controller.ts`](../api/src/features/games/games.controller.ts#L122).
 > - **Yung itago-o-ipakita: napagdesisyunan na — nasa item 7 sa baba.** Tama ang pinili nila; kulang
 >   lang ang pagkakagawa.
 

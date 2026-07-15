@@ -1,0 +1,1065 @@
+<title>What's still unfinished · PickleBallers</title>
+<style>
+  /* ---------- Tokens ---------- */
+  :root {
+    --bg:#F4F6F3; --surface:#FFFFFF; --surface-2:#EEF2ED; --sunken:#F0F3EF;
+    --ink:#12211E; --text:#2C3A36; --muted:#66746F; --faint:#8C9791;
+    --border:#E2E7E2; --border-strong:#CBD4CD;
+    --accent:#0E7A6E; --accent-ink:#0A574E; --accent-soft:#DCEEEB;
+    --go:#1E7A44; --go-bg:#E6F3EB; --go-line:#BEE0C9;
+    --open:#A9640A; --open-bg:#FAF0DD; --open-line:#EBD3A8;
+    --warn:#B3271F; --warn-bg:#FBE9E7; --warn-line:#F1C9C4;
+    --shadow:0 1px 2px rgba(16,33,30,.05), 0 10px 26px -14px rgba(16,33,30,.16);
+    --shadow-sm:0 1px 2px rgba(16,33,30,.05);
+    --f-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0B1412; --surface:#121F1C; --surface-2:#182823; --sunken:#0F1B18;
+      --ink:#EAF0EC; --text:#D2DCD7; --muted:#8A9994; --faint:#6C7A75;
+      --border:#233530; --border-strong:#31463F;
+      --accent:#2DD4BF; --accent-ink:#7EE8DA; --accent-soft:#123230;
+      --go:#5FCB8C; --go-bg:#122A1E; --go-line:#1E4530;
+      --open:#E2A94E; --open-bg:#2A2112; --open-line:#4A3A1C;
+      --warn:#F0857C; --warn-bg:#2E1614; --warn-line:#4C2521;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -14px rgba(0,0,0,.6);
+      --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#F4F6F3; --surface:#FFFFFF; --surface-2:#EEF2ED; --sunken:#F0F3EF;
+    --ink:#12211E; --text:#2C3A36; --muted:#66746F; --faint:#8C9791;
+    --border:#E2E7E2; --border-strong:#CBD4CD;
+    --accent:#0E7A6E; --accent-ink:#0A574E; --accent-soft:#DCEEEB;
+    --go:#1E7A44; --go-bg:#E6F3EB; --go-line:#BEE0C9;
+    --open:#A9640A; --open-bg:#FAF0DD; --open-line:#EBD3A8;
+    --warn:#B3271F; --warn-bg:#FBE9E7; --warn-line:#F1C9C4;
+    --shadow:0 1px 2px rgba(16,33,30,.05), 0 10px 26px -14px rgba(16,33,30,.16);
+    --shadow-sm:0 1px 2px rgba(16,33,30,.05);
+  }
+  :root[data-theme="dark"] {
+    --bg:#0B1412; --surface:#121F1C; --surface-2:#182823; --sunken:#0F1B18;
+    --ink:#EAF0EC; --text:#D2DCD7; --muted:#8A9994; --faint:#6C7A75;
+    --border:#233530; --border-strong:#31463F;
+    --accent:#2DD4BF; --accent-ink:#7EE8DA; --accent-soft:#123230;
+    --go:#5FCB8C; --go-bg:#122A1E; --go-line:#1E4530;
+    --open:#E2A94E; --open-bg:#2A2112; --open-line:#4A3A1C;
+    --warn:#F0857C; --warn-bg:#2E1614; --warn-line:#4C2521;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -14px rgba(0,0,0,.6);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size:16px; line-height:1.62; letter-spacing:-0.003em;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  ::selection { background:var(--accent-soft); color:var(--ink); }
+
+  code, .mono {
+    font-family:ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size:0.88em; letter-spacing:0;
+  }
+  code {
+    background:var(--surface-2); border:1px solid var(--border);
+    padding:0.06em 0.36em; border-radius:5px; color:var(--ink);
+    white-space:nowrap;
+  }
+  .peso { font-variant-numeric:tabular-nums; }
+
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; text-underline-offset:2px; }
+
+  /* ---------- Sticky bar ---------- */
+  .bar {
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; gap:14px;
+    padding:11px clamp(16px,4vw,40px);
+    background:color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter:saturate(1.4) blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .bar .mark { display:flex; align-items:center; gap:9px; font-weight:650; color:var(--ink); letter-spacing:-0.01em; }
+  .bar .dot { width:11px; height:11px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); flex:none; }
+  .bar .mark small { color:var(--muted); font-weight:500; letter-spacing:0.02em; }
+  .bar .spacer { flex:1; }
+
+  .langtoggle { display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:3px; gap:2px; }
+  .langtoggle button {
+    font:inherit; font-size:13px; font-weight:600; letter-spacing:0.02em;
+    border:0; background:transparent; color:var(--muted); cursor:pointer;
+    padding:5px 13px; border-radius:999px; transition:background .18s, color .18s;
+  }
+  .langtoggle button:hover { color:var(--ink); }
+  #doc[data-lang="en"] .langtoggle button[data-set="en"],
+  #doc[data-lang="tl"] .langtoggle button[data-set="tl"] {
+    background:var(--surface); color:var(--accent-ink); box-shadow:var(--shadow-sm);
+  }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+
+  /* ---------- Language switching ---------- */
+  #doc[data-lang="en"] .lang-tl { display:none; }
+  #doc[data-lang="tl"] .lang-en { display:none; }
+
+  /* ---------- Layout ---------- */
+  .wrap { max-width:820px; margin:0 auto; padding:0 clamp(16px,4vw,40px) 96px; }
+
+  .hero { padding:52px 0 8px; }
+  .eyebrow {
+    font-size:12.5px; font-weight:650; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--accent-ink); margin:0 0 16px;
+  }
+  h1 {
+    font-size:clamp(2.1rem, 5.4vw, 3.15rem); line-height:1.04; letter-spacing:-0.028em;
+    margin:0 0 18px; color:var(--ink); font-weight:720; text-wrap:balance;
+  }
+  .lede { font-size:clamp(1.06rem,2.4vw,1.22rem); line-height:1.55; color:var(--text); margin:0; max-width:62ch; }
+  .lede b { color:var(--ink); }
+
+  /* ---------- KPI strip ---------- */
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:34px 0 8px; }
+  @media (max-width:640px){ .kpis { grid-template-columns:repeat(2,1fr); } }
+  .kpi { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:15px 16px; box-shadow:var(--shadow-sm); }
+  .kpi .k-label { font-size:11.5px; font-weight:650; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+  .kpi .k-val { font-size:1.14rem; font-weight:700; color:var(--ink); line-height:1.2; letter-spacing:-0.01em; }
+  .kpi .k-sub { font-size:12.5px; color:var(--muted); margin-top:3px; }
+  .kpi[data-tone="go"]   { border-color:var(--go-line); }
+  .kpi[data-tone="go"] .k-val { color:var(--go); }
+  .kpi[data-tone="open"] { border-color:var(--open-line); }
+  .kpi[data-tone="open"] .k-val { color:var(--open); }
+  .kpi[data-tone="accent"] .k-val { color:var(--accent-ink); }
+
+  /* ---------- TL;DR panel ---------- */
+  .tldr {
+    margin:34px 0 10px; background:var(--surface); border:1px solid var(--border);
+    border-radius:18px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .tldr-head { display:flex; align-items:center; gap:10px; padding:16px 20px; border-bottom:1px solid var(--border); background:var(--sunken); }
+  .tldr-head .tt { font-size:12.5px; font-weight:700; letter-spacing:0.11em; text-transform:uppercase; color:var(--accent-ink); }
+  .tldr-body { display:grid; gap:2px; }
+  .tldr-row { display:grid; grid-template-columns:44px 1fr; gap:0; padding:18px 20px; }
+  .tldr-row + .tldr-row { border-top:1px solid var(--border); }
+  .tldr-row .n { font-family:var(--f-mono); font-size:13px; font-weight:700; color:var(--accent); padding-top:2px; }
+  .tldr-row .c { margin:0; color:var(--text); }
+  .tldr-row .c b { color:var(--ink); }
+  .tldr-row h4 { margin:0 0 4px; font-size:1rem; color:var(--ink); letter-spacing:-0.01em; }
+
+  /* ---------- Section cards ---------- */
+  .sec {
+    scroll-margin-top:70px;
+    margin:20px 0; background:var(--surface); border:1px solid var(--border);
+    border-radius:18px; box-shadow:var(--shadow-sm); overflow:hidden;
+  }
+  .sec-head { display:flex; align-items:flex-start; gap:15px; padding:22px clamp(18px,3vw,26px) 6px; }
+  .sec-num {
+    flex:none; width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+    background:var(--accent-soft); color:var(--accent-ink); font-weight:750; font-size:15px;
+    font-variant-numeric:tabular-nums; border:1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .sec-head .h-txt { flex:1; min-width:0; }
+  .sec-head h2 { margin:2px 0 9px; font-size:1.32rem; line-height:1.22; letter-spacing:-0.018em; color:var(--ink); font-weight:700; text-wrap:balance; }
+  .sec-body { padding:4px clamp(18px,3vw,26px) 24px; }
+  .sec-body > p:first-child { margin-top:8px; }
+  .sec-body p { margin:0 0 14px; }
+  .sec-body ul { margin:0 0 14px; padding-left:1.15em; }
+  .sec-body li { margin:6px 0; }
+  .sec-body b, .sec-body strong { color:var(--ink); }
+
+  /* ---------- Pills ---------- */
+  .pills { display:flex; flex-wrap:wrap; gap:7px; }
+  .pill {
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:650;
+    letter-spacing:0.02em; padding:4px 10px; border-radius:999px; white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .pill::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; flex:none; }
+  .pill--go   { color:var(--go);   background:var(--go-bg);   border-color:var(--go-line); }
+  .pill--open { color:var(--open); background:var(--open-bg); border-color:var(--open-line); }
+  .pill--warn { color:var(--warn); background:var(--warn-bg); border-color:var(--warn-line); }
+  .pill--info { color:var(--accent-ink); background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 22%, transparent); }
+
+  /* ---------- Callouts ---------- */
+  .callout { border-radius:13px; padding:15px 17px; margin:16px 0; border:1px solid var(--border); background:var(--sunken); position:relative; }
+  .callout > .co-tag {
+    display:inline-flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700;
+    letter-spacing:0.09em; text-transform:uppercase; margin-bottom:9px;
+  }
+  .callout p:last-child, .callout ul:last-child { margin-bottom:0; }
+  .callout p { margin:0 0 10px; }
+  .callout ul { margin:0 0 10px; }
+
+  .co--decided { background:var(--go-bg); border-color:var(--go-line); }
+  .co--decided .co-tag { color:var(--go); }
+  .co--decided { box-shadow:inset 3px 0 0 var(--go); }
+  .co--warn { background:var(--warn-bg); border-color:var(--warn-line); box-shadow:inset 3px 0 0 var(--warn); }
+  .co--warn .co-tag { color:var(--warn); }
+  .co--open { background:var(--open-bg); border-color:var(--open-line); box-shadow:inset 3px 0 0 var(--open); }
+  .co--open .co-tag { color:var(--open); }
+  .co--note { background:var(--surface-2); box-shadow:inset 3px 0 0 var(--border-strong); }
+  .co--note .co-tag { color:var(--muted); }
+
+  .co-title { font-weight:700; color:var(--ink); }
+
+  /* ---------- Tables ---------- */
+  .tbl { overflow-x:auto; margin:14px 0; border:1px solid var(--border); border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; }
+  thead th {
+    text-align:left; font-size:11.5px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--muted); padding:11px 14px; background:var(--sunken); border-bottom:1px solid var(--border); white-space:nowrap;
+  }
+  tbody td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text); }
+  tbody tr:last-child td { border-bottom:0; }
+  tbody td:first-child { color:var(--ink); font-weight:600; }
+  table b { color:var(--ink); }
+  .num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  td .yes { color:var(--go); font-weight:700; }
+  td .no  { color:var(--warn); font-weight:700; }
+  tr.row--go td:first-child { box-shadow:inset 3px 0 0 var(--go); }
+  tr.row--warn td:first-child { box-shadow:inset 3px 0 0 var(--warn); }
+  tr.row--info td:first-child { box-shadow:inset 3px 0 0 var(--accent); }
+
+  /* ---------- Merge diagram ---------- */
+  .merge { display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin:16px 0; }
+  .merge-box { flex:1 1 180px; background:var(--surface); border:1px solid var(--border-strong); border-radius:12px; padding:13px 14px; }
+  .merge-box b { display:block; color:var(--ink); font-family:var(--f-mono); font-size:13.5px; margin-bottom:4px; }
+  .merge-box span { font-size:12.5px; color:var(--muted); line-height:1.4; display:block; }
+  .merge-box--out { background:var(--go-bg); border-color:var(--go-line); flex-basis:220px; }
+  .merge-box--out b { color:var(--go); font-family:inherit; font-size:14.5px; }
+  .merge-op { display:grid; place-items:center; font-size:1.5rem; font-weight:700; color:var(--faint); flex:0 0 22px; }
+
+  /* ---------- Chips grid (unapproved) ---------- */
+  .chips { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; margin:14px 0; }
+  .chip { background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+  .chip .c-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
+  .chip .c-name { font-weight:700; color:var(--ink); font-size:14.5px; }
+  .chip .c-note { font-size:12.5px; color:var(--muted); line-height:1.4; }
+  .tag-live { font-size:10.5px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--open); background:var(--open-bg); border:1px solid var(--open-line); padding:2px 7px; border-radius:999px; white-space:nowrap; }
+  .tag-earning { color:var(--go); background:var(--go-bg); border-color:var(--go-line); }
+  .tag-parked { color:var(--muted); background:var(--surface); border-color:var(--border-strong); }
+
+  /* ---------- Strike list (answered decisions) ---------- */
+  .qlist { list-style:none; padding:0; margin:14px 0; display:grid; gap:10px; }
+  .qlist li { display:grid; grid-template-columns:26px 1fr; gap:10px; align-items:start; }
+  .qlist .q-check { color:var(--go); font-weight:800; padding-top:1px; }
+  .qlist .q-old { color:var(--faint); text-decoration:line-through; }
+  .qlist .q-new { color:var(--text); }
+  .qlist .q-new b { color:var(--ink); }
+
+  /* ---------- Conclusion ---------- */
+  .finale { margin-top:26px; background:linear-gradient(180deg, var(--accent-soft), var(--surface)); border:1px solid color-mix(in srgb, var(--accent) 24%, var(--border)); border-radius:18px; padding:26px clamp(20px,3vw,30px); box-shadow:var(--shadow); }
+  .finale h3 { margin:0 0 10px; font-size:1.3rem; color:var(--ink); letter-spacing:-0.018em; }
+  .finale p { margin:0 0 12px; color:var(--text); }
+  .finale p:last-child { margin-bottom:0; }
+  .finale b { color:var(--ink); }
+
+  .foot { margin-top:30px; padding-top:20px; border-top:1px solid var(--border); font-size:13px; color:var(--muted); }
+  .foot a { font-family:var(--f-mono); font-size:12.5px; }
+
+  .sec-divider { display:flex; align-items:center; gap:14px; margin:44px 0 6px; }
+  .sec-divider .line { flex:1; height:1px; background:var(--border); }
+  .sec-divider .lbl { font-size:12px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--faint); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .sec, .kpi, .tldr, .finale { animation:rise .5s cubic-bezier(.2,.7,.3,1) both; }
+    @keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  }
+</style>
+
+<div id="doc" data-lang="en">
+
+  <header class="bar">
+    <span class="mark"><span class="dot" aria-hidden="true"></span>PickleBallers&nbsp;<small>Product status</small></span>
+    <span class="spacer"></span>
+    <div class="langtoggle" role="group" aria-label="Language">
+      <button type="button" data-set="en" onclick="setLang('en')">English</button>
+      <button type="button" data-set="tl" onclick="setLang('tl')">Tagalog</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+
+  <!-- ================= ENGLISH ================= -->
+  <div class="lang-en">
+
+    <section class="hero">
+      <p class="eyebrow">Phase 1 complete · Updated 14 July 2026</p>
+      <h1>What&#39;s still unfinished</h1>
+      <p class="lede">Phase&nbsp;1 is done (<b>5 of 5</b>). This is what&#39;s left — and as of 14&nbsp;July, <b>Open Play, money, and refunds are all decided. Nothing gates the build.</b></p>
+    </section>
+
+    <div class="kpis">
+      <div class="kpi" data-tone="go">
+        <div class="k-label">Phase 1</div>
+        <div class="k-val">5 / 5 done</div>
+        <div class="k-sub">shipped</div>
+      </div>
+      <div class="kpi" data-tone="go">
+        <div class="k-label">Decided 14 Jul</div>
+        <div class="k-val">3 big calls</div>
+        <div class="k-sub">Open Play · Money · Refunds</div>
+      </div>
+      <div class="kpi" data-tone="open">
+        <div class="k-label">Still open</div>
+        <div class="k-val">2 things</div>
+        <div class="k-sub">neither blocks the build</div>
+      </div>
+      <div class="kpi" data-tone="accent">
+        <div class="k-label">The work</div>
+        <div class="k-val">A merge</div>
+        <div class="k-sub">not a rebuild</div>
+      </div>
+    </div>
+
+    <div class="callout co--decided" style="margin-top:22px">
+      <span class="co-tag">✓ Verified against the codebase — 15 July</span>
+      <p style="margin-bottom:0">Every item below was checked against <code>api/</code> and <code>app/</code>. <b>One thing changed since this plan was written:</b> the <b>skill restriction</b> (item&nbsp;2) shipped on <b>15 July</b> — server and app. Everything else still stands as described here.</p>
+    </div>
+
+    <div class="tldr">
+      <div class="tldr-head"><span class="tt">The headline · in three lines</span></div>
+      <div class="tldr-body">
+        <div class="tldr-row">
+          <div class="n">01</div>
+          <div class="c">
+            <h4>Open Play</h4>
+            <b>Player-booked</b> (any player, no role needed), gets a <b>real lobby</b> with a player-set cap, and is <b>free to join</b> — unless a subscribed organizer charges, in which case <b>they keep every peso</b>. The work is a <b>merge</b> (<code>OpenPlaySession</code> → <code>Game</code>), not a rebuild.
+          </div>
+        </div>
+        <div class="tldr-row">
+          <div class="n">02</div>
+          <div class="c">
+            <h4>The revenue model</h4>
+            The <b>subscription is the licence to charge</b>. PickleBallers takes <b>7% on court bookings and nothing else</b>. The player pays the transaction fee. On a refund, <b>whoever cancelled pays</b> — outside a <b>3-day free window</b>.
+          </div>
+        </div>
+        <div class="tldr-row">
+          <div class="n">03</div>
+          <div class="c">
+            <h4>Still open</h4>
+            Homepage wording, and the <b>seven live-but-unapproved things</b>. <b>Neither blocks Open Play.</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-divider"><span class="lbl">The seven items</span><span class="line"></span></div>
+
+    <!-- ITEM 1 -->
+    <section class="sec" id="en-1">
+      <div class="sec-head">
+        <div class="sec-num">1</div>
+        <div class="h-txt">
+          <h2>Settle this first: do venues host their own sessions?</h2>
+          <div class="pills"><span class="pill pill--go">Answered 14 Jul</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div class="callout co--decided">
+          <span class="co-tag">Decided — NO</span>
+          <ul>
+            <li><b>A player creates Open Play</b> by booking a court. <b>Any</b> player — no special role needed.</li>
+            <li><b>&ldquo;Organizer&rdquo; is not a venue.</b> It&#39;s a paid subscription a <i>player</i> can hold (already in the code: <code>PartnerPlan = 'coach' | 'organizer'</code>, <span class="peso">₱999</span>). It does <b>not</b> gate creating Open Play. It gates <b>charging</b> for it — see item&nbsp;4.</li>
+            <li><b>Recurring stays, but moves.</b> It becomes an option in <b>booking step 2</b>: repeat this? on which days? — always at the slot already booked. Not an organizer-only tool.</li>
+          </ul>
+        </div>
+
+        <p><b>What the code actually holds</b> (checked 14 July):</p>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Rows</th><th>Count</th><th>Booked a court?</th><th>Lobby?</th></tr></thead>
+            <tbody>
+              <tr class="row--go"><td><code>Game</code> — player-created</td><td class="num">37 <span style="color:var(--muted)">(19 open)</span></td><td><span class="yes">✓ yes</span></td><td><span class="yes">✓ yes</span></td></tr>
+              <tr class="row--warn"><td><code>OpenPlaySession</code> — organizer-published, read-only</td><td class="num">95</td><td><span class="no">✕ no</span></td><td><span class="no">✕ no</span></td></tr>
+              <tr><td style="padding-left:26px">└ with a real organizer (5 recurring series)</td><td class="num">35</td><td><span class="no">✕ no</span></td><td><span class="no">✕ no</span></td></tr>
+              <tr><td style="padding-left:26px">└ legacy editorial/import, <b>no owner at all</b></td><td class="num">60</td><td><span class="no">✕ no</span></td><td><span class="no">✕ no</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><b>So the work is a MERGE, not a rebuild.</b> <code>Game</code> already is the model we agreed on — booking, lobby, restrictions, capacity. <code>OpenPlaySession</code> is the same idea built without a booking.</p>
+
+        <div class="merge">
+          <div class="merge-box"><b>OpenPlaySession</b><span>95 rows · read-only · no booking · no lobby</span></div>
+          <div class="merge-op" aria-hidden="true">+</div>
+          <div class="merge-box"><b>Game</b><span>37 rows · booked court · real lobby</span></div>
+          <div class="merge-op" aria-hidden="true">→</div>
+          <div class="merge-box merge-box--out"><b>Every Open Play = a booked Game</b><span>booking · lobby · restrictions · capacity</span></div>
+        </div>
+
+        <p><b>To do:</b></p>
+        <ul>
+          <li>Fold <code>OpenPlaySession</code> into <code>Game</code> — every Open Play goes through a court booking.</li>
+          <li>Move recurring into booking step 2 (drop <code>OpenPlaySeries</code> as an organizer-only surface).</li>
+          <li>Delete the <b>60 ownerless</b> legacy rows.</li>
+        </ul>
+
+        <div class="callout co--warn">
+          <span class="co-tag">⚠ Live revenue hole</span>
+          <p>Those <b>35 organizer sessions</b> run with <b>no court booked and no payment</b>, so PickleBallers earns <b>nothing</b> on them. The 7% only fires on a booking.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEM 2 -->
+    <section class="sec" id="en-2">
+      <div class="sec-head">
+        <div class="sec-num">2</div>
+        <div class="h-txt">
+          <h2>Restrictions are half built</h2>
+          <div class="pills"><span class="pill pill--go">Unblocked by item 1</span><span class="pill pill--go">Skill filter shipped 15 Jul</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p><b>Works:</b> a player who hosts can set men-only / women-only / open-to-all, and it&#39;s genuinely enforced — the wrong people can&#39;t get in.</p>
+        <p><b>Doesn&#39;t work:</b></p>
+        <ul>
+          <li>Venue-run sessions have no restriction setting at all, and nothing stops the wrong people joining.</li>
+          <li><s style="color:var(--muted)">No skill restriction (&ldquo;beginners only&rdquo;) anywhere.</s> &nbsp;<span class="pill pill--go">Shipped 15 Jul</span></li>
+          <li><b>Someone chose &ldquo;show it, marked ineligible&rdquo; over &ldquo;hide it&rdquo; — nobody approved that.</b></li>
+        </ul>
+        <div class="callout co--decided">
+          <span class="co-tag">Decided</span>
+          <ul>
+            <li>The first bullet <b>dissolves with the merge</b>. Once every Open Play is a <code>Game</code>, it inherits the restrictions that already work. Nothing new to build there.</li>
+            <li><b>✅ Skill restriction (&ldquo;beginners only&rdquo;) — SHIPPED 15 Jul</b>, server + app, the day after this plan was written. Enforced on join <i>and</i> on Open Play interest (<code>skillBlock</code> in <code>games.controller.ts</code>).</li>
+            <li><b>Show-vs-hide: settled — see item 7.</b> The direction already built is right; the build is incomplete.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEM 3 -->
+    <section class="sec" id="en-3">
+      <div class="sec-head">
+        <div class="sec-num">3</div>
+        <div class="h-txt">
+          <h2>Open Play has no lobby</h2>
+          <div class="pills"><span class="pill pill--go">Answered 14 Jul — Yes</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p>Today: one tap (&ldquo;I&#39;m Interested&rdquo;) and a headcount. No confirmed roster, no invites, no group chat. The pieces already exist elsewhere in the app — it&#39;s a matter of connecting them, not building from scratch.</p>
+        <div class="callout co--decided">
+          <span class="co-tag">Decided — Open Play gets a lobby</span>
+          <ul>
+            <li><b>&ldquo;I&#39;m Interested&rdquo; is replaced by a real lobby</b>, the same one <code>Game</code> already has: named roster, invites, group chat.</li>
+            <li><b>The player sets the cap</b> — an option at booking, <b>and editable afterwards</b>. Not taken from the court&#39;s capacity.</li>
+            <li><b>Guard:</b> the cap can never be lowered below the number already joined. Nobody gets bumped by an edit.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEM 4 -->
+    <section class="sec" id="en-4">
+      <div class="sec-head">
+        <div class="sec-num">4</div>
+        <div class="h-txt">
+          <h2>No rules for money</h2>
+          <div class="pills"><span class="pill pill--go">Answered 14 Jul</span><span class="pill pill--info">Gateway: PayMongo — not wired</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p>Who charges, where it goes, does PickleBallers take a cut, what happens on refunds — same for coaching. Not hard to build; we just didn&#39;t know the rules. Real money already moves through the app (tournament entry fees), so we extend that.</p>
+
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Who</th><th>Joining their Open Play costs</th><th>Who keeps it</th></tr></thead>
+            <tbody>
+              <tr><td>Any player (no subscription)</td><td><b>Free</b></td><td>—</td></tr>
+              <tr class="row--info"><td>Player subscribed as organizer (<span class="peso">₱999</span>)</td><td><b>They decide</b> — free or paid</td><td><b>They keep it</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul>
+          <li><b>PickleBallers&#39; cut is on the BOOKING only</b> — the court fee the host pays. Already built and live: <code>serviceFeePercent</code>, <b>7%</b>, on every <code>Booking</code>.</li>
+          <li><b>PickleBallers takes NO cut of the organizer&#39;s join fee.</b> The organizer keeps every peso; the 7% on the booking is the platform&#39;s <i>only</i> earning on an Open Play.</li>
+          <li>The organizer subscription is <b>already in the code and purchasable — with zero subscribers.</b></li>
+        </ul>
+
+        <div class="callout co--note">
+          <span class="co-tag">Worked example</span>
+          <p>An organizer books an <span class="peso">₱800</span> court and charges <span class="peso">₱150</span>/head. Six join. → Organizer keeps <b class="peso">₱900</b>, in full. PickleBallers earns <b>7% of <span class="peso">₱800</span> ≈ <span class="peso">₱56</span></b>. Nothing else.</p>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Coach payments — decided 14 Jul</span>
+          <ul>
+            <li><b>Lesson fees go through the app</b>, like a court booking. No more &ldquo;pay the coach afterwards&rdquo;.</li>
+            <li><b>PickleBallers takes 0%</b> of the lesson fee. The coach already paid <span class="peso">₱499</span> to <i>be</i> a coach.</li>
+          </ul>
+        </div>
+
+        <p><b>The revenue model, stated plainly:</b></p>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Money</th><th>PickleBallers takes</th></tr></thead>
+            <tbody>
+              <tr class="row--go"><td>Court booking</td><td><b>7%</b></td></tr>
+              <tr><td>Organizer&#39;s join fee (<span class="peso">₱999</span> sub)</td><td><b>0%</b></td></tr>
+              <tr><td>Coach&#39;s lesson fee (<span class="peso">₱499</span> sub)</td><td><b>0%</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="color:var(--muted)"><b style="color:var(--ink)">The subscription is the licence to charge.</b> The platform does not cut into what a partner earns.</p>
+
+        <div class="callout co--note">
+          <span class="co-tag">The transaction fee — decided 14 Jul</span>
+          <p><b>The player pays it.</b> Tax and transaction charges on a court booking or a coaching lesson are borne by <b>the person booking</b>, shown at checkout — not absorbed by PickleBallers, not deducted from the partner. So the 0% cut stays a true 0%.</p>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Refunds — decided 14 Jul</span>
+          <p><b>Free-cancellation window: 3 days.</b> Cancel more than 3 days out and the refund is <b>whole</b> — no deduction, whoever cancels. The slot can still be resold. <b>Inside the window, whoever cancels pays the transaction fee.</b></p>
+          <div class="tbl">
+            <table>
+              <thead><tr><th>Who cancelled</th><th>Player gets back</th><th>Who eats the fee</th></tr></thead>
+              <tbody>
+                <tr class="row--warn"><td>The player — changed their mind</td><td>Amount <b>minus</b> the fee</td><td><b>The player</b></td></tr>
+                <tr class="row--go"><td>Host / organizer / coach</td><td><b>100%, whole</b></td><td>The canceller — off their payout</td></tr>
+                <tr class="row--go"><td>Venue, weather, or us</td><td><b>100%, whole</b></td><td><b>PickleBallers</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-bottom:0">The principle: <b>you pay for the damage you cause.</b> A player must never be left worse off by someone <i>else&#39;s</i> cancellation than by never having booked.</p>
+        </div>
+
+        <div class="callout co--warn">
+          <span class="co-tag">⚠ Warn the player BEFORE they confirm</span>
+          <p>When a deduction will come off their refund, the confirmation must <b>say so, with the real numbers, before the button is pressed</b> — &ldquo;You paid <span class="peso">₱800</span>. You will get back <b class="peso">₱773</b>. A <span class="peso">₱27</span> transaction fee is deducted.&rdquo; Then they choose.</p>
+          <p style="margin-bottom:0"><b>No surprises after the fact.</b> A deduction discovered <i>after</i> confirming is how you lose a player for good. If we can&#39;t show the exact figure, we don&#39;t take the deduction.</p>
+        </div>
+
+        <div class="callout co--warn">
+          <span class="co-tag">⚠ A refund is never free</span>
+          <p style="margin-bottom:0">The gateway does not return the original processing fee when you refund — that money is already spent — and some charge a further refund fee. Every refund costs somebody; the table above only decides <i>who</i>.</p>
+        </div>
+
+        <div class="callout co--open">
+          <span class="co-tag">Gateway: PayMongo — not set up yet</span>
+          <p style="margin-bottom:0"><b>Do not hardcode a fee percentage.</b> It goes in settings beside <code>serviceFeePercent</code>, and the real numbers get filled in when PayMongo is actually wired. No guessed figures in the code or the UI.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEM 5 -->
+    <section class="sec" id="en-5">
+      <div class="sec-head">
+        <div class="sec-num">5</div>
+        <div class="h-txt">
+          <h2>Two things Phase 1 exposed</h2>
+          <div class="pills"><span class="pill pill--go">Both resolved 14 Jul</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p><b>&ldquo;Events&rdquo; has no events in it</b> — it&#39;s full of ordinary players&#39; games. And <b>a price shows on games that costs you nothing</b> — it&#39;s the court rate the host already paid.</p>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Decided — leave &ldquo;Events&rdquo; alone</span>
+          <p>Two corrections first:</p>
+          <ul>
+            <li><b>It isn&#39;t a tab.</b> It&#39;s a segment inside the <b>Play</b> tab, beside Open Play — <a href="../app/src/features/games/v2/GamesScreenV2.tsx#L40"><code>GamesScreenV2.tsx:40</code></a>.</li>
+            <li><b>The name is deliberate, not a typo.</b> &ldquo;Events&rdquo; is a <i>container for competitive formats</i> — round-robin, mini tournament, bracketing — not a synonym for &ldquo;tournament&rdquo;. It reads empty only because the public game is currently the <i>only</i> format built.</li>
+          </ul>
+          <p>The schema already anticipates this: <a href="../api/src/features/games/games.model.ts#L17"><code>games.model.ts:17</code></a> carries <code>format: 'bracketing' | 'round_robin' | 'mini_tournament'</code> on <code>gameType: 'public'</code> (8 rows today).</p>
+          <ul style="margin-bottom:0">
+            <li><b>Do NOT rename it. Do NOT merge Tournaments into it.</b></li>
+            <li><b>Tournaments is skipped for now</b> — the public game serves as the mini tournament.</li>
+            <li>Building out the other formats is future work, not a fix.</li>
+          </ul>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Misleading price — unblocked by item 4</span>
+          <p style="margin-bottom:0">A listing shows <b>Free</b> unless a subscribed organizer set a join fee — in which case it shows <b>that</b> fee, never the court rate. The court rate is the host&#39;s cost, not the joiner&#39;s.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEM 6 -->
+    <section class="sec" id="en-6">
+      <div class="sec-head">
+        <div class="sec-num">6</div>
+        <div class="h-txt">
+          <h2>Left for later, on purpose</h2>
+          <div class="pills"><span class="pill pill--info">Deferred</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div class="chips">
+          <div class="chip"><div class="c-name">Social feed</div></div>
+          <div class="chip"><div class="c-name">Cart checkout</div></div>
+          <div class="chip"><div class="c-name">Player equipment rental</div></div>
+          <div class="chip"><div class="c-name">Staff permission levels</div></div>
+          <div class="chip"><div class="c-name">Re-tuning the Play ranking</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ITEM 7 -->
+    <section class="sec" id="en-7">
+      <div class="sec-head">
+        <div class="sec-num">7</div>
+        <div class="h-txt">
+          <h2>Decisions still needed</h2>
+          <div class="pills"><span class="pill pill--go">3 big ones answered</span><span class="pill pill--open">1 open + 7 to sign off</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p><b>The three that matter most — all answered 14 July:</b></p>
+        <ul class="qlist">
+          <li><span class="q-check">✓</span><span><span class="q-old">Does Open Play get a lobby?</span> → <span class="q-new"><b>Yes</b>, with a cap. (item 3)</span></span></li>
+          <li><span class="q-check">✓</span><span><span class="q-old">Who charges for Open Play, and does PickleBallers take a cut?</span> → <span class="q-new"><b>Free to join</b> unless the host is a subscribed organizer, who sets the fee and <b>keeps all of it</b>. PickleBallers takes <b>7% on the booking only</b>. (item 4)</span></span></li>
+          <li><span class="q-check">✓</span><span><span class="q-old">Hide games you can&#39;t join, or show them marked?</span> → <span class="q-new"><b>Show them, marked — and disable the card.</b></span></span></li>
+        </ul>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Decision on #3, in full — stricter than what was built</span>
+          <ul>
+            <li>The listing <b>still shows</b> the game, marked as ineligible.</li>
+            <li><b>The card is not clickable</b> — you cannot open its info page.</li>
+            <li><b>The Join button is disabled too</b>, as a second guard.</li>
+          </ul>
+          <p style="margin-bottom:0">Whoever chose &ldquo;show it, marked&rdquo; chose <b>right</b> — but only half-built it. <b>To do:</b> disable the card itself.</p>
+        </div>
+
+        <div class="callout co--note">
+          <span class="co-tag">&ldquo;Like&rdquo; vs &ldquo;Interested&rdquo; — no decision needed</span>
+          <p style="margin-bottom:0">They were never the same. <b>&ldquo;Interested&rdquo;</b> exists only on Open Play (<code>interestedCount</code>); <b>&ldquo;Like&rdquo;</b> only on club posts in Social (<code>reactionCount</code>). And &ldquo;Interested&rdquo; is being deleted anyway — the lobby replaces it (item 3).</p>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Homepage wording — settled 14 Jul</span>
+          <p>The existing copy is <b>fine as it stands</b> — &ldquo;Ready to play, [name]?&rdquo;, &ldquo;Discover Games&rdquo;, &ldquo;Find a game&rdquo;. No change wanted.</p>
+          <p style="margin-bottom:0"><b>One line must change</b>, only because of today&#39;s decisions: cards read <b>&ldquo;5 interested&rdquo;</b> (<a href="../app/src/features/home/v2/HomeScreenV2.tsx#L305"><code>HomeScreenV2.tsx:305</code></a>). Interest dies with the lobby — it becomes <b>&ldquo;3 spots left&rdquo;</b>. What a player needs before tapping is whether there&#39;s <i>room</i>, not how many are curious.</p>
+        </div>
+
+        <div class="callout co--open">
+          <span class="co-tag">Still open — the seven live-but-unapproved things</span>
+          <p>Each is live in the app but nobody signed off. Each needs a <b>keep-or-kill</b>.</p>
+          <div class="chips">
+            <div class="chip"><div class="c-top"><span class="c-name"><span class="peso">₱499</span> coach subscription</span><span class="tag-live tag-earning">Earning</span></div><div class="c-note">The only thing earning money today.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name"><span class="peso">₱999</span> organizer subscription</span><span class="tag-live">Live · 0 subs</span></div><div class="c-note">Now the <i>only</i> way to charge for Open Play — load-bearing.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">&ldquo;<span class="peso">₱229,000</span> partner revenue&rdquo;</span><span class="tag-live">Live figure</span></div><div class="c-note">Shown, never approved.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">The pricing engine</span><span class="tag-live">Live</span></div><div class="c-note">Built, not signed off.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Rental inventory</span><span class="tag-live">Live · unused</span></div><div class="c-note">Present but not in use.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Request-to-book</span><span class="tag-live">Live</span></div><div class="c-note">Per-venue opt-in flow.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Tournaments outside Play</span><span class="tag-live tag-parked">Parked 14 Jul</span></div><div class="c-note">Skipped for now; public game = mini tournament.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="finale">
+      <h3>Next: the build can start.</h3>
+      <p>Open Play, the revenue model, and refunds are all settled. The work is a <b>merge</b> (<code>OpenPlaySession</code> → <code>Game</code>), not a rebuild.</p>
+      <p>Only two things are still open — <b>homepage wording</b> and the <b>seven live-but-unapproved things</b> — and neither blocks a line of it.</p>
+    </div>
+
+    <div class="foot">
+      Detail, if you want it:
+      <a href="../docs/minutes-2026-07-08-followup.md">minutes-2026-07-08-followup.md</a> ·
+      <a href="../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md">2026-07-14-Ivan-phase-1-play-and-open-play.md</a>
+    </div>
+
+  </div><!-- /lang-en -->
+
+  <!-- ================= TAGALOG ================= -->
+  <div class="lang-tl">
+
+    <section class="hero">
+      <p class="eyebrow">Tapos na ang Phase 1 · Na-update 14 Hulyo 2026</p>
+      <h1>Ano pa ang kulang</h1>
+      <p class="lede">Tapos na ang Phase&nbsp;1 (<b>5 sa 5</b>). Ito na lang ang natitira — at sa 14&nbsp;Hulyo, <b>tapos na ang Open Play, ang pera, at ang refund. Wala nang humaharang sa build.</b></p>
+    </section>
+
+    <div class="kpis">
+      <div class="kpi" data-tone="go">
+        <div class="k-label">Phase 1</div>
+        <div class="k-val">5 / 5 tapos</div>
+        <div class="k-sub">na-ship na</div>
+      </div>
+      <div class="kpi" data-tone="go">
+        <div class="k-label">Napagdesisyunan 14 Hul</div>
+        <div class="k-val">3 malaking desisyon</div>
+        <div class="k-sub">Open Play · Pera · Refund</div>
+      </div>
+      <div class="kpi" data-tone="open">
+        <div class="k-label">Bukas pa</div>
+        <div class="k-val">2 bagay</div>
+        <div class="k-sub">wala sa kanila ang humaharang</div>
+      </div>
+      <div class="kpi" data-tone="accent">
+        <div class="k-label">Ang trabaho</div>
+        <div class="k-val">Pagsasanib</div>
+        <div class="k-sub">hindi paggawa ng bago</div>
+      </div>
+    </div>
+
+    <div class="callout co--decided" style="margin-top:22px">
+      <span class="co-tag">✓ Tiningnan sa codebase — 15 Hulyo</span>
+      <p style="margin-bottom:0">Bawat item sa baba ay tiningnan sa <code>api/</code> at <code>app/</code>. <b>Isang bagay ang nagbago mula nang isulat ang plano:</b> ang <b>skill restriction</b> (item&nbsp;2) ay na-ship na noong <b>15 Hulyo</b> — server at app. Ang lahat ng iba, tama pa rin gaya ng nakasulat.</p>
+    </div>
+
+    <div class="tldr">
+      <div class="tldr-head"><span class="tt">Ang buod · sa tatlong linya</span></div>
+      <div class="tldr-body">
+        <div class="tldr-row">
+          <div class="n">01</div>
+          <div class="c">
+            <h4>Open Play</h4>
+            <b>Player ang nagbo-book</b> (kahit sino, walang kailangang role), may <b>tunay na lobby</b> na siya rin ang naglagay ng cap, at <b>libre ang sumali</b> — maliban kung may sinisingil na subscribed organizer, at <b>buo sa kanya ang bawat piso</b>. <b>Pagsasanib</b> ang trabaho (<code>OpenPlaySession</code> → <code>Game</code>), hindi paggawa ng bago.
+          </div>
+        </div>
+        <div class="tldr-row">
+          <div class="n">02</div>
+          <div class="c">
+            <h4>Ang modelo ng kita</h4>
+            Ang <b>subscription ang bayad sa karapatang makasingil</b>. <b>7% sa booking ng court</b> ang kukunin ng PickleBallers, wala nang iba. Ang player ang sasagot sa transaction fee. Sa refund, <b>kung sino ang nagkansela, siya ang sasagot</b> — labas sa <b>3-araw na libreng bintana</b>.
+          </div>
+        </div>
+        <div class="tldr-row">
+          <div class="n">03</div>
+          <div class="c">
+            <h4>Bukas pa</h4>
+            Wording ng homepage, at yung <b>pitong buhay-pero-walang-approval</b>. <b>Wala sa kanila ang humaharang sa Open Play.</b>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-divider"><span class="lbl">Ang pitong bagay</span><span class="line"></span></div>
+
+    <!-- TL ITEM 1 -->
+    <section class="sec" id="tl-1">
+      <div class="sec-head">
+        <div class="sec-num">1</div>
+        <div class="h-txt">
+          <h2>Sagutin muna to: nagpapatakbo ba ng sarili nilang session ang mga venue?</h2>
+          <div class="pills"><span class="pill pill--go">Nasagot 14 Hul</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div class="callout co--decided">
+          <span class="co-tag">Desisyon — HINDI</span>
+          <ul>
+            <li><b>Player ang gumagawa ng Open Play</b> — nag-book siya ng court. <b>Kahit sinong player.</b> Walang kailangang espesyal na role.</li>
+            <li><b>Ang &ldquo;organizer&rdquo; ay hindi venue.</b> Subscription siya na hawak ng isang <i>player</i> (nasa code na: <code>PartnerPlan = 'coach' | 'organizer'</code>, <span class="peso">₱999</span>). <b>Hindi</b> ito ang nagbubukas ng paggawa ng Open Play — <b>ang nagbubukas ng pagsingil.</b> Tingnan ang item&nbsp;4.</li>
+            <li><b>Mananatili ang recurring, pero lilipat.</b> Magiging option sa <b>booking step 2</b>: uulitin mo ba? anong mga araw? — palaging kasunod ang oras na na-book na.</li>
+          </ul>
+        </div>
+
+        <p><b>Ang totoong nasa code</b> (tiningnan 14 Hulyo):</p>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Rows</th><th>Bilang</th><th>May booking?</th><th>May lobby?</th></tr></thead>
+            <tbody>
+              <tr class="row--go"><td><code>Game</code> — player ang gumawa</td><td class="num">37 <span style="color:var(--muted)">(19 open)</span></td><td><span class="yes">✓ oo</span></td><td><span class="yes">✓ oo</span></td></tr>
+              <tr class="row--warn"><td><code>OpenPlaySession</code> — organizer, read-only</td><td class="num">95</td><td><span class="no">✕ wala</span></td><td><span class="no">✕ wala</span></td></tr>
+              <tr><td style="padding-left:26px">└ may tunay na organizer (5 recurring series)</td><td class="num">35</td><td><span class="no">✕ wala</span></td><td><span class="no">✕ wala</span></td></tr>
+              <tr><td style="padding-left:26px">└ lumang import, <b>walang may-ari</b></td><td class="num">60</td><td><span class="no">✕ wala</span></td><td><span class="no">✕ wala</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><b>Kaya PAGSASANIB ang trabaho, hindi paggawa ng bago.</b> Ang <code>Game</code>, siya na mismo ang modelong napagkasunduan — booking, lobby, restriction, capacity. Ang <code>OpenPlaySession</code> ay parehong ideya, ginawa lang nang walang booking.</p>
+
+        <div class="merge">
+          <div class="merge-box"><b>OpenPlaySession</b><span>95 rows · read-only · walang booking · walang lobby</span></div>
+          <div class="merge-op" aria-hidden="true">+</div>
+          <div class="merge-box"><b>Game</b><span>37 rows · may booking · tunay na lobby</span></div>
+          <div class="merge-op" aria-hidden="true">→</div>
+          <div class="merge-box merge-box--out"><b>Bawat Open Play = Game na may booking</b><span>booking · lobby · restriction · capacity</span></div>
+        </div>
+
+        <p><b>Gagawin:</b></p>
+        <ul>
+          <li>Isanib ang <code>OpenPlaySession</code> sa <code>Game</code> — lahat ng Open Play, dadaan sa booking.</li>
+          <li>Ilipat ang recurring sa booking step 2 (aalisin ang <code>OpenPlaySeries</code> bilang pang-organizer lang).</li>
+          <li>Burahin ang <b>60 na walang may-ari</b>.</li>
+        </ul>
+
+        <div class="callout co--warn">
+          <span class="co-tag">⚠ May butas sa pera ngayon</span>
+          <p>Yung <b>35 na organizer session</b> ay tumatakbo nang <b>walang court na na-book at walang bayad</b> — kaya <b>walang kinikita</b> ang PickleBallers doon. Sa booking lang tumatama ang 7%.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TL ITEM 2 -->
+    <section class="sec" id="tl-2">
+      <div class="sec-head">
+        <div class="sec-num">2</div>
+        <div class="h-txt">
+          <h2>Kalahati pa lang ang restriction</h2>
+          <div class="pills"><span class="pill pill--go">Nabuksan ng item 1</span><span class="pill pill--go">&ldquo;Beginners&rdquo; filter na-ship 15 Hul</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p><b>Gumagana:</b> kapag player ang nag-host, kaya na niyang gawing lalaki lang, babae lang, o pwede lahat — at totoong hindi makakapasok yung hindi bagay.</p>
+        <p><b>Hindi pa gumagana:</b></p>
+        <ul>
+          <li>Yung mga session ng venue, walang ganitong setting. Walang pumipigil sa hindi bagay na sumali.</li>
+          <li><s style="color:var(--muted)">Wala pang &ldquo;beginners lang&rdquo; na restriction kahit saan.</s> &nbsp;<span class="pill pill--go">Na-ship 15 Hul</span></li>
+          <li><b>May pumili ng &ldquo;ipakita pero markahan&rdquo; imbes na &ldquo;itago&rdquo; — walang nag-approve nun.</b></li>
+        </ul>
+        <div class="callout co--decided">
+          <span class="co-tag">Desisyon</span>
+          <ul>
+            <li>Yung unang bullet, <b>mawawala sa pagsasanib.</b> Pag naging <code>Game</code> na ang lahat, makukuha na nila ang restriction na gumagana na.</li>
+            <li><b>✅ Yung &ldquo;beginners lang&rdquo; na restriction — NA-SHIP 15 Hul</b>, server + app, kinabukasan matapos isulat ang plano. Ipinatutupad sa join <i>at</i> sa Open Play interest (<code>skillBlock</code> sa <code>games.controller.ts</code>).</li>
+            <li><b>Yung itago-o-ipakita: napagdesisyunan na — nasa item 7.</b> Tama ang pinili; kulang lang ang pagkakagawa.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TL ITEM 3 -->
+    <section class="sec" id="tl-3">
+      <div class="sec-head">
+        <div class="sec-num">3</div>
+        <div class="h-txt">
+          <h2>Wala pang lobby ang Open Play</h2>
+          <div class="pills"><span class="pill pill--go">Nasagot 14 Hul — Oo</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p>Ngayon: isang pindot lang (&ldquo;I&#39;m Interested&rdquo;) tapos bilang ng tao. Hindi mo makikita kung sino ang sigurado, walang invite, walang group chat. May ganito nang parts sa app — ikakabit lang, hindi na from scratch.</p>
+        <div class="callout co--decided">
+          <span class="co-tag">Desisyon — bibigyan ng lobby</span>
+          <ul>
+            <li><b>Papalitan ng tunay na lobby ang &ldquo;I&#39;m Interested&rdquo;</b> — yung mismong meron na ang <code>Game</code>: nakikitang roster, invite, group chat.</li>
+            <li><b>Ang player ang naglalagay ng cap</b> — may option sa booking, <b>at pwedeng baguhin mamaya</b>. Hindi galing sa capacity ng court.</li>
+            <li><b>Harang:</b> hindi pwedeng ibaba ang cap sa ilalim ng bilang ng nakasali na. Walang matatanggal dahil sa edit.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- TL ITEM 4 -->
+    <section class="sec" id="tl-4">
+      <div class="sec-head">
+        <div class="sec-num">4</div>
+        <div class="h-txt">
+          <h2>Wala pang rules sa pera</h2>
+          <div class="pills"><span class="pill pill--go">Nasagot 14 Hul</span><span class="pill pill--info">Gateway: PayMongo — hindi pa naka-wire</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p>Sino ang magsisingil, saan mapupunta, may kukunin ba ang PickleBallers, paano kapag nag-refund — ganun din sa coach. Hindi mahirap gawin; hindi lang alam ang rules. May dumadaan nang totoong pera (bayad sa tournament), kaya yun ang gagamitin.</p>
+
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Sino</th><th>Ang pagsali sa Open Play niya</th><th>Kanino mapupunta</th></tr></thead>
+            <tbody>
+              <tr><td>Kahit sinong player (walang sub)</td><td><b>Libre</b></td><td>—</td></tr>
+              <tr class="row--info"><td>Player na organizer (<span class="peso">₱999</span>)</td><td><b>Siya ang magtatakda</b> — libre o may bayad</td><td><b>Sa kanya</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul>
+          <li><b>Sa BOOKING lang kumukuha ang PickleBallers</b> — sa bayad sa court ng nag-host. Buhay na: <code>serviceFeePercent</code>, <b>7%</b>, sa bawat <code>Booking</code>.</li>
+          <li><b>Walang kinukuha ang PickleBallers sa join fee ng organizer.</b> Buo sa organizer ang bawat piso.</li>
+          <li>Ang organizer subscription ay <b>nasa code na at pwedeng bilhin — pero wala ni isang subscriber.</b></li>
+        </ul>
+
+        <div class="callout co--note">
+          <span class="co-tag">Halimbawa</span>
+          <p>Nag-book ang organizer ng <span class="peso">₱800</span> na court, sinisingil ng <span class="peso">₱150</span> kada tao. Anim ang sumali. → <b class="peso">₱900</b> ang sa organizer, buo. <b>7% ng <span class="peso">₱800</span> ≈ <span class="peso">₱56</span></b> ang sa PickleBallers. Wala nang iba.</p>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Bayad sa coach — 14 Hul</span>
+          <ul>
+            <li><b>Dadaan na sa app ang bayad sa lesson</b>, gaya ng booking. Wala nang &ldquo;bayaran mo na lang siya pagkatapos.&rdquo;</li>
+            <li><b>0% ang kukunin ng PickleBallers</b> sa lesson fee. Nagbayad na ng <span class="peso">₱499</span> ang coach para <i>maging</i> coach.</li>
+          </ul>
+        </div>
+
+        <p><b>Ang modelo ng kita, plano-plano:</b></p>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Pera</th><th>Kukunin ng PickleBallers</th></tr></thead>
+            <tbody>
+              <tr class="row--go"><td>Booking ng court</td><td><b>7%</b></td></tr>
+              <tr><td>Join fee ng organizer (<span class="peso">₱999</span>)</td><td><b>0%</b></td></tr>
+              <tr><td>Lesson fee ng coach (<span class="peso">₱499</span>)</td><td><b>0%</b></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="color:var(--muted)"><b style="color:var(--ink)">Ang subscription ang bayad sa karapatang makasingil.</b> Hindi kumakagat ang platform sa kinikita ng partner.</p>
+
+        <div class="callout co--note">
+          <span class="co-tag">Ang transaction fee — 14 Hul</span>
+          <p><b>Ang player ang sasagot.</b> Ang buwis at kaltas sa booking o sa lesson ay <b>sa nagbo-book</b> manggagaling, nakikita sa checkout — hindi sasagutin ng PickleBallers, hindi ikakaltas sa partner. Kaya ang 0% ay <b>tunay ngang 0%</b>.</p>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Refund — 14 Hul</span>
+          <p><b>Libreng bintana: 3 araw.</b> Kanselahin nang mahigit 3 araw bago, at <b>buo</b> ang refund — walang kaltas, kahit sino pa. Naibebenta pa ang slot. <b>Sa loob ng bintana, kung sino ang nagkansela, siya ang sasagot sa transaction fee.</b></p>
+          <div class="tbl">
+            <table>
+              <thead><tr><th>Sino ang nagkansela</th><th>Makukuha ng player</th><th>Sino ang kakaltasan</th></tr></thead>
+              <tbody>
+                <tr class="row--warn"><td>Ang player — nagbago ang isip</td><td>Bayad <b>bawas</b> ang fee</td><td><b>Ang player</b></td></tr>
+                <tr class="row--go"><td>Host / organizer / coach</td><td><b>Buo. 100%.</b></td><td>Ang nagkansela — bawas sa payout</td></tr>
+                <tr class="row--go"><td>Venue, ulan, o kami</td><td><b>Buo. 100%.</b></td><td><b>PickleBallers</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-bottom:0">Ang batayan: <b>ikaw ang magbabayad sa pinsalang ikaw ang may gawa.</b> Hindi kailanman dapat mas masama ang kalalabasan ng player dahil sa kanselang <i>hindi niya</i> ginawa.</p>
+        </div>
+
+        <div class="callout co--warn">
+          <span class="co-tag">⚠ Sabihan ang player BAGO magkumpirma</span>
+          <p>Kapag may ikakaltas sa refund, dapat <b>nakasulat, may totoong numero, bago pa mapindot</b> — &ldquo;Nagbayad ka ng <span class="peso">₱800</span>. Makukuha mo ang <b class="peso">₱773</b>. May <span class="peso">₱27</span> na transaction fee na ikakaltas.&rdquo; Siya na ang bahalang pumili.</p>
+          <p style="margin-bottom:0"><b>Walang gulat pagkatapos.</b> Kung hindi maipapakita ang eksaktong halaga, <b>hindi tayo kakaltas.</b></p>
+        </div>
+
+        <div class="callout co--warn">
+          <span class="co-tag">⚠ Walang libreng refund</span>
+          <p style="margin-bottom:0">Hindi ibinabalik ng gateway ang orihinal na processing fee kapag nag-refund — gastos na yun — at may dagdag pang refund fee ang iba. May gastos ang bawat refund; ang pinagdedesisyunan lang ay <i>sino</i> ang sasagot.</p>
+        </div>
+
+        <div class="callout co--open">
+          <span class="co-tag">Gateway: PayMongo — hindi pa naka-setup</span>
+          <p style="margin-bottom:0"><b>Huwag i-hardcode ang porsyento.</b> Ilalagay sa settings, katabi ng <code>serviceFeePercent</code>, at ilalagay ang totoong bilang pag na-wire na ang PayMongo. Walang hulang numero sa code o UI.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TL ITEM 5 -->
+    <section class="sec" id="tl-5">
+      <div class="sec-head">
+        <div class="sec-num">5</div>
+        <div class="h-txt">
+          <h2>Dalawang bagay na lumabas dahil sa Phase 1</h2>
+          <div class="pills"><span class="pill pill--go">Pareho nang naayos 14 Hul</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p><b>Yung &ldquo;Events&rdquo;, walang events sa loob</b> — puro laro ng ordinaryong player. At <b>may presyong lumalabas sa laro pero hindi mo naman babayaran</b> — presyo yun ng court na bayad na ng nag-host.</p>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Desisyon — wag galawin ang &ldquo;Events&rdquo;</span>
+          <p>Dalawang pagtatama muna:</p>
+          <ul>
+            <li><b>Hindi siya tab.</b> Segment siya sa loob ng <b>Play</b> tab, katabi ng Open Play — <a href="../app/src/features/games/v2/GamesScreenV2.tsx#L40"><code>GamesScreenV2.tsx:40</code></a>.</li>
+            <li><b>Sinadya ang pangalan, hindi typo.</b> Ang &ldquo;Events&rdquo; ay <i>lalagyan ng mga format ng kompetisyon</i> — round-robin, mini tournament, bracketing. Mukha lang walang laman kasi ang public game pa lang ang <i>tanging</i> format na nabubuo.</li>
+          </ul>
+          <p>Nakahanda na ito sa schema: <a href="../api/src/features/games/games.model.ts#L17"><code>games.model.ts:17</code></a> — <code>format: 'bracketing' | 'round_robin' | 'mini_tournament'</code> sa <code>gameType: 'public'</code> (8 rows ngayon).</p>
+          <ul style="margin-bottom:0">
+            <li><b>HUWAG palitan ang pangalan. HUWAG isama ang Tournaments dito.</b></li>
+            <li><b>Ipagpapaliban muna ang Tournaments</b> — ang public game muna ang mini tournament.</li>
+            <li>Ang pagbuo ng ibang format ay trabaho sa hinaharap.</li>
+          </ul>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Nakakalitong presyo — nabuksan ng item 4</span>
+          <p style="margin-bottom:0"><b>&ldquo;Libre&rdquo;</b> ang ipapakita — maliban kung may in-set na join fee ang subscribed organizer, at <b>yun</b> ang ipapakita. Hindi kailanman ang presyo ng court. Gastos yun ng nag-host, hindi ng sasali.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TL ITEM 6 -->
+    <section class="sec" id="tl-6">
+      <div class="sec-head">
+        <div class="sec-num">6</div>
+        <div class="h-txt">
+          <h2>Ipinagpaliban muna</h2>
+          <div class="pills"><span class="pill pill--info">Deferred</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <div class="chips">
+          <div class="chip"><div class="c-name">Social feed</div></div>
+          <div class="chip"><div class="c-name">Cart checkout</div></div>
+          <div class="chip"><div class="c-name">Pagrenta ng gamit (player)</div></div>
+          <div class="chip"><div class="c-name">Levels ng staff permission</div></div>
+          <div class="chip"><div class="c-name">Pag-adjust ng ranking</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TL ITEM 7 -->
+    <section class="sec" id="tl-7">
+      <div class="sec-head">
+        <div class="sec-num">7</div>
+        <div class="h-txt">
+          <h2>Mga desisyong kailangan</h2>
+          <div class="pills"><span class="pill pill--go">3 malalaki, nasagot</span><span class="pill pill--open">1 bukas + 7 dapat aprubahan</span></div>
+        </div>
+      </div>
+      <div class="sec-body">
+        <p><b>Tatlo ang pinakaimportante — nasagot na lahat 14 Hulyo:</b></p>
+        <ul class="qlist">
+          <li><span class="q-check">✓</span><span><span class="q-old">Gagawan ba ng lobby ang Open Play?</span> → <span class="q-new"><b>Oo</b>, may cap. (item 3)</span></span></li>
+          <li><span class="q-check">✓</span><span><span class="q-old">Sino ang magsisingil sa Open Play, at may kukunin ba ang PickleBallers?</span> → <span class="q-new"><b>Libre ang sumali</b> maliban kung subscribed organizer ang nag-host — siya ang magtatakda, at <b>buo sa kanya</b>. Sa booking lang kumukuha ng <b>7%</b>. (item 4)</span></span></li>
+          <li><span class="q-check">✓</span><span><span class="q-old">Itatago ba yung larong di mo pwedeng salihan, o ipapakita pero may marka?</span> → <span class="q-new"><b>Ipakita, may marka — at i-disable ang card.</b></span></span></li>
+        </ul>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Buong desisyon sa #3 — mas mahigpit</span>
+          <ul>
+            <li><b>Nakikita</b> pa rin sa listahan, may markang hindi ka pwede.</li>
+            <li><b>Hindi mapipindot ang card</b> — hindi mo mabubuksan ang info page.</li>
+            <li><b>Disabled din ang Join button</b> — pangalawang harang.</li>
+          </ul>
+          <p style="margin-bottom:0">Yung pumili ng &ldquo;ipakita, may marka&rdquo; — <b>tama siya.</b> Kalahati lang ang nagawa. <b>Gagawin:</b> i-disable ang card mismo.</p>
+        </div>
+
+        <div class="callout co--note">
+          <span class="co-tag">&ldquo;Like&rdquo; vs &ldquo;Interested&rdquo; — walang kailangang desisyon</span>
+          <p style="margin-bottom:0">Hindi sila kailanman naging pareho. <b>&ldquo;Interested&rdquo;</b> — nasa Open Play lang (<code>interestedCount</code>); <b>&ldquo;Like&rdquo;</b> — nasa club posts lang sa Social (<code>reactionCount</code>). At mawawala na rin ang &ldquo;Interested&rdquo; — pinapalitan ng lobby (item 3).</p>
+        </div>
+
+        <div class="callout co--decided">
+          <span class="co-tag">Wording ng homepage — tapos na 14 Hul</span>
+          <p>Ayos na ang nakasulat ngayon — &ldquo;Ready to play, [pangalan]?&rdquo;, &ldquo;Discover Games&rdquo;, &ldquo;Find a game&rdquo;. Walang babaguhin.</p>
+          <p style="margin-bottom:0"><b>Isang linya lang ang kailangang palitan</b>, dahil lang sa desisyon ngayon: ang mga card ay nagsasabing <b>&ldquo;5 interested&rdquo;</b> (<a href="../app/src/features/home/v2/HomeScreenV2.tsx#L305"><code>HomeScreenV2.tsx:305</code></a>). Magiging <b>&ldquo;3 spots left&rdquo;</b> — ang totoong kailangang malaman ay kung <i>may pwesto pa ba</i>, hindi kung ilan ang nagtataka.</p>
+        </div>
+
+        <div class="callout co--open">
+          <span class="co-tag">Bukas pa — pitong buhay-pero-walang-approval</span>
+          <p>Buhay na sa app pero walang nag-approve. Bawat isa, kailangan ng <b>itago-o-tanggalin</b>.</p>
+          <div class="chips">
+            <div class="chip"><div class="c-top"><span class="c-name"><span class="peso">₱499</span> coach subscription</span><span class="tag-live tag-earning">Kumikita</span></div><div class="c-note">Yun lang ang kumikita ngayon.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name"><span class="peso">₱999</span> organizer subscription</span><span class="tag-live">Buhay · 0 sub</span></div><div class="c-note">Siya na lang ang paraan para makasingil — haligi na.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">&ldquo;<span class="peso">₱229,000</span> partner revenue&rdquo;</span><span class="tag-live">Buhay na figure</span></div><div class="c-note">Nakikita, walang approval.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Ang pricing engine</span><span class="tag-live">Buhay</span></div><div class="c-note">Ginawa, walang sign-off.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Rental inventory</span><span class="tag-live">Buhay · di gamit</span></div><div class="c-note">Nandiyan pero di ginagamit.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Request-to-book</span><span class="tag-live">Buhay</span></div><div class="c-note">Per-venue opt-in flow.</div></div>
+            <div class="chip"><div class="c-top"><span class="c-name">Tournaments sa labas ng Play</span><span class="tag-live tag-parked">Ipinarada 14 Hul</span></div><div class="c-note">Nilaktawan muna; public game = mini tournament.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="finale">
+      <h3>Susunod: pwede nang simulan ang build.</h3>
+      <p>Tapos na ang Open Play, ang modelo ng kita, at ang refund. <b>Pagsasanib</b> ang trabaho (<code>OpenPlaySession</code> → <code>Game</code>), hindi paggawa ng bago.</p>
+      <p>Dalawang bagay na lang ang bukas — <b>wording ng homepage</b> at yung <b>pitong buhay-pero-walang-approval</b> — at wala ni isang linyang hinaharangan ng dalawang yun.</p>
+    </div>
+
+    <div class="foot">
+      Detalye, kung gusto mo:
+      <a href="../docs/minutes-2026-07-08-followup.md">minutes-2026-07-08-followup.md</a> ·
+      <a href="../reports/2026-07-14-Ivan-phase-1-play-and-open-play.md">2026-07-14-Ivan-phase-1-play-and-open-play.md</a>
+    </div>
+
+  </div><!-- /lang-tl -->
+
+  </div><!-- /wrap -->
+</div><!-- /doc -->
+
+<script>
+  function setLang(l){
+    document.getElementById('doc').setAttribute('data-lang', l);
+  }
+</script>
