@@ -18,7 +18,7 @@ import {
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 import { money, prettyDate, to12h } from '../../bookings/bookingDisplay';
-import { dayParts, gameTitle, gameTypeLabel, gameVibeLabel, gameLocation, genderBlockReason, genderPolicyLabel, interestLabel, interestWithTarget, timeLine } from '../gameDisplay';
+import { dayParts, gameTitle, gameTypeLabel, gameVibeLabel, gameLocation, genderBlockReason, genderPolicyLabel, skillBlockReason, interestLabel, interestWithTarget, timeLine } from '../gameDisplay';
 
 interface Props {
   source: 'auto' | 'game' | 'session';
@@ -154,7 +154,10 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
   // Men-only / women-only sessions admit only a matching profile gender. Already-
   // interested players can always withdraw, so the block only guards signing up.
   const restrictedTo = genderPolicyLabel(game.genderPolicy);
-  const blockedReason = isInterested ? null : genderBlockReason(game.genderPolicy, me?.gender, !!me);
+  const blockedReason = isInterested
+    ? null
+    : genderBlockReason(game.genderPolicy, me?.gender, !!me)
+      ?? skillBlockReason(game.skillMin, game.skillMax, me?.skillLevel, !!me);
 
   const toggleInterest = async () => {
     if (!game || busy || blockedReason || isHost) return;
@@ -391,7 +394,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             </button>
           )
         ) : (
-          <button className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
+          <button type="button" className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
             {busy ? (
               <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
             ) : blockedReason ? (
@@ -484,8 +487,14 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
   const interested: ApiGamePerson[] = session?.interestedUsers ?? [];
   const interestedCount = session?.interestedCount ?? session?.joinedCount ?? interested.length;
 
+  // Skill eligibility: a level-restricted session only admits a matching DUPR.
+  // Already-interested players are past the gate (they can always withdraw).
+  const blockedReason = isInterested
+    ? null
+    : skillBlockReason(session?.skillLevelMin, session?.skillLevelMax, me?.skillLevel, !!me);
+
   const toggleInterest = async () => {
-    if (!session || busy) return;
+    if (!session || busy || blockedReason) return;
     if (!isInterested && !chrome.requireAuth('show interest')) return;
     setBusy(true);
     setError(null);
@@ -682,11 +691,16 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           <div className="eyebrow">Interested</div>
           <div className="amount">{interestedCount}</div>
         </div>
-        <button className={`btn-join ${isInterested ? 'btn-leave' : ''}`} onClick={toggleInterest} disabled={busy}>
+        <button type="button" className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
           {busy ? (
             <>
               <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
               {isInterested ? 'Removing…' : 'Saving…'}
+            </>
+          ) : blockedReason ? (
+            <>
+              <Icon name="lock" size={16} />
+              {blockedReason}
             </>
           ) : isInterested ? (
             <>
