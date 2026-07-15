@@ -11,6 +11,10 @@ const appSettingsSchema = new Schema({
   // Platform service fee charged to the player on top of the venue's price, shown
   // as a line item at checkout. A single global percentage (the meeting's "7%").
   serviceFeePercent: { type: Number, default: 7, min: 0, max: 100 },
+  // Payment-gateway transaction fee charged to the PLAYER at checkout (tax +
+  // processing). Default 0 until PayMongo is wired — the admin sets the real
+  // number here, never hard-coded, so the demo never shows a guessed fee.
+  transactionFeePercent: { type: Number, default: 0, min: 0, max: 100 },
   // BCC a copy of every transactional email to a monitoring address (e.g. info@).
   emailBccEnabled: { type: Boolean, default: false },
   emailBccAddress: { type: String, default: 'info@eunika.agency', maxlength: 255 },

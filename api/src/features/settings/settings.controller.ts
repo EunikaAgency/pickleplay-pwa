@@ -44,6 +44,13 @@ export async function getServiceFeePercent(): Promise<number> {
   return s?.serviceFeePercent ?? 7;
 }
 
+/** Server-side transaction (gateway) fee percentage, paid by the player. Defaults
+ *  to 0 until PayMongo is wired and the admin sets the real number. */
+export async function getTransactionFeePercent(): Promise<number> {
+  const s = await getSingleton();
+  return s?.transactionFeePercent ?? 0;
+}
+
 /** Price + term of the coach/organizer partner subscriptions. Imported by the
  *  partner-subscriptions controller so the price is never hard-coded twice. */
 export async function getPartnerSubscriptionPricing(): Promise<{
@@ -59,13 +66,16 @@ export async function getPartnerSubscriptionPricing(): Promise<{
 }
 
 function publicShape(s: {
-  paymentTestMode?: boolean; serviceFeePercent?: number; emailBccEnabled?: boolean;
+  paymentTestMode?: boolean; serviceFeePercent?: number; transactionFeePercent?: number;
+  emailBccEnabled?: boolean;
   emailBccAddress?: string; pricingMode?: string; coachSubscriptionPrice?: number;
   organizerSubscriptionPrice?: number; partnerSubscriptionDays?: number;
 } | null) {
   return {
     paymentTestMode: s?.paymentTestMode ?? true,
     serviceFeePercent: s?.serviceFeePercent ?? 7,
+    // Player-paid gateway fee %. 0 until PayMongo is wired (admin-configurable).
+    transactionFeePercent: s?.transactionFeePercent ?? 0,
     testCard: TEST_CARD,
     emailBccEnabled: s?.emailBccEnabled ?? false,
     emailBccAddress: s?.emailBccAddress ?? 'info@eunika.agency',
@@ -98,6 +108,7 @@ export async function getSettings(c: any) {
 const updateSchema = z.object({
   paymentTestMode: z.boolean().optional(),
   serviceFeePercent: z.number().min(0).max(100).optional(),
+  transactionFeePercent: z.number().min(0).max(100).optional(),
   emailBccEnabled: z.boolean().optional(),
   emailBccAddress: z.string().email().max(255).optional(),
   pricingMode: z.enum(['start', 'blend']).optional(),
@@ -116,6 +127,7 @@ export async function updateSettings(c: any) {
   const update: Record<string, unknown> = { updatedBy: user.sub };
   if (body.paymentTestMode !== undefined) update.paymentTestMode = body.paymentTestMode;
   if (body.serviceFeePercent !== undefined) update.serviceFeePercent = body.serviceFeePercent;
+  if (body.transactionFeePercent !== undefined) update.transactionFeePercent = body.transactionFeePercent;
   if (body.emailBccEnabled !== undefined) update.emailBccEnabled = body.emailBccEnabled;
   if (body.emailBccAddress !== undefined) update.emailBccAddress = body.emailBccAddress;
   if (body.pricingMode !== undefined) update.pricingMode = body.pricingMode;

@@ -1134,17 +1134,21 @@ function CourtDetail({
                 const subLabel = isPending ? 'Application pending — tap to cancel'
                   : isApproved ? 'Partnership active'
                   : reapplySub ?? row.sub;
-                // Each entry is a distinct, always-visible card. Locked/approved
-                // states are conveyed by the lock icon + note / badge — not by
-                // fading the whole card — so both cards read clearly.
-                const cardClass = 'w-full flex items-center gap-3 bg-[var(--surface)] border border-[var(--hairline)] rounded-[16px] px-4 py-3.5 text-[14px] font-bold text-[var(--ink)] shadow-[0_2px_8px_rgba(26,33,56,0.06)]';
+                // Each entry is a distinct, always-visible card. A crisp solid
+                // border (a fraction of --ink, so it flips correctly in dark
+                // mode) does the heavy lifting for "obviously a card" — shadows
+                // alone wash out on some displays; --shadow-card just adds lift.
+                // Locked/approved states read from the lock icon + note / badge,
+                // not from fading the whole card, so both cards stay legible.
+                const cardClass = 'w-full flex items-center gap-3 bg-[var(--surface)] rounded-[16px] px-4 py-3.5 text-[14px] font-bold text-[var(--ink)] shadow-[var(--shadow-card)]';
+                const cardStyle = { border: '1px solid color-mix(in srgb, var(--ink) 18%, transparent)' };
                 return (
                   <div key={row.kind}>
                     {isPending ? (
                       // Pending: not tappable-to-cancel any more — an explicit
                       // "Cancel request" button sits beside the Pending badge, so
                       // the row is a plain card (can't nest a button in a button).
-                      <div className={cardClass}>
+                      <div className={cardClass} style={cardStyle}>
                         <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center shrink-0">
                           <Icon name={row.icon} size={15} />
                         </span>
@@ -1167,6 +1171,7 @@ function CourtDetail({
                     ) : (
                     <button
                       className={`${cardClass} disabled:cursor-default`}
+                      style={cardStyle}
                       onClick={() => {
                         if (disabled) return;
                         void applyPartner(row.kind);

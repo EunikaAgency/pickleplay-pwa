@@ -292,6 +292,10 @@ function groupBySource(items: ApiConversationSummary[]) {
 export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenProps) {
   const user = useAuthStore((s) => s.user);
   const isOwner = userHasPermission(user, 'owner.access');
+  // Staff sub-accounts work a venue's shared inbox, not a personal one — their
+  // Messages are venue conversations only (no Direct Messages), shown under a
+  // single "Venue" tab.
+  const isStaff = user?.roleDefault === 'staff';
   const [items, setItems] = useState<ApiConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -715,7 +719,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
       <ScreenHeader
         onBack={onBack}
         title="Messages"
-        action={
+        action={isStaff ? undefined : (
           <button
             type="button"
             aria-label="New message"
@@ -724,7 +728,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
           >
             <Icon name="edit" size={18} />
           </button>
-        }
+        )}
       />
 
       <div className="section mt-1!">
@@ -732,15 +736,23 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
           <LoadingSkeleton variant="list-row" count={5} />
         ) : error ? (
           <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
-        ) : items.length === 0 ? (
-          <EmptyState
-            icon="chat"
-            title="No messages yet"
-            description={'Tap the compose button to message any player — or use "Message organizer" on any game.'}
-            action={{ label: 'New message', onPress: openCompose }}
-          />
         ) : (() => {
-          const groups = groupBySource(items);
+          // Staff work the venue's shared inbox only — hide any personal DMs so
+          // their Messages are venue conversations under a single "Venue" tab.
+          const visibleItems = isStaff ? items.filter((c) => c.contextType === 'venue') : items;
+          if (visibleItems.length === 0) {
+            return (
+              <EmptyState
+                icon="chat"
+                title="No messages yet"
+                description={isStaff
+                  ? 'Messages from players about your venue will show up here.'
+                  : 'Tap the compose button to message any player — or use "Message organizer" on any game.'}
+                action={isStaff ? undefined : { label: 'New message', onPress: openCompose }}
+              />
+            );
+          }
+          const groups = groupBySource(visibleItems);
           // The tab state can go stale if its section empties out — fall back
           // to the first available section so a tab is always selected.
           const activeKey = groups.some((g) => g.key === activeSource)
@@ -748,7 +760,7 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
             : (groups[0]?.key ?? 'direct');
           return (
             <div className="flex flex-col" style={{ gap: 16 }}>
-              {groups.length >= 2 && (
+              {(groups.length >= 2 || isStaff) && (
                 <div className="seg msg-tabs">
                   {groups.map((g) => {
                     const unread = g.items.reduce((n, c) => n + (c.unread > 0 ? c.unread : 0), 0);
