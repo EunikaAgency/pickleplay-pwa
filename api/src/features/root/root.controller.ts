@@ -320,7 +320,8 @@ export function listEndpoints(c: any) {
       endpoints: [
         { path: '/api/v1/bookings', methods: ['GET', 'POST'], description: 'List / create bookings', auth: 'user' },
         { path: '/api/v1/bookings/:id', methods: ['GET', 'PATCH'], description: 'Single booking', auth: 'user' },
-        { path: '/api/v1/bookings/:id/cancel', methods: ['POST'], description: 'Cancel a booking', auth: 'user' },
+        { path: '/api/v1/bookings/:id/refund-quote', methods: ['GET'], description: 'Refund quote if cancelled now — { paid, refund, feeDeducted, withinWindow, daysUntil } under the 3-day free-cancellation window', auth: 'user' },
+        { path: '/api/v1/bookings/:id/cancel', methods: ['POST'], description: 'Cancel a booking (returns the applied refundQuote)', auth: 'user' },
         { path: '/api/v1/payments', methods: ['GET', 'POST'], description: 'List / create payments', auth: 'user' },
         { path: '/api/v1/payments/checkout', methods: ['POST'], description: 'Pay for a booking (test mode auto-confirms; no real charge)', auth: 'user' },
         { path: '/api/v1/payments/:id', methods: ['GET', 'PATCH'], description: 'Single payment', auth: 'user' },

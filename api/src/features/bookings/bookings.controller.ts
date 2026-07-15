@@ -639,6 +639,35 @@ export async function updateBooking(c: any) {
   return c.json({ data: { ...result, id: result._id } });
 }
 
+/** Refund policy (item-4 decision): a booking cancelled MORE than 3 days before its
+ *  play date is refunded whole; inside that 3-day window the player-canceller bears
+ *  the gateway transaction fee, deducted from the refund. `transactionFeePercent` is
+ *  admin-set (0 until PayMongo is wired), so today's refund is whole either way — but
+ *  the math is here for when a fee is configured. Returns the real figures the app
+ *  MUST show before the player confirms (no surprise deductions after the fact). */
+async function computeRefundQuote(booking: any) {
+  const { getTransactionFeePercent } = await import('../settings/settings.controller.js');
+  const feePercent = await getTransactionFeePercent();
+  const paid = Number(booking.amount || 0) + Number(booking.serviceFeeAmount || 0);
+  const play = new Date(`${booking.date}T${booking.startTime || '00:00'}:00`);
+  const daysUntil = (play.getTime() - Date.now()) / 86_400_000;
+  const withinWindow = daysUntil <= 3;
+  const feeDeducted = withinWindow ? Math.round(paid * (feePercent / 100) * 100) / 100 : 0;
+  const refund = Math.round((paid - feeDeducted) * 100) / 100;
+  return { paid, refund, feeDeducted, feePercent, withinWindow, daysUntil: Math.floor(daysUntil), freeWindowDays: 3 };
+}
+
+/** Read-only: what the player would get back if they cancel this booking now. The
+ *  refund screen calls this and shows the exact numbers before the confirm button. */
+export async function getRefundQuote(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const booking = await Booking.findOne({ _id: id, userId: user.sub }).lean();
+  if (!booking) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404);
+  const quote = await computeRefundQuote(booking);
+  return c.json({ data: quote });
+}
+
 export async function cancelBooking(c: any) {
   const user = c.get('user');
   const id = c.req.param('id');
@@ -649,6 +678,10 @@ export async function cancelBooking(c: any) {
     { new: true },
   ).lean();
   if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404);
+  // What the player gets back under the 3-day-window policy (whole refund unless
+  // inside the window with a configured transaction fee). Drives the receipt + the
+  // response, so the app can confirm the same figure it warned the player about.
+  const refundQuote = await computeRefundQuote(result);
   // Demand: a cancelled booking is demand lost — capture it for the owner report.
   void recordDemand({ type: 'booking_cancelled', venueId: String((result as any).venueId), courtId: (result as any).courtId ? String((result as any).courtId) : null, userId: user.sub, date: (result as any).date, startHour: (result as any).startTime ? Number(String((result as any).startTime).split(':')[0]) : null });
   // Promote the next waitlisted player for this slot (best-effort).
@@ -669,7 +702,7 @@ export async function cancelBooking(c: any) {
         const testMode = await isPaymentTestMode();
         if (testMode) {
           payment.status = 'refunded';
-          payment.notes = `Auto-refunded on cancellation (test mode) — ${new Date().toISOString()}`;
+          payment.notes = `Auto-refunded ₱${refundQuote.refund.toFixed(2)} on cancellation (test mode)${refundQuote.feeDeducted > 0 ? `, ₱${refundQuote.feeDeducted.toFixed(2)} transaction fee kept` : ''} — ${new Date().toISOString()}`;
           await payment.save();
           refundStatus = 'Refunded (test mode)';
         } else {
@@ -693,7 +726,7 @@ export async function cancelBooking(c: any) {
             venue: v?.displayName || 'the venue',
             date: fmtDate((result as any).date),
             time: `${fmtTime((result as any).startTime)} – ${fmtTime((result as any).endTime)}`,
-            refund: `₱${Number((result as any).amount || 0).toFixed(2)}`,
+            refund: `₱${refundQuote.refund.toFixed(2)}`,
             refundStatus,
             cancelledAt: new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
           });
@@ -703,7 +736,7 @@ export async function cancelBooking(c: any) {
     }
   }
 
-  return c.json({ data: { ...result, id: result._id } });
+  return c.json({ data: { ...result, id: result._id, refundQuote } });
 }
 
 /* ─── Booking modification (reschedule / change court) ───────────────── */

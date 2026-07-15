@@ -2789,6 +2789,22 @@ export async function getBooking(id: string): Promise<ApiBooking> {
   return request<ApiBooking>(`${BOOKINGS_PREFIX}/${encodeURIComponent(id)}`, { auth: true });
 }
 
+/** What the player gets back if they cancel this booking now (3-day-window policy).
+ *  Fetched by the refund screen so it can show the real figure before confirming. */
+export interface RefundQuote {
+  paid: number;
+  refund: number;
+  feeDeducted: number;
+  feePercent: number;
+  withinWindow: boolean;
+  daysUntil: number;
+  freeWindowDays: number;
+}
+
+export async function getRefundQuote(id: string): Promise<RefundQuote> {
+  return request<RefundQuote>(`${BOOKINGS_PREFIX}/${encodeURIComponent(id)}/refund-quote`, { auth: true });
+}
+
 /** Cancel a booking. */
 export async function cancelBooking(id: string, cancellationReason?: string): Promise<ApiBooking> {
   return request<ApiBooking>(`${BOOKINGS_PREFIX}/${id}/cancel`, { method: 'POST', body: { cancellationReason }, auth: true });

@@ -6,7 +6,7 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
-import { getBooking, cancelBooking, getSettings, ApiError, type ApiBooking } from '../../shared/lib/api';
+import { getBooking, cancelBooking, getRefundQuote, getSettings, ApiError, type ApiBooking, type RefundQuote } from '../../shared/lib/api';
 import { money, prettyDate, timeRange } from './bookingDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -24,6 +24,7 @@ interface BookingRefundScreenProps {
  */
 export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRefundScreenProps) {
   const [booking, setBooking] = useState<ApiBooking | null>(null);
+  const [quote, setQuote] = useState<RefundQuote | null>(null);
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
   const [reloadKey, setReloadKey] = useState(0);
   const [testMode, setTestMode] = useState(false);
@@ -45,10 +46,12 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
     Promise.all([
       getBooking(bookingId),
       getSettings().catch(() => null),
-    ]).then(([b, s]) => {
+      getRefundQuote(bookingId).catch(() => null),
+    ]).then(([b, s, q]) => {
       if (!alive) return;
       setBooking(b); setStatus('ready');
       setTestMode(s?.paymentTestMode ?? false);
+      setQuote(q);
     }).catch((e) => {
       if (!alive) return;
       setStatus(e instanceof ApiError && e.status === 404 ? 'notfound' : 'error');
@@ -195,6 +198,28 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
               </div>
             </div>
 
+            {/* Real numbers BEFORE the button — no surprise deductions after the fact. */}
+            {quote && (
+              <div className="mt-4 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] px-4 py-3.5">
+                <div className="flex items-center justify-between text-[13px] font-semibold text-[var(--ink-2)]">
+                  <span>You paid</span><span>{money(quote.paid)}</span>
+                </div>
+                {quote.feeDeducted > 0 && (
+                  <div className="flex items-center justify-between text-[13px] font-semibold text-[var(--coral)] mt-1.5">
+                    <span>Transaction fee ({quote.feePercent}%)</span><span>− {money(quote.feeDeducted)}</span>
+                  </div>
+                )}
+                <div className="mt-2 pt-2 border-t-[0.5px] border-[var(--hairline)] flex items-center justify-between text-[14px] font-bold text-[var(--ink)]">
+                  <span>You&rsquo;ll get back</span><span>{money(quote.refund)}</span>
+                </div>
+                <div className="mt-2 text-[12px] font-semibold text-[var(--muted)] leading-snug">
+                  {quote.feeDeducted > 0
+                    ? `Cancelled within ${quote.freeWindowDays} days of play — the transaction fee is deducted.`
+                    : `You get the full amount back.${!quote.withinWindow ? ` You're more than ${quote.freeWindowDays} days out.` : ''}`}
+                </div>
+              </div>
+            )}
+
             <div className="mt-5">
               <Button fullWidth variant="destructive" onClick={() => { setCancelError(null); setConfirmOpen(true); }}>
                 <Icon name="logout" size={16} /> {testMode ? 'Cancel booking & auto-refund' : 'Cancel booking & request refund'}
@@ -221,7 +246,7 @@ export function BookingRefundScreen({ bookingId, onNavigate, onBack }: BookingRe
             <Icon name="logout" size={20} className="mt-0.5 shrink-0 text-[var(--coral)]" />
             <p className="text-[13px] font-semibold text-[var(--coral)] leading-snug">
               Your court at {booking.venueName || 'the venue'} on {when || 'the booked date'} will be
-              released and a refund of {money(booking.amount)} requested. This can't be undone.
+              released and a refund of {money(quote?.refund ?? booking.amount)} requested. This can't be undone.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
