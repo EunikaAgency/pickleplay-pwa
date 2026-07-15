@@ -47,7 +47,15 @@ const RECUR_PRESETS: { label: string; days: number[] }[] = [
   { label: 'MWF', days: [1, 3, 5] },
   { label: 'Daily', days: [0, 1, 2, 3, 4, 5, 6] },
 ];
-const DOW_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DOW_DAYS: { dow: number; letter: string; name: string }[] = [
+  { dow: 0, letter: 'S', name: 'Sunday' },
+  { dow: 1, letter: 'M', name: 'Monday' },
+  { dow: 2, letter: 'T', name: 'Tuesday' },
+  { dow: 3, letter: 'W', name: 'Wednesday' },
+  { dow: 4, letter: 'T', name: 'Thursday' },
+  { dow: 5, letter: 'F', name: 'Friday' },
+  { dow: 6, letter: 'S', name: 'Saturday' },
+];
 
 const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; desc: string }[] = [
   { value: 'public_game', label: 'Hosted game', icon: 'globe', desc: 'Book the court, then publish a game with set slots players can join.' },
@@ -1350,21 +1358,22 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                     ))}
                   </div>
                   <div className="flex gap-1.5">
-                    {DOW_LETTERS.map((d, i) => (
+                    {DOW_DAYS.map(({ dow, letter, name }) => (
                       <button
-                        key={i}
+                        key={name}
                         type="button"
-                        aria-pressed={repeatDays.includes(i)}
-                        className={`w-9 h-9 rounded-full text-[13px] font-bold ${repeatDays.includes(i) ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface-2)] text-[var(--ink)]'}`}
-                        onClick={() => setRepeatDays((cur) => cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i])}
+                        aria-label={name}
+                        aria-pressed={repeatDays.includes(dow)}
+                        className={`w-9 h-9 rounded-full text-[13px] font-bold ${repeatDays.includes(dow) ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface-2)] text-[var(--ink)]'}`}
+                        onClick={() => setRepeatDays((cur) => cur.includes(dow) ? cur.filter((x) => x !== dow) : [...cur, dow])}
                       >
-                        {d}
+                        {letter}
                       </button>
                     ))}
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-[13px] font-semibold text-[var(--muted)]">For</span>
-                    <select className="control !w-auto" value={repeatWeeks} onChange={(e) => setRepeatWeeks(Number(e.target.value))}>
+                    <select aria-label="Repeat for how many weeks" className="control !w-auto" value={repeatWeeks} onChange={(e) => setRepeatWeeks(Number(e.target.value))}>
                       {[2, 4, 6, 8, 12].map((w) => <option key={w} value={w}>{w} weeks</option>)}
                     </select>
                   </div>
