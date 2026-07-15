@@ -142,27 +142,36 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   // venue application grants that role without one. Flips the row from
   // "Become a coach" to "Coach subscription" and reveals session requests.
   const isCoach = !!user?.coachSubscriptionActive;
+  // Same gate for organizing: the ₱999 subscription, not merely a granted role.
+  const isOrganizer = !!user?.organizerSubscriptionActive;
+  // Show the console to a live subscriber OR anyone already holding organizer
+  // access (e.g. a role granted before the sub lapses); everyone else gets the
+  // pitch banner.
+  const canOrganize = isOrganizer || userHasPermission(user, 'organizer.access');
 
   // The coach pitch banner + its "what you get" sheet. Price/term come from the
   // public settings read, so the banner never hard-codes ₱499.
   const [coachPromoOpen, setCoachPromoOpen] = useState(false);
   const [coachPrice, setCoachPrice] = useState<number | null>(null);
   const [coachDays, setCoachDays] = useState<number | null>(null);
+  // Organizer banner price (the ₱999 plan), same public-settings source.
+  const [orgPrice, setOrgPrice] = useState<number | null>(null);
 
-  // Pricing for the coach banner. Skipped for people who already subscribed
-  // (the banner isn't rendered for them). Failures leave the pill on "Learn more".
+  // Pricing for the coach + organizer banners. Skipped only when the viewer holds
+  // BOTH already (neither banner renders). Failures leave the pills on "Learn more".
   useEffect(() => {
-    if (!isLoggedIn || isCoach) return;
+    if (!isLoggedIn || (isCoach && isOrganizer)) return;
     let alive = true;
     getSettings()
       .then((s) => {
         if (!alive || !s.partnerSubscription) return;
         setCoachPrice(s.partnerSubscription.coach);
+        setOrgPrice(s.partnerSubscription.organizer);
         setCoachDays(s.partnerSubscription.durationDays);
       })
-      .catch(() => { /* pill falls back to "Learn more" */ });
+      .catch(() => { /* pills fall back to "Learn more" */ });
     return () => { alive = false; };
-  }, [isLoggedIn, isCoach]);
+  }, [isLoggedIn, isCoach, isOrganizer]);
 
   // Processed at fetch time (Date.now() must not run during render — purity rule).
   const [metrics, setMetrics] = useState<ProfileMetrics | null>(null);
@@ -332,21 +341,60 @@ export function ProfileScreenV2(props: ProfileV2Props) {
           </div>
         )}
 
-        {userHasPermission(user, 'organizer.access') && (
+        {/* Organizing — mirrors Coaching. A player who isn't a subscribed organizer
+            sees the PITCH banner (→ the paid organizer-subscribe screen); once
+            subscribed it's replaced by the console + a manage-plan row. Shown to
+            every signed-in player, since subscribing is how you *become* one. */}
+        {isLoggedIn && (
           <div className="content-section">
             <h2 className="section-title">Organize</h2>
-            <ul className="settings-list">
-              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('organizer-hub')}>
-                <div className="settings-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
+
+            {!canOrganize && (
+              <div
+                className="upgrade-banner coach-banner"
+                role="button"
+                tabIndex={0}
+                onClick={() => onNavigate('organizer-subscribe')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('organizer-subscribe'); } }}
+              >
+                <div className="upgrade-text">
+                  <strong>Organize on PickleBallers</strong>
+                  <p>Charge for Open Play, run tournaments &amp; events.</p>
                 </div>
-                <div className="settings-label">
-                  <strong>Organizer console</strong>
-                  <span>Tournaments, open play &amp; rosters</span>
-                </div>
-                <Chevron />
-              </li>
-            </ul>
+                <button className="upgrade-pill" type="button" tabIndex={-1}>
+                  {orgPrice != null ? `₱${orgPrice.toLocaleString('en-PH')}` : 'Learn more'}
+                </button>
+              </div>
+            )}
+
+            {canOrganize && (
+              <ul className="settings-list">
+                <li className="settings-item" role="button" tabIndex={0}
+                  onClick={() => onNavigate('organizer-hub')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('organizer-hub'); } }}>
+                  <div className="settings-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
+                  </div>
+                  <div className="settings-label">
+                    <strong>Organizer console</strong>
+                    <span>Tournaments, open play &amp; rosters</span>
+                  </div>
+                  <Chevron />
+                </li>
+                <li className="settings-item" role="button" tabIndex={0}
+                  onClick={() => onNavigate('organizer-subscribe')}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('organizer-subscribe'); } }}>
+                  <div className="settings-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></svg>
+                  </div>
+                  <div className="settings-label">
+                    <strong>Organizer subscription</strong>
+                    <span>Manage your plan</span>
+                  </div>
+                  <Chevron />
+                </li>
+              </ul>
+            )}
           </div>
         )}
 

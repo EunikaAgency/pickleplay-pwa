@@ -602,6 +602,19 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
+/* ─── Messages: source sections as tabs on mobile ───
+   On a phone frame the Direct Messages / Venues / Bookings sections collapse
+   into a segmented tab switch (one section visible at a time); on a wider frame
+   (≥640px) they stack with their headings as before. */
+.msg-group-head { display: none; align-items: center; gap: 6px; padding-left: 2px; }
+.msg-group:not([data-active="true"]) { display: none; }
+
+@container app (min-width: 640px) {
+  .seg.msg-tabs { display: none; }
+  .msg-group-head { display: flex; }
+  .msg-group:not([data-active="true"]) { display: flex; }
+}
+
 /* ─── Tab bar ─── */
 .tabbar {
   position: fixed;

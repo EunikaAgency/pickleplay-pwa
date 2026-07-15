@@ -89,6 +89,8 @@ export type Screen =
   | { id: 'organizer-rosters' }
   | { id: 'organizer-roster'; params: { id: string } }
   | { id: 'organizer-venue-requests'; params: { tournamentId?: string } }
+  // The paid subscription that unlocks organizing (charge for Open Play, run events).
+  | { id: 'organizer-subscribe' }
   | { id: 'admin-claims' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
   | { id: 'open-play-book'; params: { venueId: string } }
@@ -193,6 +195,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'organizer-rosters': return '/organizer/rosters';
     case 'organizer-roster': return `/organizer/rosters/${screen.params.id}`;
     case 'organizer-venue-requests': return `/organizer/venue-requests${q({ tournamentId: screen.params?.tournamentId })}`;
+    case 'organizer-subscribe': return '/organizer/subscribe';
     case 'admin-claims': return '/admin/claims';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
     case 'flowchart': return '/flowchart';
@@ -324,6 +327,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'home' };
     case 'organizer':
       if (!b) return { id: 'organizer-hub' };
+      if (b === 'subscribe') return { id: 'organizer-subscribe' };
       if (b === 'tournaments') {
         if (!c) return { id: 'organizer-tournaments' };
         if (c === 'new') return { id: 'organizer-tournament-new' };
@@ -355,7 +359,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'booking-refund') return { id: 'my-bookings' };
   if (id === 'coach-detail' || id === 'book-coach') return { id: 'find-coach' };
   // The subscribe screen's real home is the Profile tab (Home only links to it).
-  if (id === 'coach-subscribe' || id === 'coach-bookings') return { id: 'profile' };
+  if (id === 'coach-subscribe' || id === 'coach-bookings' || id === 'organizer-subscribe') return { id: 'profile' };
   if (id === 'find-coach' || id === 'player-profile') return { id: 'home' };
   if (id === 'owner-venues-v2') return { id: 'home' };
   if (id === 'claim-venue') return { id: 'owner-venues' };

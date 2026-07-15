@@ -8,7 +8,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { Toast } from '../../shared/components/ui/Toast';
 import {
   ApiError, cancelPartnerSubscription, getMyPartnerSubscriptions, resumePartnerSubscription,
-  subscribeToPartnerPlan, type PartnerSubscription, type PartnerSubscriptionState,
+  subscribeToPartnerPlan, type PartnerPlan, type PartnerSubscription, type PartnerSubscriptionState,
 } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -16,6 +16,11 @@ import type { Navigate } from '../../shared/lib/navigation';
 interface CoachSubscribeScreenProps {
   onNavigate: Navigate;
   onBack: () => void;
+  /** Which partner plan this screen sells. Defaults to coach; 'organizer' reuses
+   *  the exact same flow (gating, address gate, cancel/resume) for the ₱999
+   *  organizer subscription — only the copy, benefits and post-subscribe tools
+   *  differ. The API is already plan-parameterized. */
+  plan?: PartnerPlan;
 }
 
 const peso = (n: number) => `₱${n.toLocaleString('en-PH')}`;
@@ -30,6 +35,44 @@ const COACH_BENEFITS = [
   'A verified Coach badge on your public profile',
 ];
 
+const ORGANIZER_BENEFITS = [
+  'Charge for Open Play sessions — and keep every peso',
+  'Apply to organize at any venue in the directory',
+  'Run tournaments, events & recurring open play',
+  'A verified Organizer badge on your public profile',
+];
+
+/** Per-plan copy so this one screen sells either the coach (₱499) or the
+ *  organizer (₱999) subscription — the flow, gating and API are identical. */
+const PLAN_UI = {
+  coach: {
+    eyebrow: 'Coaching',
+    title: 'Become a coach',
+    pitchTitle: 'Coach on PickleBallers',
+    pitchSub: "Subscribe to unlock coaching. Only subscribed coaches appear in Find Coach — that's how players know you're legit.",
+    activeTitle: 'Coach subscription active',
+    benefits: COACH_BENEFITS,
+    stay: 'You stay a coach',
+    endingTail: "After that you'll drop off Find Coach and stop taking bookings.",
+    keepVerb: 'coaching',
+    afterDrop: 'After that you drop off Find Coach and stop receiving booking requests.',
+    subscribedToast: "You're a coach now — set up your profile.",
+  },
+  organizer: {
+    eyebrow: 'Organizing',
+    title: 'Become an organizer',
+    pitchTitle: 'Organize on PickleBallers',
+    pitchSub: 'Subscribe to unlock organizing. Only subscribed organizers can charge for Open Play and run events — the subscription is the licence to charge.',
+    activeTitle: 'Organizer subscription active',
+    benefits: ORGANIZER_BENEFITS,
+    stay: 'You stay an organizer',
+    endingTail: 'After that you can no longer charge for Open Play or run events.',
+    keepVerb: 'organizing',
+    afterDrop: 'After that you can no longer charge for Open Play or run events.',
+    subscribedToast: "You're an organizer now.",
+  },
+} as const;
+
 /** Chip copy + colour for a row in the subscription history. */
 function historyChip(s: PartnerSubscription): { label: string; color: string } {
   if (s.isActive && s.cancelAtPeriodEnd) return { label: 'Ending', color: 'var(--amber, #F59E0B)' };
@@ -39,7 +82,8 @@ function historyChip(s: PartnerSubscription): { label: string; color: string } {
   return { label: s.status, color: 'var(--muted)' };
 }
 
-export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScreenProps) {
+export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: CoachSubscribeScreenProps) {
+  const ui = PLAN_UI[plan];
   const [state, setState] = useState<PartnerSubscriptionState | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -47,7 +91,8 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  // The store refreshes the user so the new coach role reaches the rest of the app.
+  // The store refreshes the user so the new coach/organizer role reaches the rest
+  // of the app.
   const restore = useAuthStore((s) => s.restore);
 
   const [reloadKey, setReloadKey] = useState(0);
@@ -80,12 +125,12 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
     setBusy(true);
     setError(null);
     try {
-      await subscribeToPartnerPlan('coach');
-      // Subscribing grants the global coach role — re-read /me so permission
-      // gates (and the profile badge) pick it up without a re-login.
+      await subscribeToPartnerPlan(plan);
+      // Subscribing grants the global coach/organizer role — re-read /me so
+      // permission gates (and the profile badge) pick it up without a re-login.
       await restore();
       reload();
-      setToast("You're a coach now — set up your profile.");
+      setToast(ui.subscribedToast);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'ADDRESS_REQUIRED') {
         setError('Add your address in Edit Profile before subscribing.');
@@ -99,14 +144,15 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
   };
 
   const doCancel = async () => {
-    if (!state?.coach || busy) return;
+    const sub = state?.[plan];
+    if (!sub || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const updated = await cancelPartnerSubscription(state.coach.id);
+      const updated = await cancelPartnerSubscription(sub.id);
       setConfirmOpen(false);
       reload();
-      setToast(`Cancelled. You stay a coach until ${fmtDate(updated.expiresAt)}.`);
+      setToast(`Cancelled. ${ui.stay} until ${fmtDate(updated.expiresAt)}.`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not cancel. Please try again.');
     } finally {
@@ -115,11 +161,12 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
   };
 
   const doResume = async () => {
-    if (!state?.coach || busy) return;
+    const sub = state?.[plan];
+    if (!sub || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await resumePartnerSubscription(state.coach.id);
+      await resumePartnerSubscription(sub.id);
       reload();
       setToast('Subscription resumed.');
     } catch (e) {
@@ -129,9 +176,9 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
     }
   };
 
-  const active = state?.coach ?? null;
+  const active = state?.[plan] ?? null;
   const ending = !!active?.cancelAtPeriodEnd;
-  const price = state?.pricing.coach ?? 0;
+  const price = state?.pricing[plan] ?? 0;
   const days = state?.pricing.durationDays ?? 30;
   const addressComplete = state?.addressComplete ?? true;
   const history = state?.subscriptions ?? [];
@@ -139,7 +186,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
   return (
     <div className="scroll pb-[120px]">
       <div className="sticky top-0 z-20 safe-top bg-[var(--surface)]">
-        <ScreenHeader onBack={onBack} eyebrow="Coaching" title="Become a coach" />
+        <ScreenHeader onBack={onBack} eyebrow={ui.eyebrow} title={ui.title} />
       </div>
 
       {loading && <div className="px-5 pt-6"><LoadingSkeleton /></div>}
@@ -162,15 +209,14 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
                   <span className="font-heading text-[16px] font-extrabold">Subscription ending</span>
                 </div>
                 <p className="mt-1.5 text-[13px] text-[var(--muted)]">
-                  You stay a coach until <strong>{fmtDate(active.expiresAt)}</strong>. After that you&apos;ll
-                  drop off Find Coach and stop taking bookings.
+                  {ui.stay} until <strong>{fmtDate(active.expiresAt)}</strong>. {ui.endingTail}
                 </p>
               </div>
             ) : (
               <div className="rounded-2xl border border-[var(--lime)] bg-[var(--lime-soft,rgba(154,205,50,0.12))] p-4">
                 <div className="flex items-center gap-2">
                   <Icon name="verified" size={20} />
-                  <span className="font-heading text-[16px] font-extrabold">Coach subscription active</span>
+                  <span className="font-heading text-[16px] font-extrabold">{ui.activeTitle}</span>
                 </div>
                 <p className="mt-1.5 text-[13px] text-[var(--muted)]">
                   Renews {fmtDate(active.expiresAt)} · {peso(active.priceAmount)} / {days} days
@@ -180,11 +226,10 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
           ) : (
             <div className="rounded-2xl bg-[var(--ink-fill,var(--navy,#1A2138))] p-5 text-white">
               <div className="font-heading text-[22px] font-extrabold leading-tight">
-                Coach on PickleBallers
+                {ui.pitchTitle}
               </div>
               <p className="mt-1.5 text-[13px] opacity-80">
-                Subscribe to unlock coaching. Only subscribed coaches appear in Find Coach —
-                that&apos;s how players know you&apos;re legit.
+                {ui.pitchSub}
               </p>
               <div className="mt-4 flex items-baseline gap-1.5">
                 <span className="font-heading text-[34px] font-extrabold leading-none">{peso(price)}</span>
@@ -197,7 +242,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
           <div className="mt-6">
             <h2 className="font-heading text-[15px] font-extrabold">What you get</h2>
             <ul className="mt-3 flex flex-col gap-2.5">
-              {COACH_BENEFITS.map((b) => (
+              {ui.benefits.map((b) => (
                 <li key={b} className="flex items-start gap-2.5">
                   <span className="mt-0.5 flex-none text-[var(--primary)]"><Icon name="check_circle" size={18} /></span>
                   <span className="text-[14px] leading-snug">{b}</span>
@@ -230,30 +275,61 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
             </div>
           )}
 
-          {/* Coach tools, once subscribed. */}
+          {/* Partner tools, once subscribed. */}
           {active && (
             <div className="mt-6 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => onNavigate('coach-bookings')}
-                className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
-              >
-                <Icon name="event_available" size={20} />
-                <span className="flex-1 text-[14px] font-bold">Session requests</span>
-                <Icon name="chevron_right" size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('nearby')}
-                className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
-              >
-                <Icon name="stadium" size={20} />
-                <span className="flex-1">
-                  <span className="block text-[14px] font-bold">Coach at a venue</span>
-                  <span className="block text-[12px] text-[var(--muted)]">Open a court and apply — the owner approves you.</span>
-                </span>
-                <Icon name="chevron_right" size={20} />
-              </button>
+              {plan === 'coach' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('coach-bookings')}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
+                  >
+                    <Icon name="event_available" size={20} />
+                    <span className="flex-1 text-[14px] font-bold">Session requests</span>
+                    <Icon name="chevron_right" size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('nearby')}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
+                  >
+                    <Icon name="stadium" size={20} />
+                    <span className="flex-1">
+                      <span className="block text-[14px] font-bold">Coach at a venue</span>
+                      <span className="block text-[12px] text-[var(--muted)]">Open a court and apply — the owner approves you.</span>
+                    </span>
+                    <Icon name="chevron_right" size={20} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('organizer-hub')}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
+                  >
+                    <Icon name="dashboard" size={20} />
+                    <span className="flex-1">
+                      <span className="block text-[14px] font-bold">Organizer console</span>
+                      <span className="block text-[12px] text-[var(--muted)]">Tournaments, open play &amp; rosters.</span>
+                    </span>
+                    <Icon name="chevron_right" size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('nearby')}
+                    className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
+                  >
+                    <Icon name="stadium" size={20} />
+                    <span className="flex-1">
+                      <span className="block text-[14px] font-bold">Organize at a venue</span>
+                      <span className="block text-[12px] text-[var(--muted)]">Open a court and apply — the owner approves you.</span>
+                    </span>
+                    <Icon name="chevron_right" size={20} />
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -339,14 +415,14 @@ export function CoachSubscribeScreen({ onNavigate, onBack }: CoachSubscribeScree
             <li className="flex items-start gap-2.5">
               <span className="mt-0.5 flex-none text-[var(--primary)]"><Icon name="check_circle" size={18} /></span>
               <span className="text-[13.5px] leading-snug">
-                You keep coaching until{' '}
+                You keep {ui.keepVerb} until{' '}
                 <strong>{active ? fmtDate(active.expiresAt) : 'the end of your term'}</strong> — you already paid for it.
               </span>
             </li>
             <li className="flex items-start gap-2.5">
               <span className="mt-0.5 flex-none text-[var(--coral)]"><Icon name="cancel" size={18} /></span>
               <span className="text-[13.5px] leading-snug">
-                After that you drop off Find Coach and stop receiving booking requests.
+                {ui.afterDrop}
               </span>
             </li>
             <li className="flex items-start gap-2.5">

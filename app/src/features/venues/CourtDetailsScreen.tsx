@@ -1108,14 +1108,20 @@ function CourtDetail({
                 const isPending = row.status === 'pending';
                 const isApproved = row.status === 'approved';
                 const reapplySub = partnerReapplySub(row.status);
-                // Applying as a coach is a paid capability — the player must hold a live
-                // coach subscription first (the subscription is what proves a legit coach).
+                // Applying is a paid capability — the player must hold the matching live
+                // partner subscription first (it's what proves a legit coach / organizer).
                 // Show it disabled with a red "subscribe first" note rather than letting
                 // them tap through to a 402. Only while they're actually free to apply.
-                const needsCoachSub = row.kind === 'coach'
-                  && !currentUser?.coachSubscriptionActive
-                  && !isPending && !isApproved;
-                const disabled = isApproved || applyBusy !== '' || needsCoachSub;
+                const needsSub = !isPending && !isApproved && (
+                  row.kind === 'coach'
+                    ? !currentUser?.coachSubscriptionActive
+                    : !currentUser?.organizerSubscriptionActive
+                );
+                const subScreen = row.kind === 'coach' ? 'coach-subscribe' : 'organizer-subscribe';
+                const subNote = row.kind === 'coach'
+                  ? 'Subscribe as a coach first to apply here'
+                  : 'Subscribe as an organizer first to apply here';
+                const disabled = isApproved || applyBusy !== '' || needsSub;
                 const mainLabel = applyBusy === row.kind
                   ? (isPending ? 'Cancelling…' : 'Sending application…')
                   : isPending ? row.label
@@ -1149,17 +1155,17 @@ function CourtDetail({
                       {isApproved && (
                         <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#81C784] whitespace-nowrap">Approved</span>
                       )}
-                      {needsCoachSub && <Icon name="lock" size={14} className="ml-auto text-[var(--muted)]" />}
-                      {!isPending && !isApproved && !needsCoachSub && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
+                      {needsSub && <Icon name="lock" size={14} className="ml-auto text-[var(--muted)]" />}
+                      {!isPending && !isApproved && !needsSub && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
                     </button>
-                    {needsCoachSub && (
+                    {needsSub && (
                       <button
                         type="button"
-                        onClick={() => onNavigate('coach-subscribe')}
+                        onClick={() => onNavigate(subScreen)}
                         className="mt-1.5 ml-1 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--coral)]"
                       >
                         <Icon name="lock" size={12} />
-                        Subscribe as a coach first to apply here
+                        {subNote}
                       </button>
                     )}
                   </div>

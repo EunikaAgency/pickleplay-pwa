@@ -127,6 +127,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   // `coach-detail` stay ungated — browsing coaches is open to guests, like
   // browsing courts and games.
   'coach-subscribe': 'player.profile.manage',
+  'organizer-subscribe': 'player.profile.manage',
   'book-coach': 'player.bookings.create',
   'coach-bookings': 'coach.profile.manage',
   'create-club': 'player.clubs.create',
@@ -191,6 +192,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'booking-refund': 'manage your booking',
   'payment-history': 'see your payment history',
   'coach-subscribe': 'become a coach',
+  'organizer-subscribe': 'become an organizer',
   'coach-bookings': 'manage your coaching sessions',
   'book-coach': 'book a coach',
   'create-club': 'start a club',
@@ -647,6 +649,8 @@ function AppInner() {
         return <PaymentHistoryScreen onNavigate={navigate} onBack={goBack} />;
       case 'coach-subscribe':
         return <CoachSubscribeScreen onNavigate={navigate} onBack={goBack} />;
+      case 'organizer-subscribe':
+        return <CoachSubscribeScreen plan="organizer" onNavigate={navigate} onBack={goBack} />;
       case 'coach-bookings':
         return <CoachBookingsScreen onBack={goBack} />;
       case 'find-coach':

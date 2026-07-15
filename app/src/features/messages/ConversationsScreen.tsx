@@ -296,6 +296,9 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Which source is shown when the sections collapse into tabs (mobile only —
+  // wider frames stack every section, so this only drives the phone layout).
+  const [activeSource, setActiveSource] = useState<ConversationSource>('direct');
 
   // "New message": search any player by name and open (or create) a thread with
   // them — so you can message someone even if you've never met them in a game.
@@ -736,36 +739,71 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
             description={'Tap the compose button to message any player — or use "Message organizer" on any game.'}
             action={{ label: 'New message', onPress: openCompose }}
           />
-        ) : (
-          <div className="flex flex-col" style={{ gap: 24 }}>
-            {groupBySource(items).map((group) => (
-              <div key={group.key} className="flex flex-col" style={{ gap: 8 }}>
-                <div
-                  className="flex items-center"
-                  style={{ gap: 6, paddingLeft: 2 }}
-                >
-                  <Icon name={group.icon} size={14} />
-                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-                    {group.label}
-                  </span>
+        ) : (() => {
+          const groups = groupBySource(items);
+          // The tab state can go stale if its section empties out — fall back
+          // to the first available section so a tab is always selected.
+          const activeKey = groups.some((g) => g.key === activeSource)
+            ? activeSource
+            : (groups[0]?.key ?? 'direct');
+          return (
+            <div className="flex flex-col" style={{ gap: 16 }}>
+              {groups.length >= 2 && (
+                <div className="seg msg-tabs">
+                  {groups.map((g) => {
+                    const unread = g.items.reduce((n, c) => n + (c.unread > 0 ? c.unread : 0), 0);
+                    return (
+                      <button
+                        key={g.key}
+                        type="button"
+                        className={g.key === activeKey ? 'active' : ''}
+                        style={{ gap: 5 }}
+                        onClick={() => setActiveSource(g.key)}
+                      >
+                        <span className="truncate">{g.label}</span>
+                        {unread > 0 && (
+                          <span className="shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--coral)] text-white text-[10px] font-extrabold leading-[18px] text-center">
+                            {unread > 9 ? '9+' : unread}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
-                <motion.div className="flex flex-col gap-2.5" layout>
-                  <AnimatePresence mode="popLayout">
-                    {group.items.map((c) => (
-                      <ConvRow
-                        key={c.id}
-                        c={c}
-                        userId={user?.id}
-                        onNavigate={onNavigate}
-                        onRemove={removeConv}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
+              )}
+              <div className="flex flex-col" style={{ gap: 24 }}>
+                {groups.map((group) => (
+                  <div
+                    key={group.key}
+                    className="msg-group flex flex-col"
+                    data-active={group.key === activeKey ? 'true' : 'false'}
+                    style={{ gap: 8 }}
+                  >
+                    <div className="msg-group-head">
+                      <Icon name={group.icon} size={14} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                        {group.label}
+                      </span>
+                    </div>
+                    <motion.div className="flex flex-col gap-2.5" layout>
+                      <AnimatePresence mode="popLayout">
+                        {group.items.map((c) => (
+                          <ConvRow
+                            key={c.id}
+                            c={c}
+                            userId={user?.id}
+                            onNavigate={onNavigate}
+                            onRemove={removeConv}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
