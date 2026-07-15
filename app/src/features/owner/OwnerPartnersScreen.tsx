@@ -557,9 +557,7 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
     return <div className="scroll safe-top safe-bottom">{header}<div className="px-5"><ErrorState title="Couldn't load partners" message="We couldn't reach your venues. Tap to retry." onRetry={() => void load(true)} /></div></div>;
   }
 
-  // The server owns the revenue rollup — it counts each distinct approved
-  // partner once and only from real earnings. Don't recompute it here.
-  const kpis = feed?.kpis ?? { activeCoaches: 0, activeOrganizers: 0, pendingReview: 0, partnerRevenue: 0 };
+  const kpis = feed?.kpis ?? { activeCoaches: 0, activeOrganizers: 0, pendingReview: 0 };
 
   return (
     <div className="scroll safe-top safe-bottom">
@@ -570,11 +568,10 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
         <div className="sm:hidden">{toolbar}</div>
 
         {/* KPI summary cards */}
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <KpiCard label="Active coaches" value={String(kpis.activeCoaches)} icon="school" tone="primary" sub="Approved at your venues" />
           <KpiCard label="Active organisers" value={String(kpis.activeOrganizers)} icon="trophy" tone="blue" sub="Approved at your venues" />
           <KpiCard label="Pending review" value={String(kpis.pendingReview)} icon="hourglass_top" tone="coral" sub="Awaiting your decision" />
-          <KpiCard label="Partner revenue" value={peso(kpis.partnerRevenue)} icon="payments" tone="lime" sub="From completed lessons & paid entries" />
         </div>
 
         {/* Kind tabs + search */}

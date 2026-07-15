@@ -1108,7 +1108,14 @@ function CourtDetail({
                 const isPending = row.status === 'pending';
                 const isApproved = row.status === 'approved';
                 const reapplySub = partnerReapplySub(row.status);
-                const disabled = isApproved || applyBusy !== '';
+                // Applying as a coach is a paid capability — the player must hold a live
+                // coach subscription first (the subscription is what proves a legit coach).
+                // Show it disabled with a red "subscribe first" note rather than letting
+                // them tap through to a 402. Only while they're actually free to apply.
+                const needsCoachSub = row.kind === 'coach'
+                  && !currentUser?.coachSubscriptionActive
+                  && !isPending && !isApproved;
+                const disabled = isApproved || applyBusy !== '' || needsCoachSub;
                 const mainLabel = applyBusy === row.kind
                   ? (isPending ? 'Cancelling…' : 'Sending application…')
                   : isPending ? row.label
@@ -1119,31 +1126,43 @@ function CourtDetail({
                   : isApproved ? 'Partnership active'
                   : reapplySub ?? row.sub;
                 return (
-                  <button
-                    key={row.kind}
-                    className="flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)] disabled:opacity-60"
-                    onClick={() => {
-                      if (disabled) return;
-                      if (isPending) { void cancelPartner(row.kind); return; }
-                      void applyPartner(row.kind);
-                    }}
-                    disabled={disabled}
-                  >
-                    <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center">
-                      <Icon name={row.icon} size={15} />
-                    </span>
-                    <span className="min-w-0 text-left">
-                      <span className="block">{mainLabel}</span>
-                      <span className="block text-[12px] font-medium text-[var(--muted)]">{subLabel}</span>
-                    </span>
-                    {isPending && (
-                      <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF3E0] text-[#E65100] border border-[#FFB74D] whitespace-nowrap">Pending</span>
+                  <div key={row.kind}>
+                    <button
+                      className="w-full flex items-center gap-3 bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] rounded-[14px] px-4 py-3 text-[14px] font-bold text-[var(--ink)] disabled:opacity-60"
+                      onClick={() => {
+                        if (disabled) return;
+                        if (isPending) { void cancelPartner(row.kind); return; }
+                        void applyPartner(row.kind);
+                      }}
+                      disabled={disabled}
+                    >
+                      <span className="w-8 h-8 rounded-full bg-[var(--lime-soft)] text-[var(--lime-ink)] inline-flex items-center justify-center">
+                        <Icon name={row.icon} size={15} />
+                      </span>
+                      <span className="min-w-0 text-left">
+                        <span className="block">{mainLabel}</span>
+                        <span className="block text-[12px] font-medium text-[var(--muted)]">{subLabel}</span>
+                      </span>
+                      {isPending && (
+                        <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF3E0] text-[#E65100] border border-[#FFB74D] whitespace-nowrap">Pending</span>
+                      )}
+                      {isApproved && (
+                        <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#81C784] whitespace-nowrap">Approved</span>
+                      )}
+                      {needsCoachSub && <Icon name="lock" size={14} className="ml-auto text-[var(--muted)]" />}
+                      {!isPending && !isApproved && !needsCoachSub && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
+                    </button>
+                    {needsCoachSub && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigate('coach-subscribe')}
+                        className="mt-1.5 ml-1 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--coral)]"
+                      >
+                        <Icon name="lock" size={12} />
+                        Subscribe as a coach first to apply here
+                      </button>
                     )}
-                    {isApproved && (
-                      <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F5E9] text-[#2E7D32] border border-[#81C784] whitespace-nowrap">Approved</span>
-                    )}
-                    {!isPending && !isApproved && <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />}
-                  </button>
+                  </div>
                 );
               })}
             </div>

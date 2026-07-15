@@ -4043,13 +4043,11 @@ export interface ApiPartnerApplication {
   stats: PartnerStats;
 }
 
-/** KPI counts for the Partners screen's summary cards. `partnerRevenue` is the
- *  real rollup of every distinct approved partner's earnings. */
+/** KPI counts for the Partners screen's summary cards. */
 export interface OwnerPartnersKpis {
   activeCoaches: number;
   activeOrganizers: number;
   pendingReview: number;
-  partnerRevenue: number;
 }
 
 export interface OwnerPartnersFeed {
