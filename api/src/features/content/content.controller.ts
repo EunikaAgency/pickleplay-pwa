@@ -9,6 +9,7 @@ import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { resolveVenueId } from '../venues/venues.controller.js';
 import { Venue, VenueStaff } from '../venues/venues.model.js';
 import { hasPermission, effectiveOwnerId } from '../../shared/lib/permissions.js';
+import { toWebpUrl } from '../../shared/lib/webp.js';
 
 const ORGANIZER_PERM = 'organizer.tournaments.manage' as const;
 const EVENTS_PERM = 'organizer.events.manage' as const;
@@ -745,7 +746,7 @@ export function sessionView(s: any) {
     venueCity: v?.city ?? null,
     venueLat: v?.lat ?? null,
     venueLng: v?.lng ?? null,
-    venueImage: v?.mainImageUrl ?? null,
+    venueImage: v?.mainImageUrl ? toWebpUrl(v.mainImageUrl) : null,
     priceFrom: v?.priceFrom ?? null,
     priceFromLabel: v?.priceFromLabel ?? null,
   };

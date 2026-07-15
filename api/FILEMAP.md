@@ -295,6 +295,10 @@ src/
     db/                      # connect + seeders + importers:
                              #   import-real-data.ts  (npm run db:import — drops & reloads CSVs)
                              #   seed.ts, seed-dummy-data.ts, seed-dummy-users.ts,
+                             #   seed-coach-subscribers.ts (npm run db:seed:coach-subs
+                             #     — N=12 player accounts w/ address + active coach
+                             #     partner-subscription; idempotent by
+                             #     @coachseed.pickleballers.local),
                              #   generate-courts.ts, assign-venue-owners.ts,
                              #   assign-two-owners-test-venues.ts (Garrido+Walker
                              #     each get 20 NCR/CALABARZON venues, 6-12 courts),

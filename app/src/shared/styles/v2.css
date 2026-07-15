@@ -561,8 +561,8 @@
 .pb-v2.v2-home .qa-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .pb-v2.v2-home .qa-card:active { transform: scale(0.97); }
 .pb-v2.v2-home .qa-icon {
-    width: 46px;
-    height: 46px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -576,7 +576,7 @@
     line-height: 1.2;
   }
 .pb-v2.v2-home .qa-lime { background: var(--lime); color: var(--ink); }
-.pb-v2.v2-home .qa-lime .qa-icon { background: rgba(26,33,56,0.1); }
+.pb-v2.v2-home .qa-lime .qa-icon { background: #fff; }
 .pb-v2.v2-home .qa-blue { background: var(--blue); color: #fff; }
 .pb-v2.v2-home .qa-blue .qa-icon { background: rgba(255,255,255,0.18); }
 .pb-v2.v2-home .qa-neutral { background: var(--surface); color: var(--ink); border: 1.5px solid var(--border-subtle); box-shadow: var(--shadow-sm); }

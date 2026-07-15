@@ -6,6 +6,7 @@ import { VenueClaim } from './venue-management.model.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { bookingApprovedReceipt, membershipReceipt } from '../../shared/lib/email-templates.js';
 import { resolveHourlyRate, perPlayerSurcharge } from '../bookings/pricing.js';
+import { toWebpUrl } from '../../shared/lib/webp.js';
 
 const canEmail = () => isGmailConfigured() && hasValidTokens();
 const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -582,7 +583,8 @@ export async function listVenues(c: any) {
     cityName: r.cityId?.name ?? r.cityName ?? null,
     city: r.cityId?.name ?? r.cityName ?? null,
     cityId: r.cityId?._id?.toString(),
-    image: imageByVenue.get(String(r._id))?.url || '',
+    image: toWebpUrl(imageByVenue.get(String(r._id))?.url || ''),
+    mainImageUrl: r.mainImageUrl ? toWebpUrl(r.mainImageUrl) : r.mainImageUrl,
     // Managed-venues mode: 'owner' when the viewer owns it (or is staff of the
     // owner that owns it), else their per-venue VenueStaff role.
     ...(staffRoleByVenue
@@ -790,9 +792,15 @@ export async function getVenue(c: any) {
   const courtRowSets = courtRows.map((ct: any) => effectiveCourtRows(hoursRows, String(ct._id), defaultRows));
   result.hours = courtRows.length ? unionHoursDict(courtRowSets) : hoursDictFromRows(defaultRows);
   result.faqs = faqRows.map((f: any) => ({ ...f, id: f._id }));
-  result.gallery = mediaRows.map((m: any) => m.url);
-  result.image = mediaRows.find((m: any) => m.isPrimary)?.url || mediaRows[0]?.url || '';
-  result.courts = courtRows.map((ct: any, i: number) => ({ ...ct, id: ct._id, hours: hoursDictFromRows(courtRowSets[i] ?? []) }));
+  result.gallery = mediaRows.map((m: any) => toWebpUrl(m.url));
+  result.image = toWebpUrl(mediaRows.find((m: any) => m.isPrimary)?.url || mediaRows[0]?.url || '');
+  if (result.mainImageUrl) result.mainImageUrl = toWebpUrl(result.mainImageUrl);
+  result.courts = courtRows.map((ct: any, i: number) => ({
+    ...ct, id: ct._id,
+    mainImageUrl: ct.mainImageUrl ? toWebpUrl(ct.mainImageUrl) : ct.mainImageUrl,
+    galleryImageUrls: Array.isArray(ct.galleryImageUrls) ? ct.galleryImageUrls.map((u: string) => toWebpUrl(u)) : ct.galleryImageUrls,
+    hours: hoursDictFromRows(courtRowSets[i] ?? []),
+  }));
   // Platform-curated highlights (see computeVenueHighlights) — derived, not owner-typed.
   result.curatedHighlights = computeVenueHighlights(venue as Record<string, any>, {
     bookingCount,

@@ -8,6 +8,7 @@ import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
 import { hasActivePartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
+import { toWebpUrl } from '../../shared/lib/webp.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 
@@ -216,7 +217,7 @@ export function serialize(r: any, viewerUserId?: string) {
           lng: v.lng ?? null,
           priceFrom: v.priceFrom ?? null,
           priceFromLabel: v.priceFromLabel ?? null,
-          image: v.mainImageUrl ?? null,
+          image: v.mainImageUrl ? toWebpUrl(v.mainImageUrl) : null,
         }
       : null;
   const participants = (r.participantIds ?? []).map(refPerson);
@@ -230,7 +231,7 @@ export function serialize(r: any, viewerUserId?: string) {
   const bookingObj = r.bookingId && typeof r.bookingId === 'object' ? r.bookingId : null;
   const courtImage =
     bookingObj && bookingObj.courtId && typeof bookingObj.courtId === 'object'
-      ? (bookingObj.courtId.mainImageUrl ?? null)
+      ? (bookingObj.courtId.mainImageUrl ? toWebpUrl(bookingObj.courtId.mainImageUrl) : null)
       : null;
   return {
     ...r,

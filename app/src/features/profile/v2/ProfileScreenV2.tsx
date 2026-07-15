@@ -7,6 +7,7 @@ import { ROLE_META, primaryRole } from '../../../shared/lib/roleDisplay';
 import { getInitials } from '../../../shared/lib/initials';
 import { getSettings, listBookings, listGames, listMyTournaments, getMyOpenPlay, type ApiBooking, type ApiGame } from '../../../shared/lib/api';
 import { CoachPromoSheet } from '../CoachPromoSheet';
+import { OrganizerPromoSheet } from '../OrganizerPromoSheet';
 import { useTheme, type ThemePreference } from '../../../shared/hooks/useTheme';
 import { useNotificationStore } from '../../../shared/lib/notificationStore';
 
@@ -154,8 +155,11 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   const [coachPromoOpen, setCoachPromoOpen] = useState(false);
   const [coachPrice, setCoachPrice] = useState<number | null>(null);
   const [coachDays, setCoachDays] = useState<number | null>(null);
-  // Organizer banner price (the ₱999 plan), same public-settings source.
+  // Organizer banner price (the ₱999 plan), same public-settings source. The
+  // "what you get" sheet mirrors the coach one; term is the shared durationDays.
+  const [orgPromoOpen, setOrgPromoOpen] = useState(false);
   const [orgPrice, setOrgPrice] = useState<number | null>(null);
+  const [orgDays, setOrgDays] = useState<number | null>(null);
 
   // Pricing for the coach + organizer banners. Skipped only when the viewer holds
   // BOTH already (neither banner renders). Failures leave the pills on "Learn more".
@@ -168,6 +172,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         setCoachPrice(s.partnerSubscription.coach);
         setOrgPrice(s.partnerSubscription.organizer);
         setCoachDays(s.partnerSubscription.durationDays);
+        setOrgDays(s.partnerSubscription.durationDays);
       })
       .catch(() => { /* pills fall back to "Learn more" */ });
     return () => { alive = false; };
@@ -347,15 +352,15 @@ export function ProfileScreenV2(props: ProfileV2Props) {
             every signed-in player, since subscribing is how you *become* one. */}
         {isLoggedIn && (
           <div className="content-section">
-            <h2 className="section-title">Organize</h2>
+            <h2 className="section-title">Organizer</h2>
 
             {!canOrganize && (
               <div
                 className="upgrade-banner coach-banner"
                 role="button"
                 tabIndex={0}
-                onClick={() => onNavigate('organizer-subscribe')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('organizer-subscribe'); } }}
+                onClick={() => setOrgPromoOpen(true)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOrgPromoOpen(true); } }}
               >
                 <div className="upgrade-text">
                   <strong>Organize on PickleBallers</strong>
@@ -668,6 +673,15 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         onContinue={() => { setCoachPromoOpen(false); onNavigate('coach-subscribe'); }}
         price={coachPrice}
         durationDays={coachDays}
+      />
+
+      {/* Organizer equivalent — explains the ₱999 plan before the subscribe screen. */}
+      <OrganizerPromoSheet
+        open={orgPromoOpen}
+        onClose={() => setOrgPromoOpen(false)}
+        onContinue={() => { setOrgPromoOpen(false); onNavigate('organizer-subscribe'); }}
+        price={orgPrice}
+        durationDays={orgDays}
       />
     </V2Shell>
   );

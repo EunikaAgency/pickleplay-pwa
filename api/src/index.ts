@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
@@ -127,6 +127,17 @@ app.use('*', async (c, next) => {
 // The import script mirrors the JPEG payload from
 // real-data/handoff/images/ into uploads/images/. If the source
 // payload is missing, requests 404 cleanly.
+
+// Long-lived caching for image assets — the filenames are content/time-addressed,
+// so they're safe to treat as immutable. WebP is served under its own `.webp`
+// URL (rewritten by toWebpUrl() in the API serializers), which Cloudflare caches
+// correctly per-URL — so there is no `Vary: Accept` negotiation to get wrong.
+const imageCacheHeaders: MiddlewareHandler = async (c, next) => {
+  await next();
+  if (c.res.status === 200) c.header('Cache-Control', 'public, max-age=31536000, immutable');
+};
+app.use('/images/*', imageCacheHeaders);
+app.use('/uploads/*', imageCacheHeaders);
 
 app.use('/images/*', serveStatic({ root: './uploads' }));
 

@@ -174,6 +174,8 @@ src/
                        #   getSettings; Continue routes to `coach-subscribe`, which still
                        #   owns the address gate + payment. Lives in profile/ because a
                        #   feature slice must not import another slice's components),
+                       #   OrganizerPromoSheet (the same popup for the ₱999 Organizer plan —
+                       #   perks + live price; Continue routes to `organizer-subscribe`),
                        #   MembersScreen (player-facing community dashboard: clubs + venue
                        #   memberships in a searchable, filterable table with KPI cards,
                        #   status badges, loading skeletons, and empty state; reachable

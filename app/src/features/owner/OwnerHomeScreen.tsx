@@ -269,8 +269,13 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
             </button>
           )}
 
-          {/* Quick actions */}
-          <section className="ohome-qa" aria-label="Quick actions">
+          {/* Quick actions — columns follow the card count (capped at 3) so a
+              staff account's 2 cards fill the row instead of leaving a gap. */}
+          <section
+            className="ohome-qa"
+            aria-label="Quick actions"
+            style={{ gridTemplateColumns: `repeat(${Math.min(quick.length, 3)}, 1fr)` }}
+          >
             {quick.map((q, i) => (
               <button key={q.label} onClick={q.onPress} className={`ohome-qa-card ${QA_TONES[i] ?? 'ohome-qa-neutral'}`}>
                 <span className="ohome-qa-icon">{QA_ICONS[q.icon]}</span>
