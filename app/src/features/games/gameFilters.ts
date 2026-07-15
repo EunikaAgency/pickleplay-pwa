@@ -182,7 +182,12 @@ export function matchesPlayFilters(item: ScoredPlayItem, f: GameFilters, now: Da
     // A listing with no declared band is open to all levels — never filter it out.
     if (item.skillBand) {
       const [lo, hi] = item.skillBand;
-      const overlaps = lo <= want[1] && want[0] <= hi;
+      // The bands tile the skill axis and SHARE endpoints (…3.0–3.5, 3.5–4.0…),
+      // so treat them as half-open [lo, hi): a listing that merely TOUCHES the
+      // selected band at a shared boundary is a different band, not a match.
+      // Closed-interval overlap (`<=`) leaked every adjacent band in — e.g. a
+      // 3.5–4.0 play showed up under the 3.0–3.5 filter because both touch 3.5.
+      const overlaps = lo < want[1] && want[0] < hi;
       if (!overlaps) return false;
     }
   }

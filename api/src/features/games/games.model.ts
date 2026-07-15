@@ -33,6 +33,11 @@ const gameSchema = new Schema({
   // such games sort last within their date.
   startTime:     { type: String, maxlength: 5 },
   capacity:      { type: Number, default: 4 },
+  // Open Play join fee in pesos. 0 = free (the default for every player). A price
+  // above 0 is only ever set by a subscribed organizer, who keeps 100% of it —
+  // the platform's only cut is the 7% on the court booking. Gated server-side in
+  // createGame; a non-organizer can never store a non-zero fee.
+  joinFee:       { type: Number, default: 0 },
   participantIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   // Open Play interest: players who tapped "I'm Interested" (a soft signal, not a
   // committed roster). Only meaningful for gameType 'open'; capacity does not apply.

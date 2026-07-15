@@ -7,6 +7,7 @@ import { User } from '../auth/auth.model.js';
 import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
+import { hasActivePartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 
@@ -44,6 +45,9 @@ const createSchema = z.object({
   capacity: z.number().int().min(2).max(16).default(4),
   // Soft headcount goal for open play ("aiming for 8"). Not a hard cap.
   targetPlayers: z.number().int().min(2).max(64).optional(),
+  // Open Play join fee (pesos). Accepted from any client, but only honoured for a
+  // subscribed organizer — everyone else is forced to 0 in the handler.
+  joinFee: z.number().min(0).max(100000).optional(),
   visibility: z.enum(['public', 'invite']).default('public'),
   // The host's court reservation, created + paid via the book-a-court flow before
   // the game is posted. Links the game to its booked court.
@@ -69,6 +73,7 @@ const updateSchema = z.object({
   skillLabel: z.string().max(30).optional(),
   capacity: z.number().int().min(2).max(16).optional(),
   targetPlayers: z.number().int().min(2).max(64).optional(),
+  joinFee: z.number().min(0).max(100000).optional(),
   visibility: z.enum(['public', 'invite']).optional(),
 });
 
@@ -239,6 +244,9 @@ export function serialize(r: any, viewerUserId?: string) {
     participants,
     participantCount: participants.length,
     spotsLeft: Math.max(0, capacity - participants.length),
+    // Open Play join fee (pesos); 0 = free. Only a subscribed organizer's game
+    // ever carries a non-zero fee, and they keep all of it.
+    joinFee: r.joinFee ?? 0,
     // Host-set vibe (casual or competitive) — surfaces on the lobby + cards.
     vibe: r.vibe ?? null,
     // Who the host admits. Games created before the field default to open.
@@ -341,6 +349,13 @@ export async function createGame(c: any) {
     ? await Booking.findOne({ _id: body.bookingId, userId: user.sub }).select('startTime').lean()
     : null;
   const startTime = booking?.startTime ?? parseTimeLabel(body.timeLabel);
+  // A join fee only sticks for a subscribed organizer (they keep 100% of it). Any
+  // other host — or an organizer whose plan lapsed — posts free Open Play, no matter
+  // what the client sent. The platform's cut stays the 7% on the booking alone.
+  let joinFee = 0;
+  if (body.gameType === 'open' && body.joinFee && body.joinFee > 0) {
+    if (await hasActivePartnerSubscription(user.sub, 'organizer')) joinFee = body.joinFee;
+  }
   const game = await Game.create({
     creatorId: user.sub,
     title: body.title || null,
@@ -363,6 +378,7 @@ export async function createGame(c: any) {
     startTime,
     capacity,
     targetPlayers: body.targetPlayers || null,
+    joinFee,
     participantIds: [user.sub],
     visibility: body.visibility,
     status: 'published',
@@ -448,10 +464,9 @@ export async function joinGame(c: any) {
   if (game.status === 'cancelled') {
     return c.json({ error: { code: 'CLOSED', message: 'This game has been cancelled' } }, 409);
   }
-  // Open Play has no roster — it uses the "I'm Interested" signal instead of join.
-  if (String(game.gameType) === 'open') {
-    return c.json({ error: { code: 'INVALID_STATE', message: 'Open Play uses "I\'m Interested", not join.' } }, 400);
-  }
+  // Open Play now has a real lobby (the merge): it takes a roster seat through this
+  // same path — capacity, gender, and skill guards all apply — rather than the old
+  // "I'm Interested" soft signal. No early return for gameType 'open' anymore.
   // Cooldown: second+ leave in the leaveLog that's still within LEAVE_COOLDOWN_MS
   // blocks re-join for that lobby. Filter history for just this user.
   const log = ((game as any).leaveLog ?? []) as any[];
