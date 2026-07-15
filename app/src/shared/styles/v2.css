@@ -2617,6 +2617,16 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
+/* Item-7: a game the viewer can't join is shown but not openable — no pointer,
+   no hover lift, and slightly dimmed so it reads as unavailable at a glance. */
+.pb-v2.v2-games .game-card.game-card-locked {
+  cursor: default;
+  opacity: 0.72;
+}
+.pb-v2.v2-games .game-card.game-card-locked:hover {
+  transform: none;
+  box-shadow: var(--shadow-md);
+}
 .pb-v2.v2-games .game-thumb {
   width: 112px;
   flex-shrink: 0;

@@ -1021,6 +1021,25 @@ async function sessionConfirmedCount(sessionId: any): Promise<number> {
 }
 
 // POST /api/v1/open-play/:id/join — player marks interest in a session.
+/** Why the player can't show interest in a level-restricted session — null when
+ *  they can (no band, or their DUPR is inside [skillLevelMin, skillLevelMax]).
+ *  Mirrors the games gate (skillBlock): a player with no skill level set is
+ *  steered to their profile rather than silently admitted. */
+async function sessionSkillBlock(sess: any, userId: string) {
+  const min = sess.skillLevelMin;
+  const max = sess.skillLevelMax;
+  if (min == null) return null; // open to all levels
+  const me: any = await User.findById(userId).select('skillLevel').lean();
+  const skill = me?.skillLevel;
+  const band = sess.levelLabel ?? (max != null ? `${min}–${max}` : `${min}+`);
+  if (skill == null) {
+    return { code: 'SKILL_REQUIRED', message: `This session is for ${band} players — set your skill level in your profile to join.` };
+  }
+  const withinBand = skill >= min && (max == null || skill <= max);
+  if (withinBand) return null;
+  return { code: 'NOT_ELIGIBLE', message: `This session is for ${band} players — your skill level is outside that range.` };
+}
+
 export async function joinOpenPlay(c: any) {
   const user = c.get('user');
   const sess = await OpenPlaySession.findById(c.req.param('id'));
@@ -1028,6 +1047,9 @@ export async function joinOpenPlay(c: any) {
   if (sess.status !== 'published') {
     return c.json({ error: { code: 'CONFLICT', message: 'This session is not open' } }, 409);
   }
+  // Skill band: a level-restricted session only admits a matching DUPR.
+  const skillBlocked = await sessionSkillBlock(sess, user.sub);
+  if (skillBlocked) return c.json({ error: skillBlocked }, 403);
   const existing = await OpenPlayRegistration.findOne({ sessionId: sess._id, userId: user.sub }).lean();
   if (existing) {
     return c.json({ error: { code: 'CONFLICT', message: 'You already showed interest' }, status: (existing as any).status }, 409);

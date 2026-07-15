@@ -12,7 +12,7 @@ import { useInviteStore } from '../../../shared/lib/inviteStore';
 import { onRealtime } from '../../../shared/lib/realtimeBus';
 import { formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
 import { prettyDate, timeRange as bookingTimeRange, to12h, money, statusChip } from '../../bookings/bookingDisplay';
-import { canLeaveLobby, dateSectionHeader, gameFormatLabel, genderBlockReason, genderPolicyLabel, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
+import { canLeaveLobby, dateSectionHeader, gameFormatLabel, genderBlockReason, genderPolicyLabel, skillBlockReason, interestCount, interestWithTarget, isOpenPlayGame } from '../gameDisplay';
 import { GameFilterSheet } from '../GameFilterSheet';
 import {
   countActiveGameFilters, makeDefaultGameFilters, matchesPlayFilters, TYPE_OPTIONS, type GameFilters,
@@ -936,6 +936,11 @@ function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: (
   const policy = item.kind === 'game' ? (item.source as ApiGame).genderPolicy : null;
   const restricted = genderPolicyLabel(policy);
   const ineligible = !!genderBlockReason(policy, me?.gender, !!me);
+  // Skill band applies to BOTH games and venue sessions (item.skillBand is derived
+  // from either), so a player sees up front when their level is outside the range —
+  // the positive "Your level" case is already carried by the `why` chips.
+  const skillIneligible = !!me && !!item.skillBand
+    && !!skillBlockReason(item.skillBand[0], item.skillBand[1], me.skillLevel, true);
   const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
   const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // Three states, not two: a measured distance; "unknown" when we know where the
@@ -957,9 +962,17 @@ function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: (
     : (f.target ? `${f.count}/${f.target} interested` : `${f.count} interested`);
   const nearFull = f.mode === 'capacity' && f.cap > 0 && f.cap - f.joined <= 1;
   const showBar = f.mode === 'capacity' ? f.cap > 0 : !!f.target;
+  // Item-7 rule: a game the viewer can't join (wrong gender or skill band) is shown
+  // marked, but its card is NOT openable — the detail/Join is only a second guard.
+  // So a locked card drops its click + button semantics entirely.
+  const locked = ineligible || skillIneligible;
 
   return (
-    <article className="game-card" role="button" tabIndex={0} onClick={onClick}>
+    <article
+      className={`game-card${locked ? ' game-card-locked' : ''}`}
+      aria-disabled={locked || undefined}
+      {...(locked ? {} : { role: 'button', tabIndex: 0, onClick })}
+    >
       <div className="game-thumb" style={{ backgroundImage: `url(${apiImageUrl(item.image) || FALLBACK_GAME_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <span className={`game-type-badge ${badge.cls}`}>{badge.label}</span>
       </div>
@@ -971,7 +984,7 @@ function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: (
           {(meta || item.venueLoc) && <div className="game-meta-loc">{meta || item.venueLoc}</div>}
         </div>
 
-        {(restricted || item.why.length > 0) && (
+        {(restricted || skillIneligible || item.why.length > 0) && (
           <div className="flex gap-1.5 flex-wrap mt-1.5">
             {/* Leads the row: "can I even play this" outranks every "why you'd like it". */}
             {restricted && (
@@ -983,6 +996,12 @@ function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: (
                 }`}
               >
                 {ineligible ? `🔒 Not eligible · ${restricted}` : `${policy === 'women' ? '👩' : '👨'} ${restricted}`}
+              </span>
+            )}
+            {/* Skill mismatch — same "can I even play this" indicator, keyed off the band. */}
+            {skillIneligible && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--coral-soft)] text-[var(--coral)]">
+                🔒 Not eligible{item.skillLabel ? ` · ${item.skillLabel}` : ''}
               </span>
             )}
             {item.why.map((w) => (

@@ -142,6 +142,10 @@ async function skillBlock(game: any, userId: string) {
 /** Pull min/max DUPR out of a label like '3.0–3.5' or '4.0+' (best-effort). */
 function parseSkill(label?: string): { skillMin?: number; skillMax?: number } {
   if (!label) return {};
+  // "Beginner" is a real restriction that carries no digits — it must keep
+  // stronger players out (DUPR above 3.0), not fall through to an open band.
+  // ("Open" / "All levels" legitimately parse to no band and stay unbanded.)
+  if (/beginner/i.test(label)) return { skillMin: 0, skillMax: 3.0 };
   const nums = (label.match(/\d(?:\.\d)?/g) ?? []).map(Number);
   if (!nums.length) return {};
   return { skillMin: nums[0], skillMax: nums[1] };
@@ -568,6 +572,9 @@ export async function toggleGameInterest(c: any) {
   if (!already) {
     const blocked = await genderBlock((game as any).genderPolicy, user.sub);
     if (blocked) return c.json({ error: blocked }, 403);
+    // Skill band: a level-restricted Open Play only admits a matching DUPR.
+    const skillBlocked = await skillBlock(game, user.sub);
+    if (skillBlocked) return c.json({ error: skillBlocked }, 403);
   }
   (game as any).interestedUserIds = already
     ? list.filter((p: any) => String(p) !== user.sub)
