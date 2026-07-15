@@ -1,0 +1,753 @@
+<title>PickleBallers — Product Map</title>
+<style>
+  :root {
+    --font-display: "Fredoka", "Baloo 2", ui-rounded, "Hiragino Maru Gothic ProN", "Segoe UI", system-ui, sans-serif;
+    --font-body: "Nunito Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --ground: #F5F7FC;
+    --panel: #FFFFFF;
+    --panel-2: #FAFBFE;
+    --ink: #141B33;
+    --ink-soft: #4C5876;
+    --ink-faint: #7E88A6;
+    --line: #E3E8F3;
+    --line-strong: #D2D9EC;
+    --brand: #0040E0;
+    --brand-soft: #E9EFFF;
+    --lime: #C1F100;
+
+    --st-done: #1C8A4E;   --st-done-bg: #DCF3E4;
+    --st-partial: #A56E12; --st-partial-bg: #FaeCcC;
+    --st-planned: #4E57C4; --st-planned-bg: #E4E7F8;
+    --st-needs: #B23A1C;  --st-needs-bg: #F8DDD3;
+
+    --shadow: 0 1px 2px rgba(20,27,51,.04), 0 8px 24px rgba(20,27,51,.06);
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0B1020;
+      --panel: #141B30;
+      --panel-2: #10172A;
+      --ink: #EAEEFA;
+      --ink-soft: #A5AFCC;
+      --ink-faint: #7C88AC;
+      --line: #26304C;
+      --line-strong: #303C5C;
+      --brand: #7A9DFF;
+      --brand-soft: #1B2647;
+      --lime: #C1F100;
+      --st-done: #5FD597;   --st-done-bg: #123626;
+      --st-partial: #E9B85C; --st-partial-bg: #3A2C0E;
+      --st-planned: #9AA2F0; --st-planned-bg: #212650;
+      --st-needs: #F08C6E;  --st-needs-bg: #3A1a11;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #F5F7FC; --panel: #FFFFFF; --panel-2: #FAFBFE; --ink: #141B33; --ink-soft: #4C5876;
+    --ink-faint: #7E88A6; --line: #E3E8F3; --line-strong: #D2D9EC; --brand: #0040E0; --brand-soft: #E9EFFF;
+    --st-done: #1C8A4E; --st-done-bg: #DCF3E4; --st-partial: #A56E12; --st-partial-bg: #FAECCC;
+    --st-planned: #4E57C4; --st-planned-bg: #E4E7F8; --st-needs: #B23A1C; --st-needs-bg: #F8DDD3;
+    --shadow: 0 1px 2px rgba(20,27,51,.04), 0 8px 24px rgba(20,27,51,.06);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0B1020; --panel: #141B30; --panel-2: #10172A; --ink: #EAEEFA; --ink-soft: #A5AFCC;
+    --ink-faint: #7C88AC; --line: #26304C; --line-strong: #303C5C; --brand: #7A9DFF; --brand-soft: #1B2647;
+    --st-done: #5FD597; --st-done-bg: #123626; --st-partial: #E9B85C; --st-partial-bg: #3A2C0E;
+    --st-planned: #9AA2F0; --st-planned-bg: #212650; --st-needs: #F08C6E; --st-needs-bg: #3A1A11;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px 96px; }
+
+  /* ---------- Header ---------- */
+  header.masthead {
+    position: relative;
+    padding: 56px 0 30px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--brand);
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(2rem, 5.2vw, 3.3rem);
+    line-height: 1.04;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  h1 .mark { color: var(--brand); }
+  .lede {
+    font-size: clamp(1.02rem, 2.2vw, 1.18rem);
+    color: var(--ink-soft);
+    max-width: 64ch;
+    margin: 0 0 22px;
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 10px 20px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    letter-spacing: .02em;
+  }
+  .meta-row b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ---------- Legend ---------- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin: 26px 0 4px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 12px; font-weight: 600;
+    letter-spacing: .02em;
+    padding: 6px 12px 6px 10px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .chip.done { background: var(--st-done-bg); color: var(--st-done); border-color: color-mix(in srgb, var(--st-done) 30%, transparent); }
+  .chip.done .dot { background: var(--st-done); }
+  .chip.partial { background: var(--st-partial-bg); color: var(--st-partial); border-color: color-mix(in srgb, var(--st-partial) 30%, transparent); }
+  .chip.partial .dot { background: var(--st-partial); }
+  .chip.planned { background: var(--st-planned-bg); color: var(--st-planned); border-color: color-mix(in srgb, var(--st-planned) 30%, transparent); }
+  .chip.planned .dot { background: var(--st-planned); }
+  .chip.needs { background: var(--st-needs-bg); color: var(--st-needs); border-color: color-mix(in srgb, var(--st-needs) 30%, transparent); }
+  .chip.needs .dot { background: var(--st-needs); }
+
+  /* ---------- TOC ---------- */
+  nav.toc {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--ground) 86%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    margin: 30px 0 0;
+    padding: 12px 0;
+  }
+  .toc-inner { display: flex; flex-wrap: wrap; gap: 7px; }
+  .toc a {
+    font-family: var(--font-mono);
+    font-size: 12px; font-weight: 600;
+    letter-spacing: .01em;
+    text-decoration: none;
+    color: var(--ink-soft);
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--panel);
+    transition: color .15s, border-color .15s, background .15s;
+    white-space: nowrap;
+  }
+  .toc a:hover { color: var(--brand); border-color: var(--brand); }
+  .toc a b { color: var(--brand); font-weight: 700; }
+
+  /* ---------- Sections ---------- */
+  section { padding-top: 40px; scroll-margin-top: 68px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .sec-num {
+    font-family: var(--font-mono);
+    font-size: 13px; font-weight: 700;
+    color: var(--brand);
+    letter-spacing: .05em;
+    flex: none;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.4rem, 3.4vw, 2rem);
+    letter-spacing: -0.01em;
+    line-height: 1.12;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .sec-sub { color: var(--ink-soft); margin: 4px 0 22px; max-width: 72ch; }
+
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.12rem;
+    letter-spacing: -0.005em;
+    margin: 26px 0 8px;
+  }
+  p { margin: 0 0 14px; max-width: 74ch; }
+  a { color: var(--brand); }
+  strong { color: var(--ink); font-weight: 700; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 24px;
+    margin: 18px 0;
+  }
+
+  /* ---------- Diagram frame ---------- */
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin: 20px 0;
+    overflow: hidden;
+  }
+  .diagram-cap {
+    display: flex; align-items: center; gap: 9px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--panel-2);
+  }
+  .diagram-cap::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--brand); flex: none; }
+  .scroll { overflow-x: auto; padding: 20px 18px; }
+  .mermaid { min-width: 560px; text-align: center; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  .note {
+    display: flex; gap: 10px;
+    font-size: 14.5px;
+    color: var(--ink-soft);
+    background: var(--panel-2);
+    border-left: 3px solid var(--brand);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin: 14px 0;
+  }
+  .note b { color: var(--ink); }
+  .note.warn { border-left-color: var(--st-needs); }
+
+  ul.clean { margin: 6px 0 16px; padding-left: 0; list-style: none; }
+  ul.clean li { position: relative; padding-left: 20px; margin: 7px 0; max-width: 74ch; color: var(--ink-soft); }
+  ul.clean li::before { content: "›"; position: absolute; left: 4px; top: 0; color: var(--brand); font-weight: 700; }
+  ul.clean li strong { color: var(--ink); }
+
+  /* status inline tag */
+  .tag {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 2px 7px; border-radius: 5px;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+  .tag.done { background: var(--st-done-bg); color: var(--st-done); }
+  .tag.partial { background: var(--st-partial-bg); color: var(--st-partial); }
+  .tag.planned { background: var(--st-planned-bg); color: var(--st-planned); }
+  .tag.needs { background: var(--st-needs-bg); color: var(--st-needs); }
+
+  /* ---------- Table ---------- */
+  .table-scroll { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: var(--shadow); margin: 20px 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 860px; background: var(--panel); font-size: 14px; }
+  thead th {
+    background: var(--panel-2);
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 700;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line-strong);
+    position: sticky; top: 0;
+  }
+  tbody td { padding: 13px 16px; border-bottom: 1px solid var(--line); color: var(--ink-soft); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child { color: var(--ink); font-weight: 700; font-family: var(--font-display); white-space: nowrap; }
+  tbody tr:hover td { background: color-mix(in srgb, var(--brand-soft) 40%, transparent); }
+
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin: 18px 0; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .card h4 { font-family: var(--font-display); font-size: 1rem; margin: 0 0 8px; color: var(--ink); font-weight: 600; }
+  .card p { font-size: 14px; margin: 0; color: var(--ink-soft); }
+
+  .finding { border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; margin: 12px 0; background: var(--panel); box-shadow: var(--shadow); }
+  .finding h4 { font-family: var(--font-display); font-size: 1.02rem; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .finding p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+
+  footer.foot { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--ink-faint); font-size: 13px; font-family: var(--font-mono); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 640px) {
+    .wrap { padding: 0 16px 72px; }
+    header.masthead { padding: 40px 0 24px; }
+    nav.toc { top: 0; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Product Map · Visual Overview</p>
+    <h1><span class="mark">PickleBallers</span> — how the whole platform works</h1>
+    <p class="lede">A plain-language map of the pickleball platform for players, venue owners, and coaches — traced from the live code: routes, role permissions, navigation, and the journeys already wired to the API. Every diagram is kept simple enough to redraw on a whiteboard in a boardroom; the detail lives in the notes beside each one.</p>
+    <div class="meta-row">
+      <span><b>Surfaces:</b> Mobile PWA · Web dashboards · Shared API</span>
+      <span><b>Primary roles:</b> Player · Venue Owner · Coach</span>
+      <span><b>Region:</b> Metro Manila / CALABARZON</span>
+    </div>
+    <div class="legend" aria-label="Status legend">
+      <span class="chip done"><span class="dot"></span>Implemented — live &amp; wired</span>
+      <span class="chip partial"><span class="dot"></span>Partially implemented</span>
+      <span class="chip planned"><span class="dot"></span>Planned / decided, not built</span>
+      <span class="chip needs"><span class="dot"></span>Needs confirmation</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Sections">
+    <div class="toc-inner">
+      <a href="#s1"><b>1</b> Overview</a>
+      <a href="#s2"><b>2</b> Entry &amp; Onboarding</a>
+      <a href="#s3"><b>3</b> Player</a>
+      <a href="#s4"><b>4</b> Venue Owner</a>
+      <a href="#s5"><b>5</b> Coach</a>
+      <a href="#s6"><b>6</b> Cross-Role</a>
+      <a href="#s7"><b>7</b> Navigation Summary</a>
+      <a href="#s8"><b>8</b> Findings</a>
+    </div>
+  </nav>
+
+  <!-- ============ 1. OVERVIEW ============ -->
+  <section id="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Platform Overview</h2></div>
+    <p class="sec-sub">PickleBallers is a two-sided marketplace for pickleball. One shared API feeds three surfaces — a mobile PWA, a desktop website, and the backend — so the same booking, game, and payment data drives every role.</p>
+
+    <p>The platform connects three main groups of people. <strong>Players</strong> find courts, book them, join or host games, and buy coaching. <strong>Venue owners</strong> list their facilities, manage courts and prices, and handle every booking that comes in. <strong>Coaches</strong> sell lessons. Two supporting roles round it out: <strong>Organizers</strong> run tournaments and recurring open-play series, and <strong>Admins / Staff</strong> keep the venue directory clean and delegate day-to-day operations.</p>
+
+    <p>The money model is deliberately simple: PickleBallers takes <strong>7% on court bookings</strong> and nothing else. Coaching and organizer join-fees are unlocked by paid subscriptions — <strong>₱499/coach</strong>, <strong>₱999/organizer</strong> — and the partner keeps 100% of what they charge. <span class="tag needs">Needs confirmation</span> The live payment path is test-mode only today; the real gateway (PayMongo), transaction fees, and automated refunds are decided but not yet wired.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap">The ecosystem at a glance</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart TB
+  core["PickleBallers<br/>Shared API &amp; Data<br/>venues · bookings · games · payments · notifications"]
+
+  player["PLAYER<br/>find · book · play · learn"]
+  owner["VENUE OWNER<br/>list · price · fulfil bookings"]
+  coach["COACH<br/>sell &amp; run lessons"]
+  organizer["ORGANIZER<br/>tournaments · open play"]
+  admin["ADMIN / STAFF<br/>moderation · delegation"]
+
+  player -->|"books courts, joins &amp; hosts games,<br/>books coaching"| core
+  owner  -->|"venues, courts, prices,<br/>booking approvals"| core
+  coach  -->|"coach profile, session inbox"| core
+  organizer -->|"events, brackets, series"| core
+  admin  -->|"venue claims, roles"| core
+
+  core -->|"court availability, feeds, alerts"| player
+  core -->|"revenue, inbox, analytics"| owner
+  core -->|"lesson requests"| coach
+  core -->|"registrations"| organizer
+
+  class core entry
+  class player,owner,coach brand
+  class organizer,admin module
+  classDef entry fill:#141B33,stroke:#141B33,color:#FFFFFF;
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef module fill:#FFFFFF,stroke:#C2CBE0,color:#141B33;
+</pre>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="card"><h4>Guest-first</h4><p>The app opens straight into the Home tab as a guest. Anyone can browse courts, games, and clubs; signing in is only prompted the moment you commit to an action.</p></div>
+      <div class="card"><h4>One account, many roles</h4><p>A single login can be a player, and also a coach, organizer, or owner. Roles add capabilities — a coach is still a full player underneath.</p></div>
+      <div class="card"><h4>Role decides the home</h4><p>After login the app routes you by role: players &amp; coaches get the player app, owners get an operations dashboard, organizers get a tools hub.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 2. ENTRY ============ -->
+  <section id="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Shared Entry &amp; Onboarding Flow</h2></div>
+    <p class="sec-sub">Everyone enters the same door. What differs is where "commit" takes you and which home you land on once the account's role is known.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap">Registration → login → role detection → landing</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart TD
+  open(["Open app"]) --> guest["Home — browse as guest"]
+  guest --> commit{"Join · book · host?"}
+  commit -->|"no"| guest
+  commit -->|"yes"| login["Log in / Register"]
+  login --> role{"Account role?"}
+  role -->|"Player / Coach"| ph["Player Home"]
+  role -->|"Owner"| oh["Owner Dashboard"]
+  role -->|"Organizer"| orh["Organizer Hub"]
+  ph --> shared["Shared by all roles:<br/>Notifications · Profile · Messages · Search"]
+  oh --> shared
+  orh --> shared
+
+  class open entry
+  class guest,ph,oh,orh brand
+  class shared done
+  classDef entry fill:#141B33,stroke:#141B33,color:#FFFFFF;
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef done fill:#DCF3E4,stroke:#1C8A4E,color:#0B2E1C;
+</pre>
+      </div>
+    </div>
+
+    <ul class="clean">
+      <li><strong>Guest browsing is real</strong> <span class="tag done">Implemented</span> — cold start lands on Home, not a login wall. Commit actions (join a game, book, host, open Profile) trigger the auth prompt.</li>
+      <li><strong>Login is live against the API</strong> <span class="tag done">Implemented</span> — tokens are stored, the session is restored on reload, and profile edits + onboarding completion save to the account.</li>
+      <li><strong>Onboarding is remembered</strong> <span class="tag done">Implemented</span> — returning users are never re-onboarded, across devices.</li>
+      <li><strong>Registration on the PWA is login-only</strong> <span class="tag needs">Needs confirmation</span> — the multi-role sign-up wizard (choose player / owner / coach) currently lives on the <em>web</em> site; the PWA assumes an existing account.</li>
+    </ul>
+  </section>
+
+  <!-- ============ 3. PLAYER ============ -->
+  <section id="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Player Flowchart</h2></div>
+    <p class="sec-sub">The player app is a five-tab shell — <strong>Home · Map · Play · Social · Profile</strong>. Below, each tab expands into its major journeys. This is also what coaches and organizers see, since they're players too.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap">Player — bottom-nav map &amp; primary journeys</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart TD
+  home["🏠 HOME"]
+  home --> map["📍 MAP"]
+  home --> play["🎾 PLAY"]
+  home --> social["👥 SOCIAL"]
+  home --> profile["👤 PROFILE"]
+
+  map --> court["Court detail"]
+  court --> bookact["Book / request court"]
+
+  play --> disc["Discover open play"]
+  disc --> viewg["View game / session"]
+  viewg --> act{"Join or host"}
+  act -->|"join"| lobby["Lobby: roster · chat"]
+  act -->|"host a game"| lobby
+
+  social --> cf["Clubs &amp; Friends"]
+
+  profile --> coach["Find / become a coach"]
+  profile --> acct["Bookings · payments · settings"]
+
+  class home,map,play,social,profile brand
+  class court,bookact,disc,viewg,lobby,cf,acct done
+  class coach partial
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef done fill:#DCF3E4,stroke:#1C8A4E,color:#0B2E1C;
+  classDef partial fill:#FAECCC,stroke:#A56E12,color:#3A2A08;
+</pre>
+      </div>
+    </div>
+
+    <h3>Three ways to play — and why they differ</h3>
+    <div class="cols">
+      <div class="card"><h4>Book <span class="tag done">Live</span></h4><p>A private court reservation. No lobby, no strangers — just you (and friends) at a court, date, and time. Any player can do it.</p></div>
+      <div class="card"><h4>Open Play <span class="tag partial">Partial</span></h4><p>A public, browseable listing others can join. <strong>Today</strong> it's an interest board — tap "I'm interested," see who's in, no lobby. <span class="tag planned">Planned</span> the decided direction merges it into a full game with a real, player-capped lobby.</p></div>
+      <div class="card"><h4>Game (hosted lobby) <span class="tag done">Live</span></h4><p>A hosted game with a full lobby — named roster, invites, group chat, kick, and grace-period leave rules. You book &amp; pay for the court up front, then host the lobby on it.</p></div>
+    </div>
+
+    <div class="note"><span>ℹ️</span><span><b>"Play" opens on Open Play; "Events" sits beside it.</b> Under each product tab, a second row picks the <em>view</em> — Discover, Joined, or Manage. "Events" is a container for competitive formats (round-robin, mini-tournament, bracketing); only the public game format is built so far, so it reads sparse by design. <span class="tag planned">Planned</span></span></div>
+
+    <div class="note"><span>ℹ️</span><span><b>The Tournament tab is currently switched off for everyone.</b> Tournament browsing, registration, participant chat, and bracket viewing are all built, but the standalone tab is hidden pending a decision on whether tournaments live inside Play or stay separate. The screens remain reachable by deep link and from the Discover feed. <span class="tag needs">Needs confirmation</span></span></div>
+  </section>
+
+  <!-- ============ 4. OWNER ============ -->
+  <section id="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Venue Owner Flowchart</h2></div>
+    <p class="sec-sub">Owners get a dedicated operations app — not the player design. The bottom nav becomes a business console: a revenue dashboard, an operations map, a courts schedule, and a Profile hub that opens every management tool.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap">Owner — dashboard, venue setup, bookings, money, people</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart TD
+  dash["🏠 OWNER HOME<br/>revenue · KPIs"]
+  dash --> opsmap["📍 Ops map"]
+  dash --> courts["🎾 Courts schedule"]
+  dash --> console["👤 Console hub"]
+
+  console --> venues["Venues &amp; courts<br/>listing · hours · pricing"]
+  console --> bookings["Bookings &amp; front desk<br/>approve · walk-in · block slot"]
+  console --> customers["Members · plans · analytics"]
+  console --> people["Staff · partners (coaches)"]
+
+  class dash,opsmap,courts,console brand
+  class venues,bookings,customers,people done
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef done fill:#DCF3E4,stroke:#1C8A4E,color:#0B2E1C;
+</pre>
+      </div>
+    </div>
+
+    <h3>How a booking reaches the owner</h3>
+    <div class="diagram">
+      <div class="diagram-cap">Request-to-book lifecycle (approval-required venues)</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart LR
+  a["Player requests<br/>booking<br/>(card saved, no charge)"] --> b["Pending approval"]
+  b --> c{"Owner reviews<br/>in inbox / front desk"}
+  c -->|"approve"| d["Awaiting payment<br/>+ pay-by deadline"]
+  c -->|"decline"| e["Declined"]
+  d --> f["Player pays<br/>from My bookings"]
+  f --> g["Confirmed ✓"]
+  d -.->|"deadline passes"| h["Auto-expired"]
+  class a,f brand
+  class b,d partial
+  class g done
+  class e,h needs
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef done fill:#DCF3E4,stroke:#1C8A4E,color:#0B2E1C;
+  classDef partial fill:#FAECCC,stroke:#A56E12,color:#3A2A08;
+  classDef needs fill:#F8DDD3,stroke:#B23A1C,color:#4A1508;
+</pre>
+      </div>
+    </div>
+
+    <ul class="clean">
+      <li><strong>Owners never see the player design</strong> — Home, Map, and Games tabs are replaced by owner dashboards; only Social and Profile fall through to shared screens.</li>
+      <li><strong>Instant vs. approval booking is per-venue (and per-court)</strong> — an owner can require approval before a court is held, with a configurable pay-window; otherwise bookings confirm on payment.</li>
+      <li><strong>Manual / off-platform bookings</strong> — phone, walk-in, or Messenger reservations are entered at the Front desk ("Add booking") or the dedicated Manual reservation screen, both guarded against double-booking. "Block slot" makes a time unavailable.</li>
+      <li><strong>Staff are delegated, and scoped</strong> — an owner creates staff logins that run the console for <em>all</em> their venues, but staff can't set prices, open the cross-venue revenue report, create/claim venues, or manage other staff.</li>
+      <li><strong>Owner payouts (Settlements)</strong> <span class="tag needs">Needs confirmation</span> — the screen exists, but real payout/settlement is tied to the unwired payment gateway.</li>
+    </ul>
+  </section>
+
+  <!-- ============ 5. COACH ============ -->
+  <section id="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Coach Flowchart</h2></div>
+    <p class="sec-sub">A coach is a player with a paid subscription and an extra inbox — there is no separate coach app on mobile. The journey has two halves: <strong>becoming</strong> a coach, and <strong>running</strong> sessions.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap">Coach — become, get listed, take bookings</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart TD
+  start["Profile → Coaching"] --> sub["Subscribe ₱499"]
+  sub --> apply["Apply to a venue"]
+  apply --> owner{"Owner approves?"}
+  owner -->|"yes"| listed["Listed in Find Coach"]
+  owner -->|"no"| again["Reapply"]
+
+  listed --> booked["Player books a session"]
+  booked --> inbox["Coach inbox"]
+  inbox --> decide{"Accept / decline"}
+
+  sub -.->|"still a full player"| player["Uses the player app too"]
+
+  class start,player brand
+  class sub,apply,listed,booked,inbox done
+  class again partial
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef done fill:#DCF3E4,stroke:#1C8A4E,color:#0B2E1C;
+  classDef partial fill:#FAECCC,stroke:#A56E12,color:#3A2A08;
+</pre>
+      </div>
+    </div>
+
+    <ul class="clean">
+      <li><strong>The subscription is the gate, not the role</strong> <span class="tag done">Implemented</span> — becoming a coach requires an active paid plan. A lapsed subscription drops the coach from the Find Coach directory even if the role lingers.</li>
+      <li><strong>The owner still approves each venue application</strong> <span class="tag done">Implemented</span> — the subscription buys "become a coach"; the venue owner grants the venue-scoped coach badge.</li>
+      <li><strong>Booking a coach is server-priced</strong> <span class="tag done">Implemented</span> — the price comes from the chosen service or the coach's hourly rate, never trusted from the client. A session is a claim on a person's time, tracked separately from court bookings.</li>
+      <li><strong>Lesson payment is not yet collected in-app</strong> <span class="tag planned">Planned</span> — today the flow assumes the player pays the coach directly. The decided model routes lesson fees through the app at 0% platform cut.</li>
+      <li><strong>A fuller coach dashboard exists on the web</strong> <span class="tag needs">Needs confirmation</span> — the desktop site has a coach console (overview, venues, applications); the mobile PWA gives the coach a booking inbox rather than a full dashboard.</li>
+    </ul>
+  </section>
+
+  <!-- ============ 6. CROSS-ROLE ============ -->
+  <section id="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Cross-Role Interaction Diagram</h2></div>
+    <p class="sec-sub">The roles are only useful because they connect. This is the connective tissue — who hands work to whom, and how notifications close each loop.</p>
+
+    <div class="diagram">
+      <div class="diagram-cap">How the roles hand off to each other</div>
+      <div class="scroll">
+<pre class="mermaid">
+flowchart LR
+  player["PLAYER"]
+  owner["OWNER"]
+  coach["COACH"]
+  organizer["ORGANIZER"]
+
+  player -->|"books a court"| owner
+  owner -->|"approves &amp; fulfils"| player
+
+  player -->|"books a lesson"| coach
+  coach -->|"applies to a venue"| owner
+
+  organizer -->|"requests a venue"| owner
+  organizer -->|"opens registration"| player
+
+  notif["🔔 Notifications + Push<br/>close every loop"]
+  owner -.-> notif
+  coach -.-> notif
+  organizer -.-> notif
+  notif -.-> player
+
+  class player,owner,coach,organizer brand
+  class notif done
+  classDef brand fill:#E3ECFF,stroke:#0040E0,color:#0A1B4D;
+  classDef done fill:#DCF3E4,stroke:#1C8A4E,color:#0B2E1C;
+</pre>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="card"><h4>Booking loop</h4><p>Player books → owner approves &amp; fulfils → player pays → confirmed. The owner sees it in their inbox, front desk, and reports; the player sees it in My bookings.</p></div>
+      <div class="card"><h4>Game loop</h4><p>A host books a court and opens a lobby → players join → roster fills → the host is notified "lobby full." Roster members share a group chat.</p></div>
+      <div class="card"><h4>Coaching loop</h4><p>Player books a session → coach accepts or declines in their inbox. To exist as a coach at all, they first subscribed and were approved by a venue owner.</p></div>
+      <div class="card"><h4>Tournament loop</h4><p>Organizer requests a venue → owner approves the slot → registration opens → players register → bracket runs to standings.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 7. NAV SUMMARY ============ -->
+  <section id="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Navigation Summary</h2></div>
+    <p class="sec-sub">A compact reference for each role — where they land, what they navigate, what they can do, and where the edges still need confirmation.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Landing page</th>
+            <th>Primary navigation</th>
+            <th>Major actions</th>
+            <th>Restrictions</th>
+            <th>Unclear / unfinished</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Player</td>
+            <td>Home (guest until sign-in)</td>
+            <td>Home · Map · Play · Social · Profile</td>
+            <td>Book courts, join &amp; host games, clubs &amp; friends, book coaching, message, search</td>
+            <td>Commit actions require login; grace-period locks a full-lobby spot</td>
+            <td>Open Play lobby merge; Tournament tab hidden; in-app coach/organizer payments</td>
+          </tr>
+          <tr>
+            <td>Venue Owner</td>
+            <td>Owner Home (revenue dashboard)</td>
+            <td>Home · Map(ops) · Games(courts) · Social · Profile/Console</td>
+            <td>Manage venues/courts/hours/pricing, approve bookings, front desk &amp; manual entry, analytics, staff, partners</td>
+            <td>No player home; can't self-onboard as player by default</td>
+            <td>Settlements/payouts pending gateway; some tools live-but-unapproved</td>
+          </tr>
+          <tr>
+            <td>Coach</td>
+            <td>Player Home (same as player)</td>
+            <td>Player tabs + Profile → Coaching + booking inbox</td>
+            <td>Subscribe, apply to venues, get listed, accept/decline sessions</td>
+            <td>Must hold an active subscription to be listed / bookable</td>
+            <td>Lesson fees not yet collected in-app; mobile has inbox, not full dashboard</td>
+          </tr>
+          <tr>
+            <td>Organizer</td>
+            <td>Organizer Hub (tools console)</td>
+            <td>Hub → Tournaments · Open Play · Rosters · Venue requests</td>
+            <td>Create tournaments, run brackets, recurring series, request venues</td>
+            <td>Owner still approves venue requests; own tab chrome, not player v2</td>
+            <td>Join-fee collection; tournaments' place relative to Play</td>
+          </tr>
+          <tr>
+            <td>Staff</td>
+            <td>Owner console (delegated)</td>
+            <td>Owner console for all of the parent owner's venues</td>
+            <td>Work bookings, front desk, calendar, per-venue inbox</td>
+            <td>No pricing, no cross-venue reports, no new venues, no staff mgmt</td>
+            <td>Finer-grained staff permission levels are deferred</td>
+          </tr>
+          <tr>
+            <td>Admin</td>
+            <td>Home + admin surfaces</td>
+            <td>Admin claims (mobile) · full admin console (web)</td>
+            <td>Review venue claims, moderation, roles &amp; permissions</td>
+            <td>—</td>
+            <td>Most admin depth lives on the web, not the PWA</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ 8. FINDINGS ============ -->
+  <section id="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Findings &amp; Clarifications</h2></div>
+    <p class="sec-sub">Presented collaboratively — these are areas that are evolving or awaiting a product decision, not defects. Each is something worth a quick confirmation before the next build phase.</p>
+
+    <div class="finding">
+      <h4>Open Play is mid-transition <span class="tag partial">Partially implemented</span></h4>
+      <p>Today Open Play is an "I'm interested" board with no lobby; the decided direction merges it into a full game with a player-set cap (roster, invites, chat). Both models exist in the data right now, which is why the same idea can look different depending on where you tap it.</p>
+    </div>
+
+    <div class="finding">
+      <h4>"Events" reads empty by design <span class="tag needs">Needs confirmation</span></h4>
+      <p>Inside Play, "Events" is a container for competitive formats (round-robin, mini-tournament, bracketing) — but only the public-game format is built, so it looks sparse. Confirm whether to build the other formats, or whether the standalone Tournaments area should surface here instead.</p>
+    </div>
+
+    <div class="finding">
+      <h4>The Tournament tab is switched off <span class="tag needs">Needs confirmation</span></h4>
+      <p>Full tournament browse / register / chat / bracket screens are built and reachable by link, but the bottom-nav tab is hidden for every role pending a decision on where tournaments belong. This is a deliberate hold, not missing work.</p>
+    </div>
+
+    <div class="finding">
+      <h4>Payments are test-mode only <span class="tag planned">Planned</span></h4>
+      <p>Checkout completes without a real charge. The gateway (PayMongo), player-borne transaction fees, refund automation (3-day free-cancel window), organizer join-fee collection, and owner settlements are all decided but not yet wired. Amounts and the 7% booking fee are live in settings; fee percentages should stay in settings, not hardcoded.</p>
+    </div>
+
+    <div class="finding">
+      <h4>A game card can show a price you don't pay <span class="tag needs">Needs confirmation</span></h4>
+      <p>A player-hosted game shows the venue's hourly court rate — which the host already paid. Joining is free. The Discover <em>filter</em> handles this correctly, but the card copy can still mislead until the Open Play charging rules are finalized.</p>
+    </div>
+
+    <div class="finding">
+      <h4>Some surfaces differ between web and PWA <span class="tag needs">Needs confirmation</span></h4>
+      <p>Multi-role registration and the deepest coach / admin dashboards live on the desktop website; the PWA is login-first and gives coaches an inbox rather than a full console. Worth confirming which surface is canonical for each role at launch.</p>
+    </div>
+
+    <div class="finding">
+      <h4>Ineligible games are shown, not hidden <span class="tag planned">Planned</span></h4>
+      <p>The decided rule is to show a game you can't join, mark it, disable the card, and disable Join as a second guard. Currently such games can still be opened. A small piece of enforcement remains.</p>
+    </div>
+
+    <div class="finding">
+      <h4>Profile stats are still demo data <span class="tag partial">Partially implemented</span></h4>
+      <p>Identity fields (name, avatar, skill tier, address) are real and saved; win-rate, streak, and achievements are placeholder until a player-stats backend exists.</p>
+    </div>
+
+    <div class="note warn"><span>⚑</span><span><b>"Live-but-unapproved" watchlist.</b> A handful of things are already running in the app without a formal sign-off: the ₱499 coach subscription (the only feature currently earning), the ₱999 organizer subscription (zero subscribers), the pricing engine, rental inventory, request-to-book, and a partner-revenue figure. Each needs a simple keep-or-cut decision — none of them block the Open Play build.</span></div>
+  </section>
+
+  <footer class="foot">
+    PickleBallers product map · traced from the live codebase (PWA · web · API) · statuses reflect the build as of mid-July 2026 and are meant as conversation starters, not a QA report.
+  </footer>
+
+</div>
