@@ -319,6 +319,13 @@ const createSchema = z.object({
   paymentOption: z.enum(['full', 'deposit', 'pay_at_venue']).optional(),
   amountPaid: z.string().or(z.number()).optional(),
   balanceDue: z.string().or(z.number()).optional(),
+  // Recurring booking (step 2): repeat this same slot on these weekdays (0=Sun…6=Sat)
+  // for the next `weeks`. The primary booking is paid now; each generated occurrence
+  // is held as `awaiting_payment` and paid lazily as its date nears (from My Bookings).
+  recurrence: z.object({
+    daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    weeks: z.number().int().min(1).max(12),
+  }).optional(),
 });
 
 /** Coerce a "string | number | undefined" money input to a number, or null. */
@@ -363,6 +370,48 @@ export async function listBookings(c: any) {
   // Keep `venueId` the ObjectId string (the populate replaces it with the venue
   // doc); name/slug are split out. Consumers (e.g. createGame) expect a string id.
   return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id, venueId: r.venueId ? String(r.venueId._id ?? r.venueId) : null, venueName: r.venueId?.displayName, venueSlug: r.venueId?.slug })) });
+}
+
+/** Fan out the future occurrences of a recurring court booking. Each lands as an
+ *  `awaiting_payment` hold — it reserves its slot and is paid lazily from My Bookings
+ *  as its date nears (the decision's "one booking + 7% per occurrence, deferred") —
+ *  linked to the primary via `recurrenceGroupId`. A week whose slot is already taken
+ *  is skipped so one clash never blocks the rest. Capped at 60. Returns the count. */
+async function generateRecurringOccurrences(
+  primary: any,
+  body: any,
+  serviceFeeAmount: number,
+  turnoverMinutes: number,
+  isSplittable: boolean,
+  userSub: string,
+): Promise<number> {
+  const days = new Set(body.recurrence.daysOfWeek as number[]);
+  const start = new Date(`${body.date}T00:00:00`);
+  const horizonDays = body.recurrence.weeks * 7;
+  const MAX = 60;
+  let created = 0;
+  for (let offset = 1; offset <= horizonDays && created < MAX; offset++) {
+    const d = new Date(start.getTime() + offset * 86_400_000);
+    if (!days.has(d.getDay())) continue;
+    const occDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const conflict = await findSlotConflict(
+      { venueId: body.venueId, courtId: body.courtId || null, subUnitIndex: body.subUnitIndex ?? null, date: occDate, startTime: body.startTime, endTime: body.endTime },
+      userSub, turnoverMinutes, isSplittable,
+    );
+    if (conflict) continue; // slot taken that week — skip, don't block the series
+    await Booking.create({
+      userId: userSub, venueId: body.venueId, courtId: body.courtId || null, subUnitIndex: body.subUnitIndex ?? null,
+      date: occDate, startTime: body.startTime || null, endTime: body.endTime || null, playerCount: body.playerCount,
+      amount: primary.amount, paymentMethod: body.paymentMethod || null,
+      status: 'awaiting_payment', paymentDueAt: new Date(`${occDate}T${body.startTime}:00`),
+      savedCard: body.card ? { brand: body.card.brand, last4: body.card.last4 } : undefined,
+      serviceFeeAmount, recurrenceGroupId: primary._id, bookingType: body.bookingType || undefined,
+      rateSource: primary.rateSource ?? null, overrideId: primary.overrideId ?? null,
+      baseRate: primary.baseRate ?? null, memberDiscountPercent: primary.memberDiscountPercent ?? null,
+    });
+    created++;
+  }
+  return created;
 }
 
 export async function createBooking(c: any) {
@@ -611,7 +660,18 @@ export async function createBooking(c: any) {
     }
   }
 
-  return c.json({ data: { ...result.toObject(), id: result._id } }, 201);
+  // Recurring: fan out the future occurrences. Only an instantly-confirmed court
+  // booking with a real time window recurs — approval venues and courtless open-play
+  // skip it (the primary here is already 'confirmed' + paid at checkout).
+  let recurrenceCount = 0;
+  if (body.recurrence && !requiresApproval && body.startTime && body.endTime
+      && body.bookingType !== 'open_play' && body.bookingType !== 'blocked') {
+    recurrenceCount = await generateRecurringOccurrences(
+      result, body, serviceFeeAmount, court?.turnoverMinutes ?? 0, court?.isSplittable ?? false, user.sub,
+    );
+  }
+
+  return c.json({ data: { ...result.toObject(), id: result._id, recurrenceCount } }, 201);
 }
 
 export async function getBooking(c: any) {

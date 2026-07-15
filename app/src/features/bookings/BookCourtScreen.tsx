@@ -40,6 +40,15 @@ interface BookCourtScreenProps {
 
 type BookingMode = 'public_game' | 'open_play';
 
+// Recurring-booking quick presets (0=Sun…6=Sat), for the "Repeat this booking" picker.
+const RECUR_PRESETS: { label: string; days: number[] }[] = [
+  { label: 'Weekdays', days: [1, 2, 3, 4, 5] },
+  { label: 'Weekends', days: [0, 6] },
+  { label: 'MWF', days: [1, 3, 5] },
+  { label: 'Daily', days: [0, 1, 2, 3, 4, 5, 6] },
+];
+const DOW_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
 const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; desc: string }[] = [
   { value: 'public_game', label: 'Hosted game', icon: 'globe', desc: 'Book the court, then publish a game with set slots players can join.' },
   { value: 'open_play', label: 'Open play session', icon: 'groups', desc: 'Book the court for drop-in play — open to everyone, or private for your group.' },
@@ -144,6 +153,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // The details step carries an open/private toggle: private = a plain court
   // reservation for the host's own group — no game is published.
   const [opPrivate, setOpPrivate] = useState(false);
+  // Recurring (private court holds only): weekdays to repeat on + how many weeks.
+  const [repeatDays, setRepeatDays] = useState<number[]>([]);
+  const [repeatWeeks, setRepeatWeeks] = useState(8);
   const [opSkill, setOpSkill] = useState('3.0–3.5');
   const [opName, setOpName] = useState('');
   const [opDesc, setOpDesc] = useState('');
@@ -572,6 +584,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         // Equipment rental add-on (V2).
         hasEquipmentRental: includeEquipment,
         equipmentRentalAmount: includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0,
+        // Recurring: private court holds only, and never on an approval venue (the
+        // server ignores it there anyway). Each repeat is held awaiting_payment.
+        recurrence: bookingMode === 'open_play' && opPrivate && !requiresApproval && repeatDays.length > 0
+          ? { daysOfWeek: repeatDays, weeks: repeatWeeks }
+          : undefined,
       });
       // Request-to-book: no payment now — the owner approves, then the player
       // pays within the venue's window. Land on the "requested" confirmation.
@@ -1305,6 +1322,55 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 <div className="text-[12px] font-semibold text-[var(--muted)]">Paddles &amp; balls — +{money(Number((selected as any).equipmentRentalPrice), currency)}</div>
               </div>
             </label>
+          </div>
+        )}
+
+        {/* Recurring — private court holds only. The first date is paid now; each
+            repeat is held and paid as its date nears (from My Bookings). */}
+        {bookingMode === 'open_play' && opPrivate && (
+          <div className="field">
+            <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] px-4 py-3.5">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={repeatDays.length > 0}
+                  onChange={(e) => setRepeatDays(e.target.checked ? [new Date(`${date}T00:00:00`).getDay()] : [])}
+                  className="w-4 h-4 accent-[var(--primary)]"
+                />
+                <div className="flex-1">
+                  <div className="text-[14px] font-semibold text-[var(--ink)]">Repeat this booking</div>
+                  <div className="text-[12px] font-semibold text-[var(--muted)]">Same time on the days you pick — pay each as it comes up.</div>
+                </div>
+              </label>
+              {repeatDays.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {RECUR_PRESETS.map((p) => (
+                      <button key={p.label} type="button" className="time-pick" onClick={() => setRepeatDays(p.days)}>{p.label}</button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    {DOW_LETTERS.map((d, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-pressed={repeatDays.includes(i)}
+                        className={`w-9 h-9 rounded-full text-[13px] font-bold ${repeatDays.includes(i) ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface-2)] text-[var(--ink)]'}`}
+                        onClick={() => setRepeatDays((cur) => cur.includes(i) ? cur.filter((x) => x !== i) : [...cur, i])}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-[13px] font-semibold text-[var(--muted)]">For</span>
+                    <select className="control !w-auto" value={repeatWeeks} onChange={(e) => setRepeatWeeks(Number(e.target.value))}>
+                      {[2, 4, 6, 8, 12].map((w) => <option key={w} value={w}>{w} weeks</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

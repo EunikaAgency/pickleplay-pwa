@@ -2771,6 +2771,10 @@ export interface CreateBookingPayload {
   paymentOption?: PaymentOption;
   amountPaid?: number;
   balanceDue?: number;
+  /** Repeat this same slot on these weekdays (0=Sun…6=Sat) for the next `weeks`.
+   *  The primary is paid now; each occurrence is held awaiting_payment (pay lazily
+   *  from My Bookings as its date nears). Server returns `recurrenceCount`. */
+  recurrence?: { daysOfWeek: number[]; weeks: number };
 }
 
 /** The current user's bookings, newest first (optionally filtered by status). */

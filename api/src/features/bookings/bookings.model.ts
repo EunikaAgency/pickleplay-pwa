@@ -48,6 +48,10 @@ const bookingSchema = new Schema({
   amountPaid:          Number,
   // Still owed at the venue on arrival (0 when paid in full online).
   balanceDue:          Number,
+  // Recurring series link: set on every generated occurrence to the primary
+  // booking's _id, so a weekly/MWF series can be grouped or cancelled together.
+  // Null on a one-off booking (and on the primary itself).
+  recurrenceGroupId:   { type: Schema.Types.ObjectId, ref: 'Booking' },
   // ── Pricing audit trail ── which rate source resolved the amount + the breakdown
   // (populated by server-side validation on create; null for blocked/open-play).
   rateSource:          { type: String, maxlength: 20 },   // 'surge'|'timeBlock'|'holiday'|'weekend'|'subUnit'|'court'|'venue'|'manual'
