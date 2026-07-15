@@ -119,6 +119,26 @@ async function genderBlock(policy: unknown, userId: string) {
     : { code: 'GENDER_REQUIRED', message: `This game is ${label} only — set your gender in your profile to join.` };
 }
 
+/** Why the player can't take a seat given the game's skill band — null when they
+ *  can (the game carries no band, or their DUPR sits inside [skillMin, skillMax]).
+ *  Mirrors genderBlock: a player with no skill level set is steered to their
+ *  profile rather than silently admitted. Server-authoritative — the app disables
+ *  the join button on the same rule, but this is the gate a crafted client hits. */
+async function skillBlock(game: any, userId: string) {
+  const min = game.skillMin;
+  const max = game.skillMax;
+  if (min == null) return null; // no band → open to all levels
+  const me: any = await User.findById(userId).select('skillLevel').lean();
+  const skill = me?.skillLevel;
+  const band = game.skillLabel ?? (max != null ? `${min}–${max}` : `${min}+`);
+  if (skill == null) {
+    return { code: 'SKILL_REQUIRED', message: `This game is for ${band} players — set your skill level in your profile to join.` };
+  }
+  const withinBand = skill >= min && (max == null || skill <= max);
+  if (withinBand) return null;
+  return { code: 'NOT_ELIGIBLE', message: `This game is for ${band} players — your skill level is outside that range.` };
+}
+
 /** Pull min/max DUPR out of a label like '3.0–3.5' or '4.0+' (best-effort). */
 function parseSkill(label?: string): { skillMin?: number; skillMax?: number } {
   if (!label) return {};
@@ -446,6 +466,9 @@ export async function joinGame(c: any) {
     // profile gender before they can take a seat.
     const blocked = await genderBlock((game as any).genderPolicy, user.sub);
     if (blocked) return c.json({ error: blocked }, 403);
+    // Skill band: a banded game only admits a player whose DUPR is inside it.
+    const skillBlocked = await skillBlock(game, user.sub);
+    if (skillBlocked) return c.json({ error: skillBlocked }, 403);
     if (game.participantIds.length >= (game.capacity ?? 0)) {
       return c.json({ error: { code: 'FULL', message: 'This game is full' } }, 409);
     }

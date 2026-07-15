@@ -208,3 +208,24 @@ export function genderBlockReason(
     ? `Not eligible — ${label.toLowerCase()}`
     : 'Set your gender in your profile to join';
 }
+
+/* ─── Skill eligibility ──────────────────────────────────────── */
+
+/** Why the viewer isn't eligible for this game's skill band — null when they are
+ *  (the game is open to all levels, or their DUPR sits inside [skillMin, skillMax]).
+ *  Mirrors {@link genderBlockReason}: a guest gets null (the auth sheet handles
+ *  them, and we don't know their level until they sign in), and a signed-in player
+ *  with no skill level set is steered to their profile rather than silently let in.
+ *  Band match is strict on both ends — a stronger player is also "outside" a lower
+ *  band, matching how the Play-feed `skillFit` scorer already treats the gap. */
+export function skillBlockReason(
+  skillMin: number | null | undefined,
+  skillMax: number | null | undefined,
+  viewerSkill: number | null | undefined,
+  isSignedIn: boolean,
+): string | null {
+  if (skillMin == null || !isSignedIn) return null; // open band, or a guest
+  if (viewerSkill == null) return 'Set your skill level in your profile to join';
+  const withinBand = viewerSkill >= skillMin && (skillMax == null || viewerSkill <= skillMax);
+  return withinBand ? null : 'Not eligible — skill level outside this range';
+}

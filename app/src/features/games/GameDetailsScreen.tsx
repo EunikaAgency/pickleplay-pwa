@@ -16,7 +16,7 @@ import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
   dayParts, gameTitle, gameTypeLabel, gameFormatLabel, gameVibeLabel, timeLine, gameLocation, spotsLabel,
-  isLobbyFull, freeLeaveMsLeft, canLeaveLobby, genderBlockReason, genderPolicyLabel,
+  isLobbyFull, freeLeaveMsLeft, canLeaveLobby, genderBlockReason, genderPolicyLabel, skillBlockReason,
 } from './gameDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -189,9 +189,18 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   // A men-only / women-only game only admits a matching profile gender. Players
   // already on the roster (and the host) are past the gate.
   const restrictedTo = genderPolicyLabel(game?.genderPolicy);
+  // Skill eligibility: a banded game (e.g. '3.0–3.5') only admits a player whose
+  // DUPR sits inside the band. Same "past the gate" carve-out as gender.
+  const skillReason = isJoined || isHost
+    ? null
+    : skillBlockReason(game?.skillMin, game?.skillMax, me?.skillLevel, !!me);
   const blockedReason = isJoined || isHost
     ? null
-    : genderBlockReason(game?.genderPolicy, me?.gender, !!me);
+    : genderBlockReason(game?.genderPolicy, me?.gender, !!me) ?? skillReason;
+  // Show the eligible/not-eligible chip only when we can actually judge it: the
+  // game carries a skill band, and a non-host, not-yet-joined player is signed in.
+  const showSkillEligibility = !!me && !isHost && !isJoined && game?.skillMin != null;
+  const skillEligible = showSkillEligibility && skillReason == null;
 
   const toggleSave = () => {
     if (!game) return;
@@ -379,6 +388,20 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               <div className="kv">
                 <div className="eyebrow">Skill</div>
                 <div className="val">{game.skillLabel || 'Open'}</div>
+                {showSkillEligibility && (
+                  skillEligible ? (
+                    <span className="tag lime inline-flex items-center gap-1 mt-1.5">
+                      <Icon name="check" size={11} /> You're eligible
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-extrabold"
+                      style={{ background: 'var(--coral-soft)', color: 'var(--coral)' }}
+                    >
+                      <Icon name="lock" size={11} /> Not eligible
+                    </span>
+                  )
+                )}
               </div>
               <div className="kv">
                 <div className="eyebrow">Duration</div>
