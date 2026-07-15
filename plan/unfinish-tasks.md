@@ -21,6 +21,49 @@ Phase 1 is done (5/5). This is what's left.
 > `app/`. **One thing changed since this plan was written:** the **skill restriction** (item 2)
 > shipped on **15 July** — server and app. Everything else still stands as described.
 
+> ### 🔒 Final decisions — 15 July (the last open questions are now answered)
+> The seven still-open items are resolved; the build can proceed. **Cross-cutting rule: every money
+> value — fees and subscription prices — is admin-configurable in the dashboard. Nothing is hardcoded.**
+>
+> 1. **Recurring granularity** — one court booking **+ 7% per occurrence**, paid **lazily** (each date
+>    as it nears, not all upfront). Recurrence spans **multiple days** — specific days (MWF), consecutive
+>    days (Mon-Tue-Wed), every weekday, every weekend, or any combo — at the booked time slot, over a
+>    ~8-week horizon. Lives in **booking step 2**. (Fits the existing `OpenPlaySeries.daysOfWeek` shape.)
+> 2. **Demo transaction fee** — **₱0 for now** (no guessed figure, matching "no exact figure → no
+>    deduction"), but **admin-configurable**: a new `transactionFeePercent` setting beside
+>    `serviceFeePercent`, filled in once PayMongo is wired. A settings page must be ready.
+> 3. **₱499 coach subscription** — **keep**; make the price **admin-configurable** (already
+>    `AppSettings.coachSubscriptionPrice` — surface it in the admin dashboard).
+> 4. **"₱229,000 partner revenue" figure** — **already removed** (owner Partners screen shows real
+>    stats). Closed, no action.
+> 5. **Pricing engine** — **keep** the per-court base rate, per-slot/day overrides, and member
+>    discounts; **remove the demand-based smart-pricing *suggestions*** only — the demand
+>    analytics/heatmap underneath **stays**.
+> 6. **Rental inventory** — surface as **"Coming soon"** (not hidden, not deleted).
+> 7. **Request-to-book** (per-venue booking approval) — **keep** (opt-in per venue).
+
+> ### 🏗️ Build status — 15 July
+> **✅ Shipped**
+> - **Skill restriction (item 2)** — server + app: skill band enforced on join **and** Open Play
+>   interest **and** venue-session join; `"Beginner"` is now a real band (DUPR ≤ 3.0), not an empty one.
+> - **Item 7 — ineligible Discover cards are locked**: not clickable, Join disabled (second guard).
+>
+> **🔲 To build (the rest of this plan)**
+> 1. **The merge** — Open Play becomes a `Game`: every one goes through a **court booking**, gets the
+>    **real lobby** (roster/invites/chat) replacing "I'm Interested", a **player-set cap** (editable,
+>    never below the joined count), and an optional **organizer join fee**. Clean-slate the dummy
+>    `OpenPlaySession` rows.
+> 2. **Recurring in booking step 2** — multi-day (MWF / consecutive / weekdays / weekends / custom),
+>    lazy one-booking-+-7%-per-occurrence.
+> 3. **Demo payment** — validate the test card (wrong card → error); route join fee, coach lesson, and
+>    refunds through the same demo checkout.
+> 4. **Admin-configurable money** — new `transactionFeePercent` (₱0 default) + surface the coach ₱499 /
+>    organizer ₱999 prices, all in the admin dashboard.
+> 5. **Refunds** — 3-day free window + a pre-confirm warning that shows the real deducted numbers.
+> 6. **Rental inventory** → **"Coming soon"** placeholder.
+> 7. **Pricing engine** — remove the demand-based smart-pricing **suggestions** (keep the analytics).
+> 8. **Homepage** — "5 interested" → "3 spots left".
+
 ---
 
 ## 1. Settle this first: do venues host their own sessions? — ✅ ANSWERED 14 July
@@ -278,6 +321,49 @@ Tapos na ang Phase 1 (5/5). Ito na lang ang natitira.
 > **✓ Tiningnan sa codebase — 15 Hulyo.** Bawat item sa baba ay tiningnan sa `api/` at `app/`.
 > **Isang bagay ang nagbago mula nang isulat ang plano:** ang **skill restriction** (item 2) ay
 > na-ship na noong **15 Hulyo** — server at app. Ang lahat ng iba, tama pa rin gaya ng nakasulat.
+
+> ### 🔒 Panghuling desisyon — 15 Hulyo (nasagot na ang mga natitirang tanong)
+> Resolved na ang pitong bukas na item; pwede nang mag-build. **Batayang tuntunin: bawat halaga ng
+> pera — fee at presyo ng subscription — ay admin-configurable sa dashboard. Walang hardcode.**
+>
+> 1. **Recurring granularity** — isang booking **+ 7% kada okasyon**, bayad nang **lazy** (bawat petsa
+>    habang papalapit, hindi lahat sabay). Ang recurrence ay **maramihang araw** — tiyak na araw (MWF),
+>    magkakasunod (Lun-Mar-Miy), every weekday, every weekend, o kahit anong kombinasyon — sa parehong
+>    oras ng na-book, sa loob ng ~8 linggo. Nasa **booking step 2**. (Kaya na ng `OpenPlaySeries.daysOfWeek`.)
+> 2. **Demo transaction fee** — **₱0 muna** (walang hula, kaayon ng "walang eksaktong halaga → walang
+>    kaltas"), pero **admin-configurable**: bagong `transactionFeePercent` katabi ng `serviceFeePercent`,
+>    lalagyan pagka-wire ng PayMongo. Kailangang handa ang settings page.
+> 3. **₱499 coach subscription** — **keep**; gawing **admin-configurable** ang presyo (nasa
+>    `AppSettings.coachSubscriptionPrice` na — i-surface sa admin dashboard).
+> 4. **"₱229,000 partner revenue" figure** — **tinanggal na** (tunay na stats na sa owner Partners
+>    screen). Sarado, walang aksyon.
+> 5. **Pricing engine** — **keep** ang per-court base rate, per-slot/araw overrides, at member
+>    discounts; **alisin lang ang demand-based smart-pricing *suggestions*** — mananatili ang demand
+>    analytics/heatmap.
+> 6. **Rental inventory** — gawing **"Coming soon"** (hindi itago, hindi tanggalin).
+> 7. **Request-to-book** (per-venue approval) — **keep** (opt-in kada venue).
+
+> ### 🏗️ Build status — 15 Hulyo
+> **✅ Tapos na**
+> - **Skill restriction (item 2)** — server + app: skill band ipinapatupad sa join **at** sa Open Play
+>   interest **at** sa venue-session join; ang `"Beginner"` ay tunay nang band (DUPR ≤ 3.0), hindi walang laman.
+> - **Item 7 — naka-lock na ang Discover cards na hindi mo pwedeng salihan**: hindi mapipindot, disabled ang Join.
+>
+> **🔲 Gagawin pa (ang natitira sa plano)**
+> 1. **Ang merge** — ang Open Play ay magiging `Game`: bawat isa ay dadaan sa **court booking**, may
+>    **tunay na lobby** (roster/invite/chat) kapalit ng "I'm Interested", **cap na set ng player**
+>    (editable, hindi kailanman mas mababa sa nakasali), at opsyonal na **organizer join fee**.
+>    Linisin ang dummy na `OpenPlaySession` rows.
+> 2. **Recurring sa booking step 2** — maramihang araw (MWF / consecutive / weekdays / weekends / custom),
+>    lazy na isang-booking-+-7%-kada-okasyon.
+> 3. **Demo payment** — i-validate ang test card (maling card → error); idaan ang join fee, coach lesson,
+>    at refunds sa parehong demo checkout.
+> 4. **Admin-configurable na pera** — bagong `transactionFeePercent` (₱0 default) + i-surface ang coach
+>    ₱499 / organizer ₱999 na presyo, lahat sa admin dashboard.
+> 5. **Refunds** — 3-araw na libreng bintana + babala bago mag-confirm na may totoong numero ng kaltas.
+> 6. **Rental inventory** → **"Coming soon"** na placeholder.
+> 7. **Pricing engine** — alisin ang demand-based smart-pricing **suggestions** (panatilihin ang analytics).
+> 8. **Homepage** — "5 interested" → "3 spots left".
 
 ---
 
