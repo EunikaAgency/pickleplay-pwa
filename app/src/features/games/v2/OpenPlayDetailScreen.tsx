@@ -308,6 +308,25 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           </div>
         </div>
 
+        {/* Group chat — for the host + everyone who joined the lobby. Open Play
+            stores its roster as interestedUsers, but it's the same GameMessage
+            chat the lobby games use, so it reuses the game-chat screen. */}
+        {(isInterested || isHost) && (
+          <button
+            onClick={() => chrome.onNavigate('game-chat', { id: game.id, name: game.title || 'Open Play' })}
+            className="w-full mb-4 flex items-center gap-3 rounded-2xl bg-[var(--primary)] text-white px-4 py-3.5 active:scale-[0.99] transition-transform"
+          >
+            <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Icon name="chat" size={18} />
+            </span>
+            <span className="flex-1 text-left">
+              <span className="block text-[15px] font-bold">Group chat</span>
+              <span className="block text-[12px] text-white/80">Talk with the players in this Open Play</span>
+            </span>
+            <Icon name="chevron" size={18} />
+          </button>
+        )}
+
         {/* About */}
         <div className="about-card">
           <div className="t-eyebrow mb-1.5">About this Open Play</div>
@@ -608,6 +627,23 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
             )}
           </div>
         </div>
+
+        {/* Group chat — the organizer + everyone who joined this session. */}
+        {(isInterested || session.viewerIsOrganizer) && (
+          <button
+            onClick={() => chrome.onNavigate('open-play-chat', { id: session.id, name: session.title })}
+            className="w-full mb-4 flex items-center gap-3 rounded-2xl bg-[var(--primary)] text-white px-4 py-3.5 active:scale-[0.99] transition-transform"
+          >
+            <span className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <Icon name="chat" size={18} />
+            </span>
+            <span className="flex-1 text-left">
+              <span className="block text-[15px] font-bold">Group chat</span>
+              <span className="block text-[12px] text-white/80">Talk with the players in this session</span>
+            </span>
+            <Icon name="chevron" size={18} />
+          </button>
+        )}
 
         {/* About */}
         <div className="about-card">

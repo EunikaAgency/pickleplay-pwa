@@ -973,10 +973,27 @@ export async function deleteGame(c: any) {
 
 /* ─── Game group chat (roster only) ───────────────────────────── */
 
-/** True if the user is the host or a joined participant of the game. */
+/**
+ * Everyone who belongs in a game's chat: the host plus whoever joined.
+ *
+ * "Joined" is stored in two different places depending on the game kind — lobby
+ * games (singles/doubles/public) fill `participantIds`, while Open Play
+ * (gameType 'open') has no roster at all and tracks its players as
+ * `interestedUserIds`. Reading both is what gives Open Play a chat; keying off
+ * `participantIds` alone locked every Open Play player out of their own game.
+ */
+function chatRoster(game: any): string[] {
+  const ids = [
+    String(game.creatorId),
+    ...((game.participantIds ?? []).map((p: any) => String(p))),
+    ...((game.interestedUserIds ?? []).map((p: any) => String(p))),
+  ];
+  return [...new Set(ids)].filter((id) => id && id !== 'undefined');
+}
+
+/** True if the user is the host, a joined participant, or an interested Open Play player. */
 function isOnRoster(game: any, userId: string): boolean {
-  if (String(game.creatorId) === userId) return true;
-  return (game.participantIds ?? []).some((p: any) => String(p) === userId);
+  return chatRoster(game).includes(String(userId));
 }
 
 // GET /games/:id/messages — the game's group chat (oldest→newest). Roster only.
@@ -984,7 +1001,7 @@ export async function listGameMessages(c: any) {
   const user = c.get('user');
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
-  const game = await Game.findById(id).select('creatorId participantIds title venueName').lean();
+  const game = await Game.findById(id).select('creatorId participantIds interestedUserIds title venueName').lean();
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
   if (!isOnRoster(game, user.sub)) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Join this game to see its chat' } }, 403);
@@ -1016,7 +1033,7 @@ export async function sendGameMessage(c: any) {
   }
   const id = c.req.param('id');
   if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
-  const game = await Game.findById(id).select('creatorId participantIds title venueName').lean();
+  const game = await Game.findById(id).select('creatorId participantIds interestedUserIds title venueName').lean();
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
   if (!isOnRoster(game, user.sub)) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Join this game to chat' } }, 403);
@@ -1037,8 +1054,7 @@ export async function sendGameMessage(c: any) {
   // Realtime fan-out to every OTHER roster member's open app (live append in an
   // open chat) + a notification (badge/push/inbox) so they're alerted when not
   // looking at the chat. Collapsed per game so a burst doesn't spam pushes.
-  const roster = [String(game.creatorId), ...((game.participantIds ?? []).map((p: any) => String(p)))];
-  const others = [...new Set(roster)].filter((uid) => uid !== user.sub);
+  const others = chatRoster(game).filter((uid) => uid !== user.sub);
   others.forEach((uid) => publishUserEvent(uid, 'game.message.created', { gameId: id, message: { ...view, mine: false } }));
   const preview = body.length > 120 ? `${body.slice(0, 117)}…` : body;
   await notifyUsers(others, {

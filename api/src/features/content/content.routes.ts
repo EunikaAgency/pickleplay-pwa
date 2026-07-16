@@ -11,6 +11,7 @@ import {
   createOpenPlaySeries, getMyOpenPlay, getMyOpenPlayRegistrations, getOpenPlaySession, cancelOpenPlaySeries, cancelOpenPlaySession,
   updateOpenPlaySeries, updateOpenPlaySession,
   joinOpenPlay, leaveOpenPlay, getOpenPlayRegistrations, manageOpenPlayRegistration,
+  listOpenPlayMessages, sendOpenPlayMessage,
 } from './content.controller.js';
 
 const contentRoutes = new Hono();
@@ -31,6 +32,9 @@ contentRoutes.get('/open-play/:id/registrations', requireAuth, getOpenPlayRegist
 contentRoutes.patch('/open-play/:id/registrations/:regId', requireAuth, manageOpenPlayRegistration);
 contentRoutes.post('/open-play/:id/join', requireAuth, joinOpenPlay);
 contentRoutes.post('/open-play/:id/leave', requireAuth, leaveOpenPlay);
+// Session group chat (roster: organizer + joined players). Read = roster; post = player.games.chat.
+contentRoutes.get('/open-play/:id/messages', requireAuth, listOpenPlayMessages);
+contentRoutes.post('/open-play/:id/messages', requireAuth, sendOpenPlayMessage);
 contentRoutes.get('/tournaments', listTournaments);
 // Organizer tournament management. `/mine` must precede the `/:id` matcher.
 contentRoutes.post('/tournaments', requireAuth, createTournament);

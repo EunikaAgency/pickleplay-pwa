@@ -3671,6 +3671,8 @@ export interface ApiOpenPlaySession {
   interestedUsers?: ApiGamePerson[];
   interestedCount?: number;
   myRegistrationStatus?: string | null;
+  /** Detail only: the viewer runs this session (organizers never "join" their own). */
+  viewerIsOrganizer?: boolean;
 }
 
 export interface ApiOpenPlayMine {
@@ -3798,6 +3800,19 @@ export async function joinOpenPlaySession(id: string): Promise<{ id: string; sta
 
 export async function leaveOpenPlaySession(id: string): Promise<unknown> {
   return request(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/leave`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Load an open-play session's group chat (roster only: organizer + joined
+ *  players). Returns the session title for the chat header. Message shape is
+ *  identical to the game chat, so both feed the shared ChatThread. */
+export async function listOpenPlayMessages(id: string): Promise<{ title: string | null; messages: ApiGameMessage[] }> {
+  const env = await rawRequest<{ title?: string | null; messages?: ApiGameMessage[] }>(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/messages`, { auth: true });
+  return { title: env.data?.title ?? null, messages: env.data?.messages ?? [] };
+}
+
+/** Post to an open-play session's group chat — realtime-fans-out to the roster. */
+export async function sendOpenPlayMessage(id: string, body: string): Promise<ApiGameMessage> {
+  return request<ApiGameMessage>(`${OPEN_PLAY_PREFIX}/${encodeURIComponent(id)}/messages`, { method: 'POST', body: { body }, auth: true });
 }
 
 /** The organizer's open-play series + every generated session instance. */

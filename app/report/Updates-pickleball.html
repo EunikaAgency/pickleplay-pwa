@@ -1,0 +1,380 @@
+<html><head><!-- frame-runtime --><base href="/_f/1784185120-df21/"><script>window.__FRAME_PREAMBLE={"capabilities":{"downloads":"downloads.DUzXFHNF.js","mcp":"mcp.CLzOm9JX.js","permissions":"permissions.C9OCnDjh.js","self":"self.DqF_PxOe.js"},"transforms":"_transforms.DYk1Ltlh.js","comments":"_comments.Dp6RDy7J.js"}</script><script>(function(){"use strict";const ce="modulepreload",le=function(e){return"/"+e},ue={},x=function(t,n,u){let o=Promise.resolve();function s(f){const a=new Event("vite:preloadError",{cancelable:!0});if(a.payload=f,window.dispatchEvent(a),!a.defaultPrevented)throw f}return o.then(f=>{for(const a of f||[])a.status==="rejected"&&s(a.reason);return t().catch(s)})},K=["light","dark","system"];function G(e){if(e==null||typeof e!="object")return!1;const t=e.__frame_init;return t!=null&&typeof t=="object"}function J(e){return e!=null&&typeof e=="object"&&e.__frame_size_poke===!0}function V(e){if(e==null||typeof e!="object")return!1;const t=e.__frame_theme;if(t==null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&K.includes(n)}function Y(e){try{typeof reportError=="function"?reportError(e):setTimeout(()=>{throw e},0)}catch{}}function z(e){if(window===top||e.type==="auxclick"&&e.button!==1)return;const t=e.composedPath?e.composedPath():[e.target];let n=null;for(let f=0;f<t.length;f++){const a=t[f];if(a&&a.matches&&a.matches("a[href],area[href]")){n=a;break}}if(!n&&e.target&&e.target.closest&&(n=e.target.closest("a[href],area[href]")),!n)return;const u=n.getAttribute("href");if(!u)return;let o,s;try{o=new URL(u,document.baseURI),s=new URL(document.baseURI).origin}catch{return}(o.protocol==="http:"||o.protocol==="https:")&&o.origin!==s&&(e.preventDefault(),parent.postMessage({__frame_nav:!0,url:o.href},"*"))}const D={};function T(e){if(window===top)return;const t=Date.now();t-(D[e]||0)<500||(D[e]=t,parent.postMessage({__frame_engaged:!0,kind:e},"*"))}const Q=2e3,U=["wheel","touchstart","touchmove","keydown","pointerdown"];let B=0;function X(e){e.isTrusted&&(B=Date.now())}function Z(){addEventListener("click",z,!0),addEventListener("auxclick",z,!0)}function ee(){for(let e=0;e<U.length;e++)addEventListener(U[e],X,{capture:!0,passive:!0});addEventListener("scroll",e=>{e.isTrusted&&Date.now()-B<Q&&T("scroll")},{capture:!0,passive:!0}),addEventListener("pointermove",e=>{e.isTrusted&&T("pointer")},{capture:!0,passive:!0}),addEventListener("click",e=>{e.isTrusted&&T("click")},{capture:!0,passive:!0})}function te(e,t,n){const u=[...t.values()].filter(o=>o.targets.some(s=>s.startsWith(e+".")));return{wrap(o,s){const f=`${e}.${o}`,a=u.filter(i=>i.targets.includes(f));return a.length===0?(...i)=>{try{return s(...i)}catch(p){return Promise.reject(p)}}:(...i)=>{let p=i;for(const c of a){const l=c.module.parameters;if(l)try{p=l(p)}catch{return Promise.reject({code:"transform_error",id:c.id,scope:e,message:"parameters transform failed"})}}let h;try{h=s(...p)}catch(c){h=Promise.reject(c)}return h.then(c=>{for(let l=a.length-1;l>=0;l--){const m=a[l],d=m.module.returns;if(d)try{c=d(c)}catch{return n({id:m.id,scope:e,leg:"returns"}),c}}return c},c=>{for(let l=a.length-1;l>=0;l--){const m=a[l],d=m.module.throws;if(d)try{c=d(c)}catch{return n({id:m.id,scope:e,leg:"throws"}),Promise.reject(c)}}return Promise.reject(c)})}}}}function ne(e,t,n,u=()=>{}){const o=new Set(e.changes??[]),s=new Map;for(const f of o){const a=t[f];a&&s.set(f,a)}return{contract:e.contract,changes:o,flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:s,shellOrigin:n.shellOrigin,mount:n.mount,pipe:f=>te(f,s,u)}}(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let u=0;for(let o=0;o<n.length;o++){const s=n[o];try{e(t,s,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[s]}catch{}try{e(t,s,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[s]=="function"&&u++}if(u&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:u},"*")}catch{}})();const re=1e4,oe=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function se(e){for(const t of oe)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}const R=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities??{}}),A=window.__FRAME_PREAMBLE?.transforms,k=window.__FRAME_PREAMBLE?.comments,C=/^[\w.-]+\.js$/,ie=/^[a-z][a-z0-9_-]{0,63}$/;let F=null,v=null;function N(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}let I=!1;function H(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,I=!0):I&&(delete t.dataset.theme,t.style.colorScheme="",I=!1)}const E={mcp:{watchTool:{handlerArg:3}}},P=new Map;function ae(e,t){const n=P.get(e);if(!n)return;Object.assign(n.impl,t),n.impl.__settled=()=>Promise.reject({code:"capability_removed",message:`${e}: method not in this runtime`});const u=n.queue;n.queue=[];for(const o of u){const s=t[o.method];if(s)if(E[e]?.[o.method])try{o.resolve(s(...o.args))}catch{O(o,E[e][o.method].handlerArg,{code:"transform_error",message:`${e}.${o.method} rejected its arguments`})}else s(...o.args).then(o.resolve,o.reject);else{const f={code:"capability_removed",message:`${e}.${o.method} is not in this runtime`},a=E[e]?.[o.method];if(a){O(o,a.handlerArg,f);continue}o.reject(f)}}}function $(e,t){const n=P.get(e);if(!n)return;n.impl.__settled=()=>Promise.reject(t);const u=n.queue;n.queue=[];for(const o of u){const s=E[e]?.[o.method];if(s){O(o,s.handlerArg,t);continue}o.reject(t)}}function O(e,t,n){if(e.syncState?.dead)return;const u=e.args[t];typeof u=="function"&&queueMicrotask(()=>{if(!e.syncState?.dead)try{u({type:"error",error:n})}catch(o){Y(o)}})}const q=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(q&&q.writable===!1)){Z(),ee();const e=q?.value??{};N(window,"claude",e);const t=i=>{const p={impl:Object.create(null),queue:[]};P.set(i,p);const h=new Proxy(p.impl,{get:(c,l)=>{if(typeof l!="string"||l==="then"||l==="toJSON"||l==="valueOf")return;if(l==="toString")return Object.prototype.toString;const m=E[i]?.[l];return m?(...d)=>{if(typeof d[m.handlerArg]!="function")throw new TypeError(`${i}.${l} requires a handler function`);const g=c[l];if(g)return g(...d);if(c.__settled){const _={dead:!1},S={args:[...d],syncState:_};return c.__settled().catch(j=>O(S,m.handlerArg,j)),()=>{_.dead=!0}}let y=null;const w={dead:!1};return p.queue.push({method:l,args:d,resolve:_=>{y=typeof _=="function"?_:null,w.dead&&y?.()},reject:()=>{},syncState:w}),()=>{w.dead=!0,y?.()}}:(...d)=>{const g=c[l]??c.__settled;return g?g(...d):new Promise((y,w)=>{p.queue.push({method:l,args:d,resolve:y,reject:w})})}},set:()=>!1});N(e,i,h)};for(const i of Object.keys(R)){if(e[i]!==void 0){N(e,i,e[i]);continue}t(i)}let n=null,u=null,o=0;const s=i=>{i.source!==parent||!se(i.origin)||G(i.data)&&(n=i.data.__frame_init,v=i.origin,removeEventListener("message",s),clearTimeout(o),u?.())};addEventListener("message",s),parent.postMessage({__frame_connect:!0},"*");const f=new Promise(i=>{u=i,o=setTimeout(()=>{removeEventListener("message",s),i()},re)}),a=document.readyState==="loading"?new Promise(i=>document.addEventListener("DOMContentLoaded",()=>i(),{once:!0})):Promise.resolve();f.then(async()=>{if(!n||!v){for(const r of P.keys())$(r,{code:"not_granted",message:"frame initialization did not arrive - capability unavailable"});return}H(n.theme);const i=v;let p=!1;addEventListener("message",r=>{if(r.source!==parent||r.origin!==i)return;V(r.data)&&H(r.data.__frame_theme.theme);const b=r.data?.__fc_mode;b&&typeof b=="object"&&!p&&k&&C.test(k)&&(p=!0,h(k).then(L=>L.install?.(i,b.on===!0)).catch(()=>{}))});const h=r=>x(()=>import("/_runtime/"+r),void 0),c=Object.keys(n.capabilities??{});for(const r of c)Object.hasOwn(R,r)||ie.test(r)&&e[r]===void 0&&(t(r),$(r,{code:"capability_disabled",message:"capability not in this runtime generation"}));const l=c.filter(r=>Object.hasOwn(R,r)).map(r=>[r,R[r]]).filter(r=>typeof r[1]=="string"&&C.test(r[1])),[m,...d]=await Promise.allSettled([A&&C.test(A)?h(A):Promise.resolve({}),...l.map(([,r])=>h(r))]),g=v;F=ne(n,m.status==="fulfilled"&&m.value?.TRANSFORMS||{},{shellOrigin:g,mount:ae},r=>parent.postMessage({__frame_cap_telemetry:r},g));const y=r=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:r}},g),w=F;d.forEach((r,b)=>{const L=l[b][0];if(r.status!=="fulfilled"){y(L);return}try{r.value?.install?.(w)}catch{y(L)}});for(const[r,b]of P)b.queue.length===0&&Object.keys(b.impl).length>0||$(r,{code:c.includes(r)?"capability_disabled":"not_granted",message:"capability not available in this session"});await a,parent.postMessage({__frame_ready:!0},v);let _=-1,S=0;const j=()=>{S=0;const r=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);r!==_&&(_=r,parent.postMessage({__frame_size:!0,h:r},g))},M=()=>{S||(S=setTimeout(j,200))},W=new ResizeObserver(M);W.observe(document.documentElement),document.body&&W.observe(document.body),document.addEventListener("load",M,!0),document.fonts?.ready.then(M,()=>{}),addEventListener("beforeprint",()=>{_=-1,j()}),M(),addEventListener("message",r=>{r.source!==parent||r.origin!==g||J(r.data)&&(_=-1,M())})})}})();</script><!-- /frame-runtime --><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>PickleBallers — Progress Review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#F5F7EF; --surface:#FFFFFF; --surface-2:#EFF2E6; --surface-3:#E7EBDA;
+    --ink:#161A10; --text-2:#474D3B; --text-3:#767C66; --border:#E0E4D3; --border-2:#D2D7C1;
+    --accent:#3F6B1E; --lime:#B7E92F; --lime-ink:#3d5a06; --link:#2E63D8;
+    --st-done:#12A150; --st-done-bg:#E7F6ED;
+    --st-ongoing:#2E63D8; --st-ongoing-bg:#E7EEFB;
+    --st-refine:#B9770B; --st-refine-bg:#FBF0DE;
+    --st-wait:#6D4FE0; --st-wait-bg:#EEE9FC;
+    --shadow:0 1px 2px rgba(20,26,10,.04),0 2px 8px rgba(20,26,10,.05);
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E1109; --surface:#161B0F; --surface-2:#1D2314; --surface-3:#252C1A;
+      --ink:#ECEFE1; --text-2:#B3BAA1; --text-3:#828A6F; --border:#2A3119; --border-2:#353D22;
+      --accent:#9CCB5C; --lime:#B7E92F; --lime-ink:#0E1109; --link:#7CA6FF;
+      --st-done:#38CE7E; --st-done-bg:#12321f; --st-ongoing:#79A6FF; --st-ongoing-bg:#132139;
+      --st-refine:#EDA640; --st-refine-bg:#33260f; --st-wait:#A992FF; --st-wait-bg:#241d3f;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 10px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F5F7EF; --surface:#FFFFFF; --surface-2:#EFF2E6; --surface-3:#E7EBDA;
+    --ink:#161A10; --text-2:#474D3B; --text-3:#767C66; --border:#E0E4D3; --border-2:#D2D7C1;
+    --accent:#3F6B1E; --lime:#B7E92F; --lime-ink:#3d5a06; --link:#2E63D8;
+    --st-done:#12A150; --st-done-bg:#E7F6ED; --st-ongoing:#2E63D8; --st-ongoing-bg:#E7EEFB;
+    --st-refine:#B9770B; --st-refine-bg:#FBF0DE; --st-wait:#6D4FE0; --st-wait-bg:#EEE9FC;
+    --shadow:0 1px 2px rgba(20,26,10,.04),0 2px 8px rgba(20,26,10,.05);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1109; --surface:#161B0F; --surface-2:#1D2314; --surface-3:#252C1A;
+    --ink:#ECEFE1; --text-2:#B3BAA1; --text-3:#828A6F; --border:#2A3119; --border-2:#353D22;
+    --accent:#9CCB5C; --lime:#B7E92F; --lime-ink:#0E1109; --link:#7CA6FF;
+    --st-done:#38CE7E; --st-done-bg:#12321f; --st-ongoing:#79A6FF; --st-ongoing-bg:#132139;
+    --st-refine:#EDA640; --st-refine-bg:#33260f; --st-wait:#A992FF; --st-wait-bg:#241d3f;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 10px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;font-size:15px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px 96px}
+  h1,h2,h3{margin:0;text-wrap:balance;letter-spacing:-.02em}
+  a{color:var(--link)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3)}
+  header{padding:40px 0 22px;border-bottom:1px solid var(--border);margin-bottom:28px;position:relative}
+  header::before{content:"";position:absolute;top:0;left:0;width:64px;height:5px;background:var(--lime);border-radius:0 0 3px 3px}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .mark{width:30px;height:30px;border-radius:8px;background:var(--accent);color:var(--lime);display:grid;place-items:center;font-size:17px;flex:none}
+  .brand b{font-size:15px;letter-spacing:-.01em}
+  .brand span{color:var(--text-3);font-size:13px}
+  .viewtag{margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:3px 9px}
+  header h1{font-size:clamp(27px,4.4vw,40px);font-weight:800;line-height:1.05}
+  header .sub{margin-top:12px;color:var(--text-2);max-width:64ch;font-size:15.5px}
+  .meta-row{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--text-3);font-size:12.5px;font-family:var(--mono)}
+  .meta-row b{color:var(--text-2);font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:26px 0 10px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stat .n{font-size:34px;font-weight:800;font-family:var(--mono);line-height:1;letter-spacing:-.03em}
+  .stat .l{margin-top:7px;font-size:12px;color:var(--text-2);font-weight:600;line-height:1.25}
+  .stat.total .n{color:var(--ink)} .stat.total{background:var(--surface-2)}
+  .stat.done .n{color:var(--st-done)} .stat.ongoing .n{color:var(--st-ongoing)}
+  .stat.refine .n{color:var(--st-refine)} .stat.wait .n{color:var(--st-wait)}
+  .stat .bar{position:absolute;left:0;bottom:0;height:3px;width:100%}
+  .stat.done .bar{background:var(--st-done)} .stat.ongoing .bar{background:var(--st-ongoing)}
+  .stat.refine .bar{background:var(--st-refine)} .stat.wait .bar{background:var(--st-wait)}
+  .readnote{color:var(--text-3);font-size:12.5px;margin:2px 2px 0;font-style:italic}
+  section{margin-top:44px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:4px;flex-wrap:wrap}
+  .sec-head h2{font-size:20px;font-weight:800}
+  .sec-head .count{font-family:var(--mono);font-size:12px;color:var(--text-3)}
+  .sec-intro{color:var(--text-2);margin:6px 0 18px;max-width:74ch;font-size:14.5px}
+  .module{margin-top:26px}
+  .mod-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .mod-num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--lime-ink);background:var(--lime);border-radius:6px;padding:2px 7px}
+  .mod-head h3{font-size:15.5px;font-weight:750;letter-spacing:-.01em}
+  .mod-head .mc{font-family:var(--mono);font-size:11.5px;color:var(--text-3);margin-left:auto}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--stripe);border-radius:12px;padding:14px 15px 13px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:7px}
+  .card.s-done{--stripe:var(--st-done)} .card.s-ongoing{--stripe:var(--st-ongoing)}
+  .card.s-refine{--stripe:var(--st-refine)} .card.s-wait{--stripe:var(--st-wait)}
+  .card .top{display:flex;align-items:flex-start;gap:10px}
+  .card .tid{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text-3);flex:none;margin-top:1px}
+  .card .tt{font-weight:700;font-size:14.5px;line-height:1.3;letter-spacing:-.01em;flex:1}
+  .pill{flex:none;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap;align-self:flex-start;margin-top:1px}
+  .pill.s-done{color:var(--st-done);background:var(--st-done-bg)}
+  .pill.s-ongoing{color:var(--st-ongoing);background:var(--st-ongoing-bg)}
+  .pill.s-refine{color:var(--st-refine);background:var(--st-refine-bg)}
+  .pill.s-wait{color:var(--st-wait);background:var(--st-wait-bg)}
+  .card .ship,.card .note{font-size:13px;line-height:1.45;color:var(--text-2)}
+  .card .ship b,.card .note b{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;margin-right:5px}
+  .card .ship b{color:var(--st-done)} .card .note b{color:var(--text-3)}
+  .callout{background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;padding:18px 20px;margin-top:16px}
+  .money{display:grid;grid-template-columns:1fr;gap:10px;margin-top:4px}
+  .mrow{display:grid;grid-template-columns:120px 1fr;gap:6px 16px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;align-items:center}
+  .mrow .who{font-weight:750;font-size:13.5px}
+  .mrow .flow{font-family:var(--mono);font-size:12.5px;color:var(--text-2);line-height:1.5}
+  .mrow .flow .take{color:var(--st-done);font-weight:700}
+  .mrow .flow .next{color:var(--st-wait);font-weight:700}
+  .role{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 16px 14px;margin-top:12px;box-shadow:var(--shadow)}
+  .role .rh{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .rtag{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--accent);padding:3px 9px;border-radius:6px}
+  :root[data-theme="dark"] .rtag{color:#0E1109}
+  .role .rh .cnt{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-3)}
+  .flowstrip{display:flex;gap:0;overflow-x:auto;padding-bottom:4px}
+  .step{display:flex;align-items:center;flex:none}
+  .chip{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:7px 11px;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;display:flex;align-items:center;gap:7px}
+  .chip .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .dot.s-done{background:var(--st-done)} .dot.s-refine{background:var(--st-refine)}
+  .dot.s-wait{background:var(--st-wait)} .dot.s-ongoing{background:var(--st-ongoing)}
+  .arrow{color:var(--text-3);padding:0 7px;font-size:13px;flex:none}
+  .blocked{margin-top:11px;font-size:12.5px;color:var(--text-2);line-height:1.5}
+  .blocked b{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-right:6px}
+  .dec{display:flex;gap:14px;padding:15px 0;border-top:1px solid var(--border)}
+  .dec:first-child{border-top:0}
+  .dnum{font-family:var(--mono);font-weight:800;font-size:15px;color:var(--accent);flex:none;width:30px;height:30px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;border:1px solid var(--border)}
+  .dec .db{flex:1}
+  .dec .dq{font-weight:700;font-size:15px;letter-spacing:-.01em}
+  .dec.done .dnum{color:var(--st-done);background:var(--st-done-bg);border-color:var(--st-done)}
+  .ddec{margin-top:8px;font-size:13px;color:var(--ink);background:var(--st-done-bg);border:1px solid var(--st-done);border-radius:8px;padding:8px 11px;line-height:1.45}
+  .dbadge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--st-done);margin-right:8px}
+  .dec .dd{color:var(--text-2);font-size:13.5px;margin-top:3px;line-height:1.5}
+  .unblk{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .ub{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-3);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 7px}
+  .ub.src{color:var(--accent)}
+  .sub-note{color:var(--text-3);font-size:12.5px;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border-2)}
+  .act{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--border)}
+  .act:first-child{border-top:0}
+  .anum{flex:none;font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text-3);width:52px;padding-top:2px}
+  .act .ab{flex:1}
+  .act .at{font-weight:750;font-size:14.5px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .acct{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--lime);color:var(--lime-ink);border-radius:5px;padding:2px 7px}
+  .act .ad{color:var(--text-2);font-size:13px;margin-top:4px;line-height:1.5}
+  .act .ad .pv{color:var(--st-done);font-weight:600}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:18px 0 2px}
+  .lg{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2)}
+  .lg .sw{width:11px;height:11px;border-radius:3px;flex:none}
+  footer{margin-top:56px;padding-top:22px;border-top:1px solid var(--border);color:var(--text-3);font-size:12.5px;line-height:1.7}
+  footer b{color:var(--text-2)}
+  .toggle{position:fixed;top:14px;right:14px;z-index:10;background:var(--surface);border:1px solid var(--border-2);color:var(--text-2);border-radius:9px;padding:7px 11px;font-size:12px;font-family:var(--mono);cursor:pointer;box-shadow:var(--shadow)}
+  .toggle:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+  @media (max-width:720px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .stat.total{grid-column:1/-1}
+    .cards{grid-template-columns:1fr}
+    .mrow{grid-template-columns:1fr;gap:3px}
+  }
+</style>
+
+<button class="toggle" id="themeBtn" aria-label="Toggle light or dark theme">◐ theme</button>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark">🥒</div>
+      <div><b>PickleBallers</b> &nbsp;<span>Progress Review</span></div>
+      <span class="viewtag">Client view</span>
+    </div>
+    <h1>What we built, where we are, and what we need from you</h1>
+    <p class="sub">Every feature from last week's list, shown against the working app as it stands today. Grouped by area, with a clear status and — where relevant — the one decision that lets us finish it.</p>
+    <div class="meta-row">
+      <span><b>As of</b> 16 Jul 2026</span>
+      <span><b>Since</b> the 8 Jul review</span>
+      <span><b>Live preview</b> available for the walkthrough</span>
+    </div>
+  </header>
+
+  <div class="stats" id="stats"><div class="stat total"><div class="n">24</div><div class="l">Requested</div></div><div class="stat done"><div class="n">14</div><div class="l">Completed</div><div class="bar"></div></div><div class="stat refine"><div class="n">6</div><div class="l">For Refinement</div><div class="bar"></div></div><div class="stat wait"><div class="n">4</div><div class="l">Awaiting a decision</div><div class="bar"></div></div><div class="stat ongoing"><div class="n">0</div><div class="l">Ongoing</div><div class="bar"></div></div></div>
+  <p class="readnote" id="readnote">14 of 24 features are live and working · 6 need a small polish · 4 are ready to finish once you confirm the matching decision.</p>
+  <div class="legend" id="legend"><div class="lg"><span class="sw" style="background:var(--st-done)"></span>Completed</div><div class="lg"><span class="sw" style="background:var(--st-ongoing)"></span>Ongoing</div><div class="lg"><span class="sw" style="background:var(--st-refine)"></span>For Refinement</div><div class="lg"><span class="sw" style="background:var(--st-wait)"></span>Waiting · Clarification</div></div>
+
+  <section>
+    <div class="sec-head"><h2>Status by feature</h2><span class="count" id="matrixCount">24 items · 6 areas</span></div>
+    <p class="sec-intro">“Shipped” is what you can do in the app today. “Note” is either a small polish item or the decision it's waiting on. Several items shown as in-progress at the 8 Jul review have since shipped.</p>
+    <div id="matrix"><div class="module"><div class="mod-head"><span class="mod-num">1</span><h3>Play / Lobby</h3><span class="mc">4 completed · 3 for · 1 waiting</span></div><div class="cards"><div class="card s-refine"><div class="top"><span class="tid">01</span><span class="tt">Rename "Games" → "Play"</span><span class="pill s-refine">For Refinement</span></div><div class="ship"><b>Shipped</b>The main Play tab, its screen, and the home action now read Play / Open Play.</div><div class="note"><b>Note</b>A few secondary screens still say "Games" and are being swept. The wording is settled — Play / Book Court / Find Coach stays.</div></div><div class="card s-done"><div class="top"><span class="tid">02</span><span class="tt">Restore Play ranking / sorting</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>A relevance ranking — time, distance, skill match, spots left, friends — with 5 sort options and filters.</div><div class="note"><b>Note</b>Ranking runs on the server so every phone shows the same order.</div></div><div class="card s-done"><div class="top"><span class="tid">03</span><span class="tt">Hide empty Joined &amp; Invites</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>Joined / Invites appear only when they hold something; empty states now offer to book a court.</div></div><div class="card s-refine"><div class="top"><span class="tid">04</span><span class="tt">Emphasize venue / court name</span><span class="pill s-refine">For Refinement</span></div><div class="ship"><b>Shipped</b>Every card now shows the venue (with a pin), skill, distance, price, host and spots.</div><div class="note"><b>Note</b>If you'd like the venue + court to be the single most prominent line on the card, that's a small styling tweak we can make.</div></div><div class="card s-done"><div class="top"><span class="tid">05</span><span class="tt">Manual / offline reservations</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>Owners &amp; staff log walk-in / phone / Messenger / Instagram bookings; the slot is blocked on the calendar and double-booking is refused.</div></div><div class="card s-done"><div class="top"><span class="tid">06</span><span class="tt">Recurring Open Play</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>Weekly recurring Open Play series for organizers and venue owners, with edit this-one / this-and-future / end-series.</div><div class="note"><b>Note</b>A player's one-off game doesn't recur (by design).</div></div><div class="card s-wait"><div class="top"><span class="tid">07</span><span class="tt">Invite anyone to a lobby</span><span class="pill s-wait">Waiting · Clarification</span></div><div class="ship"><b>Shipped</b>Invites currently go to players; a public share link lets anyone else join.</div><div class="note"><b>Note</b>The lobby direction is confirmed and has since shipped — Open Play now has a Join lobby button and a real size, so a full lobby locks anyone else out. What is left to confirm is the invite rule itself: players only, or anyone.</div></div><div class="card s-refine"><div class="top"><span class="tid">08</span><span class="tt">Lobby-specific chat</span><span class="pill s-refine">For Refinement</span></div><div class="ship"><b>Shipped</b>Game lobbies have a dedicated group chat scoped to that game's roster, separate from personal messages.</div><div class="note"><b>Note</b>With the lobby direction confirmed, extending the same chat to Open Play sessions is the natural next step.</div></div></div></div><div class="module"><div class="mod-head"><span class="mod-num">2</span><h3>Staff / Permissions</h3><span class="mc">1 completed · 2 for</span></div><div class="cards"><div class="card s-done"><div class="top"><span class="tid">09</span><span class="tt">Limit staff chat</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>Staff see only venue conversations in a shared inbox — no personal DMs, and club chat is hidden.</div></div><div class="card s-refine"><div class="top"><span class="tid">10</span><span class="tt">Staff cannot change rates</span><span class="pill s-refine">For Refinement</span></div><div class="ship"><b>Shipped</b>The pricing tools and navigation are removed for staff accounts in the app.</div><div class="note"><b>Note</b>A server-side enforcement pass is planned as a next-phase hardening step, so the restriction holds even outside the UI.</div></div><div class="card s-refine"><div class="top"><span class="tid">11</span><span class="tt">Staff cannot view insights</span><span class="pill s-refine">For Refinement</span></div><div class="ship"><b>Shipped</b>The cross-venue Reports / revenue dashboard is owner-only, and the staff home no longer shows a revenue tile.</div><div class="note"><b>Note</b>Whether staff should also lose the per-venue insights view is a quick preference to confirm (decision 4).</div></div></div></div><div class="module"><div class="mod-head"><span class="mod-num">3</span><h3>Friends / Social</h3><span class="mc">4 completed</span></div><div class="cards"><div class="card s-done"><div class="top"><span class="tid">12</span><span class="tt">Make Friends section prominent</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>A Friends rail on the player home screen (friends + suggested players with Add) and a See All link.</div></div><div class="card s-done"><div class="top"><span class="tid">13</span><span class="tt">Rename "Clubs" → "Social"</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>The top-level section is now Social, with a live friend-request badge.</div><div class="note"><b>Note</b>"Clubs" now lives as a sub-tab inside Social (PickleFeed · Clubs · Friends).</div></div><div class="card s-done"><div class="top"><span class="tid">14</span><span class="tt">Add friends inside Social</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>Friends / Requests / Find Friends all live inside Social, with add / accept / decline.</div></div><div class="card s-done"><div class="top"><span class="tid">15</span><span class="tt">Facebook-like feed</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>PickleFeed — post, like, comment, repost, share game &amp; club cards, edit and delete.</div></div></div></div><div class="module"><div class="mod-head"><span class="mod-num">4</span><h3>Discover / Filters</h3><span class="mc">1 completed · 1 for</span></div><div class="cards"><div class="card s-done"><div class="top"><span class="tid">16</span><span class="tt">Add filters in Discover</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>A filter sheet on the Discover feed with an active-filter badge and a live result count.</div></div><div class="card s-refine"><div class="top"><span class="tid">17</span><span class="tt">Connect filters to Play algorithm</span><span class="pill s-refine">For Refinement</span></div><div class="ship"><b>Shipped</b>Filters narrow the same ranked feed. Live: skill, gender (Who can play), venue, date, distance, play type, spots, cost, recurring.</div><div class="note"><b>Note</b>Two filters from the wish-list remain: Court type, and a price-range filter (today there's a free-vs-paid toggle). Easy to add on request.</div></div></div></div><div class="module"><div class="mod-head"><span class="mod-num">5</span><h3>Open Play / Payments</h3><span class="mc">1 completed · 2 waiting</span></div><div class="cards"><div class="card s-wait"><div class="top"><span class="tid">18</span><span class="tt">Open Play joiner pays the host</span><span class="pill s-wait">Waiting · Clarification</span></div><div class="ship"><b>Shipped</b>The join-fee field exists in the data model and drives the Free / Paid chip on listing cards.</div><div class="note"><b>Note</b>Nothing in the app can actually set a fee today — there is no input on any screen, not even for a subscribed organizer — and nothing is collected when a player joins. Two pieces follow decision 1: a fee input in lobby creation, and a checkout step before joining. Court bookings already run the 7% platform fee.</div></div><div class="card s-done"><div class="top"><span class="tid">19</span><span class="tt">Fee only on organizer/owner Open Play</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>The server forces a ₱0 join fee unless the host holds an active organizer subscription — enforced on create and on edit, so a lapsed host can’t start charging.</div><div class="note"><b>Note</b>The gate is real and working. But there is still no screen to set a fee — even for a subscribed organizer — and nothing collects it (see 18).</div></div><div class="card s-wait"><div class="top"><span class="tid">20</span><span class="tt">Platform fee from coach rate</span><span class="pill s-wait">Waiting · Clarification</span></div><div class="ship"><b>Shipped</b>Coaching is funded today by the ₱499 / 30-day coach subscription.</div><div class="note"><b>Note</b>Whether to also take a per-session commission is a business decision to confirm (decision 3).</div></div></div></div><div class="module"><div class="mod-head"><span class="mod-num">6</span><h3>Coach / Booking</h3><span class="mc">3 completed · 1 waiting</span></div><div class="cards"><div class="card s-done"><div class="top"><span class="tid">21</span><span class="tt">Calendar in Coach booking</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>A real month-grid date picker in Book-a-Session (date, start time, notes).</div></div><div class="card s-done"><div class="top"><span class="tid">22</span><span class="tt">Tag coach to a venue</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>A coach applies at a venue, the owner approves, and the coach is linked to that venue (removing it revokes the link).</div></div><div class="card s-done"><div class="top"><span class="tid">23</span><span class="tt">"Get Coach" on homepage</span><span class="pill s-done">Completed</span></div><div class="ship"><b>Shipped</b>A Find Coach quick-action on the player home screen opens the coach directory.</div><div class="note"><b>Note</b>Labelled "Find Coach" — the wording is settled and stays.</div></div><div class="card s-wait"><div class="top"><span class="tid">24</span><span class="tt">Shopping-cart booking</span><span class="pill s-wait">Waiting · Clarification</span></div><div class="note"><b>Note</b>Raised as a future idea at the review. We'd confirm scope (which services combine, how payment splits) before building.</div></div></div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>How the platform earns</h2></div>
+    <p class="sec-intro">Where revenue comes from today, and what's ready to switch on next.</p>
+    <div class="callout"><div class="money" id="money"><div class="mrow"><div class="who">Court bookings</div><div class="flow">Player pays the court fee <span class="take">+ 7% platform fee</span>; the owner is paid out net of that fee. Live today.</div></div><div class="mrow"><div class="who">Coaching</div><div class="flow">A flat <span class="take">₱499 / 30-day coach subscription</span> funds the platform; the session fee goes to the coach. A per-session commission is <span class="next">decision 3</span>.</div></div><div class="mrow"><div class="who">Open Play</div><div class="flow">Joining a lobby is <span class="next">free and instant</span> — no screen can set a fee, and nothing is collected. Both the fee input and the checkout step follow decision 1.</div></div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>The app from each role's seat</h2></div>
+    <p class="sec-intro">What we'll walk through for each user type in the demo. Dot colour shows the status of that step.</p>
+    <div id="roles"><div class="role"><div class="rh"><span class="rtag">Player</span><span class="cnt">7 steps</span></div><div class="flowstrip"><div class="step"><span class="chip"><span class="dot s-done"></span>Home · Play / Book Court / Find Coach</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Discover Open Play — ranked + filtered</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Join / I'm Interested (skill + gender eligible)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-refine"></span>Lobby group chat (games)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Social — PickleFeed / Clubs / Friends</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Find Coach → book session (calendar)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Book court — recurring hold, 3-day refund</span></div></div></div><div class="role"><div class="rh"><span class="rtag">Venue Owner</span><span class="cnt">7 steps</span></div><div class="flowstrip"><div class="step"><span class="chip"><span class="dot s-done"></span>Owner console (Home/Venues/Calendar)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Manual reservation → blocks slot</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Pricing override (time-based)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Partners — approve coaches/organizers</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Reports — owner-only</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Shared venue inbox</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Shop / Rental inventory</span></div></div></div><div class="role"><div class="rh"><span class="rtag">Staff</span><span class="cnt">4 steps</span></div><div class="flowstrip"><div class="step"><span class="chip"><span class="dot s-done"></span>Staff console — inherits owner venues</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Front desk / Calendar / Bookings</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Manual reservations &amp; daily takings</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Venue messages (shared inbox)</span></div></div><div class="blocked"><b>Owner-only</b>Restricted from: pricing/rates · Reports &amp; revenue · delete venue · Social · Create game. (Server-side enforcement pass planned next phase.)</div></div><div class="role"><div class="rh"><span class="rtag">Organizer</span><span class="cnt">5 steps</span></div><div class="flowstrip"><div class="step"><span class="chip"><span class="dot s-done"></span>Subscribe ₱999 / 30 days</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Create Open Play</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Recurring series (3 edit scopes)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-wait"></span>Set a join fee — no input built yet</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-wait"></span>Collect the fee at checkout</span></div></div></div><div class="role"><div class="rh"><span class="rtag">Coach</span><span class="cnt">5 steps</span></div><div class="flowstrip"><div class="step"><span class="chip"><span class="dot s-done"></span>Subscribe ₱499 / 30 days</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Listed in Find Coach (verified badge)</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Apply at venue → owner approves</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-done"></span>Session requests inbox</span></div><div class="step"><span class="arrow">→</span><span class="chip"><span class="dot s-wait"></span>Per-session commission</span></div></div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Decisions we'd like to confirm</h2><span class="count">4 still open · priority order</span></div>
+    <p class="sec-intro">Only what is still open — the ones already settled have been taken off this list. None are blocked by engineering; they're product choices, and each lets us finish specific features above. This is the agenda for this week.</p>
+    <div id="decisions"><div class="dec"><div class="dnum">1</div><div class="db"><div class="dq">What are the Open Play payment rules by host type?</div><div class="dd">May organizer / venue-hosted sessions charge joiners while player-hosted stay free? Who collects, does PickleBallers take a share, and what happens on cancellation?</div><div class="unblk"><span class="ub">▸ unblocks 18</span><span class="ub">▸ unblocks 19</span></div></div></div><div class="dec"><div class="dnum">2</div><div class="db"><div class="dq">How should gender &amp; eligibility restrictions work?</div><div class="dd">Men / women / skill restrictions are already built — confirm the full set, and whether an ineligible player sees the listing marked “not eligible” or doesn't see it at all.</div><div class="unblk"></div></div></div><div class="dec"><div class="dnum">3</div><div class="db"><div class="dq">How should coach session payments work?</div><div class="dd">When is payment collected, who receives it, does the venue take a share, and does the platform charge a commission — or does the ₱499 subscription stay the whole model?</div><div class="unblk"><span class="ub">▸ unblocks 20</span></div></div></div><div class="dec"><div class="dnum">4</div><div class="db"><div class="dq">What venue figures should staff see?</div><div class="dd">Nothing financial at all, or today's takings for their own shift? Reports is already owner-only and the staff home revenue tile is hidden — this settles the last of it.</div><div class="unblk"><span class="ub">▸ unblocks 11</span></div></div></div></div>
+    <div class="sub-note" id="subDecisions">A few directions the app has grown into since the review, also worth a quick word: coaching subscription as the standing revenue model &amp; its price point · what "partner revenue" on the owner screen should represent · showing a price range vs a live price on listings (rates vary by time slot) · equipment rental when booking a court (ties to the cart idea) · whether Tournaments should merge into Play as "Events" · how approval-required court bookings interact with public Open Play.</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Live demo — run order</h2><span class="count">~30 min</span></div>
+    <p class="sec-intro">Told as a journey per role — players first, then the roles that earn, then the venue side, closing on the decisions.</p>
+    <div id="demo"><div class="act"><div class="anum">Act 0</div><div class="ab"><div class="at">Framing</div><div class="ad">What the 8 Jul review set out, and where each item stands a week later.</div></div></div><div class="act"><div class="anum">Act 1</div><div class="ab"><div class="at"><span class="acct">Player</span>The core player experience</div><div class="ad">Home (3 actions + Friends) → Play Discover (ranking, filters, sort, richer cards) → join with skill/gender eligibility → Invites → Social / PickleFeed → Find Coach → book a session → book a court. <span class="pv">— Features 1–4, 12–17, 21, 23</span></div></div></div><div class="act"><div class="anum">Act 2</div><div class="ab"><div class="at"><span class="acct">Organizer</span>The licence to charge</div><div class="ad">Subscribe ₱999 → create an Open Play with a join fee → recurring series with edit scopes. <span class="pv">— Features 6, 19 · opens decision 1</span></div></div></div><div class="act"><div class="anum">Act 3</div><div class="ab"><div class="at"><span class="acct">Coach</span>Coaching, end to end</div><div class="ad">Subscribe ₱499 → get listed with a verified badge → apply to a venue (owner approves) → session requests. <span class="pv">— Features 20, 22 · opens decision 3</span></div></div></div><div class="act"><div class="anum">Act 4</div><div class="ab"><div class="at"><span class="acct">Owner</span>Real-world venue operations</div><div class="ad">Owner console → manual/offline reservation blocking a slot → variable pricing → Partners approvals → owner-only Reports → shared venue inbox. <span class="pv">— Features 5, 9, 11</span></div></div></div><div class="act"><div class="anum">Act 5</div><div class="ab"><div class="at"><span class="acct">Staff</span>Scoped access</div><div class="ad">Staff inherit all owner venues and run front desk / calendar / bookings, while pricing, reports, Social and Create game stay owner-only. <span class="pv">— Features 9–11</span></div></div></div><div class="act"><div class="anum">Act 6</div><div class="ab"><div class="at">Decisions to confirm</div><div class="ad">Walk the four open decisions above — Open Play payments, eligibility behaviour, coach commission, and what figures staff may see. <span class="pv">— Sets next week's priorities</span></div></div></div></div>
+  </section>
+
+  <footer>
+    <b>About this status:</b> verified against the working app on 16 Jul 2026. Items marked “For Refinement” are working with a small polish remaining; items “Waiting for Clarification” are ready to build the moment the matching decision is confirmed.<br>
+    <b>Walkthrough:</b> a live preview is available, with real demo accounts for each role and backup screenshots on hand.
+  </footer>
+</div>
+
+<script>
+const S={done:{label:"Completed",cls:"s-done"},ongoing:{label:"Ongoing",cls:"s-ongoing"},
+  refine:{label:"For Refinement",cls:"s-refine"},wait:{label:"Waiting · Clarification",cls:"s-wait"}};
+const MODS=[
+  {key:"play",num:"1",name:"Play / Lobby"},{key:"staff",num:"2",name:"Staff / Permissions"},
+  {key:"social",num:"3",name:"Friends / Social"},{key:"discover",num:"4",name:"Discover / Filters"},
+  {key:"pay",num:"5",name:"Open Play / Payments"},{key:"coach",num:"6",name:"Coach / Booking"},
+];
+const TASKS=[
+  {m:"play",id:1,t:'Rename "Games" → "Play"',s:"refine",
+   ship:"The main Play tab, its screen, and the home action now read Play / Open Play.",
+   note:'A few secondary screens still say "Games" and are being swept. The wording is settled — Play / Book Court / Find Coach stays.'},
+  {m:"play",id:2,t:"Restore Play ranking / sorting",s:"done",
+   ship:"A relevance ranking — time, distance, skill match, spots left, friends — with 5 sort options and filters.",
+   note:"Ranking runs on the server so every phone shows the same order."},
+  {m:"play",id:3,t:"Hide empty Joined & Invites",s:"done",
+   ship:"Joined / Invites appear only when they hold something; empty states now offer to book a court.",note:""},
+  {m:"play",id:4,t:"Emphasize venue / court name",s:"refine",
+   ship:"Every card now shows the venue (with a pin), skill, distance, price, host and spots.",
+   note:"If you'd like the venue + court to be the single most prominent line on the card, that's a small styling tweak we can make."},
+  {m:"play",id:5,t:"Manual / offline reservations",s:"done",
+   ship:"Owners & staff log walk-in / phone / Messenger / Instagram bookings; the slot is blocked on the calendar and double-booking is refused.",note:""},
+  {m:"play",id:6,t:"Recurring Open Play",s:"done",
+   ship:"Weekly recurring Open Play series for organizers and venue owners, with edit this-one / this-and-future / end-series.",
+   note:"A player's one-off game doesn't recur (by design)."},
+  {m:"play",id:7,t:"Invite anyone to a lobby",s:"wait",
+   ship:"Invites currently go to players; a public share link lets anyone else join.",
+   note:"The lobby direction is confirmed and has since shipped — Open Play now has a Join lobby button and a real size, so a full lobby locks anyone else out. What is left to confirm is the invite rule itself: players only, or anyone."},
+  {m:"play",id:8,t:"Lobby-specific chat",s:"refine",
+   ship:"Game lobbies have a dedicated group chat scoped to that game's roster, separate from personal messages.",
+   note:"With the lobby direction confirmed, extending the same chat to Open Play sessions is the natural next step."},
+
+  {m:"staff",id:9,t:"Limit staff chat",s:"done",
+   ship:"Staff see only venue conversations in a shared inbox — no personal DMs, and club chat is hidden.",note:""},
+  {m:"staff",id:10,t:"Staff cannot change rates",s:"refine",
+   ship:"The pricing tools and navigation are removed for staff accounts in the app.",
+   note:"A server-side enforcement pass is planned as a next-phase hardening step, so the restriction holds even outside the UI."},
+  {m:"staff",id:11,t:"Staff cannot view insights",s:"refine",
+   ship:"The cross-venue Reports / revenue dashboard is owner-only, and the staff home no longer shows a revenue tile.",
+   note:"Whether staff should also lose the per-venue insights view is a quick preference to confirm (decision 4)."},
+
+  {m:"social",id:12,t:"Make Friends section prominent",s:"done",
+   ship:"A Friends rail on the player home screen (friends + suggested players with Add) and a See All link.",note:""},
+  {m:"social",id:13,t:'Rename "Clubs" → "Social"',s:"done",
+   ship:"The top-level section is now Social, with a live friend-request badge.",
+   note:'"Clubs" now lives as a sub-tab inside Social (PickleFeed · Clubs · Friends).'},
+  {m:"social",id:14,t:"Add friends inside Social",s:"done",
+   ship:"Friends / Requests / Find Friends all live inside Social, with add / accept / decline.",note:""},
+  {m:"social",id:15,t:"Facebook-like feed",s:"done",
+   ship:"PickleFeed — post, like, comment, repost, share game & club cards, edit and delete.",note:""},
+
+  {m:"discover",id:16,t:"Add filters in Discover",s:"done",
+   ship:"A filter sheet on the Discover feed with an active-filter badge and a live result count.",note:""},
+  {m:"discover",id:17,t:"Connect filters to Play algorithm",s:"refine",
+   ship:"Filters narrow the same ranked feed. Live: skill, gender (Who can play), venue, date, distance, play type, spots, cost, recurring.",
+   note:"Two filters from the wish-list remain: Court type, and a price-range filter (today there's a free-vs-paid toggle). Easy to add on request."},
+
+  {m:"pay",id:18,t:"Open Play joiner pays the host",s:"wait",
+   ship:"The join-fee field exists in the data model and drives the Free / Paid chip on listing cards.",
+   note:"Nothing in the app can actually set a fee today — there is no input on any screen, not even for a subscribed organizer — and nothing is collected when a player joins. Two pieces follow decision 1: a fee input in lobby creation, and a checkout step before joining. Court bookings already run the 7% platform fee."},
+  {m:"pay",id:19,t:"Fee only on organizer/owner Open Play",s:"done",
+   ship:"The server forces a ₱0 join fee unless the host holds an active organizer subscription — enforced on create and on edit, so a lapsed host can’t start charging.",
+   note:"The gate is real and working. But there is still no screen to set a fee — even for a subscribed organizer — and nothing collects it (see 18)."},
+  {m:"pay",id:20,t:"Platform fee from coach rate",s:"wait",
+   ship:"Coaching is funded today by the ₱499 / 30-day coach subscription.",
+   note:"Whether to also take a per-session commission is a business decision to confirm (decision 3)."},
+  {m:"coach",id:21,t:"Calendar in Coach booking",s:"done",
+   ship:"A real month-grid date picker in Book-a-Session (date, start time, notes).",note:""},
+  {m:"coach",id:22,t:"Tag coach to a venue",s:"done",
+   ship:"A coach applies at a venue, the owner approves, and the coach is linked to that venue (removing it revokes the link).",note:""},
+  {m:"coach",id:23,t:'"Get Coach" on homepage',s:"done",
+   ship:"A Find Coach quick-action on the player home screen opens the coach directory.",
+   note:'Labelled "Find Coach" — the wording is settled and stays.'},
+  {m:"coach",id:24,t:"Shopping-cart booking",s:"wait",
+   ship:"—",
+   note:"Raised as a future idea at the review. We'd confirm scope (which services combine, how payment splits) before building."},
+];
+const MONEY=[
+  {who:"Court bookings",flow:'Player pays the court fee <span class="take">+ 7% platform fee</span>; the owner is paid out net of that fee. Live today.'},
+  {who:"Coaching",flow:'A flat <span class="take">₱499 / 30-day coach subscription</span> funds the platform; the session fee goes to the coach. A per-session commission is <span class="next">decision 3</span>.'},
+  {who:"Open Play",flow:'Joining a lobby is <span class="next">free and instant</span> — no screen can set a fee, and nothing is collected. Both the fee input and the checkout step follow decision 1.'},
+];
+const ROLES=[
+  {tag:"Player",steps:[["Home · Play / Book Court / Find Coach","done"],["Discover Open Play — ranked + filtered","done"],
+    ["Join / I'm Interested (skill + gender eligible)","done"],["Lobby group chat (games)","refine"],
+    ["Social — PickleFeed / Clubs / Friends","done"],["Find Coach → book session (calendar)","done"],
+    ["Book court — recurring hold, 3-day refund","done"]]},
+  {tag:"Venue Owner",steps:[["Owner console (Home/Venues/Calendar)","done"],["Manual reservation → blocks slot","done"],
+    ["Pricing override (time-based)","done"],["Partners — approve coaches/organizers","done"],
+    ["Reports — owner-only","done"],["Shared venue inbox","done"],["Shop / Rental inventory","done"]]},
+  {tag:"Staff",steps:[["Staff console — inherits owner venues","done"],["Front desk / Calendar / Bookings","done"],
+    ["Manual reservations & daily takings","done"],["Venue messages (shared inbox)","done"]],
+   blocked:"Restricted from: pricing/rates · Reports & revenue · delete venue · Social · Create game. (Server-side enforcement pass planned next phase.)"},
+  {tag:"Organizer",steps:[["Subscribe ₱999 / 30 days","done"],["Create Open Play","done"],
+    ["Recurring series (3 edit scopes)","done"],["Set a join fee — no input built yet","wait"],["Collect the fee at checkout","wait"]]},
+  {tag:"Coach",steps:[["Subscribe ₱499 / 30 days","done"],["Listed in Find Coach (verified badge)","done"],
+    ["Apply at venue → owner approves","done"],["Session requests inbox","done"],["Per-session commission","wait"]]},
+];
+const DECISIONS=[
+  {q:"What are the Open Play payment rules by host type?",d:"May organizer / venue-hosted sessions charge joiners while player-hosted stay free? Who collects, does PickleBallers take a share, and what happens on cancellation?",ub:["unblocks 18","unblocks 19"]},
+  {q:"How should gender & eligibility restrictions work?",d:"Men / women / skill restrictions are already built — confirm the full set, and whether an ineligible player sees the listing marked “not eligible” or doesn't see it at all.",ub:[]},
+  {q:"How should coach session payments work?",d:"When is payment collected, who receives it, does the venue take a share, and does the platform charge a commission — or does the ₱499 subscription stay the whole model?",ub:["unblocks 20"]},
+  {q:"What venue figures should staff see?",d:"Nothing financial at all, or today's takings for their own shift? Reports is already owner-only and the staff home revenue tile is hidden — this settles the last of it.",ub:["unblocks 11"]},
+];
+const SUB='A few directions the app has grown into since the review, also worth a quick word: coaching subscription as the standing revenue model & its price point · what "partner revenue" on the owner screen should represent · showing a price range vs a live price on listings (rates vary by time slot) · equipment rental when booking a court (ties to the cart idea) · whether Tournaments should merge into Play as "Events" · how approval-required court bookings interact with public Open Play.';
+const DEMO=[
+  {n:"Act 0",acct:"",t:"Framing",d:"What the 8 Jul review set out, and where each item stands a week later.",pv:""},
+  {n:"Act 1",acct:"Player",t:"The core player experience",d:"Home (3 actions + Friends) → Play Discover (ranking, filters, sort, richer cards) → join with skill/gender eligibility → Invites → Social / PickleFeed → Find Coach → book a session → book a court.",pv:"Features 1–4, 12–17, 21, 23"},
+  {n:"Act 2",acct:"Organizer",t:"The licence to charge",d:"Subscribe ₱999 → create an Open Play with a join fee → recurring series with edit scopes.",pv:"Features 6, 19 · opens decision 1"},
+  {n:"Act 3",acct:"Coach",t:"Coaching, end to end",d:"Subscribe ₱499 → get listed with a verified badge → apply to a venue (owner approves) → session requests.",pv:"Features 20, 22 · opens decision 3"},
+  {n:"Act 4",acct:"Owner",t:"Real-world venue operations",d:"Owner console → manual/offline reservation blocking a slot → variable pricing → Partners approvals → owner-only Reports → shared venue inbox.",pv:"Features 5, 9, 11"},
+  {n:"Act 5",acct:"Staff",t:"Scoped access",d:"Staff inherit all owner venues and run front desk / calendar / bookings, while pricing, reports, Social and Create game stay owner-only.",pv:"Features 9–11"},
+  {n:"Act 6",acct:"",t:"Decisions to confirm",d:"Walk the four open decisions above — Open Play payments, eligibility behaviour, coach commission, and what figures staff may see.",pv:"Sets next week's priorities"},
+];
+
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const counts={done:0,ongoing:0,refine:0,wait:0};TASKS.forEach(t=>counts[t.s]++);
+const statDefs=[["total","Requested",TASKS.length],["done",S.done.label,counts.done],
+  ["refine",S.refine.label,counts.refine],["wait","Awaiting a decision",counts.wait],["ongoing",S.ongoing.label,counts.ongoing]];
+const stats=document.getElementById("stats");
+statDefs.forEach(([k,l,n])=>{const s=el("div","stat "+k);
+  s.innerHTML=`<div class="n">${n}</div><div class="l">${l}</div>`+(k!=="total"?'<div class="bar"></div>':'');stats.appendChild(s);});
+document.getElementById("readnote").textContent=
+  `${counts.done} of ${TASKS.length} features are live and working · ${counts.refine} need a small polish · ${counts.wait} are ready to finish once you confirm the matching decision.`;
+const legend=document.getElementById("legend");
+Object.entries(S).forEach(([k,v])=>{const g=el("div","lg");g.innerHTML=`<span class="sw" style="background:var(--st-${k})"></span>${v.label}`;legend.appendChild(g);});
+document.getElementById("matrixCount").textContent=`${TASKS.length} items · 6 areas`;
+const matrix=document.getElementById("matrix");
+MODS.forEach(mod=>{
+  const items=TASKS.filter(t=>t.m===mod.key);const box=el("div","module");
+  const mc={done:0,refine:0,wait:0,ongoing:0};items.forEach(i=>mc[i.s]++);
+  const summ=Object.entries(mc).filter(([,v])=>v>0).map(([k,v])=>`${v} ${S[k].label.split(" ")[0].toLowerCase()}`).join(" · ");
+  box.appendChild(el("div","mod-head",`<span class="mod-num">${mod.num}</span><h3>${mod.name}</h3><span class="mc">${summ}</span>`));
+  const cards=el("div","cards");
+  items.forEach(t=>{const c=el("div","card "+S[t.s].cls);
+    let h=`<div class="top"><span class="tid">${String(t.id).padStart(2,"0")}</span><span class="tt">${t.t}</span><span class="pill ${S[t.s].cls}">${S[t.s].label}</span></div>`;
+    if(t.ship&&t.ship!=="—")h+=`<div class="ship"><b>Shipped</b>${t.ship}</div>`;
+    if(t.note)h+=`<div class="note"><b>Note</b>${t.note}</div>`;
+    c.innerHTML=h;cards.appendChild(c);});
+  box.appendChild(cards);matrix.appendChild(box);
+});
+const money=document.getElementById("money");
+MONEY.forEach(m=>money.appendChild(el("div","mrow",`<div class="who">${m.who}</div><div class="flow">${m.flow}</div>`)));
+const roles=document.getElementById("roles");
+ROLES.forEach(r=>{const box=el("div","role");
+  box.appendChild(el("div","rh",`<span class="rtag">${r.tag}</span><span class="cnt">${r.steps.length} steps</span>`));
+  const strip=el("div","flowstrip");
+  r.steps.forEach((s,i)=>{const st=el("div","step");
+    st.innerHTML=(i>0?'<span class="arrow">→</span>':'')+`<span class="chip"><span class="dot s-${s[1]}"></span>${s[0]}</span>`;strip.appendChild(st);});
+  box.appendChild(strip);
+  if(r.blocked)box.appendChild(el("div","blocked",`<b>Owner-only</b>${r.blocked}`));
+  roles.appendChild(box);});
+const dec=document.getElementById("decisions");
+DECISIONS.forEach((d,i)=>{const box=el("div","dec");
+  const ubs=d.ub.map(u=>`<span class="ub">▸ ${u}</span>`).join("");
+  box.innerHTML=`<div class="dnum">${i+1}</div><div class="db"><div class="dq">${d.q}</div><div class="dd">${d.d}</div><div class="unblk">${ubs}</div></div>`;
+  dec.appendChild(box);});
+document.getElementById("subDecisions").innerHTML=SUB;
+const demo=document.getElementById("demo");
+DEMO.forEach(a=>{const box=el("div","act");
+  box.innerHTML=`<div class="anum">${a.n}</div><div class="ab"><div class="at">${a.acct?`<span class="acct">${a.acct}</span>`:''}${a.t}</div><div class="ad">${a.d}${a.pv?` <span class="pv">— ${a.pv}</span>`:''}</div></div>`;
+  demo.appendChild(box);});
+const rootEl=document.documentElement,btn=document.getElementById("themeBtn");
+btn.addEventListener("click",()=>{const cur=rootEl.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  rootEl.setAttribute("data-theme",cur==="dark"?"light":"dark");});
+</script>
+
+</body></html>

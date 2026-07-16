@@ -241,6 +241,8 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/open-play/:id/registrations/:regId', methods: ['PATCH'], description: 'Manage a session registration — body { attended?, paid?, paymentNote? } or { action: approve|decline } (organizer.events.manage, owner)', auth: 'user' },
         { path: '/api/v1/open-play/:id/join', methods: ['POST'], description: 'Mark interest in an open-play session ("I\'m Interested" — no capacity gate, no waitlist)', auth: 'user' },
         { path: '/api/v1/open-play/:id/leave', methods: ['POST'], description: 'Remove your interest from an open-play session', auth: 'user' },
+        { path: '/api/v1/open-play/:id/messages', methods: ['GET'], description: 'Session group chat, oldest→newest (roster only: the organizer + everyone who joined)', auth: 'user' },
+        { path: '/api/v1/open-play/:id/messages', methods: ['POST'], description: 'Post to the session group chat — body { body }. Roster only; needs player.games.chat (Open Play is part of the games family). Fans out a realtime openplay.message.created + a collapsed notification to the rest of the roster', auth: 'user' },
         { path: '/api/v1/tournaments', methods: ['GET'], description: 'Tournaments (filter: status, venueId — venueId returns a venue\'s public tournaments)' },
         { path: '/api/v1/tournaments', methods: ['POST'], description: 'Create a draft tournament (organizer.tournaments.manage)', auth: 'user' },
         { path: '/api/v1/tournaments/mine', methods: ['GET'], description: "Current organizer's tournaments, newest first (organizer.tournaments.manage)", auth: 'user' },

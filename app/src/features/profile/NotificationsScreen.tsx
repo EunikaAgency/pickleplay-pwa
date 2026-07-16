@@ -84,6 +84,9 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   if (gameChat) { onNavigate('game-chat', { id: gameChat[1] }); return true; }
   const game = linkUrl.match(/^\/games\/([0-9a-fA-F]{24})$/);
   if (game) { onNavigate('game-details', { id: game[1] }); return true; }
+  // Open Play chat message → straight into the session's group chat.
+  const openPlayChat = linkUrl.match(/^\/open-play\/([0-9a-fA-F]{24})\/chat$/);
+  if (openPlayChat) { onNavigate('open-play-chat', { id: openPlayChat[1] }); return true; }
   const chat = linkUrl.match(/^\/messages\/([0-9a-fA-F]{24})$/);
   if (chat) { onNavigate('chat', { id: chat[1] }); return true; }
   // Club post: /clubs/<slug> → club detail; /clubs/<slug>/posts/<id> → single post

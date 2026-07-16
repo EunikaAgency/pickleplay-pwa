@@ -35,6 +35,7 @@ import { NotificationsScreen } from './features/profile/NotificationsScreen';
 import { ConversationsScreen } from './features/messages/ConversationsScreen';
 import { ChatScreen } from './features/messages/ChatScreen';
 import { GameChatScreen } from './features/games/GameChatScreen';
+import { OpenPlayChatScreen } from './features/games/v2/OpenPlayChatScreen';
 import { OwnerVenuesScreen } from './features/owner/OwnerVenuesScreen';
 import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
 import { OwnerProfileScreen } from './features/owner/OwnerProfileScreen';
@@ -147,6 +148,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   messages: 'user.messages.send',
   chat: 'user.messages.send',
   'game-chat': 'player.games.chat',
+  'open-play-chat': 'player.games.chat',
   'tournament-chat': 'player.tournaments.chat',
   'invite-players': 'player.games.create',
   'owner-venues': 'owner.access',
@@ -215,6 +217,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   messages: 'see your messages',
   chat: 'send a message',
   'game-chat': 'open the game chat',
+  'open-play-chat': 'open the Open Play chat',
   'tournament-chat': 'open the tournament chat',
   'owner-venues': 'manage your venues',
   'owner-venue': 'manage your venue',
@@ -312,7 +315,7 @@ function tabForScreen(id: ScreenId): TabId {
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
   if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans' || id === 'owner-venues-v2' || id === 'owner-calendar' || id === 'owner-partners' || id === 'owner-manual-reservation') return 'nearby';
   if (id === 'clubs' || id === 'friends' || id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat' || id === 'feed-post') return 'social';
-  if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
+  if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'open-play-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
   if (id === 'chat') return 'messages';
   // Finding/booking a coach is a Home-tab journey (entered from the Home card);
@@ -746,6 +749,8 @@ function AppInner() {
         return <ChatScreen key={screen.params.id} conversationId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'game-chat':
         return <GameChatScreen key={screen.params.id} gameId={screen.params.id} name={screen.params.name} onBack={goBack} />;
+      case 'open-play-chat':
+        return <OpenPlayChatScreen key={screen.params.id} sessionId={screen.params.id} name={screen.params.name} onBack={goBack} />;
       case 'owner-venues':
         // The owner "Venues" tab (and Profile → "My venues"). Owners with
         // market-map access get the venues ops map + list (the screen the Nearby

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
@@ -46,9 +46,10 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
 
+  // Reset-on-retry is done by `retry` (an event), never synchronously in here —
+  // a setState in the effect body cascades renders.
   useEffect(() => {
     let alive = true;
-    setLoading(true); setFailed(false); setNoProfile(false);
     getMyCoach()
       .then((c) => {
         if (!alive) return;
@@ -70,6 +71,11 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [reloadKey]);
+
+  const retry = useCallback(() => {
+    setLoading(true); setFailed(false); setNoProfile(false);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   const currency = coach?.priceCurrency || 'PHP';
   const sym = currencySymbol(currency);
@@ -115,7 +121,7 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
           <ErrorState
             title="Couldn't load your rates"
             message="Check your connection and try again."
-            onRetry={() => setReloadKey((k) => k + 1)}
+            onRetry={retry}
           />
         )}
 

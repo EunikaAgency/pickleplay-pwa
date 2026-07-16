@@ -74,6 +74,19 @@ openPlayRegistrationSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
 
 export const OpenPlayRegistration = model('OpenPlayRegistration', openPlayRegistrationSchema);
 
+// Group chat for one open-play session (organizer + everyone who joined).
+// Mirrors GameMessage/TournamentMessage: read+post are gated to the roster in
+// the controller, and each send fans out a realtime event + a notification.
+const openPlayMessageSchema = new Schema({
+  sessionId: { type: Schema.Types.ObjectId, ref: 'OpenPlaySession', required: true },
+  senderId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  body:      { type: String, required: true, maxlength: 4000 },
+}, { timestamps: true });
+
+openPlayMessageSchema.index({ sessionId: 1, createdAt: 1 });
+
+export const OpenPlayMessage = model('OpenPlayMessage', openPlayMessageSchema);
+
 // Status flow for organizer-created tournaments:
 //   draft → pending_venue_approval → approved → registration_open
 //         → ongoing → completed; plus cancelled / rejected branches.

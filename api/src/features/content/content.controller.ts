@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   OpenPlaySession, Tournament, Event, Post, TournamentRegistration, TournamentAnnouncement,
-  TournamentMessage, OpenPlaySeries, OpenPlayRegistration,
+  TournamentMessage, OpenPlaySeries, OpenPlayRegistration, OpenPlayMessage,
 } from './content.model.js';
 import { User } from '../auth/auth.model.js';
 import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
@@ -92,6 +92,9 @@ export async function getOpenPlaySession(c: any) {
   return c.json({ data: {
     ...sessionView(sess),
     myRegistrationStatus: (reg as any)?.status ?? null,
+    // The organizer runs this session but never "joins" it, so they have no
+    // registration — the chat entry needs this to surface for them too.
+    viewerIsOrganizer: !!(user && (sess as any).organizerUserId?.toString() === user.sub),
     interestedUsers,
     interestedCount: interestedUsers.length,
   } });
@@ -1073,6 +1076,103 @@ export async function leaveOpenPlay(c: any) {
   const taken = await sessionConfirmedCount(sessionId);
   await OpenPlaySession.updateOne({ _id: sessionId }, { joinedCount: taken });
   return c.json({ data: { ok: true } });
+}
+
+/* ─── Open-play session group chat ────────────────────────────────────
+ * The counterpart to the game-roster chat, for organizer-published sessions:
+ * the organizer plus everyone who joined can read and post. Player-hosted Open
+ * Play is a `Game` and uses the games chat instead (see games.controller).
+ */
+
+/** The organizer + everyone who joined — i.e. who belongs in this session's chat. */
+async function openPlayChatRoster(sess: any): Promise<string[]> {
+  const regs = await OpenPlayRegistration.find({ sessionId: sess._id }).select('userId').lean();
+  const ids = [String(sess.organizerUserId), ...regs.map((r: any) => String(r.userId))];
+  return [...new Set(ids)].filter((id) => id && id !== 'undefined' && id !== 'null');
+}
+
+async function canAccessOpenPlayChat(sess: any, userId: string | undefined): Promise<boolean> {
+  if (!userId) return false;
+  if (sess.organizerUserId?.toString() === userId) return true;
+  const reg = await OpenPlayRegistration.findOne({ sessionId: sess._id, userId }).select('_id').lean();
+  return !!reg;
+}
+
+function openPlayMessageView(m: any, meId: string) {
+  const sid = String(m.senderId?._id ?? m.senderId);
+  return {
+    id: String(m._id),
+    senderId: sid,
+    senderName: m.senderId?.displayName ?? 'Player',
+    senderAvatarUrl: m.senderId?.avatarUrl ?? null,
+    body: m.body,
+    createdAt: m.createdAt,
+    mine: sid === meId,
+  };
+}
+
+// GET /api/v1/open-play/:id/messages — the session's group chat (oldest→newest).
+// Roster only (organizer + joined players).
+export async function listOpenPlayMessages(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  if (!isObjectIdStr(id)) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
+  const sess = await OpenPlaySession.findById(id).select('organizerUserId title').lean();
+  if (!sess) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
+  if (!(await canAccessOpenPlayChat(sess, user?.sub))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Join this session to see its chat' } }, 403);
+  }
+  const rows = await OpenPlayMessage.find({ sessionId: id })
+    .sort({ createdAt: 1 }).limit(200)
+    .populate({ path: 'senderId', select: 'displayName avatarUrl' })
+    .lean();
+  const messages = rows.map((m: any) => openPlayMessageView(m, user.sub));
+  return c.json({ data: { sessionId: id, title: (sess as any).title || null, messages } });
+}
+
+// POST /api/v1/open-play/:id/messages — post to the session chat.
+// Roster + player.games.chat (Open Play is part of the games family, so it
+// reuses that capability rather than minting a near-duplicate permission).
+export async function sendOpenPlayMessage(c: any) {
+  const user = c.get('user');
+  if (!hasPermission(user, 'player.games.chat')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Game chat permission required' } }, 403);
+  }
+  const id = c.req.param('id');
+  if (!isObjectIdStr(id)) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
+  const sess = await OpenPlaySession.findById(id).select('organizerUserId title').lean();
+  if (!sess) return c.json({ error: { code: 'NOT_FOUND', message: 'Session not found' } }, 404);
+  if (!(await canAccessOpenPlayChat(sess, user.sub))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Join this session to chat' } }, 403);
+  }
+  const body = z.object({ body: z.string().min(1).max(4000) }).parse(await c.req.json()).body;
+  const me = await User.findById(user.sub).select('displayName avatarUrl').lean();
+  const now = new Date();
+  const msg = await OpenPlayMessage.create({ sessionId: id, senderId: user.sub, body });
+  const senderName = (me as any)?.displayName ?? 'Player';
+  const view = {
+    id: String((msg as any)._id),
+    senderId: String(user.sub),
+    senderName,
+    senderAvatarUrl: (me as any)?.avatarUrl ?? null,
+    body,
+    createdAt: now,
+  };
+  // Realtime fan-out to every OTHER roster member's open app + a collapsed
+  // notification so they're alerted when they aren't looking at the chat.
+  const roster = await openPlayChatRoster(sess);
+  const others = roster.filter((uid) => uid !== user.sub);
+  others.forEach((uid) => publishUserEvent(uid, 'openplay.message.created', { sessionId: id, message: { ...view, mine: false } }));
+  const preview = body.length > 120 ? `${body.slice(0, 117)}…` : body;
+  await notifyUsers(others, {
+    type: 'openplay_message',
+    title: `${senderName} · ${(sess as any).title || 'Open Play'}`,
+    body: preview,
+    icon: 'chat',
+    linkUrl: `/open-play/${id}/chat`,   // deep-links into the chat, not the session page
+    tag: `openplay-chat-${id}`,
+  });
+  return c.json({ data: { ...view, mine: true } }, 201);
 }
 
 // PATCH /api/v1/open-play/:id/registrations/:regId — organizer marks attendance

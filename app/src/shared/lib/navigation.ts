@@ -24,6 +24,7 @@ export type Screen =
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
   | { id: 'open-play-detail'; params: { source: 'auto' | 'game' | 'session'; id: string } }
+  | { id: 'open-play-chat'; params: { id: string; name?: string } }
   | { id: 'court-details'; params: { id: string; intent?: 'lobby'; filterDate?: string; filterStartHour?: number; filterEndHour?: number } }
   | { id: 'club-details'; params: { id: string; invited?: boolean } }
   | { id: 'club-post'; params: { id: string; postId: string } }
@@ -143,6 +144,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'profile': return '/profile';
     case 'game-details': return `/games/${screen.params.id}`;
     case 'open-play-detail': return `/open-play/${screen.params.id}`;
+    case 'open-play-chat': return `/open-play/${screen.params.id}/chat${q({ name: screen.params.name })}`;
     case 'court-details': return `/venues/${screen.params.id}${q({ intent: screen.params.intent, filterDate: screen.params.filterDate, filterStartHour: screen.params.filterStartHour, filterEndHour: screen.params.filterEndHour })}`;
     case 'club-details': return `/clubs/${screen.params.id}${q({ invited: screen.params.invited })}`;
     case 'club-post': return `/clubs/${screen.params.id}/posts/${screen.params.postId}`;
@@ -292,6 +294,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b && c === 'refund') return { id: 'booking-refund', params: { bookingId: b } };
       return { id: 'games', params: { section: 'open-play', view: 'manage' } };
     case 'open-play':
+      if (b && c === 'chat') return { id: 'open-play-chat', params: { id: b, name: opt(sp.get('name')) } };
       if ((b === 'game' || b === 'session') && c) return { id: 'open-play-detail', params: { source: b, id: c } };
       if (b) return { id: 'open-play-detail', params: { source: 'auto', id: b } };
       return { id: 'games', params: { section: 'open-play', view: 'discover' } };
@@ -369,7 +372,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'club-details' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return { id: 'social', params: { tab: 'clubs' } };
   if (id === 'feed-post') return { id: 'social', params: { tab: 'feed' } };
   if (id === 'tournament' || id === 'tournament-chat') return { id: 'tournaments' };
-  if (id === 'open-play-detail') return { id: 'games', params: { section: 'open-play', view: 'discover' } };
+  if (id === 'open-play-detail' || id === 'open-play-chat') return { id: 'games', params: { section: 'open-play', view: 'discover' } };
   if (id === 'court-details') return { id: 'nearby' };
   if (id === 'booking-refund') return { id: 'my-bookings' };
   if (id === 'coach-detail' || id === 'book-coach') return { id: 'find-coach' };

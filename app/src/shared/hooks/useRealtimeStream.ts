@@ -62,6 +62,11 @@ export function useRealtimeStream(enabled: boolean) {
       try { data = JSON.parse(ev.data); } catch { /* ignore */ }
       if (data) emitRealtime('tournament.message', data);
     };
+    const onOpenPlayMessage = (ev: MessageEvent) => {
+      let data: any = null;
+      try { data = JSON.parse(ev.data); } catch { /* ignore */ }
+      if (data) emitRealtime('openplay.message', data);
+    };
     const onClubMessage = (ev: MessageEvent) => {
       let data: any = null;
       try { data = JSON.parse(ev.data); } catch { /* ignore */ }
@@ -100,6 +105,7 @@ export function useRealtimeStream(enabled: boolean) {
       es.addEventListener('conversation.read', onConversationRead);
       es.addEventListener('game.message.created', onGameMessage);
       es.addEventListener('tournament.message.created', onTournamentMessage);
+      es.addEventListener('openplay.message.created', onOpenPlayMessage);
       es.addEventListener('club.message.created', onClubMessage);
       es.addEventListener('message.typing', onTyping);
       es.addEventListener('game.invited', onGameInvited);
