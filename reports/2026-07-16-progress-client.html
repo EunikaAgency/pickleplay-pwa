@@ -191,8 +191,8 @@
   </section>
 
   <section>
-    <div class="sec-head"><h2>Decisions we'd like to confirm</h2><span class="count">priority order</span></div>
-    <p class="sec-intro">None of these are blocked by engineering — they're product choices. Each one lets us finish specific features above. These are the agenda for this week.</p>
+    <div class="sec-head"><h2>Decisions we'd like to confirm</h2><span class="count">4 still open · priority order</span></div>
+    <p class="sec-intro">Only what is still open — the ones already settled have been taken off this list. None are blocked by engineering; they're product choices, and each lets us finish specific features above. This is the agenda for this week.</p>
     <div id="decisions"></div>
     <div class="sub-note" id="subDecisions"></div>
   </section>
@@ -220,7 +220,7 @@ const MODS=[
 const TASKS=[
   {m:"play",id:1,t:'Rename "Games" → "Play"',s:"refine",
    ship:"The main Play tab, its screen, and the home action now read Play / Open Play.",
-   note:'A few secondary screens still say "Games" and are being swept. Final wording is a quick confirm (decision 6).'},
+   note:'A few secondary screens still say "Games" and are being swept. The wording is settled — Play / Book Court / Find Coach stays.'},
   {m:"play",id:2,t:"Restore Play ranking / sorting",s:"done",
    ship:"A relevance ranking — time, distance, skill match, spots left, friends — with 5 sort options and filters.",
    note:"Ranking runs on the server so every phone shows the same order."},
@@ -236,10 +236,10 @@ const TASKS=[
    note:"A player's one-off game doesn't recur (by design)."},
   {m:"play",id:7,t:"Invite anyone to a lobby",s:"wait",
    ship:"Invites currently go to players; a public share link lets anyone else join.",
-   note:"We'd like to confirm the intended rule alongside the Open Play lobby direction (decision 1)."},
+   note:"The lobby direction is confirmed and has since shipped — Open Play now has a Join lobby button and a real size, so a full lobby locks anyone else out. What is left to confirm is the invite rule itself: players only, or anyone."},
   {m:"play",id:8,t:"Lobby-specific chat",s:"refine",
    ship:"Game lobbies have a dedicated group chat scoped to that game's roster, separate from personal messages.",
-   note:"Extending the same chat to Open Play sessions follows naturally once the lobby direction is set (decision 1)."},
+   note:"With the lobby direction confirmed, extending the same chat to Open Play sessions is the natural next step."},
 
   {m:"staff",id:9,t:"Limit staff chat",s:"done",
    ship:"Staff see only venue conversations in a shared inbox — no personal DMs, and club chat is hidden.",note:""},
@@ -248,7 +248,7 @@ const TASKS=[
    note:"A server-side enforcement pass is planned as a next-phase hardening step, so the restriction holds even outside the UI."},
   {m:"staff",id:11,t:"Staff cannot view insights",s:"refine",
    ship:"The cross-venue Reports / revenue dashboard is owner-only, and the staff home no longer shows a revenue tile.",
-   note:"Whether staff should also lose the per-venue insights view is a quick preference to confirm (decision 7)."},
+   note:"Whether staff should also lose the per-venue insights view is a quick preference to confirm (decision 4)."},
 
   {m:"social",id:12,t:"Make Friends section prominent",s:"done",
    ship:"A Friends rail on the player home screen (friends + suggested players with Add) and a See All link.",note:""},
@@ -267,29 +267,29 @@ const TASKS=[
    note:"Two filters from the wish-list remain: Court type, and a price-range filter (today there's a free-vs-paid toggle). Easy to add on request."},
 
   {m:"pay",id:18,t:"Open Play joiner pays the host",s:"wait",
-   ship:"A join fee can be set (organizer accounts) and is shown on the card.",
-   note:"Collecting that fee is ready to build as soon as the Open Play payment rules are confirmed (decision 2). Court bookings already run the platform fee today."},
+   ship:"The join-fee field exists in the data model and drives the Free / Paid chip on listing cards.",
+   note:"Nothing in the app can actually set a fee today — there is no input on any screen, not even for a subscribed organizer — and nothing is collected when a player joins. Two pieces follow decision 1: a fee input in lobby creation, and a checkout step before joining. Court bookings already run the 7% platform fee."},
   {m:"pay",id:19,t:"Fee only on organizer/owner Open Play",s:"done",
-   ship:"A join fee above ₱0 can only be set by an active organizer subscriber; everyone else is fixed at ₱0.",
-   note:"The gate works; collection follows decision 2 (see 18)."},
+   ship:"The server forces a ₱0 join fee unless the host holds an active organizer subscription — enforced on create and on edit, so a lapsed host can’t start charging.",
+   note:"The gate is real and working. But there is still no screen to set a fee — even for a subscribed organizer — and nothing collects it (see 18)."},
   {m:"pay",id:20,t:"Platform fee from coach rate",s:"wait",
    ship:"Coaching is funded today by the ₱499 / 30-day coach subscription.",
-   note:"Whether to also take a per-session commission is a business decision to confirm (decision 4)."},
+   note:"Whether to also take a per-session commission is a business decision to confirm (decision 3)."},
   {m:"coach",id:21,t:"Calendar in Coach booking",s:"done",
    ship:"A real month-grid date picker in Book-a-Session (date, start time, notes).",note:""},
   {m:"coach",id:22,t:"Tag coach to a venue",s:"done",
    ship:"A coach applies at a venue, the owner approves, and the coach is linked to that venue (removing it revokes the link).",note:""},
   {m:"coach",id:23,t:'"Get Coach" on homepage',s:"done",
    ship:"A Find Coach quick-action on the player home screen opens the coach directory.",
-   note:'Labelled "Find Coach" — final wording is part of decision 6.'},
+   note:'Labelled "Find Coach" — the wording is settled and stays.'},
   {m:"coach",id:24,t:"Shopping-cart booking",s:"wait",
    ship:"—",
    note:"Raised as a future idea at the review. We'd confirm scope (which services combine, how payment splits) before building."},
 ];
 const MONEY=[
   {who:"Court bookings",flow:'Player pays the court fee <span class="take">+ 7% platform fee</span>; the owner is paid out net of that fee. Live today.'},
-  {who:"Coaching",flow:'A flat <span class="take">₱499 / 30-day coach subscription</span> funds the platform; the session fee goes to the coach. A per-session commission is <span class="next">decision 4</span>.'},
-  {who:"Open Play",flow:'The join fee is set and displayed; <span class="next">collection is ready to switch on</span> once the payment rules are confirmed (decision 2).'},
+  {who:"Coaching",flow:'A flat <span class="take">₱499 / 30-day coach subscription</span> funds the platform; the session fee goes to the coach. A per-session commission is <span class="next">decision 3</span>.'},
+  {who:"Open Play",flow:'Joining a lobby is <span class="next">free and instant</span> — no screen can set a fee, and nothing is collected. Both the fee input and the checkout step follow decision 1.'},
 ];
 const ROLES=[
   {tag:"Player",steps:[["Home · Play / Book Court / Find Coach","done"],["Discover Open Play — ranked + filtered","done"],
@@ -302,29 +302,26 @@ const ROLES=[
   {tag:"Staff",steps:[["Staff console — inherits owner venues","done"],["Front desk / Calendar / Bookings","done"],
     ["Manual reservations & daily takings","done"],["Venue messages (shared inbox)","done"]],
    blocked:"Restricted from: pricing/rates · Reports & revenue · delete venue · Social · Create game. (Server-side enforcement pass planned next phase.)"},
-  {tag:"Organizer",steps:[["Subscribe ₱999 / 30 days","done"],["Create Open Play + set join fee","done"],
-    ["Recurring series (3 edit scopes)","done"],["Collect join fee at checkout","wait"]]},
+  {tag:"Organizer",steps:[["Subscribe ₱999 / 30 days","done"],["Create Open Play","done"],
+    ["Recurring series (3 edit scopes)","done"],["Set a join fee — no input built yet","wait"],["Collect the fee at checkout","wait"]]},
   {tag:"Coach",steps:[["Subscribe ₱499 / 30 days","done"],["Listed in Find Coach (verified badge)","done"],
     ["Apply at venue → owner approves","done"],["Session requests inbox","done"],["Per-session commission","wait"]]},
 ];
 const DECISIONS=[
-  {q:"Should Open Play have a lobby?",d:'Keep the lightweight "I\'m Interested" flow, or grow into a managed lobby with a confirmed/invited/pending roster and group chat? The pieces already exist in game lobbies.',ub:["unblocks 7","unblocks 8"],decided:"Yes — Open Play gets a lobby, like a game/event (roster + group chat)."},
   {q:"What are the Open Play payment rules by host type?",d:"May organizer / venue-hosted sessions charge joiners while player-hosted stay free? Who collects, does PickleBallers take a share, and what happens on cancellation?",ub:["unblocks 18","unblocks 19"]},
   {q:"How should gender & eligibility restrictions work?",d:"Men / women / skill restrictions are already built — confirm the full set, and whether an ineligible player sees the listing marked “not eligible” or doesn't see it at all.",ub:[]},
   {q:"How should coach session payments work?",d:"When is payment collected, who receives it, does the venue take a share, and does the platform charge a commission — or does the ₱499 subscription stay the whole model?",ub:["unblocks 20"]},
-  {q:"Are Like and Interested intentionally different?",d:"Like applies to social posts; Interested to Open Play. Keep them distinct, or use one consistent reaction? Best settled before a platform-wide feed.",ub:[],decided:"Keep them distinct (Like = feed, Interested = Open Play). The extra “Save” heart on the Open Play lobby has been removed."},
-  {q:"Confirm the final homepage wording.",d:"Play / Book Court / Find Coach (shipped) vs the review's Open Play / Book a Court / Get a Coach. The function is done — only the words need a choice.",ub:["unblocks 1","unblocks 23"],decided:"Keep the current wording — Play / Book Court / Find Coach. No change."},
-  {q:"Two small refinements to close.",d:"Surface Events as visible tabs instead of a dropdown; and confirm which venue figures staff may see. Both small.",ub:[],decided:"Events already surfaced as tabs (Play tab UI updated). Only the staff-figures refinement is left."},
+  {q:"What venue figures should staff see?",d:"Nothing financial at all, or today's takings for their own shift? Reports is already owner-only and the staff home revenue tile is hidden — this settles the last of it.",ub:["unblocks 11"]},
 ];
 const SUB='A few directions the app has grown into since the review, also worth a quick word: coaching subscription as the standing revenue model & its price point · what "partner revenue" on the owner screen should represent · showing a price range vs a live price on listings (rates vary by time slot) · equipment rental when booking a court (ties to the cart idea) · whether Tournaments should merge into Play as "Events" · how approval-required court bookings interact with public Open Play.';
 const DEMO=[
   {n:"Act 0",acct:"",t:"Framing",d:"What the 8 Jul review set out, and where each item stands a week later.",pv:""},
   {n:"Act 1",acct:"Player",t:"The core player experience",d:"Home (3 actions + Friends) → Play Discover (ranking, filters, sort, richer cards) → join with skill/gender eligibility → Invites → Social / PickleFeed → Find Coach → book a session → book a court.",pv:"Features 1–4, 12–17, 21, 23"},
-  {n:"Act 2",acct:"Organizer",t:"The licence to charge",d:"Subscribe ₱999 → create an Open Play with a join fee → recurring series with edit scopes.",pv:"Features 6, 19 · opens decision 2"},
-  {n:"Act 3",acct:"Coach",t:"Coaching, end to end",d:"Subscribe ₱499 → get listed with a verified badge → apply to a venue (owner approves) → session requests.",pv:"Features 20, 22 · opens decision 4"},
+  {n:"Act 2",acct:"Organizer",t:"The licence to charge",d:"Subscribe ₱999 → create an Open Play with a join fee → recurring series with edit scopes.",pv:"Features 6, 19 · opens decision 1"},
+  {n:"Act 3",acct:"Coach",t:"Coaching, end to end",d:"Subscribe ₱499 → get listed with a verified badge → apply to a venue (owner approves) → session requests.",pv:"Features 20, 22 · opens decision 3"},
   {n:"Act 4",acct:"Owner",t:"Real-world venue operations",d:"Owner console → manual/offline reservation blocking a slot → variable pricing → Partners approvals → owner-only Reports → shared venue inbox.",pv:"Features 5, 9, 11"},
   {n:"Act 5",acct:"Staff",t:"Scoped access",d:"Staff inherit all owner venues and run front desk / calendar / bookings, while pricing, reports, Social and Create game stay owner-only.",pv:"Features 9–11"},
-  {n:"Act 6",acct:"",t:"Decisions to confirm",d:"Walk the decisions above — lobby, payments, eligibility, coach commission, reactions, wording, and the two small refinements.",pv:"Sets next week's priorities"},
+  {n:"Act 6",acct:"",t:"Decisions to confirm",d:"Walk the four open decisions above — Open Play payments, eligibility behaviour, coach commission, and what figures staff may see.",pv:"Sets next week's priorities"},
 ];
 
 const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
@@ -365,10 +362,9 @@ ROLES.forEach(r=>{const box=el("div","role");
   if(r.blocked)box.appendChild(el("div","blocked",`<b>Owner-only</b>${r.blocked}`));
   roles.appendChild(box);});
 const dec=document.getElementById("decisions");
-DECISIONS.forEach((d,i)=>{const box=el("div","dec"+(d.decided?" done":""));
+DECISIONS.forEach((d,i)=>{const box=el("div","dec");
   const ubs=d.ub.map(u=>`<span class="ub">▸ ${u}</span>`).join("");
-  const decided=d.decided?`<div class="ddec"><span class="dbadge">✓ Decided</span>${d.decided}</div>`:"";
-  box.innerHTML=`<div class="dnum">${d.decided?"✓":i+1}</div><div class="db"><div class="dq">${d.q}</div><div class="dd">${d.d}</div>${decided}<div class="unblk">${ubs}</div></div>`;
+  box.innerHTML=`<div class="dnum">${i+1}</div><div class="db"><div class="dq">${d.q}</div><div class="dd">${d.d}</div><div class="unblk">${ubs}</div></div>`;
   dec.appendChild(box);});
 document.getElementById("subDecisions").innerHTML=SUB;
 const demo=document.getElementById("demo");
