@@ -78,15 +78,27 @@ export async function expireLapsedSubscriptions(userId: Types.ObjectId | string)
     { status: 'expired' },
   );
 
-  // Drop the global grant only when NO other live term of that plan remains
-  // (e.g. the coach re-subscribed before the old one lapsed).
   for (const plan of new Set(lapsed.map((r) => r.plan))) {
-    const stillLive = await PartnerSubscription.exists({
-      userId, plan, status: 'active', expiresAt: { $gt: now },
-    });
-    if (!stillLive) {
-      await UserRole.deleteOne({ userId, role: plan, scopeType: null, scopeId: null });
-    }
+    await revokeGlobalRoleIfLapsed(userId, plan);
+  }
+}
+
+/**
+ * Drop the global `plan` grant, but only when NO other live term of that plan
+ * remains (e.g. the coach re-subscribed before the old one lapsed).
+ *
+ * Shared by lazy expiry and the admin hard-deactivation: both end a single term
+ * and neither may revoke a role that a second, still-running term paid for.
+ */
+export async function revokeGlobalRoleIfLapsed(
+  userId: Types.ObjectId | string,
+  plan: PartnerPlan,
+): Promise<void> {
+  const stillLive = await PartnerSubscription.exists({
+    userId, plan, status: 'active', expiresAt: { $gt: new Date() },
+  });
+  if (!stillLive) {
+    await UserRole.deleteOne({ userId, role: plan, scopeType: null, scopeId: null });
   }
 }
 

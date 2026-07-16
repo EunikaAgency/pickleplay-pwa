@@ -6,6 +6,7 @@ import { FeedReport, FeedPost } from '../feed/feed.model.js';
 import { VenueClaim, SuggestedEdit } from '../venues/venue-management.model.js';
 import { Subscription, AuditLog } from '../subscriptions/subscriptions.model.js';
 import { Booking } from '../bookings/bookings.model.js';
+import { PartnerSubscription, revokeGlobalRoleIfLapsed } from '../partner-subscriptions/partner-subscriptions.model.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
 
 const listUsersQuery = z.object({
@@ -174,4 +175,119 @@ export async function listSubscriptions(c: any) {
   const status = c.req.query('status') || 'active';
   const rows = await Subscription.find({ status }).sort({ createdAt: -1 }).limit(200).lean();
   return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id })) });
+}
+
+const listPartnerSubscriptionsQuery = z.object({
+  status: z.enum(['all', 'active', 'expired', 'cancelled']).optional().default('all'),
+  plan: z.enum(['coach', 'organizer']).optional(),
+  search: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional().default(200),
+});
+
+const deactivatePartnerSubscriptionSchema = z.object({
+  reason: z.string().max(200).optional(),
+});
+
+/**
+ * GET /api/v1/admin/partner-subscriptions — every PAID coach/organizer plan
+ * (`PartnerSubscription`), across all users. Not to be confused with
+ * `listSubscriptions` above, which lists the newsletter mailing list.
+ *
+ * `search` matches the subscriber, not the subscription, so it resolves users
+ * first and filters by the ids it finds.
+ */
+export async function listPartnerSubscriptions(c: any) {
+  const { status, plan, search, limit } = listPartnerSubscriptionsQuery.parse(c.req.query());
+  const filter: Record<string, any> = {};
+  if (status !== 'all') filter.status = status;
+  if (plan) filter.plan = plan;
+  if (search) {
+    const r = new RegExp(search, 'i');
+    const matches = await User.find({ $or: [{ displayName: r }, { email: r }] }).select('_id').lean();
+    filter.userId = { $in: (matches as any[]).map((u) => u._id) };
+  }
+
+  const rows = await PartnerSubscription.find(filter)
+    .sort({ createdAt: -1 }).limit(limit)
+    .populate('userId', 'displayName email')
+    .lean();
+
+  const now = Date.now();
+  const data = (rows as any[]).map((s) => {
+    const u = s.userId && typeof s.userId === 'object' ? s.userId : null;
+    return {
+      id: String(s._id),
+      plan: s.plan,
+      status: s.status,
+      priceAmount: s.priceAmount,
+      currency: s.currency,
+      startedAt: s.startedAt,
+      expiresAt: s.expiresAt,
+      autoRenew: !!s.autoRenew,
+      cancelAtPeriodEnd: !!s.cancelAtPeriodEnd,
+      cancelledAt: s.cancelledAt ?? null,
+      // Same derivation the player-facing payload uses: a row is only live when
+      // its status says so AND its deadline hasn't passed.
+      isActive: s.status === 'active' && new Date(s.expiresAt).getTime() > now,
+      user: u
+        ? { id: String(u._id), displayName: u.displayName ?? null, email: u.email ?? null }
+        : null,
+    };
+  });
+  return c.json({ data, meta: { total: data.length } });
+}
+
+/**
+ * DELETE /api/v1/admin/partner-subscriptions/:id — end a partner subscription
+ * NOW, not at the end of the paid term.
+ *
+ * The self-serve cancel is deliberately soft: the user paid for the period, so
+ * access survives to `expiresAt` and only auto-renew stops. An admin needs the
+ * hard version (fraud, chargeback, a ban), so this back-dates `expiresAt` to
+ * now, flips the row to `cancelled`, and revokes the global coach/organizer
+ * role. Both fields are written because every read path
+ * (`hasActivePartnerSubscription`, `isActive`, `activeSubscriberIds`) gates on
+ * status AND deadline — setting one alone would leave a way through.
+ */
+export async function deactivatePartnerSubscription(c: any) {
+  const admin = c.get('user');
+  const id = c.req.param('id');
+  const body = deactivatePartnerSubscriptionSchema.parse(await c.req.json().catch(() => ({})));
+
+  const sub = await PartnerSubscription.findById(id);
+  if (!sub) return c.json({ error: { code: 'NOT_FOUND', message: 'Subscription not found' } }, 404);
+  if (sub.get('status') !== 'active') {
+    return c.json({ error: { code: 'CONFLICT', message: 'This subscription is already inactive.' } }, 409);
+  }
+
+  const before = { status: sub.get('status'), expiresAt: sub.get('expiresAt') };
+  const now = new Date();
+  sub.set('status', 'cancelled');
+  sub.set('expiresAt', now);
+  sub.set('cancelAtPeriodEnd', false);   // it did not end at the period end — it was cut short
+  sub.set('cancelledAt', now);
+  sub.set('autoRenew', false);
+  await sub.save();
+
+  await revokeGlobalRoleIfLapsed(sub.get('userId'), sub.get('plan'));
+
+  await AuditLog.create({
+    actorId: admin.sub,
+    action: 'partner_subscription.deactivate',
+    entityType: 'PartnerSubscription',
+    entityId: sub._id,
+    oldValues: before,
+    newValues: { status: 'cancelled', expiresAt: now, reason: body.reason ?? null },
+  });
+
+  return c.json({
+    data: {
+      id: String(sub._id),
+      plan: sub.get('plan'),
+      status: sub.get('status'),
+      expiresAt: sub.get('expiresAt'),
+      cancelledAt: sub.get('cancelledAt'),
+      isActive: false,
+    },
+  });
 }

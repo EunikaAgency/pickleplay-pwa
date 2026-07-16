@@ -1,9 +1,11 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../../shared/middleware/auth.js';
 import {
+  deactivatePartnerSubscription,
   getDashboard,
   listAuditLogs,
   listOwners,
+  listPartnerSubscriptions,
   listReports,
   listFeedReports,
   listReviews,
@@ -30,6 +32,11 @@ adminRoutes.patch('/reports/:id', resolveReport);
 adminRoutes.get('/feed-reports', listFeedReports);
 adminRoutes.patch('/feed-reports/:id', resolveFeedReport);
 adminRoutes.get('/audit-logs', listAuditLogs);
+// The newsletter mailing list…
 adminRoutes.get('/subscriptions', listSubscriptions);
+// …and the PAID coach/organizer plans, which an admin may end on the spot
+// (unlike the user's own cancel, which only takes effect at the term's end).
+adminRoutes.get('/partner-subscriptions', listPartnerSubscriptions);
+adminRoutes.delete('/partner-subscriptions/:id', deactivatePartnerSubscription);
 
 export default adminRoutes;

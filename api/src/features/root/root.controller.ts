@@ -415,9 +415,6 @@ export function listEndpoints(c: any) {
       endpoints: [
         { path: '/api/v1/demand/events', methods: ['POST'], description: 'Record a demand signal — body { type: search|venue_view|booking_attempt|booking_completed|booking_cancelled|empty_slot, venueId?, courtId?, date?, startHour?, query?, meta? }. Public (optionalAuth attaches the actor). Best-effort capture, 202. booking_completed/cancelled/empty_slot are also auto-captured server-side by the booking flow' },
         { path: '/api/v1/demand/venues/:id', methods: ['GET'], description: 'Owner/manager demand report for a venue (?days=30) — signal totals, attempt→completion conversion, cancellation rate, demand-by-hour, and an empty-supply/occupancy read. Foundation for demand-based pricing', auth: 'user' },
-        { path: '/api/v1/demand/venues/:id/suggested-pricing', methods: ['GET'], description: 'Demand-based pricing suggestions per day×hour — adjustments with confidence levels. Owner/manager only', auth: 'user' },
-        { path: '/api/v1/demand/venues/:id/suggested-pricing/apply', methods: ['POST'], description: 'Apply selected pricing suggestions as SlotPriceOverrides for N weeks — body { suggestions: [{dow,hour,price}], weeks? }', auth: 'user' },
-        { path: '/api/v1/demand/auto-dynamic-pricing', methods: ['POST'], description: 'Cron endpoint — runs the suggestion engine for all venues opted into autoDynamicPricing, applies high-confidence suggestions automatically. Admin only', auth: 'user' },
       ],
     },
     {
@@ -483,6 +480,8 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/admin/feed-reports/:id', methods: ['PATCH'], description: 'Resolve / dismiss a reported post — body { status: resolved|dismissed }', auth: 'admin' },
         { path: '/api/v1/admin/audit-logs', methods: ['GET'], description: 'Audit trail', auth: 'admin' },
         { path: '/api/v1/admin/subscriptions', methods: ['GET'], description: 'Newsletter subscribers list', auth: 'admin' },
+        { path: '/api/v1/admin/partner-subscriptions', methods: ['GET'], description: 'Paid coach/organizer plans across all users (?status=all|active|expired|cancelled&plan=coach|organizer&search=)', auth: 'admin' },
+        { path: '/api/v1/admin/partner-subscriptions/:id', methods: ['DELETE'], description: 'Deactivate a coach/organizer subscription IMMEDIATELY (status=cancelled + expiresAt=now + global role revoked) — unlike the user cancel, which runs to the term end. Body { reason? }', auth: 'admin' },
         { path: '/api/v1/admin/roles', methods: ['GET'], description: 'List the fixed roles with their permissions and user counts', auth: 'admin' },
         { path: '/api/v1/admin/roles/:key', methods: ['PATCH'], description: 'Update a role\'s permissions and (coach) venue links (roles are a fixed set)', auth: 'admin' },
         { path: '/api/v1/admin/permissions', methods: ['GET'], description: 'Permission catalogue (labels, descriptions, groups)', auth: 'admin' },
