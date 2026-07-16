@@ -14,11 +14,13 @@ export type Screen =
   | { id: 'tournaments' }
   | { id: 'tournament'; params: { id: string } }
   | { id: 'tournament-chat'; params: { id: string; name?: string } }
-  // The Social tab — Clubs + Friends. `clubs` and `friends` survive as
-  // non-tab aliases so `/clubs`, `/friends`, and every existing
+  // The Social tab — PickleFeed + Clubs + Friends. `clubs` and `friends`
+  // survive as non-tab aliases so `/clubs`, `/friends`, and every existing
   // `onNavigate('clubs'|'friends')` call site keep landing on the right panel.
-  | { id: 'social'; params?: { tab?: 'clubs' | 'friends' } }
+  | { id: 'social'; params?: { tab?: 'feed' | 'clubs' | 'friends' } }
   | { id: 'clubs' }
+  // A single PickleFeed post (permalink) — post + comments.
+  | { id: 'feed-post'; params: { postId: string } }
   | { id: 'profile' }
   | { id: 'game-details'; params: { id: string } }
   | { id: 'open-play-detail'; params: { source: 'auto' | 'game' | 'session'; id: string } }
@@ -134,6 +136,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'tournament-chat': return `/tournaments/${screen.params.id}/chat${q({ name: screen.params.name })}`;
     case 'social': return `/social${q({ tab: screen.params?.tab })}`;
     case 'clubs': return '/clubs';
+    case 'feed-post': return `/feed/${screen.params.postId}`;
     case 'profile': return '/profile';
     case 'game-details': return `/games/${screen.params.id}`;
     case 'open-play-detail': return `/open-play/${screen.params.id}`;
@@ -260,8 +263,12 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'tournaments' };
     case 'social': {
       const t = sp.get('tab');
-      return { id: 'social', params: { tab: t === 'friends' || t === 'clubs' ? t : undefined } };
+      return { id: 'social', params: { tab: t === 'friends' || t === 'clubs' || t === 'feed' ? t : undefined } };
     }
+    case 'feed':
+      // A single post permalink (/feed/:postId); a bare /feed opens the PickleFeed tab.
+      if (b) return { id: 'feed-post', params: { postId: b } };
+      return { id: 'social', params: { tab: 'feed' } };
     case 'clubs':
       // Bare `/clubs` still works — it just lands on the Social tab's Clubs panel.
       if (!b) return { id: 'clubs' };
@@ -353,6 +360,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
 export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'booking') return { id: 'home' };
   if (id === 'club-details' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return { id: 'social', params: { tab: 'clubs' } };
+  if (id === 'feed-post') return { id: 'social', params: { tab: 'feed' } };
   if (id === 'tournament' || id === 'tournament-chat') return { id: 'tournaments' };
   if (id === 'open-play-detail') return { id: 'games', params: { section: 'open-play', view: 'discover' } };
   if (id === 'court-details') return { id: 'nearby' };

@@ -11,6 +11,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
+import { FeedComposerSheet } from '../social/FeedComposerSheet';
 import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
@@ -51,6 +52,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [duprOpen, setDuprOpen] = useState(false);
   const [messaging, setMessaging] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [feedShareOpen, setFeedShareOpen] = useState(false);
   const [saved, setSaved] = useState(() => {
     try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(gameId); } catch { return false; }
   });
@@ -318,6 +320,13 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               <div className="flex gap-2">
                 <button className="icon-btn" onClick={() => setShareOpen(true)} aria-label="Share this game">
                   <Icon name="share" size={16} />
+                </button>
+                <button
+                  className="icon-btn"
+                  onClick={() => { if (onRequireAuth && !onRequireAuth('share to PickleFeed')) return; setFeedShareOpen(true); }}
+                  aria-label="Share to PickleFeed"
+                >
+                  <Icon name="forward" size={16} />
                 </button>
                 <button className="icon-btn" onClick={toggleSave} aria-label={saved ? 'Remove from saved' : 'Save this game'}>
                   <Icon name={saved ? 'heart' : 'heart_o'} size={16} />
@@ -675,6 +684,13 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
             spotsLeft={game.spotsLeft ?? undefined}
             capacity={game.capacity ?? undefined}
             onNavigate={onNavigate}
+          />
+
+          <FeedComposerSheet
+            open={feedShareOpen}
+            onClose={() => setFeedShareOpen(false)}
+            onPosted={() => { setFeedShareOpen(false); onNavigate('social', { tab: 'feed' }); }}
+            prefill={{ type: 'game', refId: game.id, label: gameTitle(game) }}
           />
         </div>
       )}

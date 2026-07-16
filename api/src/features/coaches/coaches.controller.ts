@@ -3,6 +3,7 @@ import { Coach, CoachService } from './coaches.model.js';
 import { Venue } from '../venues/venues.model.js';
 import { CoachApplication } from '../coach-applications/coach-applications.model.js';
 import { CoachReview } from './coach-reviews.model.js';
+import { CoachBooking } from '../coach-bookings/coach-bookings.model.js';
 import { User } from '../auth/auth.model.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
 import {
@@ -137,6 +138,25 @@ async function coachPayload(coach: any) {
   ]);
   const base = typeof coach.toObject === 'function' ? coach.toObject() : coach;
   const result: Record<string, any> = { ...base, id: coach._id };
+
+  // If the coach has no profile photo, fall back to the linked user's avatar.
+  if (!result.avatarUrl && !result.imageUrl && coach.userId) {
+    const user = await User.findById(coach.userId).select('avatarUrl skillLevel skillLevelLabel').lean();
+    if (user) {
+      if (user.avatarUrl) result.avatarUrl = user.avatarUrl;
+      result.skillLevel = user.skillLevel ?? null;
+      result.skillLevelLabel = user.skillLevelLabel ?? null;
+    }
+  }
+
+  // Coaching metrics — how many unique students, how many completed sessions.
+  const completed = await CoachBooking.countDocuments({ coachId, status: 'completed' });
+  if (completed > 0) {
+    const students = await CoachBooking.distinct('player', { coachId, status: 'completed' });
+    result.completedSessionCount = completed;
+    result.studentCount = students.length;
+  }
+
   result.services = services.map((s: any) => ({ ...s, id: s._id }));
   result.venueIds = venues.map((v: any) => v._id);
   result.venues = venues.map((v: any) => ({
@@ -161,6 +181,18 @@ export async function listCoaches(c: any) {
     ];
   }
   const rows = await Coach.find(filter).sort({ displayName: 1 }).limit(100).lean();
+
+  // Batch-fetch user avatars for coaches without their own photo.
+  const needAvatar = rows.filter((r: any) => r.userId && !r.avatarUrl && !r.imageUrl);
+  if (needAvatar.length) {
+    const userIds = needAvatar.map((r: any) => r.userId);
+    const users = await User.find({ _id: { $in: userIds } }).select('_id avatarUrl').lean();
+    const byId = new Map(users.map((u: any) => [u._id.toString(), u.avatarUrl]));
+    for (const r of needAvatar) {
+      const av = byId.get(r.userId.toString());
+      if (av) r.avatarUrl = av;
+    }
+  }
 
   if (filters.subscribed) {
     // A coach is "legit" only while their platform subscription is live. Batch

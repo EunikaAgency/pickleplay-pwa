@@ -1,10 +1,10 @@
 import { V2Shell, type V2ScreenChrome } from '../../shared/components/layout/V2Chrome';
-import { V2Skeleton } from '../../shared/components/ui/V2Skeleton';
 import { useFriendRequestStore } from '../../shared/lib/friendRequestStore';
 import { ClubsPanel } from './ClubsPanel';
 import { FriendsPanel } from './FriendsPanel';
+import { FeedPanel } from './FeedPanel';
 
-export type SocialTab = 'clubs' | 'friends';
+export type SocialTab = 'feed' | 'clubs' | 'friends';
 
 interface SocialScreenProps {
   chrome: V2ScreenChrome;
@@ -13,26 +13,23 @@ interface SocialScreenProps {
 }
 
 /**
- * The Social tab — Clubs and Friends, the two halves of "people I play with".
+ * The Social tab — PickleFeed, Clubs, and Friends.
  *
- * Friends used to sit three taps deep in Profile (under Payments), so nobody
- * found it. Hoisting it here alongside Clubs costs no nav slot: Social replaces
- * the Clubs tab rather than adding one.
+ * PickleFeed (a global, Threads-style player newsfeed) is the first section and
+ * the default landing: opening Social drops you straight into the feed. Clubs
+ * and Friends keep their panels; `clubs`/`friends` also survive as URL aliases.
  *
  * The outer switch is a segmented pill track, deliberately *not* another chip
- * row — both panels already have their own chip filters underneath, and two
- * stacked chip rows read as noise.
+ * row — the panels carry their own filters underneath.
  */
 export function SocialScreen({ chrome, tab }: SocialScreenProps) {
-  const { onNavigate, isLoggedIn, requireAuth } = chrome;
+  const { onNavigate, requireAuth } = chrome;
   const pending = useFriendRequestStore((s) => s.pending);
-  const countLoaded = useFriendRequestStore((s) => s.loaded);
 
-  // Landing rule for a bare `/social`: open on Friends when requests are waiting,
-  // otherwise on Clubs — so an existing club member never notices a change.
-  // Guests always land on Clubs (Friends needs an account).
-  const landing: SocialTab = !isLoggedIn ? 'clubs' : pending > 0 ? 'friends' : 'clubs';
-  const active = tab ?? (countLoaded ? landing : null);
+  // PickleFeed is the default landing (guests included — the feed is public
+  // read). Friends still badges its pending count; it just no longer changes
+  // where a bare `/social` lands.
+  const active: SocialTab = tab ?? 'feed';
 
   const goPanel = (next: SocialTab) => {
     if (next === active) return;
@@ -42,19 +39,30 @@ export function SocialScreen({ chrome, tab }: SocialScreenProps) {
     onNavigate('social', { tab: next }, { replace: true });
   };
 
+  const subheading =
+    active === 'friends'
+      ? 'Connect with players, coaches, and organizers near you.'
+      : active === 'clubs'
+        ? 'Join a community, share posts, and meet players near you.'
+        : 'See what players are up to — share games, open play, and clubs.';
+
   return (
     <V2Shell screen="v2-social" chrome={chrome}>
       <div className="page-content">
         <div className="clubs-intro">
           <h1 className="clubs-heading">Social</h1>
-          <p className="clubs-subheading">
-            {active === 'friends'
-              ? 'Connect with players, coaches, and organizers near you.'
-              : 'Join a community, share posts, and meet players near you.'}
-          </p>
+          <p className="clubs-subheading">{subheading}</p>
         </div>
 
         <div className="social-seg" role="tablist" aria-label="Social sections">
+          <button
+            role="tab"
+            aria-selected={active === 'feed'}
+            className={active === 'feed' ? 'active' : ''}
+            onClick={() => goPanel('feed')}
+          >
+            PickleFeed
+          </button>
           <button
             role="tab"
             aria-selected={active === 'clubs'}
@@ -74,10 +82,8 @@ export function SocialScreen({ chrome, tab }: SocialScreenProps) {
           </button>
         </div>
 
-        {/* `active` is null only for the blink between mount and the first
-            pending-count resolution on a bare `/social` cold load. */}
-        {active === null ? (
-          <V2Skeleton variant="club-list" count={4} />
+        {active === 'feed' ? (
+          <FeedPanel chrome={chrome} />
         ) : active === 'friends' ? (
           <FriendsPanel chrome={chrome} />
         ) : (

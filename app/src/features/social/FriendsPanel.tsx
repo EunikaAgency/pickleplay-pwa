@@ -54,26 +54,28 @@ function SearchInput({ value, onChange, placeholder }: { value: string; onChange
   );
 }
 
-function FriendRow({ person, extra, right }: { person: ApiFriendProfile; extra?: React.ReactNode; right: React.ReactNode }) {
+function FriendRow({ person, extra, right, onOpen }: { person: ApiFriendProfile; extra?: React.ReactNode; right: React.ReactNode; onOpen: () => void }) {
   const role = roleLabel(person.roleDefault);
   return (
     <div className="friend-row">
-      <div
-        className="friend-av"
-        aria-hidden="true"
-        style={person.avatarUrl ? { background: `url(${apiImageUrl(person.avatarUrl)}) center/cover no-repeat` } : undefined}
-      >
-        {!person.avatarUrl && getInitials(person.displayName)}
-      </div>
-      <div className="friend-info">
-        <div className="friend-name">{person.displayName}</div>
-        <div className="friend-meta">
-          <span className={`role-pill ${role.cls}`}>{role.label}</span>
-          {person.skillLevelLabel && <span className="friend-skill">{person.skillLevelLabel}</span>}
-          {extra}
+      <button type="button" className="friend-open" onClick={onOpen} aria-label={`View ${person.displayName}'s profile`}>
+        <div
+          className="friend-av"
+          aria-hidden="true"
+          style={person.avatarUrl ? { background: `url(${apiImageUrl(person.avatarUrl)}) center/cover no-repeat` } : undefined}
+        >
+          {!person.avatarUrl && getInitials(person.displayName)}
         </div>
-        {person.bio && <div className="friend-bio">{person.bio}</div>}
-      </div>
+        <div className="friend-info">
+          <div className="friend-name">{person.displayName}</div>
+          <div className="friend-meta">
+            <span className={`role-pill ${role.cls}`}>{role.label}</span>
+            {person.skillLevelLabel && <span className="friend-skill">{person.skillLevelLabel}</span>}
+            {extra}
+          </div>
+          {person.bio && <div className="friend-bio">{person.bio}</div>}
+        </div>
+      </button>
       <div className="friend-acts">{right}</div>
     </div>
   );
@@ -122,6 +124,9 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
     setRequestSearch('');
     setSearchQuery('');
   };
+
+  /** Tapping a row opens that player's public profile. */
+  const openProfile = (id: string) => onNavigate('player-profile', { id });
 
   const reloadFriends = useCallback(async () => {
     setFriendsLoading(true);
@@ -348,6 +353,7 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
                       <FriendRow
                         key={f.id}
                         person={f.friend}
+                        onOpen={() => openProfile(f.friend.id)}
                         right={
                           <>
                             <button onClick={() => handleMessage(f.friend.id)} className="fbtn icon" aria-label={`Message ${f.friend.displayName}`}>
@@ -407,6 +413,7 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
                         <FriendRow
                           key={r.id}
                           person={r.friend}
+                          onOpen={() => openProfile(r.friend.id)}
                           right={
                             <>
                               <button onClick={() => handleRespond(r.id, true)} disabled={accepting || rejecting} className="fbtn primary">
@@ -440,6 +447,7 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
                         <FriendRow
                           key={r.id}
                           person={r.friend}
+                          onOpen={() => openProfile(r.friend.id)}
                           right={
                             <>
                               <span className="friend-pending">Pending</span>
@@ -488,6 +496,7 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
                     <FriendRow
                       key={person.id}
                       person={person}
+                      onOpen={() => openProfile(person.id)}
                       extra={person.distanceKm != null ? <span className="friend-dist">{person.distanceKm} km away</span> : undefined}
                       right={addButton(person)}
                     />
@@ -511,7 +520,7 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
           ) : (
             <div className="friend-list">
               {searchResults.map((person) => (
-                <FriendRow key={person.id} person={person} right={addButton(person)} />
+                <FriendRow key={person.id} person={person} onOpen={() => openProfile(person.id)} right={addButton(person)} />
               ))}
             </div>
           )}

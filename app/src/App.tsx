@@ -92,6 +92,7 @@ import { HomeScreenV2 } from './features/home/v2/HomeScreenV2';
 import { NearbyScreenV2 } from './features/venues/v2/NearbyScreenV2';
 import { GamesScreenV2 } from './features/games/v2/GamesScreenV2';
 import { SocialScreen } from './features/social/SocialScreen';
+import { FeedPostScreen } from './features/social/FeedPostScreen';
 import { TournamentsScreenV2 } from './features/tournaments/v2/TournamentsScreenV2';
 import { TournamentDetailScreen as PlayerTournamentDetailScreen } from './features/tournaments/v2/TournamentDetailScreen';
 import { TournamentChatScreen } from './features/tournaments/v2/TournamentChatScreen';
@@ -304,7 +305,7 @@ function tabForScreen(id: ScreenId): TabId {
   // Owner venue screens live under the "Venues" tab (which itself opens
   // /owner/venues), so keep it highlighted while managing/claiming a venue.
   if (id === 'owner-venues' || id === 'owner-venue' || id === 'owner-new-venue' || id === 'claim-venue' || id === 'owner-pricing' || id === 'owner-settlements' || id === 'owner-subscription-plans' || id === 'owner-venues-v2' || id === 'owner-calendar' || id === 'owner-partners' || id === 'owner-manual-reservation') return 'nearby';
-  if (id === 'clubs' || id === 'friends' || id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat') return 'social';
+  if (id === 'clubs' || id === 'friends' || id === 'club-details' || id === 'create-club' || id === 'edit-club' || id === 'club-post' || id === 'club-post-edit' || id === 'club-chat' || id === 'feed-post') return 'social';
   if (id === 'game-details' || id === 'open-play-detail' || id === 'game-chat' || id === 'create-game' || id === 'edit-game' || id === 'my-games' || id === 'invite-players') return 'games';
   if (id === 'tournament' || id === 'tournament-chat') return 'tournaments';
   if (id === 'chat') return 'messages';
@@ -646,6 +647,8 @@ function AppInner() {
         return <ClubPostScreen key={`${screen.params.id}:${screen.params.postId}`} clubId={screen.params.id} postId={screen.params.postId} onNavigate={navigate} onBack={goBack} />;
       case 'club-post-edit':
         return <ClubPostEditScreen key={`${screen.params.id}:${screen.params.postId}:edit`} clubId={screen.params.id} postId={screen.params.postId} onBack={goBack} />;
+      case 'feed-post':
+        return <FeedPostScreen key={screen.params.postId} postId={screen.params.postId} onNavigate={navigate} onBack={goBack} />;
       case 'club-chat':
         return <ClubChatScreen key={screen.params.id} clubId={screen.params.id} name={screen.params.name} onNavigate={navigate} onBack={goBack} />;
       case 'create-game':

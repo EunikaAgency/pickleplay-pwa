@@ -156,7 +156,9 @@ src/
                        #   calls authStore.restore() so the new coach role lands without a
                        #   re-login. FindCoachScreen (`find-coach`, /coaches) — lists ONLY
                        #   coaches holding a live subscription (listCoaches({subscribed:true})),
-                       #   debounced server-side search. CoachDetailScreen (`coach-detail`) →
+                       #   debounced server-side search. CoachDetailScreen (`coach-detail`,
+                       #   Threads-style public profile via shared PublicProfileHero — About/
+                       #   Sessions/Venues tabs, Book + Message actions) →
                        #   BookCoachScreen (`book-coach`): pick a CoachService or the plain
                        #   hourly session, date + HourSelect start time, notes →
                        #   createCoachBooking (the SERVER prices it). CoachBookingsScreen
@@ -166,9 +168,11 @@ src/
     profile/           # Profile, EditProfile (address1/2 + city/province/zipcode, re-seeded
                        #   once the session restores), Settings, Notifications, PaymentHistory,
                        #   PlayerProfileScreen (`player-profile`, /players/:id — another
-                       #   player's PUBLIC card via getPublicUser; Coach/Organizer badges reuse
+                       #   player's PUBLIC card via getPublicUser; Threads-style layout via shared
+                       #   PublicProfileHero (name+handle/role, avatar, bio, location, DUPR/joined
+                       #   stats, Message + Share actions); partner-role badges via
                        #   shared/lib/roleDisplay.ts ROLE_META; a live coach gets a "Book a
-                       #   coaching session" shortcut),
+                       #   coaching session" shortcut. Reached by tapping a row in social/FriendsPanel),
                        #   CoachPromoSheet (the "what you get" popup behind the Coaching
                        #   upgrade banner on ProfileScreenV2 — perks + live price from
                        #   getSettings; Continue routes to `coach-subscribe`, which still
@@ -325,6 +329,10 @@ src/
                         #   EditProfile reverse-geocode the pin to auto-fill the address),
                         # ChatThread (shared Messenger-style group-chat thread — used by
                         #   GameChatScreen + tournaments/v2/TournamentChatScreen),
+                        # PublicProfileHero (Threads-style public-profile header — name+handle,
+                        #   round avatar top-right, bio, detail line, stats row, two-button action
+                        #   row, optional tab strip; shared by CoachDetailScreen + PlayerProfileScreen
+                        #   so they render identically; wrap in a `.pb-v2 .px-profile` scope),
                         # EmptyState/ErrorState/LoadingSkeleton (v1) +
                         #   V2Skeleton (v2.1 player-screen skeletons, card-shaped),
                         #   DemoBranch, Toast,
@@ -607,7 +615,7 @@ src/
 | Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
 | Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
-| Social tab (Clubs + Friends, the request badge) | `features/social/{SocialScreen,ClubsPanel,FriendsPanel}.tsx`; badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/social-tab.spec.ts` |
+| Social tab (PickleFeed + Clubs + Friends, the request badge) | `features/social/{SocialScreen,FeedPanel,FeedPostCard,FeedComposerSheet,FeedShareCard,FeedPostScreen,RepostQuote,feedTime,ClubsPanel,FriendsPanel}.tsx`; Feed API client in `shared/lib/api.ts` (`FEED_PREFIX`); badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/feed.sh` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one). `Button` variants: primary/brand/dark/outline/ghost/`destructive` (soft red) / `danger` (solid red, for unmissable destructive actions) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |

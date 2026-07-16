@@ -316,6 +316,16 @@ export function listEndpoints(c: any) {
       ],
     },
     {
+      name: 'PickleFeed (global player newsfeed)',
+      endpoints: [
+        { path: '/api/v1/feed', methods: ['GET'], description: 'The global newsfeed — top-level posts, cursor-paginated newest-first (recursive FeedPost). Public read (optionalAuth sets viewerReacted). Posts carry text, an optional share CARD (a public game / open-play session / club), and/or a repost of another post' },
+        { path: '/api/v1/feed/posts', methods: ['POST'], description: 'Create a post (auth). Body { body?, parentPostId? (makes it a comment), sharedPostId? (repost), attachment?: { type: game|open_play|club, refId } }. The share card is enriched server-side from the referenced entity. Needs text OR an attachment OR a repost', auth: 'user' },
+        { path: '/api/v1/feed/posts/:postId', methods: ['GET', 'PATCH', 'DELETE'], description: 'Single post + first page of comments (GET). PATCH/DELETE are author-only (DELETE is a soft delete)' },
+        { path: '/api/v1/feed/posts/:postId/replies', methods: ['GET'], description: 'Comments on a post, cursor-paginated newest-first' },
+        { path: '/api/v1/feed/posts/:postId/react', methods: ['POST', 'DELETE'], description: 'Like / unlike a post (idempotent toggle; auth)', auth: 'user' },
+      ],
+    },
+    {
       name: 'Bookings & Payments',
       endpoints: [
         { path: '/api/v1/bookings', methods: ['GET', 'POST'], description: 'List / create bookings', auth: 'user' },

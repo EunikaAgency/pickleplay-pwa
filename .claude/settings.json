@@ -1,10 +1,13 @@
 {
-  "permissions": {
-    "allow": [
-      "Skill(artifact-design)",
-      "Skill(artifact-design:*)",
-      "Bash(cd /var/public/pickleplay/app/src && grep -n \"FRIENDS_PREFIX =\" shared/lib/api.ts && grep -n \"export async function register\\\\|/auth/register\\\\|/auth/signup\" shared/lib/api.ts | head -3 && echo \"=== api routes for friends ===\" && grep -rn \"friends\" ../../api/src/features/*/[a-z]*.routes.ts 2>/dev/null | head -8)",
-      "Read(//var/api/src/**)"
-    ]
-  }
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "sk-65e176c379fe47e89975336e183598ed",
+    "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-pro[1m]",
+    "ANTHROPIC_SMALL_FAST_MODEL": "deepseek-v4-pro[1m]",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-pro[1m]"
+  },
+  "theme": "dark"
 }

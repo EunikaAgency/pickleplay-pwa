@@ -361,6 +361,7 @@ src/
 | Mount a new feature | `routes/index.ts` |
 | Data shape / schema | `features/<f>/<f>.model.ts` |
 | Clubs / club feed / SSE realtime | `features/clubs/` (`clubs.controller.ts`, `clubs.model.ts`, `clubs.events.ts` = SSE bus); cursor in `shared/lib/cursor.ts` |
+| PickleFeed (global player newsfeed) | `features/feed/` (`feed.controller.ts`, `feed.model.ts`, `feed.routes.ts`) — Threads/Facebook-style global feed, cursor-paginated; post/like/comment/repost + share cards (game/open-play/club, enriched server-side); no SSE yet (MVP refreshes on action); e2e in `e2e/feed.sh` |
 | Per-user realtime (chat + notifs) | `shared/lib/userEvents.ts` (bus) + `GET /me/stream` in `features/interactions/`; published by `shared/lib/notify.ts` + `features/messages/` |
 | Bracket / seeding / advancement logic | `features/brackets/bracketEngine.ts` (pure, tested), then `brackets.controller.ts` |
 | Play tab Discover ranking / relevance weights | `features/play/playRanking.ts` (pure, 39 tests) — retune `RANK_WEIGHTS` here and every device picks it up with no app release; the feed itself is `play.controller.ts` |

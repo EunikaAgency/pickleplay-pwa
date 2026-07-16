@@ -3,6 +3,7 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { Segmented } from '../../shared/components/ui/Segmented';
 import { GameShareCard } from '../../shared/components/ui/GameShareCard';
+import { FeedComposerSheet } from '../social/FeedComposerSheet';
 import { ClubChatPanel } from './ClubChatPanel';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
@@ -84,6 +85,7 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [feedShareOpen, setFeedShareOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '' });
@@ -450,6 +452,15 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
             <button className="icon-btn" onClick={shareInvite} aria-label="Share invite link">
               <Icon name="share" size={16} />
             </button>
+            {club.visibility === 'public' && (
+              <button
+                className="icon-btn"
+                onClick={() => { if (!isLoggedIn) { onNavigate('login'); return; } setFeedShareOpen(true); }}
+                aria-label="Share to PickleFeed"
+              >
+                <Icon name="forward" size={16} />
+              </button>
+            )}
             {(club.isHost || club.isMember) && (
             <div className="relative">
               <button
@@ -1020,6 +1031,13 @@ export function ClubDetailsScreen({ clubId, invited, onNavigate, onBack }: ClubD
           </div>
         </div>
       )}
+
+      <FeedComposerSheet
+        open={feedShareOpen}
+        onClose={() => setFeedShareOpen(false)}
+        onPosted={() => { setFeedShareOpen(false); onNavigate('social', { tab: 'feed' }); }}
+        prefill={{ type: 'club', refId: club.id, label: club.name }}
+      />
     </div>
   );
 }

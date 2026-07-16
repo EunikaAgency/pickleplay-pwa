@@ -2682,6 +2682,120 @@ export async function denyClubRequest(id: string, reqId: string): Promise<{ stat
   return request<{ status: string }>(`${CLUBS_PREFIX}/${id}/requests/${reqId}/deny`, { method: 'POST', body: {}, auth: true });
 }
 
+/* ─── PickleFeed (global player newsfeed) ────────────────────── */
+//
+// The global feed — Threads/Facebook-style. Mirrors the club feed client, but
+// unscoped: posts belong to everyone. Read is public; write needs auth and is
+// author-scoped. See api/src/features/feed.
+
+const FEED_PREFIX = '/api/v1/feed';
+
+/** A share card on a feed post — a public game, open-play session, or club.
+ *  Tap it (via `refId`) to open + join that entity. `imageUrl` is raw — wrap
+ *  with apiImageUrl to render. */
+export interface FeedAttachment {
+  type: 'game' | 'open_play' | 'club';
+  refId: string;
+  title: string | null;
+  subtitle: string | null;
+  imageUrl: string | null;
+  gameType: string | null;
+  skillLabel: string | null;
+  dateTime: string | null;
+  venue: string | null;
+  spotsLeft: number | null;
+  capacity: number | null;
+  memberCount: number | null;
+}
+
+/** A shallow snapshot of a reposted post (one level deep — never nested). */
+export interface FeedSharedPost {
+  id: string;
+  author: ClubPerson | null;
+  authorId: string;
+  body: string | null;
+  attachments: FeedAttachment[];
+  isDeleted: boolean;
+  createdAt?: string | null;
+}
+
+export interface ApiFeedPost {
+  id: string;
+  parentPostId: string | null;
+  rootPostId: string | null;
+  authorId: string;
+  author: ClubPerson | null;
+  body: string | null;
+  attachments: FeedAttachment[];
+  sharedPostId: string | null;
+  sharedPost: FeedSharedPost | null;
+  reactionCount: number;
+  replyCount: number;
+  viewerReacted: boolean;
+  isDeleted: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+/** One page of feed posts + the cursor for the next page (null = no more). */
+export interface FeedPage {
+  items: ApiFeedPost[];
+  cursor: string | null;
+}
+
+/** The global feed's top-level posts (cursor-paginated, newest first). */
+export async function listFeed(params: { cursor?: string; pageSize?: number } = {}): Promise<FeedPage> {
+  const env = await rawRequest<ApiFeedPost[]>(`${FEED_PREFIX}${toQuery({ pageSize: 20, ...params })}`, { auth: true });
+  return { items: env.data ?? [], cursor: env.meta?.cursor ?? null };
+}
+
+/** A single post (permalink). `GET /posts/:postId` returns `{ post, replies }`;
+ *  we return just the post (replies via listFeedReplies). */
+export async function getFeedPost(postId: string): Promise<ApiFeedPost> {
+  const env = await rawRequest<{ post: ApiFeedPost; replies?: ApiFeedPost[] }>(`${FEED_PREFIX}/posts/${postId}`, { auth: true });
+  return (env.data?.post ?? null) as ApiFeedPost;
+}
+
+export interface CreateFeedPostPayload {
+  body?: string;
+  /** Makes the post a comment on this post. */
+  parentPostId?: string;
+  /** Makes the post a repost (quote) of this post. */
+  sharedPostId?: string;
+  /** A share card — the server enriches the display fields from the entity. */
+  attachment?: { type: 'game' | 'open_play' | 'club'; refId: string };
+}
+
+/** Create a post / comment / repost / share card. Needs text, an attachment, or a repost. */
+export async function createFeedPost(payload: CreateFeedPostPayload): Promise<ApiFeedPost> {
+  return request<ApiFeedPost>(`${FEED_PREFIX}/posts`, { method: 'POST', body: payload, auth: true });
+}
+
+/** Comments on a post (newest-first from the API), up to 50. */
+export async function listFeedReplies(postId: string): Promise<ApiFeedPost[]> {
+  const env = await rawRequest<ApiFeedPost[]>(`${FEED_PREFIX}/posts/${postId}/replies${toQuery({ pageSize: 50 })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Like a post (idempotent). */
+export async function reactFeedPost(postId: string): Promise<{ reacted: boolean; reactionCount: number }> {
+  return request(`${FEED_PREFIX}/posts/${postId}/react`, { method: 'POST', body: {}, auth: true });
+}
+/** Unlike a post. */
+export async function unreactFeedPost(postId: string): Promise<{ reacted: boolean; reactionCount: number }> {
+  return request(`${FEED_PREFIX}/posts/${postId}/react`, { method: 'DELETE', auth: true });
+}
+
+/** Edit a post/comment body (author-only; server enforces it). */
+export async function editFeedPost(postId: string, body: string): Promise<ApiFeedPost> {
+  return request<ApiFeedPost>(`${FEED_PREFIX}/posts/${postId}`, { method: 'PATCH', body: { body }, auth: true });
+}
+
+/** Soft-delete a post/comment (author-only; server enforces it). */
+export async function deleteFeedPost(postId: string): Promise<{ deleted: boolean }> {
+  return request<{ deleted: boolean }>(`${FEED_PREFIX}/posts/${postId}`, { method: 'DELETE', auth: true });
+}
+
 /* ─── Bookings + checkout ───────────────────────────────────── */
 //
 // A booking is a court reservation. It is created `pending_approval`; paying for
@@ -4324,6 +4438,13 @@ export interface ApiCoach {
   rating?: number | null;
   reviewCount?: number | null;
   experienceYears?: number | null;
+  /** Coach's skill level from their user account. */
+  skillLevel?: number | null;
+  skillLevelLabel?: string | null;
+  /** How many unique players have completed a coaching session. */
+  studentCount?: number;
+  /** Total completed coaching sessions. */
+  completedSessionCount?: number;
   languages?: string[];
   certifications?: string[];
   cityPrimary?: string | null;
