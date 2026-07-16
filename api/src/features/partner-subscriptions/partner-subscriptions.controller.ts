@@ -9,6 +9,22 @@ import {
 const subscribeSchema = z.object({
   plan: z.enum(['coach', 'organizer']),
   autoRenew: z.boolean().optional(),
+  // Card credentials the client collects at the payment step. Never stored or
+  // charged — in test mode they gate on the demo card exactly like booking
+  // checkout; in live mode the Payment stays pending until a gateway lands.
+  // Includes cardholder name + billing address so the form matches a real
+  // gateway; those fields are accepted but not persisted.
+  card: z.object({
+    number: z.string(),
+    expiry: z.string(),
+    cvc: z.string(),
+    name: z.string(),
+    billingAddress1: z.string(),
+    billingAddress2: z.string(),
+    billingCity: z.string(),
+    billingProvince: z.string(),
+    billingZip: z.string(),
+  }).partial().optional(),
 });
 
 /** The postal-address fields a partner must have on file before subscribing.
@@ -114,6 +130,17 @@ export async function subscribe(c: any) {
   const pricing = await getPartnerSubscriptionPricing();
   const priceAmount = plan === 'coach' ? pricing.coach : pricing.organizer;
   const testMode = await isPaymentTestMode();
+
+  // Demo card gate — same behaviour as booking checkout: in test mode the card
+  // must be the canonical demo card, so the payment step behaves like a real
+  // gateway (right card → subscribed, wrong card → declined). Expiry/CVC aren't
+  // checked. No subscription or role is granted until the payment clears.
+  if (testMode && body.card?.number) {
+    const entered = body.card.number.replace(/\D/g, '');
+    if (entered !== '4242424242424242') {
+      return c.json({ error: { code: 'CARD_DECLINED', message: 'Card declined. Use the demo test card 4242 4242 4242 4242 (any future expiry, any CVC).' } }, 402);
+    }
+  }
 
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + pricing.durationDays * 24 * 60 * 60 * 1000);

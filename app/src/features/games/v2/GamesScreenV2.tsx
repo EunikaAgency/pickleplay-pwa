@@ -522,7 +522,8 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     setJoinBusy(g.id);
     setActionError(null);
     try {
-      // Open Play uses interest-based model ("I'm Interested"), not lobby join.
+      // Open Play presents a lobby, but its roster is still stored as interestedUsers,
+      // so joining goes through the interest endpoint rather than the roster join.
       if (isOpenPlayGame(g)) {
         await toggleGameInterest(g.id);
       } else {

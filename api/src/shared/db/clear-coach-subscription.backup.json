@@ -1,38 +1,37 @@
 {
-  "clearedAt": "2026-07-10T09:41:44.813Z",
+  "clearedAt": "2026-07-16T05:23:45.047Z",
   "user": {
-    "id": "6a4f16b5d2b28d59a068ecca",
-    "email": "84a3be4a.hernandez@example.com",
-    "displayName": "Steve Hernandez"
+    "id": "6a4f16b5d2b28d59a068eccc",
+    "email": "389b0d83.fuentes@example.com",
+    "displayName": "Consuelo Fuentes"
   },
   "partnerSubscriptions": [
     {
-      "_id": "6a50ae8187cc6924f4f87d95",
-      "userId": "6a4f16b5d2b28d59a068ecca",
+      "_id": "6a586ab6f8cccb3b01eb3701",
+      "userId": "6a4f16b5d2b28d59a068eccc",
       "plan": "coach",
       "status": "active",
       "priceAmount": 499,
       "currency": "PHP",
-      "startedAt": "2026-07-10T08:34:09.554Z",
-      "expiresAt": "2026-08-09T08:34:09.554Z",
+      "startedAt": "2026-07-16T05:23:02.050Z",
+      "expiresAt": "2026-08-15T05:23:02.050Z",
       "autoRenew": false,
-      "createdAt": "2026-07-10T08:34:09.556Z",
-      "updatedAt": "2026-07-10T09:41:06.012Z",
+      "cancelAtPeriodEnd": false,
+      "createdAt": "2026-07-16T05:23:02.054Z",
+      "updatedAt": "2026-07-16T05:23:02.065Z",
       "__v": 0,
-      "paymentId": "6a50ae8187cc6924f4f87d96",
-      "cancelAtPeriodEnd": true,
-      "cancelledAt": "2026-07-10T09:41:06.011Z"
+      "paymentId": "6a586ab6f8cccb3b01eb3702"
     }
   ],
   "globalCoachRole": {
-    "_id": "6a50ae8134553c48998786b9",
+    "_id": "6a586ab69497417ed9e8a918",
+    "scopeId": null,
     "scopeType": null,
     "role": "coach",
-    "scopeId": null,
-    "userId": "6a4f16b5d2b28d59a068ecca",
+    "userId": "6a4f16b5d2b28d59a068eccc",
     "__v": 0,
-    "createdAt": "2026-07-10T08:34:09.562Z",
+    "createdAt": "2026-07-16T05:23:02.067Z",
     "isPrimary": false,
-    "updatedAt": "2026-07-10T08:34:09.562Z"
+    "updatedAt": "2026-07-16T05:23:02.067Z"
   }
 }

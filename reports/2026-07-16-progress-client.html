@@ -119,6 +119,9 @@
   .dnum{font-family:var(--mono);font-weight:800;font-size:15px;color:var(--accent);flex:none;width:30px;height:30px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;border:1px solid var(--border)}
   .dec .db{flex:1}
   .dec .dq{font-weight:700;font-size:15px;letter-spacing:-.01em}
+  .dec.done .dnum{color:var(--st-done);background:var(--st-done-bg);border-color:var(--st-done)}
+  .ddec{margin-top:8px;font-size:13px;color:var(--ink);background:var(--st-done-bg);border:1px solid var(--st-done);border-radius:8px;padding:8px 11px;line-height:1.45}
+  .dbadge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--st-done);margin-right:8px}
   .dec .dd{color:var(--text-2);font-size:13.5px;margin-top:3px;line-height:1.5}
   .unblk{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
   .ub{font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--text-3);background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:2px 7px}
@@ -305,13 +308,13 @@ const ROLES=[
     ["Apply at venue → owner approves","done"],["Session requests inbox","done"],["Per-session commission","wait"]]},
 ];
 const DECISIONS=[
-  {q:"Should Open Play have a lobby?",d:'Keep the lightweight "I\'m Interested" flow, or grow into a managed lobby with a confirmed/invited/pending roster and group chat? The pieces already exist in game lobbies.',ub:["unblocks 7","unblocks 8"]},
+  {q:"Should Open Play have a lobby?",d:'Keep the lightweight "I\'m Interested" flow, or grow into a managed lobby with a confirmed/invited/pending roster and group chat? The pieces already exist in game lobbies.',ub:["unblocks 7","unblocks 8"],decided:"Yes — Open Play gets a lobby, like a game/event (roster + group chat)."},
   {q:"What are the Open Play payment rules by host type?",d:"May organizer / venue-hosted sessions charge joiners while player-hosted stay free? Who collects, does PickleBallers take a share, and what happens on cancellation?",ub:["unblocks 18","unblocks 19"]},
   {q:"How should gender & eligibility restrictions work?",d:"Men / women / skill restrictions are already built — confirm the full set, and whether an ineligible player sees the listing marked “not eligible” or doesn't see it at all.",ub:[]},
   {q:"How should coach session payments work?",d:"When is payment collected, who receives it, does the venue take a share, and does the platform charge a commission — or does the ₱499 subscription stay the whole model?",ub:["unblocks 20"]},
-  {q:"Are Like and Interested intentionally different?",d:"Like applies to social posts; Interested to Open Play. Keep them distinct, or use one consistent reaction? Best settled before a platform-wide feed.",ub:[]},
-  {q:"Confirm the final homepage wording.",d:"Play / Book Court / Find Coach (shipped) vs the review's Open Play / Book a Court / Get a Coach. The function is done — only the words need a choice.",ub:["unblocks 1","unblocks 23"]},
-  {q:"Two small refinements to close.",d:"Surface Events as visible tabs instead of a dropdown; and confirm which venue figures staff may see. Both small.",ub:[]},
+  {q:"Are Like and Interested intentionally different?",d:"Like applies to social posts; Interested to Open Play. Keep them distinct, or use one consistent reaction? Best settled before a platform-wide feed.",ub:[],decided:"Keep them distinct (Like = feed, Interested = Open Play). The extra “Save” heart on the Open Play lobby has been removed."},
+  {q:"Confirm the final homepage wording.",d:"Play / Book Court / Find Coach (shipped) vs the review's Open Play / Book a Court / Get a Coach. The function is done — only the words need a choice.",ub:["unblocks 1","unblocks 23"],decided:"Keep the current wording — Play / Book Court / Find Coach. No change."},
+  {q:"Two small refinements to close.",d:"Surface Events as visible tabs instead of a dropdown; and confirm which venue figures staff may see. Both small.",ub:[],decided:"Events already surfaced as tabs (Play tab UI updated). Only the staff-figures refinement is left."},
 ];
 const SUB='A few directions the app has grown into since the review, also worth a quick word: coaching subscription as the standing revenue model & its price point · what "partner revenue" on the owner screen should represent · showing a price range vs a live price on listings (rates vary by time slot) · equipment rental when booking a court (ties to the cart idea) · whether Tournaments should merge into Play as "Events" · how approval-required court bookings interact with public Open Play.';
 const DEMO=[
@@ -362,9 +365,10 @@ ROLES.forEach(r=>{const box=el("div","role");
   if(r.blocked)box.appendChild(el("div","blocked",`<b>Owner-only</b>${r.blocked}`));
   roles.appendChild(box);});
 const dec=document.getElementById("decisions");
-DECISIONS.forEach((d,i)=>{const box=el("div","dec");
+DECISIONS.forEach((d,i)=>{const box=el("div","dec"+(d.decided?" done":""));
   const ubs=d.ub.map(u=>`<span class="ub">▸ ${u}</span>`).join("");
-  box.innerHTML=`<div class="dnum">${i+1}</div><div class="db"><div class="dq">${d.q}</div><div class="dd">${d.d}</div><div class="unblk">${ubs}</div></div>`;
+  const decided=d.decided?`<div class="ddec"><span class="dbadge">✓ Decided</span>${d.decided}</div>`:"";
+  box.innerHTML=`<div class="dnum">${d.decided?"✓":i+1}</div><div class="db"><div class="dq">${d.q}</div><div class="dd">${d.d}</div>${decided}<div class="unblk">${ubs}</div></div>`;
   dec.appendChild(box);});
 document.getElementById("subDecisions").innerHTML=SUB;
 const demo=document.getElementById("demo");

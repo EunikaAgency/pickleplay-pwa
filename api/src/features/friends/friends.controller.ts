@@ -317,8 +317,49 @@ export async function suggestFriends(c: any) {
 
   let suggestions: any[] = [];
 
+  // ── 0. Friends of friends (TOP priority) ───────────────────
+  // People connected to your accepted friends but not yet to you. Ranked by how
+  // many of your friends they share (more mutuals first). If there are none, the
+  // tiers below (nearby → shared → random) run exactly as before.
+  let fof: any[] = [];
+  const acceptedFriendIds = existingRows
+    .filter((r: any) => r.status === 'accepted')
+    .map((r: any) => (String(r.requesterId) === user.sub ? String(r.recipientId) : String(r.requesterId)));
+  if (acceptedFriendIds.length) {
+    const friendSet = new Set(acceptedFriendIds);
+    const edges = await Friend.find({
+      status: 'accepted',
+      $or: [{ requesterId: { $in: acceptedFriendIds } }, { recipientId: { $in: acceptedFriendIds } }],
+    }).select('requesterId recipientId').lean();
+    // Count, per candidate, how many of my friends they're connected to.
+    const mutual = new Map<string, number>();
+    for (const e of edges) {
+      const a = String(e.requesterId);
+      const b = String(e.recipientId);
+      const aFriend = friendSet.has(a);
+      const bFriend = friendSet.has(b);
+      // The candidate is the endpoint that ISN'T already one of my friends.
+      const cand = aFriend && !bFriend ? b : bFriend && !aFriend ? a : null;
+      if (!cand || excludeIds.has(cand)) continue; // skips me + my friends/pending
+      mutual.set(cand, (mutual.get(cand) ?? 0) + 1);
+    }
+    if (mutual.size) {
+      const rankedIds = [...mutual.entries()].sort((x, y) => y[1] - x[1]).slice(0, 20).map(([id]) => id);
+      const users = await User.find({ _id: { $in: rankedIds }, roleDefault: { $in: FRIENDABLE_ROLES } })
+        .select('displayName avatarUrl roleDefault bio skillLevel skillLevelLabel')
+        .lean();
+      const byId = new Map(users.map((u: any) => [String(u._id), u]));
+      // Preserve the mutual-count ranking (Mongo returns unordered).
+      fof = rankedIds
+        .map((id) => byId.get(id))
+        .filter(Boolean)
+        .map((u: any) => ({ ...u, _mutual: mutual.get(String(u._id)) ?? 0 }));
+    }
+  }
+
   // ── 1. Nearby users (when coords available) ────────────────
-  if (hasCoords) {
+  // Only when FoF didn't already fill the list.
+  if (hasCoords && fof.length < 20) {
     const nearby = await User.find({ ...baseFilter, lat: { $exists: true }, lng: { $exists: true } })
       .select('displayName avatarUrl roleDefault bio skillLevel skillLevelLabel lat lng')
       .lean();
@@ -329,7 +370,7 @@ export async function suggestFriends(c: any) {
   }
 
   // ── 2. Shared games/clubs (fallback when no nearby results) ──
-  if (suggestions.length === 0) {
+  if (suggestions.length === 0 && fof.length < 20) {
     // Find club IDs the user is a member of.
     const myClubs = await Club.find({ memberIds: user.sub }).select('_id').lean();
     const myClubIds = myClubs.map((c: any) => c._id);
@@ -361,7 +402,7 @@ export async function suggestFriends(c: any) {
   }
 
   // ── 3. Random fallback ──────────────────────────────────────
-  if (suggestions.length === 0) {
+  if (suggestions.length === 0 && fof.length < 20) {
     const count = await User.countDocuments(baseFilter);
     const skip = Math.max(0, Math.floor(Math.random() * Math.max(0, count - 20)));
     suggestions = await User.find(baseFilter)
@@ -371,8 +412,20 @@ export async function suggestFriends(c: any) {
       .lean();
   }
 
+  // Friends-of-friends first (priority), then the tiered results — deduped,
+  // capped at 20. With no FoF this is just the current algo, unchanged.
+  const seen = new Set<string>();
+  const merged: any[] = [];
+  for (const u of [...fof, ...suggestions]) {
+    const id = String(u._id);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(u);
+    if (merged.length >= 20) break;
+  }
+
   return c.json({
-    data: suggestions.map((r: any) => ({
+    data: merged.map((r: any) => ({
       id: String(r._id),
       displayName: r.displayName,
       avatarUrl: r.avatarUrl ?? null,
@@ -382,6 +435,8 @@ export async function suggestFriends(c: any) {
       skillLevelLabel: r.skillLevelLabel ?? null,
       // Only include distance when we actually computed it.
       distanceKm: r._dist != null ? Math.round(r._dist * 10) / 10 : undefined,
+      // Number of shared friends when this is a friend-of-friend suggestion.
+      mutualCount: r._mutual != null ? r._mutual : undefined,
     })),
   });
 }

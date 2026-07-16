@@ -123,19 +123,22 @@ export function spotsLabel(g: Pick<ApiGame, 'spotsLeft'>): string {
   return n > 0 ? `${n} left` : 'Full';
 }
 
-/** Interest count for an Open Play game, e.g. "5 interested" / "No interest yet". */
+/** How many players are in an Open Play lobby, e.g. "5 in lobby" / "Lobby empty". */
 export function interestCount(g: Pick<ApiGame, 'interestedCount' | 'interestedUsers'>): number {
   return g.interestedCount ?? g.interestedUsers?.length ?? 0;
 }
 export function interestLabel(g: Pick<ApiGame, 'interestedCount' | 'interestedUsers'>): string {
   const n = interestCount(g);
-  return n > 0 ? `${n} interested` : 'No interest yet';
+  return n > 0 ? `${n} in lobby` : 'Lobby empty';
 }
 
-/** "5 interested · aiming for 8" when the host set a headcount target. */
+/** "5 / 8 in lobby" — or "Lobby full · 8 / 8" — when the host set a lobby size. */
 export function interestWithTarget(g: Pick<ApiGame, 'interestedCount' | 'interestedUsers' | 'targetPlayers'>): string {
-  const base = interestLabel(g);
-  return g.targetPlayers ? `${base} · aiming for ${g.targetPlayers}` : base;
+  if (!g.targetPlayers) return interestLabel(g);
+  const count = g.interestedCount ?? g.interestedUsers?.length ?? 0;
+  return count >= g.targetPlayers
+    ? `Lobby full · ${count} / ${g.targetPlayers}`
+    : `${count} / ${g.targetPlayers} in lobby`;
 }
 
 /* ─── Lobby leave / join timing rules ────────────────────────── */

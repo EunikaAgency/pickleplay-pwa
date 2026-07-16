@@ -136,14 +136,15 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelled, setCancelled] = useState<{ bookingId: string | null } | null>(null);
-  const [saved, setSaved] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(initialGame.id); } catch { return false; }
-  });
 
-  // Open Play is interest-based: no roster/slots, just a soft "I'm Interested" signal.
+  // Open Play lobby: the roster is stored as interestedUsers and targetPlayers is the
+  // lobby cap. The cap is enforced here in the UI; server-side rejection is still to come.
   const interested: ApiGamePerson[] = game.interestedUsers ?? [];
   const isInterested = !!(me && interested.some((p) => p.id === me.id));
   const interestedCount = game.interestedCount ?? interested.length;
+  // Lobby capacity: once the roster hits targetPlayers, the lobby is full and no
+  // one else can join — same rule as a game/event lobby. No target = no cap.
+  const lobbyFull = !!(game.targetPlayers && interestedCount >= game.targetPlayers);
 
   // The host doesn't sign up for their own session — they cancel it. Same gate as
   // the game lobby's delete (GameDetailsScreen): host + `player.games.manage`.
@@ -161,7 +162,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
 
   const toggleInterest = async () => {
     if (!game || busy || blockedReason || isHost) return;
-    if (!isInterested && !chrome.requireAuth('show interest')) return;
+    if (!isInterested && !chrome.requireAuth('join the lobby')) return;
     setBusy(true);
     setError(null);
     try {
@@ -188,15 +189,6 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
       setError(e instanceof Error ? e.message : 'Could not cancel this session.');
       setCancelling(false);
     }
-  };
-
-  const toggleSave = () => {
-    try {
-      const cur: string[] = JSON.parse(localStorage.getItem('pb-saved-games') || '[]');
-      const next = cur.includes(game.id) ? cur.filter((x) => x !== game.id) : [...cur, game.id];
-      localStorage.setItem('pb-saved-games', JSON.stringify(next));
-      setSaved(next.includes(game.id));
-    } catch { /* ignore */ }
   };
 
   const title = gameTitle(game);
@@ -251,9 +243,6 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             <button className="icon-btn" onClick={() => setShareOpen(true)} aria-label="Share this Open Play">
               <Icon name="share" size={16} />
             </button>
-            <button className="icon-btn" onClick={toggleSave} aria-label={saved ? 'Remove from saved' : 'Save this Open Play'}>
-              <Icon name={saved ? 'heart' : 'heart_o'} size={16} />
-            </button>
           </div>
         </div>
         <div className="info">
@@ -285,7 +274,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             <div className="val">{level}</div>
           </div>
           <div className="kv">
-            <div className="eyebrow">Interested</div>
+            <div className="eyebrow">In lobby</div>
             <div className={`val ${interestedCount > 0 ? 'lime' : ''}`}>
               {game.targetPlayers ? `${interestedCount} / ${game.targetPlayers}` : interestedCount}
             </div>
@@ -329,10 +318,10 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
           )}
           <p>
             {interestedCount > 0
-              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} interested so far${isHost ? '.' : ' — drop in if it suits you.'}`
+              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} in the lobby${lobbyFull ? ' · lobby full' : ''}${isHost ? '.' : ' — join in if it suits you.'}`
               : isHost
-                ? 'No one’s shown interest yet. Share it so players know it’s happening.'
-                : 'No one’s shown interest yet. Tap “I’m Interested” to let others know you might come.'}
+                ? 'No one’s joined the lobby yet. Share it so players know it’s happening.'
+                : 'No one’s joined the lobby yet. Tap “Join lobby” to join the lobby and let others know you’re coming.'}
           </p>
         </div>
 
@@ -340,7 +329,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
         <div className="mb-[18px]">
           <div className="flex items-baseline justify-between mb-3">
             <div>
-              <div className="t-eyebrow">Interested</div>
+              <div className="t-eyebrow">In lobby</div>
               <div className="hd-3 mt-1">{interestWithTarget(game)}</div>
             </div>
           </div>
@@ -357,7 +346,7 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             </div>
           ) : (
             <div className="text-[13px] font-semibold text-[var(--muted)]">
-              Be the first to show interest.
+              Be the first to join the lobby.
             </div>
           )}
         </div>
@@ -394,15 +383,17 @@ function PlayerOpenPlayGameDetail({ game: initialGame, chrome, onBack }: { game:
             </button>
           )
         ) : (
-          <button type="button" className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason}>
+          <button type="button" className={`btn-join ${isInterested ? 'btn-leave' : ''} ${blockedReason || (lobbyFull && !isInterested) ? 'btn-locked' : ''}`} onClick={toggleInterest} disabled={busy || !!blockedReason || (lobbyFull && !isInterested)}>
             {busy ? (
-              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Removing…' : 'Saving…'}</>
+              <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> {isInterested ? 'Leaving…' : 'Joining…'}</>
             ) : blockedReason ? (
               <><Icon name="lock" size={16} /> {blockedReason}</>
+            ) : lobbyFull && !isInterested ? (
+              <><Icon name="lock" size={16} /> Lobby full</>
             ) : isInterested ? (
-              <><Icon name="check" size={16} /> Interested</>
+              <><Icon name="check" size={16} /> In lobby</>
             ) : (
-              <><Icon name="bolt" size={16} /> I'm Interested</>
+              <><Icon name="bolt" size={16} /> Join lobby</>
             )}
           </button>
         )}
@@ -469,9 +460,6 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
   const [busy, setBusy] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [saved, setSaved] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(id); } catch { return false; }
-  });
 
   useEffect(() => {
     let alive = true;
@@ -495,7 +483,7 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
 
   const toggleInterest = async () => {
     if (!session || busy || blockedReason) return;
-    if (!isInterested && !chrome.requireAuth('show interest')) return;
+    if (!isInterested && !chrome.requireAuth('join the lobby')) return;
     setBusy(true);
     setError(null);
     try {
@@ -509,16 +497,6 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
     } finally {
       setBusy(false);
     }
-  };
-
-  const toggleSave = () => {
-    if (!session) return;
-    try {
-      const cur: string[] = JSON.parse(localStorage.getItem('pb-saved-games') || '[]');
-      const next = cur.includes(session.id) ? cur.filter((x) => x !== session.id) : [...cur, session.id];
-      localStorage.setItem('pb-saved-games', JSON.stringify(next));
-      setSaved(next.includes(session.id));
-    } catch { /* ignore */ }
   };
 
   if (loading) {
@@ -564,9 +542,6 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
             <button className="icon-btn" onClick={() => setShareOpen(true)} aria-label="Share this Open Play">
               <Icon name="share" size={16} />
             </button>
-            <button className="icon-btn" onClick={toggleSave} aria-label={saved ? 'Remove from saved' : 'Save this Open Play'}>
-              <Icon name={saved ? 'heart' : 'heart_o'} size={16} />
-            </button>
           </div>
         </div>
         <div className="info">
@@ -599,7 +574,7 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
             <div className="val">{money(Number(session.price ?? 0), 'PHP')}</div>
           </div>
           <div className="kv">
-            <div className="eyebrow">Interested</div>
+            <div className="eyebrow">In lobby</div>
             <div className={`val ${interestedCount > 0 ? 'lime' : ''}`}>{interestedCount}</div>
           </div>
         </div>
@@ -647,7 +622,7 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           )}
           <p>
             {interestedCount > 0
-              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} interested so far.`
+              ? `${interestedCount} ${interestedCount === 1 ? 'player is' : 'players are'} in the lobby.`
               : 'No one’s shown interest yet.'}
           </p>
         </div>
@@ -656,8 +631,8 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
         <div className="mb-[18px]">
           <div className="flex items-baseline justify-between mb-3">
             <div>
-              <div className="t-eyebrow">Interested</div>
-              <div className="hd-3 mt-1">{interestedCount > 0 ? `${interestedCount} interested` : 'No interest yet'}</div>
+              <div className="t-eyebrow">In lobby</div>
+              <div className="hd-3 mt-1">{interestedCount > 0 ? `${interestedCount} in lobby` : 'Lobby empty'}</div>
             </div>
           </div>
           {interested.length > 0 ? (
@@ -673,7 +648,7 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
             </div>
           ) : (
             <div className="text-[13px] font-semibold text-[var(--muted)]">
-              Be the first to show interest.
+              Be the first to join the lobby.
             </div>
           )}
         </div>
@@ -695,7 +670,7 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           {busy ? (
             <>
               <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
-              {isInterested ? 'Removing…' : 'Saving…'}
+              {isInterested ? 'Leaving…' : 'Joining…'}
             </>
           ) : blockedReason ? (
             <>
@@ -705,12 +680,12 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           ) : isInterested ? (
             <>
               <Icon name="check" size={16} />
-              Interested
+              In lobby
             </>
           ) : (
             <>
               <Icon name="bolt" size={16} />
-              I'm Interested
+              Join lobby
             </>
           )}
         </button>

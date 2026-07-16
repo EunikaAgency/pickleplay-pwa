@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
+import { Icon } from '../../../shared/components/ui/Icon';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 import { ROLE_META, primaryRole } from '../../../shared/lib/roleDisplay';
@@ -130,6 +131,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   const unread = useNotificationStore((s) => s.unread);
   const name = user?.displayName ?? 'Guest';
   const level = user?.skillLevelLabel || (user?.skillLevel != null ? `${user.skillLevel.toFixed(1)} DUPR` : null);
+  const location = [user?.city, user?.province].filter(Boolean).join(', ');
   const role = user ? primaryRole(user) : 'player';
   const roleMeta = user ? ROLE_META[role] : null;
   // Games/Wins/Losses, win rate, activity & recent games are player-performance
@@ -257,6 +259,11 @@ export function ProfileScreenV2(props: ProfileV2Props) {
           {roleMeta && (
             <div className="profile-role-pill" style={{ color: roleMeta.color, background: `${roleMeta.color}1A` }}>
               {roleMeta.label}
+            </div>
+          )}
+          {location && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 8, fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>
+              <Icon name="location" size={13} /> {location}
             </div>
           )}
           {user?.bio && <p className="profile-tagline">{user.bio}</p>}
@@ -415,6 +422,17 @@ export function ProfileScreenV2(props: ProfileV2Props) {
                 <div className="settings-label">
                   <strong>Venue claims</strong>
                   <span>Review ownership claims</span>
+                </div>
+                <Chevron />
+              </li>
+              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('admin-post-reports')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('admin-post-reports'); } }}>
+                <div className="settings-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
+                </div>
+                <div className="settings-label">
+                  <strong>Post reports</strong>
+                  <span>Review reported posts</span>
                 </div>
                 <Chevron />
               </li>

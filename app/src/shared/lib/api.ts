@@ -1350,6 +1350,35 @@ export async function reviewClaim(id: string, body: { status: 'approved' | 'reje
   return request<VenueClaim>(`/api/v1/claims/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
 }
 
+/** A reported PickleFeed post, as the admin moderation queue sees it — the
+ *  reported post (body/author/deleted) + who reported it + the chosen reason. */
+export interface AdminFeedReport {
+  id: string;
+  reason: string | null;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt?: string | null;
+  reporter: { id: string; displayName: string | null } | null;
+  post: {
+    id: string;
+    body: string | null;
+    isDeleted: boolean;
+    hasMedia: boolean;
+    author: { id: string; displayName: string | null } | null;
+    createdAt?: string | null;
+  } | null;
+}
+
+/** Admin: list reported PickleFeed posts by status. Gated by `admin.moderation.manage`. */
+export async function listAdminFeedReports(status: 'pending' | 'resolved' | 'dismissed' = 'pending'): Promise<AdminFeedReport[]> {
+  const env = await rawRequest<AdminFeedReport[]>(`/api/v1/admin/feed-reports${toQuery({ status })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: resolve or dismiss a reported post. Gated by `admin.moderation.manage`. */
+export async function resolveAdminFeedReport(id: string, status: 'resolved' | 'dismissed'): Promise<void> {
+  await request(`/api/v1/admin/feed-reports/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status }, auth: true });
+}
+
 /* --- Create-form helpers -------------------------------------------------- */
 
 export async function fetchCities(): Promise<ApiCity[]> {
@@ -1649,7 +1678,7 @@ export interface ApiGame {
    *  `viewerInterested` is derived client-side from `interestedUsers` vs the user id. */
   interestedUsers?: ApiGamePerson[];
   interestedCount?: number | null;
-  /** Soft headcount goal for open play ("aiming for 8"). Not a cap. */
+  /** Lobby size for open play — a cap: once the lobby is full, no one else joins. */
   targetPlayers?: number | null;
   /** When the lobby became full (ISO) — starts the 1h free-leave window. */
   fullAt?: string | null;
@@ -1718,7 +1747,7 @@ export interface CreateGamePayload {
   date?: string;
   /** Player cap. Optional — the server defaults it (4) for open/interest games. */
   capacity?: number;
-  /** Soft headcount goal for open play ("aiming for 8"). Not a cap. */
+  /** Lobby size for open play — a cap: once the lobby is full, no one else joins. */
   targetPlayers?: number;
   visibility: 'public' | 'invite';
   /** The host's court reservation (created + paid via the booking flow) to link. */
@@ -2295,6 +2324,8 @@ export interface ApiFriendProfile {
   bio: string | null;
   skillLevel: number | null;
   skillLevelLabel: string | null;
+  /** For friend suggestions: how many friends you share (friend-of-friend tier). */
+  mutualCount?: number;
 }
 
 export interface ApiFriend {
@@ -3102,6 +3133,15 @@ export interface CheckoutCard {
   number?: string;
   expiry?: string;
   cvc?: string;
+  /** Cardholder + billing details. Collected by the subscription payment form;
+   *  optional so booking checkout (which doesn't collect them) is unaffected.
+   *  Never stored or charged. */
+  name?: string;
+  billingAddress1?: string;
+  billingAddress2?: string;
+  billingCity?: string;
+  billingProvince?: string;
+  billingZip?: string;
 }
 
 export interface CheckoutPayload {
@@ -4447,14 +4487,16 @@ export async function getMyPartnerSubscriptions(): Promise<PartnerSubscriptionSt
   return request<PartnerSubscriptionState>('/api/v1/partner-subscriptions/me', { auth: true });
 }
 
-/** Buy a term. Throws ApiError `ADDRESS_REQUIRED` (400) when the profile address
- *  is incomplete, or `ALREADY_SUBSCRIBED` (409). */
+/** Buy a term. The `card` is collected at the payment step and gated on the
+ *  demo card in test mode (never stored/charged). Throws ApiError
+ *  `ADDRESS_REQUIRED` (400) when the profile address is incomplete,
+ *  `CARD_DECLINED` (402) on a bad test card, or `ALREADY_SUBSCRIBED` (409). */
 export async function subscribeToPartnerPlan(
   plan: PartnerPlan,
-  opts?: { autoRenew?: boolean },
+  opts?: { autoRenew?: boolean; card?: CheckoutCard },
 ): Promise<PartnerSubscription> {
   return request<PartnerSubscription>('/api/v1/partner-subscriptions', {
-    method: 'POST', body: { plan, autoRenew: opts?.autoRenew }, auth: true,
+    method: 'POST', body: { plan, autoRenew: opts?.autoRenew, card: opts?.card }, auth: true,
   });
 }
 

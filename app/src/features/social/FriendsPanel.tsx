@@ -25,6 +25,11 @@ interface FriendsPanelProps {
 const TABS = ['Friends', 'Requests', 'Find Friends'] as const;
 type Tab = (typeof TABS)[number];
 
+// Remembers the active sub-tab across remounts so viewing a player's profile and
+// coming back lands where you were (e.g. Find Friends), not reset to Friends.
+// Module-scoped for the session — mirrors clubTabMemory in ClubDetailsScreen.
+let friendsTabMemory: Tab = 'Friends';
+
 function roleLabel(roleDefault: string): { label: string; cls: string } {
   switch (roleDefault) {
     case 'coach': return { label: 'Coach', cls: 'coach' };
@@ -84,7 +89,7 @@ function FriendRow({ person, extra, right, onOpen }: { person: ApiFriendProfile;
 /** The Friends half of the Social tab. Body only — `SocialScreen` owns the shell. */
 export function FriendsPanel({ chrome }: FriendsPanelProps) {
   const { onNavigate, isLoggedIn, requireAuth } = chrome;
-  const [tab, setTab] = useState<Tab>('Friends');
+  const [tab, setTab] = useState<Tab>(() => friendsTabMemory);
 
   // Friends list
   const [friends, setFriends] = useState<ApiFriend[]>([]);
@@ -119,6 +124,7 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
   const setPending = useFriendRequestStore((s) => s.setPending);
 
   const goTab = (t: Tab) => {
+    friendsTabMemory = t;
     setTab(t);
     setFriendSearch('');
     setRequestSearch('');
@@ -497,7 +503,13 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
                       key={person.id}
                       person={person}
                       onOpen={() => openProfile(person.id)}
-                      extra={person.distanceKm != null ? <span className="friend-dist">{person.distanceKm} km away</span> : undefined}
+                      extra={
+                        person.mutualCount != null && person.mutualCount > 0
+                          ? <span className="friend-dist">{person.mutualCount} mutual friend{person.mutualCount === 1 ? '' : 's'}</span>
+                          : person.distanceKm != null
+                            ? <span className="friend-dist">{person.distanceKm} km away</span>
+                            : undefined
+                      }
                       right={addButton(person)}
                     />
                   ))}

@@ -41,6 +41,14 @@ interface SidebarProps {
   onOpenShop?: () => void;
   /** Whether the shop screen is active. */
   shopActive?: boolean;
+  /** Open the admin post-reports moderation queue (moderators/admins only). */
+  onOpenPostReports?: () => void;
+  /** Whether the post-reports screen is active. */
+  postReportsActive?: boolean;
+  /** Open the admin venue-claims review screen (moderators/admins only). */
+  onOpenClaims?: () => void;
+  /** Whether the venue-claims screen is active. */
+  claimsActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
   /** Whether the Social (Clubs + Friends) tab is offered. Hidden from staff —
@@ -50,6 +58,9 @@ interface SidebarProps {
   isOwner?: boolean;
   /** Organizers get organizer-specific labels (Organize instead of Today, etc.). */
   isOrganizer?: boolean;
+  /** Admins aren't venue owners — they don't manage venues/pricing/reservations/
+   *  calendar/partners/shop, so those owner-console items are hidden for them. */
+  isAdmin?: boolean;
 }
 
 interface SideTab {
@@ -88,13 +99,16 @@ const organizerTabs: SideTab[] = [
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, onOpenPostReports, postReportsActive = false, onOpenClaims, claimsActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
   const visibleTabs = roleTabs
     .filter((t) => t.id !== 'tournaments' || showTournaments)
-    .filter((t) => t.id !== 'social' || showSocial);
+    .filter((t) => t.id !== 'social' || showSocial)
+    // Admins don't run venues, so drop the owner "Venues" (nearby) tab — which
+    // also carries the Calendar/Pricing/Reservation/Partners owner sub-items.
+    .filter((t) => t.id !== 'nearby' || !isAdmin);
   const showOwnerCalendar = userHasPermission(currentUser, 'owner.access') && onOpenCalendar;
   const showOwnerPricing = userHasPermission(currentUser, 'owner.pricing.manage') && onOpenPricing;
   const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;
@@ -212,8 +226,8 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             )}
           </button>
         )}
-        {/* Shop — owner only */}
-        {isOwner && onOpenShop && (
+        {/* Shop — owner only (admins don't run rental inventory) */}
+        {isOwner && !isAdmin && onOpenShop && (
           <button
             className={`side-tab ${shopActive ? 'active' : ''}`}
             onClick={onOpenShop}
@@ -225,16 +239,41 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             Shop/Rental
           </button>
         )}
+        {/* Moderation — admins/moderators review reported posts + venue claims. */}
+        {onOpenPostReports && (
+          <button
+            className={`side-tab ${postReportsActive ? 'active' : ''}`}
+            onClick={onOpenPostReports}
+            aria-current={postReportsActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name="message" size={20} />
+            </span>
+            Post reports
+          </button>
+        )}
+        {onOpenClaims && (
+          <button
+            className={`side-tab ${claimsActive ? 'active' : ''}`}
+            onClick={onOpenClaims}
+            aria-current={claimsActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name="shield" size={20} />
+            </span>
+            Venue claims
+          </button>
+        )}
         {/* Profile — placed last (very bottom of the nav) for every role. On the
             owner Shop screen the dedicated Shop item above is the active one, so
             don't also light up Profile (Shop maps to the profile tab). */}
         <button
-          className={`side-tab ${activeTab === 'profile' && !shopActive ? 'active' : ''}`}
+          className={`side-tab ${activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive ? 'active' : ''}`}
           onClick={() => onTabPress('profile')}
-          aria-current={activeTab === 'profile' && !shopActive ? 'page' : undefined}
+          aria-current={activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive ? 'page' : undefined}
         >
           <span className="ico">
-            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive ? 'user_fill' : 'user'} size={20} />
+            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive ? 'user_fill' : 'user'} size={20} />
           </span>
           {isLoggedIn ? 'Profile' : 'Login'}
         </button>

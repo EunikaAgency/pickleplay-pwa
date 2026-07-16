@@ -94,6 +94,7 @@ export type Screen =
   // The paid subscription that unlocks organizing (charge for Open Play, run events).
   | { id: 'organizer-subscribe' }
   | { id: 'admin-claims' }
+  | { id: 'admin-post-reports' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
   | { id: 'open-play-book'; params: { venueId: string } }
   // Public flowchart viewer (no auth required).
@@ -200,6 +201,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'organizer-venue-requests': return `/organizer/venue-requests${q({ tournamentId: screen.params?.tournamentId })}`;
     case 'organizer-subscribe': return '/organizer/subscribe';
     case 'admin-claims': return '/admin/claims';
+    case 'admin-post-reports': return '/admin/post-reports';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
     case 'flowchart': return '/flowchart';
     case 'map': return '/map';
@@ -351,6 +353,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'map': return { id: 'map' };
     case 'admin':
       if (b === 'claims') return { id: 'admin-claims' };
+      if (b === 'post-reports') return { id: 'admin-post-reports' };
       return { id: 'home' };
     default: return { id: 'home' };
   }
@@ -387,6 +390,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'test-email') return { id: 'settings' };
   if (id.startsWith('organizer-')) return { id: 'organizer-hub' };
   if (id === 'admin-claims') return { id: 'profile' };
+  if (id === 'admin-post-reports') return { id: 'profile' };
   if (id === 'open-play-book') return { id: 'nearby' };
   if (id === 'flowchart') return { id: 'home' };
   if (id === 'map') return { id: 'nearby' };

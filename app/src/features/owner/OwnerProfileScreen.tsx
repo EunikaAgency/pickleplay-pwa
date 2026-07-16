@@ -35,6 +35,7 @@ const SettingsIco = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill=
 const LogOut = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>);
 const Trophy = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>);
 const Shield = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>);
+const Flag = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>);
 
 type Row = { key: string; icon: ReactNode; label: string; sub: string; onClick: () => void; badge?: number; danger?: boolean; className?: string };
 
@@ -71,6 +72,9 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   const canNotifs = userHasPermission(user, 'owner.notifications.view');
   const isOrganizer = userHasPermission(user, 'organizer.access');
   const canModerate = userHasPermission(user, 'admin.moderation.manage');
+  // Admins aren't venue owners — they don't manage venues/shop/calendar/
+  // reservations/partners, so the whole owner "Manage" section is hidden.
+  const isAdmin = userHasPermission(user, 'admin.access');
   // /owner/reports is owner-only — staff don't see the business-wide roll-up.
   const canReports = userHasPermission(user, 'owner.reports.view');
   // Staff land on this same console (they hold owner.access) — show their real
@@ -112,6 +116,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     ...(canNotifs ? [{ key: 'notifs', icon: <Bell size={18} />, label: 'Notifications', sub: 'Booking & venue alerts', onClick: () => onNavigate('notifications'), badge: unread } as Row] : []),
     ...(isOrganizer ? [{ key: 'organize', icon: <Trophy />, label: 'Organizer console', sub: 'Tournaments & open play', onClick: () => onNavigate('organizer-hub') } as Row] : []),
     ...(canModerate ? [{ key: 'claims', icon: <Shield />, label: 'Venue claims', sub: 'Review ownership claims', onClick: () => onNavigate('admin-claims') } as Row] : []),
+    ...(canModerate ? [{ key: 'post-reports', icon: <Flag />, label: 'Post reports', sub: 'Review reported posts', onClick: () => onNavigate('admin-post-reports') } as Row] : []),
     { key: 'settings', icon: <SettingsIco />, label: 'Settings', sub: 'Privacy & preferences', onClick: () => onNavigate('settings') },
   ];
 
@@ -184,15 +189,18 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
           </div>
         )}
 
-        {/* MANAGE — owner venue-business actions */}
-        <div className="content-section">
-          <h2 className="section-title">Manage</h2>
-          <ul className="settings-list">
-            {manageRows.map((r) => <SettingsRow key={r.key} r={r} />)}
-          </ul>
-        </div>
+        {/* MANAGE — owner venue-business actions (hidden for admins, who aren't
+            venue owners and don't manage venues/shop/calendar/reservations/partners) */}
+        {!isAdmin && (
+          <div className="content-section">
+            <h2 className="section-title">Manage</h2>
+            <ul className="settings-list">
+              {manageRows.map((r) => <SettingsRow key={r.key} r={r} />)}
+            </ul>
+          </div>
+        )}
 
-        <div className="section-gap" />
+        {!isAdmin && <div className="section-gap" />}
 
         {/* ACCOUNT */}
         <div className="content-section">

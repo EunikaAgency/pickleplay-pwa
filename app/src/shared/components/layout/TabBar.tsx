@@ -19,6 +19,8 @@ interface TabBarProps {
   /** Whether the Social (Clubs + Friends) tab is offered. Hidden from staff —
    *  a delegated work account runs the owner's courts, it doesn't socialise. */
   showSocial?: boolean;
+  /** Admins aren't venue owners — the owner "Venues" (nearby) tab is hidden. */
+  isAdmin?: boolean;
 }
 
 type Tab = { id: TabId; label: string; icon: string; iconFill?: string };
@@ -54,11 +56,13 @@ const organizerTabs: Tab[] = [
   { id: 'profile', label: 'Profile',  icon: 'user' },
 ];
 
-export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, isOrganizer = false, showTournaments = true, showSocial = true }: TabBarProps) {
+export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, isOrganizer = false, showTournaments = true, showSocial = true, isAdmin = false }: TabBarProps) {
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
   const items = roleTabs
     .filter((t) => t.id !== 'tournaments' || showTournaments)
-    .filter((t) => t.id !== 'social' || showSocial);
+    .filter((t) => t.id !== 'social' || showSocial)
+    // Admins don't run venues — drop the owner "Venues" (nearby) tab.
+    .filter((t) => t.id !== 'nearby' || !isAdmin);
   const unreadMessages = useMessageStore((s) => s.unread);
   return (
     <nav className={`tabbar${isOwner || isOrganizer ? ' tabbar--owner' : ''}`} aria-label="Primary navigation">

@@ -167,7 +167,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [opSkill, setOpSkill] = useState('3.0–3.5');
   const [opName, setOpName] = useState('');
   const [opDesc, setOpDesc] = useState('');
-  // Soft headcount goal for open play ("aiming for 8") — not a cap.
+  // Lobby size for open play — a hard cap: once the lobby is full, no one else joins.
   const [opTarget, setOpTarget] = useState(8);
   // Public-game details (collected in step 1 when bookingMode === 'public_game').
   // Name/description reuse opName/opDesc (only one mode is active at a time).
@@ -720,7 +720,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           gameDone
             ? (isPublic
               ? 'Your court is booked and your game is live. Players can join up to your slot cap.'
-              : 'Your court is booked and your open play is live. Players can show interest now.')
+              : 'Your court is booked and your open play is live. Players can join the lobby now.')
             : done.confirmed
             ? 'Your court is booked. You can see it under My bookings.'
             : 'Your request was sent and is awaiting venue approval.'
@@ -791,7 +791,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           <div className="field">
             <div className="flex items-center justify-between mb-2">
               <div className="lbl mb-0!">Venue</div>
-              {selected && !picking && (
+              {/* No "Change" when the venue came in from a deep link (/book?venueId=…):
+                  that booking is for that venue. It stays for the generic /book flow,
+                  where the player picked from the directory and may want to switch. */}
+              {selected && !picking && !venueId && (
                 <button type="button" className="chip" onClick={() => setPicking(true)}>
                   <Icon name="edit" size={12} /> Change
                 </button>
@@ -1116,7 +1119,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               </div>
 
               <div className="field">
-                <div className="lbl">Aiming for · {opTarget} players</div>
+                <div className="lbl">Lobby size · {opTarget} players</div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] overflow-hidden">
                     <button type="button" aria-label="Lower target" onClick={() => setOpTarget((n) => Math.max(2, n - 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget <= 2}>
@@ -1127,7 +1130,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                       <Icon name="plus" size={18} />
                     </button>
                   </div>
-                  <div className="text-[12px] font-semibold text-[var(--muted)]">A goal, not a cap — anyone can still show interest.</div>
+                  <div className="text-[12px] font-semibold text-[var(--muted)]">The lobby holds {opTarget} — once it’s full, no one else can join.</div>
                 </div>
               </div>
 
@@ -1391,7 +1394,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               <ReviewRow label="Skill level" value={opSkill} />
               <ReviewRow label="Vibe" value={gameVibe === 'casual' ? 'Casual' : 'Competitive'} />
               <ReviewRow label="Who can play" value={genderPolicyLabel(genderPolicy)} />
-              <ReviewRow label="Aiming for" value={`${opTarget} players`} />
+              <ReviewRow label="Lobby size" value={`${opTarget} players`} />
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
                 <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">

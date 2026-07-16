@@ -7,8 +7,9 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { Toast } from '../../shared/components/ui/Toast';
 import {
-  ApiError, cancelPartnerSubscription, getMyPartnerSubscriptions, resumePartnerSubscription,
-  subscribeToPartnerPlan, type PartnerPlan, type PartnerSubscription, type PartnerSubscriptionState,
+  ApiError, cancelPartnerSubscription, getMyPartnerSubscriptions, getSettings, resumePartnerSubscription,
+  subscribeToPartnerPlan, type AppSettings, type CheckoutCard,
+  type PartnerPlan, type PartnerSubscription, type PartnerSubscriptionState,
 } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -91,9 +92,17 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Payment step — collecting card credentials before the subscription is
+  // created, exactly like booking checkout (test mode pre-fills the demo card).
+  const [payOpen, setPayOpen] = useState(false);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [card, setCard] = useState<CheckoutCard>({});
   // The store refreshes the user so the new coach/organizer role reaches the rest
   // of the app.
   const restore = useAuthStore((s) => s.restore);
+  // Used to pre-fill the cardholder name + billing address (the profile address
+  // is already required to subscribe, so it's the natural billing default).
+  const user = useAuthStore((s) => s.user);
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -107,6 +116,33 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [reloadKey]);
+
+  // Pre-fill the cardholder name + billing address from the signed-in profile
+  // (the profile address is already required before subscribing, so it doubles
+  // as the billing address by default — the user can still edit it).
+  const billingDefaults: CheckoutCard = {
+    name: user?.displayName ?? '',
+    billingAddress1: user?.address1 ?? '',
+    billingAddress2: user?.address2 ?? '',
+    billingCity: user?.city ?? '',
+    billingProvince: user?.province ?? '',
+    billingZip: user?.zipcode ?? '',
+  };
+
+  // Payment mode — pre-fill the demo card in test mode, like the booking flow;
+  // billing details come from the profile in either mode.
+  useEffect(() => {
+    let alive = true;
+    getSettings()
+      .then((s) => {
+        if (!alive) return;
+        setSettings(s);
+        setCard((c) => ({ ...billingDefaults, ...c, ...(s.paymentTestMode ? s.testCard : {}) }));
+      })
+      .catch(() => { if (alive) setCard((c) => ({ ...billingDefaults, ...c })); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
   const retry = useCallback(() => {
@@ -125,17 +161,21 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
     setBusy(true);
     setError(null);
     try {
-      await subscribeToPartnerPlan(plan);
+      await subscribeToPartnerPlan(plan, { card });
       // Subscribing grants the global coach/organizer role — re-read /me so
       // permission gates (and the profile badge) pick it up without a re-login.
       await restore();
+      setPayOpen(false);
       reload();
       setToast(ui.subscribedToast);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'ADDRESS_REQUIRED') {
         setError('Add your address in Edit Profile before subscribing.');
+        setPayOpen(false);
         reload();
       } else {
+        // CARD_DECLINED and other errors stay in the payment sheet so the user
+        // can fix the card and retry.
         setError(e instanceof ApiError ? e.message : 'Could not complete the subscription. Please try again.');
       }
     } finally {
@@ -384,14 +424,127 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
           ) : (
             <Button
               fullWidth
-              onClick={() => void doSubscribe()}
+              onClick={() => { setError(null); setPayOpen(true); }}
               disabled={busy || !addressComplete}
             >
-              {busy ? 'Subscribing…' : !addressComplete ? 'Add your address to continue' : `Subscribe · ${peso(price)}`}
+              {!addressComplete ? 'Add your address to continue' : `Subscribe · ${peso(price)}`}
             </Button>
           )}
         </div>
       )}
+
+      {/* Payment step — card credentials are collected here before the
+          subscription is created (mirrors booking checkout). */}
+      <BottomSheet
+        open={payOpen}
+        onClose={() => { if (!busy) { setPayOpen(false); setError(null); } }}
+        title={`Subscribe · ${peso(price)}`}
+        subtitle={`Billed every ${days} days. Cancel anytime.`}
+        // No tab bar sits behind this screen's sheet, so the default 96px
+        // tab-bar clearance is dead space that squeezes the form into a scroll.
+        flushFooter
+        footer={
+          <div className="flex flex-col gap-2">
+            <Button
+              fullWidth
+              onClick={() => void doSubscribe()}
+              disabled={
+                busy || !card.name?.trim() || !card.number?.trim() || !card.expiry?.trim() || !card.cvc?.trim()
+                || !card.billingAddress1?.trim() || !card.billingCity?.trim()
+                || !card.billingProvince?.trim() || !card.billingZip?.trim()
+              }
+            >
+              {busy ? 'Processing…' : `Pay & subscribe · ${peso(price)}`}
+            </Button>
+            <Button variant="ghost" fullWidth onClick={() => { setPayOpen(false); setError(null); }} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        }
+      >
+        <div className="subscribe-pay px-5 pb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[13px] font-bold text-[var(--muted)]">Card details</span>
+            {settings?.paymentTestMode && (
+              <span className="chip text-[12px] font-bold text-[var(--lime-ink)]">TEST mode — no charge</span>
+            )}
+          </div>
+          <div className="field p-0! mb-2">
+            <label className="lbl">Cardholder name</label>
+            <input
+              className="control" autoComplete="cc-name" value={card.name ?? ''} placeholder="Name on card"
+              onChange={(e) => setCard((c) => ({ ...c, name: e.target.value }))}
+            />
+          </div>
+          <div className="field p-0! mb-2">
+            <label className="lbl">Card number</label>
+            <input
+              className="control" inputMode="numeric" autoComplete="cc-number" value={card.number ?? ''} placeholder="4242 4242 4242 4242"
+              onChange={(e) => setCard((c) => ({ ...c, number: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-2">
+            <div className="field p-0! flex-1">
+              <label className="lbl">Expiry</label>
+              <input
+                className="control" autoComplete="cc-exp" value={card.expiry ?? ''} placeholder="MM/YY"
+                onChange={(e) => setCard((c) => ({ ...c, expiry: e.target.value }))}
+              />
+            </div>
+            <div className="field p-0! flex-1">
+              <label className="lbl">CVC</label>
+              <input
+                className="control" inputMode="numeric" autoComplete="cc-csc" value={card.cvc ?? ''} placeholder="123"
+                onChange={(e) => setCard((c) => ({ ...c, cvc: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="mb-2 mt-3 text-[13px] font-bold text-[var(--muted)]">Billing address</div>
+          <div className="field p-0! mb-2">
+            <label className="lbl">Address</label>
+            <input
+              className="control" autoComplete="billing address-line1" value={card.billingAddress1 ?? ''} placeholder="Street, building"
+              onChange={(e) => setCard((c) => ({ ...c, billingAddress1: e.target.value }))}
+            />
+          </div>
+          <div className="field p-0! mb-2">
+            <label className="lbl">Apartment, suite, landmark <span className="text-[var(--muted)] font-normal">(optional)</span></label>
+            <input
+              className="control" autoComplete="billing address-line2" value={card.billingAddress2 ?? ''} placeholder="Unit / landmark"
+              onChange={(e) => setCard((c) => ({ ...c, billingAddress2: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-2">
+            <div className="field p-0! flex-[2]">
+              <label className="lbl">City</label>
+              <input
+                className="control" autoComplete="billing address-level2" value={card.billingCity ?? ''} placeholder="City"
+                onChange={(e) => setCard((c) => ({ ...c, billingCity: e.target.value }))}
+              />
+            </div>
+            <div className="field p-0! flex-1">
+              <label className="lbl">ZIP</label>
+              <input
+                className="control" inputMode="numeric" autoComplete="billing postal-code" value={card.billingZip ?? ''} placeholder="1000"
+                onChange={(e) => setCard((c) => ({ ...c, billingZip: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="field p-0! mt-2">
+            <label className="lbl">Province</label>
+            <input
+              className="control" autoComplete="billing address-level1" value={card.billingProvince ?? ''} placeholder="Province"
+              onChange={(e) => setCard((c) => ({ ...c, billingProvince: e.target.value }))}
+            />
+          </div>
+          {error && (
+            <div role="alert" className="mt-3 rounded-xl bg-[var(--coral-soft)] px-3 py-2.5 text-[13px] font-semibold text-[var(--coral)]">
+              {error}
+            </div>
+          )}
+        </div>
+      </BottomSheet>
 
       {/* In-app confirmation — never a native window.confirm(). */}
       <BottomSheet

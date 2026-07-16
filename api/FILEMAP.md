@@ -44,7 +44,11 @@ src/
   features/<feature>/        # vertical slice: <f>.controller.ts (Hono handlers)
                              #                + <f>.routes.ts (router + middleware)
                              #                + <f>.model.ts (Mongoose schemas)
-    admin/                   # admin operations (controller + routes, no model)
+    admin/                   # admin operations (controller + routes, no model).
+                             #   Moderation queues: reviews, review-reports, and
+                             #   feed-reports (reported PickleFeed posts →
+                             #   GET/PATCH /admin/feed-reports, backed by feed's
+                             #   FeedReport). Dashboard rolls up pending counts.
     auth/                    # login/register/tokens; auth.model.ts = users
     bookings/                # court bookings; create-time guard (per-user overlap +
                              #   per-court / venue-pool double-booking, honoring a

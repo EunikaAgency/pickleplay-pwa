@@ -327,7 +327,7 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
 
       {/* Sticky comment composer */}
       {isLoggedIn ? (
-        <div className="sticky bottom-0 z-40 w-full bg-[var(--bg)] border-t border-[var(--border)] px-4 py-2.5 pb-[calc(10px+env(safe-area-inset-bottom))]">
+        <div className="fixed left-0 right-0 bottom-0 z-40 max-w-[480px] mx-auto bg-[var(--bg)] border-t border-[var(--border)] px-4 py-2.5 pb-[calc(10px+env(safe-area-inset-bottom))]">
           {/* Staged photo/GIF thumbnails */}
           {commentMedia.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
@@ -383,7 +383,7 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
           </div>
         </div>
       ) : (
-        <div className="sticky bottom-0 z-40 w-full bg-[var(--bg)] border-t border-[var(--border)] px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] t-sm text-center">
+        <div className="fixed left-0 right-0 bottom-0 z-40 max-w-[480px] mx-auto bg-[var(--bg)] border-t border-[var(--border)] px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] t-sm text-center">
           <button className="font-bold text-[var(--ink)]" onClick={() => onNavigate('login')}>Sign in to comment</button>
         </div>
       )}

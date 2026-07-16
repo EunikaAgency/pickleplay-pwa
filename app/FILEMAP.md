@@ -321,11 +321,14 @@ src/
       rosters/         # RostersScreen (lists + create), RosterDetailScreen (members CRUD)
       venues/          # VenueRequestsScreen (submit + track tournament venue requests)
     admin/             # moderation console (gated by admin.moderation.manage) — entry from
-                       # OwnerProfile "Venue claims" row (admins) / ProfileScreenV2 "Admin"
-                       # section (moderators). AdminClaimsScreen (admin-claims) lists submitted
+                       # OwnerProfile "Venue claims"/"Post reports" rows (admins) / ProfileScreenV2
+                       # "Admin" section (moderators). AdminClaimsScreen (admin-claims) lists submitted
                        # venue-ownership claims (status filter, pending first) and approves /
                        # rejects / requests-more-info on a pending claim with a note relayed to
-                       # the claimant. Consumes listClaims/reviewClaim in shared/lib/api.ts
+                       # the claimant. AdminPostReportsScreen (admin-post-reports) lists reported
+                       # PickleFeed posts (Pending/Resolved/Dismissed) with the post + author +
+                       # reporter + reason → Resolve/Dismiss + "View post". Consumes
+                       # listClaims/reviewClaim + listAdminFeedReports/resolveAdminFeedReport in shared/lib/api.ts
                        # (GET/PATCH /api/v1/claims). Reuses the same API the web console uses.
 
   shared/              # cross-feature only (never import a feature from another feature)
@@ -620,6 +623,7 @@ src/
 | Manual reservation (dedicated screen; paints the pricing grid) | `features/owner/OwnerManualReservationScreen.tsx` (`owner-manual-reservation`; desktop 2-col: form + venue's upcoming reservations list). Save = `createVenueBooking({ bookingType: 'manual' })` **and** `createSlotOverride({ price: 0, note: 'Reserved' })` so the hours show green on `OwnerPricingScreen`. Entry: Sidebar item on desktop (≥1024px), owner Profile → Manage row on mobile/tablet (`.mtonly` in `v2.css`). Gated by `owner.bookings.manage` |
 | Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
 | Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |
+| Admin reported-post review (resolve/dismiss) | `features/admin/AdminPostReportsScreen.tsx` (`admin-post-reports`, gated by `admin.moderation.manage`); entry "Post reports" row in `OwnerProfileScreen.tsx` / "Admin" section in `v2/ProfileScreenV2.tsx`; `listAdminFeedReports`/`resolveAdminFeedReport` in `shared/lib/api.ts` → `GET|PATCH /api/v1/admin/feed-reports` |
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
 | Social tab (PickleFeed + Clubs + Friends, the request badge) | `features/social/{SocialScreen,FeedPanel,FeedPostCard,FeedComposerSheet,FeedShareCard,FeedMedia,feedAttachments,FeedPostScreen,RepostQuote,feedTime,ClubsPanel,FriendsPanel}.tsx`; Feed API client in `shared/lib/api.ts` (`FEED_PREFIX`, `uploadFeedMedia`); post photos (per-photo caption) + comment photos/GIFs via `FeedMedia`/`feedAttachments` (GIFs added by pasting from the keyboard/clipboard into the comment field — `onCommentPaste` — or uploading a .gif); per-post ⋯ menu (interested/not-interested/report/hide/notify) via `setFeedSignal`/`hideFeedPost`/`reportFeedPost`/`subscribeFeedPost`; badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/feed.sh` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
