@@ -15,9 +15,12 @@ import { Schema, model } from 'mongoose';
 // trusted from the client) so a feed page renders without N extra look-ups; the
 // live entity is re-fetched only when the viewer taps through via `refId`.
 const attachmentSchema = new Schema({
-  // Room left for 'image' | 'gif' later — MVP is share cards + text only.
-  type:      { type: String, enum: ['game', 'open_play', 'club'], required: true },
-  refId:     { type: Schema.Types.ObjectId, required: true },   // the game/session/club to open + join
+  // A share CARD ('game' | 'open_play' | 'club', identified by refId) or an
+  // uploaded MEDIA item ('image' | 'gif', identified by url). Photos are allowed
+  // on posts + comments; GIFs only on comments (enforced in the controller).
+  type:      { type: String, enum: ['game', 'open_play', 'club', 'image', 'gif'], required: true },
+  refId:     { type: Schema.Types.ObjectId },                   // share cards: the game/session/club to open + join
+  url:       { type: String, maxlength: 1000 },                 // media: the servable image/GIF path
   title:     { type: String, maxlength: 200 },                  // card headline (game/session title, club name)
   subtitle:  { type: String, maxlength: 300 },                  // fallback detail line (description)
   imageUrl:  { type: String, maxlength: 1000 },                 // venue/cover thumbnail
@@ -62,3 +65,59 @@ const feedPostReactionSchema = new Schema({
 feedPostReactionSchema.index({ postId: 1, userId: 1 }, { unique: true });
 
 export const FeedPostReaction = model('FeedPostReaction', feedPostReactionSchema);
+
+// ─── FeedSignal ─────────────────────────────────────────────────────────────
+// A viewer's per-author feed preference. `interested` floats that author's posts
+// to the top of each feed page (de-clustered so they're never back-to-back) and
+// keeps them exempt from muting; `not_interested` mutes the author from the
+// viewer's feed. One row per (userId, authorId) — the latest tap wins.
+const feedSignalSchema = new Schema({
+  userId:   { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  authorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  type:     { type: String, enum: ['interested', 'not_interested'], required: true },
+}, { timestamps: true });
+
+feedSignalSchema.index({ userId: 1, authorId: 1 }, { unique: true });
+
+export const FeedSignal = model('FeedSignal', feedSignalSchema);
+
+// ─── FeedHiddenPost ─────────────────────────────────────────────────────────
+// "Hide post (for a day)" — a viewer-scoped, time-boxed hide. The feed filters
+// out posts whose `hiddenUntil` is still in the future; past that they reappear.
+const feedHiddenPostSchema = new Schema({
+  userId:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  postId:      { type: Schema.Types.ObjectId, ref: 'FeedPost', required: true },
+  hiddenUntil: { type: Date, required: true },
+}, { timestamps: true });
+
+feedHiddenPostSchema.index({ userId: 1, postId: 1 }, { unique: true });
+
+export const FeedHiddenPost = model('FeedHiddenPost', feedHiddenPostSchema);
+
+// ─── FeedReport ─────────────────────────────────────────────────────────────
+// A user's report of a post (for later moderation review). One row per
+// (userId, postId) — a repeat report just refreshes the reason.
+const feedReportSchema = new Schema({
+  userId:     { type: Schema.Types.ObjectId, ref: 'User', required: true },   // the reporter
+  postId:     { type: Schema.Types.ObjectId, ref: 'FeedPost', required: true },
+  reason:     { type: String, maxlength: 500 },
+  // Moderation lifecycle, mirroring ReviewReport: pending → resolved | dismissed.
+  status:     { type: String, enum: ['pending', 'resolved', 'dismissed'], default: 'pending' },
+  resolvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+}, { timestamps: true });
+
+feedReportSchema.index({ userId: 1, postId: 1 }, { unique: true });
+
+export const FeedReport = model('FeedReport', feedReportSchema);
+
+// ─── FeedNotifySub ──────────────────────────────────────────────────────────
+// "Turn on notifications for this post" — the viewer is notified when someone
+// comments on it. One row per (userId, postId).
+const feedNotifySubSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  postId: { type: Schema.Types.ObjectId, ref: 'FeedPost', required: true },
+}, { timestamps: true });
+
+feedNotifySubSchema.index({ userId: 1, postId: 1 }, { unique: true });
+
+export const FeedNotifySub = model('FeedNotifySub', feedNotifySubSchema);

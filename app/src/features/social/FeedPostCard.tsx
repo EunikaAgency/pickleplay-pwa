@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { Icon } from '../../shared/components/ui/Icon';
+import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { FeedShareCard } from './FeedShareCard';
+import { FeedMedia } from './FeedMedia';
+import { shareCardOf, mediaOf } from './feedAttachments';
 import { RepostQuote } from './RepostQuote';
 import { relTime, linkifyBody } from './feedTime';
 import type { ApiFeedPost } from '../../shared/lib/api';
@@ -15,6 +19,7 @@ interface FeedPostCardProps {
   onToggleLike: () => void;
   onRepost: () => void;
   onShare: () => void;
+  onCopyLink: () => void;
   /** Opens the author ⋯ action sheet. Omitted → no menu (not the author). */
   onOpenActions?: () => void;
 }
@@ -24,9 +29,11 @@ interface FeedPostCardProps {
  * body, an optional share card / reposted quote, then the like · comment ·
  * repost · share action row. Used by the feed list and the permalink header.
  */
-export function FeedPostCard({ post, onNavigate, onOpen, onToggleLike, onRepost, onShare, onOpenActions }: FeedPostCardProps) {
+export function FeedPostCard({ post, onNavigate, onOpen, onToggleLike, onRepost, onShare, onCopyLink, onOpenActions }: FeedPostCardProps) {
+  const [shareOpen, setShareOpen] = useState(false);
+
   return (
-    <article className="about-card cursor-pointer !mb-5 !border-[var(--border)]" style={{ borderWidth: 1, boxShadow: '0 2px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)' }}>
+    <article className="about-card cursor-pointer !mb-3 !border-[var(--border)]" style={{ borderWidth: 1, boxShadow: '0 2px 16px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06)' }}>
       <div className="flex items-center gap-2.5">
         <Avatar src={post.author?.avatarUrl} name={post.author?.displayName ?? 'Player'} size={40} variant="blue" />
         <div className="min-w-0">
@@ -46,12 +53,15 @@ export function FeedPostCard({ post, onNavigate, onOpen, onToggleLike, onRepost,
       </div>
 
       {/* Body — tapping it opens the permalink. */}
-      <div role="button" onClick={onOpen}>
-        <p className="mt-2.5 whitespace-pre-wrap break-words">
+      <div role="button" onClick={onOpen} className="py-2.5">
+        <p className="whitespace-pre-wrap break-words">
           {post.isDeleted ? <em className="text-[var(--muted)]">This post was deleted.</em> : linkifyBody(post.body ?? '')}
         </p>
-        {!post.isDeleted && post.attachments?.[0] && (
-          <FeedShareCard attachment={post.attachments[0]} onNavigate={onNavigate} />
+        {!post.isDeleted && mediaOf(post.attachments).length > 0 && (
+          <FeedMedia media={mediaOf(post.attachments)} />
+        )}
+        {!post.isDeleted && shareCardOf(post.attachments) && (
+          <FeedShareCard attachment={shareCardOf(post.attachments)!} onNavigate={onNavigate} />
         )}
         {!post.isDeleted && post.sharedPost && (
           <RepostQuote shared={post.sharedPost} onNavigate={onNavigate} />
@@ -78,11 +88,37 @@ export function FeedPostCard({ post, onNavigate, onOpen, onToggleLike, onRepost,
             <Icon name="repeat" size={18} />
             Repost
           </button>
-          <button onClick={onShare} aria-label="Share" className="ml-auto inline-flex items-center gap-1.5 font-bold text-[var(--muted)]">
-            <Icon name="share" size={18} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShareOpen(true)}
+              aria-label="Share"
+              className="inline-flex items-center gap-1.5 font-bold text-[var(--muted)]"
+            >
+              <Icon name="share" size={18} />
+              Share
+            </button>
+          </div>
         </div>
       )}
+
+      <BottomSheet open={shareOpen} onClose={() => setShareOpen(false)} title="Share post">
+        <div className="flex flex-col gap-1 pb-2">
+          <button
+            type="button"
+            onClick={() => { onCopyLink(); setShareOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-2 py-3 text-left text-[15px] font-semibold text-[var(--ink)] active:bg-[var(--surface-2)] rounded-xl"
+          >
+            <Icon name="content_copy" size={18} /> Copy link
+          </button>
+          <button
+            type="button"
+            onClick={() => { onShare(); setShareOpen(false); }}
+            className="w-full flex items-center gap-2.5 px-2 py-3 text-left text-[15px] font-semibold text-[var(--ink)] active:bg-[var(--surface-2)] rounded-xl"
+          >
+            <Icon name="share" size={18} /> Share to social…
+          </button>
+        </div>
+      </BottomSheet>
     </article>
   );
 }

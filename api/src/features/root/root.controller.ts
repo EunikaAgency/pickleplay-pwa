@@ -318,11 +318,15 @@ export function listEndpoints(c: any) {
     {
       name: 'PickleFeed (global player newsfeed)',
       endpoints: [
-        { path: '/api/v1/feed', methods: ['GET'], description: 'The global newsfeed — top-level posts, cursor-paginated newest-first (recursive FeedPost). Public read (optionalAuth sets viewerReacted). Posts carry text, an optional share CARD (a public game / open-play session / club), and/or a repost of another post' },
-        { path: '/api/v1/feed/posts', methods: ['POST'], description: 'Create a post (auth). Body { body?, parentPostId? (makes it a comment), sharedPostId? (repost), attachment?: { type: game|open_play|club, refId } }. The share card is enriched server-side from the referenced entity. Needs text OR an attachment OR a repost', auth: 'user' },
+        { path: '/api/v1/feed', methods: ['GET'], description: 'The global newsfeed — top-level posts, cursor-paginated newest-first (recursive FeedPost). Public read (optionalAuth sets viewerReacted). For a signed-in viewer it also personalizes: not_interested authors are muted, hidden posts (24h) dropped, interested authors floated to the top and de-clustered (never back-to-back); each post carries viewerAuthorSignal + viewerNotify. Posts carry text, photos (each with an optional caption), an optional share CARD (a public game / open-play session / club), and/or a repost of another post' },
+        { path: '/api/v1/feed/posts', methods: ['POST'], description: 'Create a post (auth). Body { body?, parentPostId? (makes it a comment), sharedPostId? (repost), attachment?: { type: game|open_play|club, refId }, media?: [{ type: image|gif, url, caption? }] }. The share card is enriched server-side from the referenced entity. Needs text OR a photo OR an attachment OR a repost. A comment notifies the post author + everyone subscribed via /notify', auth: 'user' },
+        { path: '/api/v1/feed/signals', methods: ['POST'], description: 'Set the viewer\'s per-author feed preference. Body { authorId, type: interested|not_interested|clear }. interested floats + de-clusters that author; not_interested mutes them; clear removes it. 400 SELF_SIGNAL on your own posts', auth: 'user' },
         { path: '/api/v1/feed/posts/:postId', methods: ['GET', 'PATCH', 'DELETE'], description: 'Single post + first page of comments (GET). PATCH/DELETE are author-only (DELETE is a soft delete)' },
         { path: '/api/v1/feed/posts/:postId/replies', methods: ['GET'], description: 'Comments on a post, cursor-paginated newest-first' },
         { path: '/api/v1/feed/posts/:postId/react', methods: ['POST', 'DELETE'], description: 'Like / unlike a post (idempotent toggle; auth)', auth: 'user' },
+        { path: '/api/v1/feed/posts/:postId/hide', methods: ['POST'], description: 'Hide a post from the viewer\'s feed for 24h (reappears after)', auth: 'user' },
+        { path: '/api/v1/feed/posts/:postId/report', methods: ['POST'], description: 'Report a post for moderation review. Body { reason? }', auth: 'user' },
+        { path: '/api/v1/feed/posts/:postId/notify', methods: ['POST', 'DELETE'], description: 'Turn comment notifications on / off for a post (auth)', auth: 'user' },
       ],
     },
     {
@@ -475,6 +479,8 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/admin/reviews/:id', methods: ['PATCH'], description: 'Approve / reject a review', auth: 'admin' },
         { path: '/api/v1/admin/reports', methods: ['GET'], description: 'Review reports queue', auth: 'admin' },
         { path: '/api/v1/admin/reports/:id', methods: ['PATCH'], description: 'Resolve a report', auth: 'admin' },
+        { path: '/api/v1/admin/feed-reports', methods: ['GET'], description: 'Reported PickleFeed posts queue (?status=pending|resolved|dismissed) — each row carries the reported post (body/author/deleted) + reporter + reason', auth: 'admin' },
+        { path: '/api/v1/admin/feed-reports/:id', methods: ['PATCH'], description: 'Resolve / dismiss a reported post — body { status: resolved|dismissed }', auth: 'admin' },
         { path: '/api/v1/admin/audit-logs', methods: ['GET'], description: 'Audit trail', auth: 'admin' },
         { path: '/api/v1/admin/subscriptions', methods: ['GET'], description: 'Newsletter subscribers list', auth: 'admin' },
         { path: '/api/v1/admin/roles', methods: ['GET'], description: 'List the fixed roles with their permissions and user counts', auth: 'admin' },

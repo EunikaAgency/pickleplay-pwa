@@ -5,12 +5,14 @@ import {
   listAuditLogs,
   listOwners,
   listReports,
+  listFeedReports,
   listReviews,
   listSubscriptions,
   listUsers,
   moderateReview,
   requireAdmin,
   resolveReport,
+  resolveFeedReport,
   updateUser,
 } from './admin.controller.js';
 
@@ -25,6 +27,8 @@ adminRoutes.get('/reviews', listReviews);
 adminRoutes.patch('/reviews/:id', moderateReview);
 adminRoutes.get('/reports', listReports);
 adminRoutes.patch('/reports/:id', resolveReport);
+adminRoutes.get('/feed-reports', listFeedReports);
+adminRoutes.patch('/feed-reports/:id', resolveFeedReport);
 adminRoutes.get('/audit-logs', listAuditLogs);
 adminRoutes.get('/subscriptions', listSubscriptions);
 

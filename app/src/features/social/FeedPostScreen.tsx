@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
@@ -11,9 +11,12 @@ import type { Navigate } from '../../shared/lib/navigation';
 import { useAuthStore } from '../../shared/lib/authStore';
 import {
   getFeedPost, listFeedReplies, createFeedPost, reactFeedPost, unreactFeedPost, editFeedPost, deleteFeedPost,
+  uploadFeedMedia, apiImageUrl,
   type ApiFeedPost, type FeedSharedPost,
 } from '../../shared/lib/api';
 import { FeedShareCard } from './FeedShareCard';
+import { FeedMedia } from './FeedMedia';
+import { shareCardOf, mediaOf } from './feedAttachments';
 import { RepostQuote } from './RepostQuote';
 import { relTime, linkifyBody } from './feedTime';
 import { FeedComposerSheet } from './FeedComposerSheet';
@@ -41,6 +44,9 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'ready'>('loading');
 
   const [draft, setDraft] = useState('');
+  const [commentMedia, setCommentMedia] = useState<{ type: 'image' | 'gif'; url: string }[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   const [posting, setPosting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
@@ -100,15 +106,60 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
     } catch { /* dismissed */ }
   };
 
+  // Attach a photo or GIF to the comment (both allowed on comments). A GIF is
+  // just an animated image file — tagged by MIME so the server/render can label it.
+  const pickCommentMedia = async (file: File | null | undefined) => {
+    if (!file || uploadingMedia) return;
+    if (!isLoggedIn) { onNavigate('login'); return; }
+    if (commentMedia.length >= 4) { showToast('Up to 4 attachments'); return; }
+    setUploadingMedia(true);
+    try {
+      const url = await uploadFeedMedia(file);
+      if (url) setCommentMedia((m) => [...m, { type: file.type === 'image/gif' ? 'gif' : 'image', url }]);
+    } catch {
+      showToast("Couldn't upload that file");
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  // Pull image/GIF files out of a paste (the phone keyboard's GIF button and a
+  // desktop image-paste both deliver here). Different keyboards expose the file
+  // via `files` OR via `items`, so we check both, then route into the upload flow.
+  const onCommentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const dt = e.clipboardData;
+    if (!dt) return;
+    const fromFiles = Array.from(dt.files ?? []);
+    const fromItems = Array.from(dt.items ?? [])
+      .filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => !!f);
+    // Dedupe (a browser may list the same image in both files and items).
+    const seen = new Set<string>();
+    const images = [...fromFiles, ...fromItems].filter((f) => {
+      if (!f.type.startsWith('image/')) return false;
+      const key = `${f.name}:${f.size}:${f.type}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (images.length) { e.preventDefault(); images.forEach((f) => void pickCommentMedia(f)); }
+  };
+
   const submitComment = async () => {
-    if (!post || !draft.trim() || posting) return;
+    if (!post || (!draft.trim() && commentMedia.length === 0) || posting) return;
     if (!isLoggedIn) { onNavigate('login'); return; }
     setPosting(true);
     try {
-      const reply = await createFeedPost({ body: draft.trim(), parentPostId: post.id });
+      const reply = await createFeedPost({
+        body: draft.trim() || undefined,
+        parentPostId: post.id,
+        media: commentMedia.length ? commentMedia : undefined,
+      });
       setReplies((r) => [...r, reply]);
       setPost((p) => (p ? { ...p, replyCount: p.replyCount + 1 } : p));
       setDraft('');
+      setCommentMedia([]);
     } catch {
       showToast("Couldn't post your comment");
     } finally {
@@ -191,7 +242,8 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
       ) : (
         <p className={`${isComment ? 'text-[14px]' : 'mt-2.5'} whitespace-pre-wrap break-words`}>{p.isDeleted ? <em className="text-[var(--muted)]">deleted</em> : linkifyBody(p.body ?? '')}</p>
       )}
-      {!p.isDeleted && p.attachments?.[0] && <FeedShareCard attachment={p.attachments[0]} onNavigate={onNavigate} compact={isComment} />}
+      {!p.isDeleted && mediaOf(p.attachments).length > 0 && <FeedMedia media={mediaOf(p.attachments)} compact={isComment} />}
+      {!p.isDeleted && shareCardOf(p.attachments) && <FeedShareCard attachment={shareCardOf(p.attachments)!} onNavigate={onNavigate} compact={isComment} />}
       {!p.isDeleted && p.sharedPost && <RepostQuote shared={p.sharedPost} onNavigate={onNavigate} />}
     </>
   );
@@ -276,10 +328,45 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
       {/* Sticky comment composer */}
       {isLoggedIn ? (
         <div className="sticky bottom-0 z-40 w-full bg-[var(--bg)] border-t border-[var(--border)] px-4 py-2.5 pb-[calc(10px+env(safe-area-inset-bottom))]">
+          {/* Staged photo/GIF thumbnails */}
+          {commentMedia.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {commentMedia.map((m, i) => (
+                <div key={`${m.url}-${i}`} className="relative w-16 h-16 rounded-xl overflow-hidden border border-[var(--border)]">
+                  <img src={apiImageUrl(m.url)} alt={m.type === 'gif' ? 'GIF' : 'Photo'} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    aria-label="Remove attachment"
+                    onClick={() => setCommentMedia((cm) => cm.filter((_, j) => j !== i))}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                  >
+                    <Icon name="close" size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-2.5">
+            <input
+              ref={mediaInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => { void pickCommentMedia(e.target.files?.[0]); e.target.value = ''; }}
+            />
+            <button
+              type="button"
+              aria-label="Add photo"
+              onClick={() => mediaInputRef.current?.click()}
+              disabled={uploadingMedia || commentMedia.length >= 4}
+              className="w-11 h-11 shrink-0 rounded-[14px] bg-[var(--surface-2)] text-[var(--muted)] flex items-center justify-center disabled:opacity-50"
+            >
+              <Icon name={uploadingMedia ? 'spinner' : 'camera'} size={18} className={uploadingMedia ? 'animate-spin' : ''} />
+            </button>
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onPaste={onCommentPaste}
               placeholder="Write a comment…"
               rows={1}
               maxLength={8000}
@@ -288,7 +375,7 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
             <button
               aria-label="Post comment"
               onClick={submitComment}
-              disabled={!draft.trim() || posting}
+              disabled={(!draft.trim() && commentMedia.length === 0) || posting}
               className="w-11 h-11 shrink-0 rounded-[14px] bg-[var(--lime)] text-[var(--lime-ink)] flex items-center justify-center disabled:opacity-50"
             >
               <Icon name={posting ? 'spinner' : 'send'} size={18} className={posting ? 'animate-spin' : ''} />
@@ -324,6 +411,7 @@ export function FeedPostScreen({ postId, onNavigate, onBack }: FeedPostScreenPro
         onPosted={() => { setRepostTarget(null); showToast('Reposted'); }}
         repostOf={repostTarget}
       />
+
 
       {/* Delete confirm */}
       {deleteTarget && (

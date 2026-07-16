@@ -110,7 +110,11 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   // A bare Play tap opens on Open Play, not Events — §3.3 of the 8 July minutes.
   // It used to default to Events, so the most common player need sat one hidden
   // dropdown away while the least common one greeted them.
-  const { onNavigate, isLoggedIn, initialSection = 'open-play', initialView = 'discover' } = chrome;
+  const { onNavigate, isLoggedIn, initialSection = 'open-play' } = chrome;
+  // Captured raw so the landing effect can tell a bare entry (no ?view=) from an
+  // explicit deep-link. `initialView` keeps the old default for the mount reset.
+  const rawInitialView = chrome.initialView;
+  const initialView: View = rawInitialView ?? 'discover';
   const me = useAuthStore((s) => s.user);
   const myId = me?.id ?? null;
 
@@ -390,6 +394,35 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     ? ['best', 'soonest', 'nearest', 'fill', 'newest']
     : ['best', 'soonest', 'fill', 'newest'];
 
+  // ── Discover / Mine restructure ───────────────────────────────────────────
+  // The old two-row control (a section tab row + a 4-item view row that visually
+  // collided with it) is now a compact product segment (Open Play / Events) plus
+  // a Discover ⇄ Mine switch. Joined / Invites / Manage fold under Mine as chips,
+  // shown only when they hold something (or are active) — the same filter the old
+  // view row used, so nothing that was reachable becomes unreachable.
+  const mode: 'discover' | 'mine' = view === 'discover' ? 'discover' : 'mine';
+  const mineChips: View[] = section === 'open-play'
+    ? (['joined', 'invites', 'manage'] as View[]).filter((k) =>
+        (k !== 'joined' || hasOpenPlayJoined || view === 'joined')
+        && (k !== 'invites' || hasOpenPlayInvites || view === 'invites'))
+    : (['joined', 'manage'] as View[]).filter((k) => k !== 'joined' || hasGamesJoined || view === 'joined');
+  const chipCount = (k: View): number => {
+    if (k === 'joined') return section === 'open-play' ? openJoinedGames.length + openJoinedSessions.length : gamesJoined.length;
+    if (k === 'invites') return openInvitedGames.length;
+    return section === 'open-play' ? openManageGames.length + privateBookings.length : gamesManage.length;
+  };
+  // The Mine pip counts invites first — they're time-sensitive and actionable —
+  // and falls back to the joined count so the switch still signals "you have plays".
+  const mineBadgeCount = section === 'open-play' && hasOpenPlayInvites
+    ? openInvitedGames.length
+    : chipCount('joined');
+  // Which chip a fresh tap on "Mine" should open: invites lead, else joined, else manage.
+  const preferredMineView = (): View => {
+    if (section === 'open-play' && hasOpenPlayInvites) return 'invites';
+    const joined = section === 'open-play' ? hasOpenPlayJoined : hasGamesJoined;
+    return joined ? 'joined' : 'manage';
+  };
+
   // Reflect the active tab into the URL *through the router* (onNavigate), not a
   // raw history.replaceState. The rendered screen is derived from the URL, and
   // only routerNavigate notifies that derivation — a bare replaceState left App's
@@ -420,6 +453,24 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     syncTabUrl(next, 'discover');
   };
   const selectView = (next: View) => { setView(next); syncTabUrl(section, next); };
+  const selectMode = (m: 'discover' | 'mine') => {
+    if (m === 'discover') { selectView('discover'); return; }
+    if (mode === 'mine') return; // already in Mine — keep the active chip
+    selectView(preferredMineView());
+  };
+
+  // Landing rule: a bare entry (no explicit ?view=) with invites waiting opens on
+  // Invites — the highest-priority actionable view — once data has loaded. An
+  // explicit deep-link view always wins, and this fires at most once per mount.
+  const landedRef = useRef(false);
+  useEffect(() => {
+    if (landedRef.current || loading) return;
+    landedRef.current = true;
+    if (!rawInitialView && section === 'open-play' && openInvitedGames.length > 0) {
+      selectView('invites');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const clearDiscoverControls = () => {
     setSearch('');
@@ -530,10 +581,6 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     }
   };
 
-  const subheading = section === 'games'
-    ? 'Tournaments, competitive matches, and organized events.'
-    : 'Open play sessions, player-hosted plays, and your court bookings.';
-
   // The "Play" FAB navigates here (Open Play → Invites), so hide it while the
   // user is already on that view — no point offering a jump to the current page.
   const hideFab = section === 'open-play' && view === 'invites';
@@ -541,27 +588,21 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   return (
     <V2Shell screen="v2-games" chrome={chrome} hideFab={hideFab}>
       <div className="page-content">
-        <div className="games-intro">
+        {/* Compact header: the "Play" title and the product segment (Open Play /
+            Events) share one row, replacing the old title block + full-width
+            underline tab row. The segment picks the PRODUCT; the Discover ⇄ Mine
+            switch below picks the VIEW of it — styled distinctly so the two never
+            read as one control. §3.4 of the 8 July minutes. */}
+        <div className="games-topbar">
           <h1 className="games-heading">Play</h1>
-          <p className="games-subheading">{subheading}</p>
-        </div>
-
-        {/* Open Play and Events, side by side — §3.4 of the 8 July minutes. They used
-            to hide behind a dropdown that read only "Open Play", so a player who never
-            opened it had no way of knowing Events existed at all.
-
-            Deliberately NOT the lime pill used by the row below: these tabs pick the
-            PRODUCT, that row picks the VIEW of it (Discover / Joined / Manage). Styled
-            alike, the two would read as one four-item control. */}
-        <div className="tab-group-row">
-          <div className="section-tabs" role="tablist" aria-label="Play section">
+          <div className="prod-seg" role="tablist" aria-label="Play section">
             {SECTION_KEYS.map((key) => (
               <button
                 key={key}
                 type="button"
                 role="tab"
                 aria-selected={section === key}
-                className={`section-tab${section === key ? ' active' : ''}`}
+                className={`prod-seg-btn${section === key ? ' active' : ''}`}
                 onClick={() => selectSection(key)}
               >
                 {SECTION_LABELS[key]}
@@ -570,24 +611,53 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           </div>
         </div>
 
-        <div className="tab-group-row">
-          <div className="tab-group" role="tablist" aria-label="Play view">
-            {/* The tab SET is stable across load cycles: Joined/Invites appear only
-                when they actually have something (or are the active view), never
-                keyed on `loading`. Keying them on `loading` made the row expand to
-                all tabs and then collapse on every re-fetch — the reload "twitch". */}
-            {(section === 'open-play'
-              ? (['discover', 'joined', 'invites', 'manage'] as View[]).filter(k => (k !== 'joined' || hasOpenPlayJoined || view === 'joined') && (k !== 'invites' || hasOpenPlayInvites || view === 'invites'))
-              : (['discover', 'joined', 'manage'] as View[]).filter(k => k !== 'joined' || hasGamesJoined || view === 'joined')
-            ).map((key) => (
-                <button key={key} className={'seg-btn' + (view === key ? ' active' : '')} role="tab" aria-selected={view === key} onClick={() => selectView(key as View)}>
-                  {key === 'discover' ? 'Discover' : key === 'joined' ? 'Joined' : key === 'invites' ? (
-                  <span className="inline-flex items-center gap-1.5">Invites{openInvitedGames.length > 0 && <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-[var(--coral)] text-white text-[10px] font-bold px-1">{openInvitedGames.length}</span>}</span>
-                ) : 'Manage'}
-                </button>
-              ))}
-            </div>
+        {/* Discover ⇄ Mine — the primary view switch. Joined / Invites / Manage
+            fold under Mine as chips (below), each shown only when it holds
+            something (or is active — the set stays stable across load cycles, so
+            the row never expands-then-collapses on a re-fetch). */}
+        <div className="mode-row" role="tablist" aria-label="Play view">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'discover'}
+            className={`mode-btn${mode === 'discover' ? ' active' : ''}`}
+            onClick={() => selectMode('discover')}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+            Discover
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'mine'}
+            className={`mode-btn${mode === 'mine' ? ' active' : ''}`}
+            onClick={() => selectMode('mine')}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="7" r="4" /></svg>
+            Mine
+            {mineBadgeCount > 0 && (
+              <span className={`mode-pip${section === 'open-play' && hasOpenPlayInvites ? ' inv' : ''}`}>{mineBadgeCount}</span>
+            )}
+          </button>
+        </div>
+
+        {mode === 'mine' && mineChips.length > 0 && (
+          <div className="mine-chips" role="tablist" aria-label="Your plays">
+            {mineChips.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={view === key}
+                className={`mine-chip${view === key ? ' active' : ''}${key === 'invites' && openInvitedGames.length > 0 ? ' alert' : ''}`}
+                onClick={() => selectView(key)}
+              >
+                {key === 'joined' ? 'Joined' : key === 'invites' ? 'Invites' : 'Manage'}
+                <span className="mine-chip-count">{chipCount(key)}</span>
+              </button>
+            ))}
           </div>
+        )}
 
         <div className="search-filter-row">
           <div className="search-bar">
@@ -688,6 +758,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               items={discoverFiltered}
               onOpen={(i) => onNavigate('game-details', { id: i.id })}
               showDateHeaders={sort === 'soonest'}
+              hero={sort === 'best'}
               unfilteredCount={discoverUnfiltered}
               emptyText="No events available yet. Book a court and host one."
               emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
@@ -715,6 +786,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               items={discoverFiltered}
               onOpen={(i) => onNavigate('open-play-detail', { source: i.kind, id: i.id })}
               showDateHeaders={sort === 'soonest'}
+              hero={sort === 'best'}
               unfilteredCount={discoverUnfiltered}
               emptyText="No open plays available yet. Book a court and publish one."
               emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
@@ -896,7 +968,7 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
  *  and games, Events is games only — since the only differences are the detail
  *  route and the empty copy. Date headers only make sense under the chronological
  *  sort; over a relevance ranking they'd be noise. */
-function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyText, emptyAction, narrowedByControls, onClearControls, located }: {
+function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyText, emptyAction, narrowedByControls, onClearControls, located, hero }: {
   items: ScoredPlayItem[];
   onOpen: (item: ScoredPlayItem) => void;
   showDateHeaders: boolean;
@@ -908,6 +980,9 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
   /** We know where the user is — so a card with no distance means the *venue*
    *  has no coordinates, not that location is off. The card says which. */
   located: boolean;
+  /** Feature the top-ranked item as a full-width hero. Only passed under the
+   *  Relevance sort — over a date/distance ordering "top pick" would be a lie. */
+  hero?: boolean;
 }) {
   // Nothing on the platform vs. nothing matching *your* search+filters are
   // different problems and deserve different exits.
@@ -920,7 +995,7 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
 
   const open = (i: ScoredPlayItem) => onOpen(i);
   if (!showDateHeaders) {
-    return <>{items.map((i) => <PlayCard key={i.kind + '-' + i.id} item={i} located={located} onClick={() => open(i)} />)}</>;
+    return <>{items.map((i, idx) => <PlayCard key={i.kind + '-' + i.id} item={i} located={located} featured={hero && idx === 0} onClick={() => open(i)} />)}</>;
   }
 
   // Group consecutive runs — the list is already date-ordered under this sort.
@@ -945,7 +1020,7 @@ function DiscoverFeed({ items, onOpen, showDateHeaders, unfilteredCount, emptyTe
 /** The unified Discover card. Sessions and games render alike — a `kind` badge and
  *  the "why" chips are what distinguish them — so a player can judge skill,
  *  distance, price, and host without tapping through. */
-function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: () => void; located: boolean }) {
+function PlayCard({ item, onClick, located, featured }: { item: ScoredPlayItem; onClick: () => void; located: boolean; featured?: boolean }) {
   const me = useAuthStore((s) => s.user);
   const badge = item.kind === 'session'
     ? { cls: 'badge-open', label: 'Open Play' }
@@ -989,12 +1064,13 @@ function PlayCard({ item, onClick, located }: { item: ScoredPlayItem; onClick: (
 
   return (
     <article
-      className={`game-card${locked ? ' game-card-locked' : ''}`}
+      className={`game-card${featured ? ' game-hero' : ''}${locked ? ' game-card-locked' : ''}`}
       aria-disabled={locked || undefined}
       {...(locked ? {} : { role: 'button', tabIndex: 0, onClick })}
     >
       <div className="game-thumb" style={{ backgroundImage: `url(${apiImageUrl(item.image) || FALLBACK_GAME_IMG})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
         <span className={`game-type-badge ${badge.cls}`}>{badge.label}</span>
+        {featured && <span className="hero-flag">★ Top pick</span>}
       </div>
       <div className="game-body">
         <div className="game-title">{item.title}</div>

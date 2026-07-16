@@ -1573,6 +1573,16 @@ export async function uploadClubMedia(clubId: string, file: File): Promise<strin
   return m?.url ?? null;
 }
 
+/**
+ * Upload a photo/GIF to attach to a PickleFeed post or comment; returns its
+ * servable URL. Tagged `ownerType: 'post'` with no owner id (the post doesn't
+ * exist yet at upload time — mirrors the claim-media pattern).
+ */
+export async function uploadFeedMedia(file: File): Promise<string | null> {
+  const m = await uploadMedia('post', '', file);
+  return m?.url ?? null;
+}
+
 /* ─── Games (open-play) ─────────────────────────────────────── */
 //
 // Player-created open-play games. Browse + detail are public (guests can
@@ -2694,8 +2704,11 @@ const FEED_PREFIX = '/api/v1/feed';
  *  Tap it (via `refId`) to open + join that entity. `imageUrl` is raw — wrap
  *  with apiImageUrl to render. */
 export interface FeedAttachment {
-  type: 'game' | 'open_play' | 'club';
-  refId: string;
+  type: 'game' | 'open_play' | 'club' | 'image' | 'gif';
+  /** Share cards only — the game/session/club to open. Null for media. */
+  refId: string | null;
+  /** Media only — the uploaded photo/GIF path (wrap with apiImageUrl). Null for share cards. */
+  url: string | null;
   title: string | null;
   subtitle: string | null;
   imageUrl: string | null;
@@ -2732,6 +2745,10 @@ export interface ApiFeedPost {
   reactionCount: number;
   replyCount: number;
   viewerReacted: boolean;
+  /** The viewer's per-author feed preference (null = none). */
+  viewerAuthorSignal?: 'interested' | 'not_interested' | null;
+  /** Whether the viewer gets notified on new comments to this post. */
+  viewerNotify?: boolean;
   isDeleted: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -2764,6 +2781,9 @@ export interface CreateFeedPostPayload {
   sharedPostId?: string;
   /** A share card — the server enriches the display fields from the entity. */
   attachment?: { type: 'game' | 'open_play' | 'club'; refId: string };
+  /** Uploaded photos/GIFs (via uploadFeedMedia). Photos anywhere; GIFs only on
+   *  comments. `caption` is an optional per-photo label (read back as `title`). */
+  media?: { type: 'image' | 'gif'; url: string; caption?: string }[];
 }
 
 /** Create a post / comment / repost / share card. Needs text, an attachment, or a repost. */
@@ -2794,6 +2814,30 @@ export async function editFeedPost(postId: string, body: string): Promise<ApiFee
 /** Soft-delete a post/comment (author-only; server enforces it). */
 export async function deleteFeedPost(postId: string): Promise<{ deleted: boolean }> {
   return request<{ deleted: boolean }>(`${FEED_PREFIX}/posts/${postId}`, { method: 'DELETE', auth: true });
+}
+
+/** Set (or clear) the viewer's per-author feed preference. `interested` surfaces
+ *  more of that author (floated + de-clustered); `not_interested` mutes them. */
+export async function setFeedSignal(authorId: string, type: 'interested' | 'not_interested' | 'clear'): Promise<{ authorId: string; type: string | null }> {
+  return request(`${FEED_PREFIX}/signals`, { method: 'POST', body: { authorId, type }, auth: true });
+}
+
+/** Hide a post from the viewer's feed for 24 hours. */
+export async function hideFeedPost(postId: string): Promise<{ hidden: boolean }> {
+  return request(`${FEED_PREFIX}/posts/${postId}/hide`, { method: 'POST', body: {}, auth: true });
+}
+
+/** Report a post for moderation review. */
+export async function reportFeedPost(postId: string, reason?: string): Promise<{ reported: boolean }> {
+  return request(`${FEED_PREFIX}/posts/${postId}/report`, { method: 'POST', body: { reason }, auth: true });
+}
+
+/** Turn comment notifications on/off for a post. */
+export async function subscribeFeedPost(postId: string): Promise<{ subscribed: boolean }> {
+  return request(`${FEED_PREFIX}/posts/${postId}/notify`, { method: 'POST', body: {}, auth: true });
+}
+export async function unsubscribeFeedPost(postId: string): Promise<{ subscribed: boolean }> {
+  return request(`${FEED_PREFIX}/posts/${postId}/notify`, { method: 'DELETE', auth: true });
 }
 
 /* ─── Bookings + checkout ───────────────────────────────────── */

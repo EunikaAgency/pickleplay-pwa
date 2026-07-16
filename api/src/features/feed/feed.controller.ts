@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FeedPost, FeedPostReaction } from './feed.model.js';
+import { FeedPost, FeedPostReaction, FeedSignal, FeedHiddenPost, FeedReport, FeedNotifySub } from './feed.model.js';
 import { Game } from '../games/games.model.js';
 import { OpenPlaySession } from '../content/content.model.js';
 import { Club } from '../clubs/clubs.model.js';
@@ -22,14 +22,23 @@ const attachmentInput = z.object({
   refId: objectId,
 });
 
+// Uploaded photo/GIF (via POST /media/upload → { url }). Up to 4 per post.
+// `caption` is an optional per-photo label (stored in the attachment's `title`).
+const mediaInput = z.object({
+  type: z.enum(['image', 'gif']),
+  url: z.string().min(1).max(1000),
+  caption: z.string().max(200).optional(),
+});
+
 const createPostSchema = z.object({
   body: z.string().max(8000).optional(),
   parentPostId: objectId.optional(),
   sharedPostId: objectId.optional(),
   attachment: attachmentInput.optional(),
+  media: z.array(mediaInput).max(4).optional(),
 }).refine(
-  (b) => (b.body && b.body.trim().length > 0) || !!b.attachment || !!b.sharedPostId,
-  { message: 'A post needs text, an attachment, or a repost' },
+  (b) => (b.body && b.body.trim().length > 0) || !!b.attachment || !!b.sharedPostId || !!(b.media && b.media.length),
+  { message: 'A post needs text, a photo, an attachment, or a repost' },
 );
 
 const editPostSchema = z.object({ body: z.string().max(8000).optional() });
@@ -110,9 +119,19 @@ async function enrichAttachment(input: { type: string; refId: string }): Promise
 }
 
 function serializeAttachment(a: any) {
+  // Media item (uploaded photo/GIF) — carries a url, no share-card fields.
+  if (a.type === 'image' || a.type === 'gif') {
+    return {
+      type: a.type, refId: null, url: a.url ?? null,
+      title: a.title ?? null, subtitle: null, imageUrl: null, gameType: null,
+      skillLabel: null, dateTime: null, venue: null,
+      spotsLeft: null, capacity: null, memberCount: null,
+    };
+  }
   return {
     type: a.type,
     refId: String(a.refId),
+    url: null,
     title: a.title ?? null,
     subtitle: a.subtitle ?? null,
     imageUrl: a.imageUrl ?? null,
@@ -141,7 +160,7 @@ function sharedSnapshot(sp: any) {
   };
 }
 
-function serializePost(p: any, viewerReacted = false, sharedSnap: any = null) {
+function serializePost(p: any, viewerReacted = false, sharedSnap: any = null, extra: { authorSignal?: string | null; notify?: boolean } = {}) {
   const author = p.authorId ? refPerson(p.authorId) : null;
   return {
     id: String(p._id),
@@ -157,6 +176,10 @@ function serializePost(p: any, viewerReacted = false, sharedSnap: any = null) {
     replyCount: p.replyCount ?? 0,
     isDeleted: !!p.isDeleted,
     viewerReacted: !!viewerReacted,
+    // The viewer's "interested"/"not_interested" signal for this author (null =
+    // none) and whether they've turned on comment notifications for this post.
+    viewerAuthorSignal: extra.authorSignal ?? null,
+    viewerNotify: !!extra.notify,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
   };
@@ -167,6 +190,49 @@ async function reactedSet(postIds: any[], userId?: string | null): Promise<Set<s
   if (!userId || !postIds.length) return new Set();
   const rows = await FeedPostReaction.find({ postId: { $in: postIds }, userId }).select('postId').lean();
   return new Set(rows.map((r: any) => String(r.postId)));
+}
+
+/** Set of post ids the viewer subscribed to comment-notifications on. */
+async function notifySet(postIds: any[], userId?: string | null): Promise<Set<string>> {
+  if (!userId || !postIds.length) return new Set();
+  const rows = await FeedNotifySub.find({ postId: { $in: postIds }, userId }).select('postId').lean();
+  return new Set(rows.map((r: any) => String(r.postId)));
+}
+
+/** The viewer's feed preferences: interested / not_interested authors + which
+ *  posts they've hidden (still within the hide window). Empty for guests. */
+async function viewerFeedPrefs(userId?: string | null) {
+  const empty = { interested: new Set<string>(), notInterested: new Set<string>(), hiddenPostIds: [] as any[] };
+  if (!userId) return empty;
+  const [signals, hidden] = await Promise.all([
+    FeedSignal.find({ userId }).select('authorId type').lean(),
+    FeedHiddenPost.find({ userId, hiddenUntil: { $gt: new Date() } }).select('postId').lean(),
+  ]);
+  const interested = new Set<string>();
+  const notInterested = new Set<string>();
+  for (const s of signals as any[]) (s.type === 'interested' ? interested : notInterested).add(String(s.authorId));
+  return { interested, notInterested, hiddenPostIds: (hidden as any[]).map((h) => h.postId) };
+}
+
+/** Reorder a chronological page so interested authors float to the top and no
+ *  two consecutive posts share an author ("di magkakasunod"). Pure reorder —
+ *  the set of posts (and thus the cursor) is unchanged, only their order. */
+function reorderFeed(rows: any[], interested: Set<string>): any[] {
+  const score = (p: any) => (interested.has(String(p.authorId)) ? 0 : 1);
+  // Stable sort floats interested to the front, keeping recency within each tier.
+  const sorted = [...rows].sort((a, b) => score(a) - score(b));
+  // Greedy de-cluster: never place the same author back-to-back if avoidable.
+  const pool = [...sorted];
+  const out: any[] = [];
+  let last: string | null = null;
+  while (pool.length) {
+    let i = pool.findIndex((p) => String(p.authorId) !== last);
+    if (i === -1) i = 0; // only same-author left — unavoidable
+    const [picked] = pool.splice(i, 1);
+    out.push(picked);
+    last = String(picked.authorId);
+  }
+  return out;
 }
 
 /** postId → shared-post snapshot, batch-loaded for a page of posts. */
@@ -183,7 +249,14 @@ async function sharedSnapMap(rows: any[]): Promise<Map<string, any>> {
 export async function listFeed(c: any) {
   const user = c.get('user');
   const q = feedQuery.parse(c.req.query());
-  const filter = withCursor({ parentPostId: null, isDeleted: false }, q.cursor);
+
+  // Viewer prefs: mute not_interested authors + hidden posts; float interested.
+  const prefs = await viewerFeedPrefs(user?.sub);
+  const base: any = { parentPostId: null, isDeleted: false };
+  if (prefs.notInterested.size) base.authorId = { $nin: [...prefs.notInterested] };
+  if (prefs.hiddenPostIds.length) base._id = { $nin: prefs.hiddenPostIds };
+
+  const filter = withCursor(base, q.cursor);
   const rows = await FeedPost.find(filter)
     .populate('authorId', PERSON_SELECT)
     .sort(SORT_NEWEST)
@@ -191,13 +264,24 @@ export async function listFeed(c: any) {
     .lean();
   const hasMore = rows.length > q.pageSize;
   if (hasMore) rows.pop();
-  const [reacted, snaps] = await Promise.all([
-    reactedSet(rows.map((r: any) => r._id), user?.sub),
-    sharedSnapMap(rows),
+  // Cursor is computed from the CHRONOLOGICAL page (before reorder) so paging
+  // stays monotonic and never repeats a post across pages.
+  const cursor = nextCursor(rows as any, hasMore);
+
+  const ordered = reorderFeed(rows, prefs.interested);
+  const [reacted, notify, snaps] = await Promise.all([
+    reactedSet(ordered.map((r: any) => r._id), user?.sub),
+    notifySet(ordered.map((r: any) => r._id), user?.sub),
+    sharedSnapMap(ordered),
   ]);
-  const data = rows.map((p: any) =>
-    serializePost(p, reacted.has(String(p._id)), p.sharedPostId ? snaps.get(String(p.sharedPostId)) : null));
-  return c.json({ data, meta: { total: data.length, cursor: nextCursor(rows as any, hasMore) } });
+  const signalFor = (authorId: any) => {
+    const id = String(authorId);
+    return prefs.interested.has(id) ? 'interested' : prefs.notInterested.has(id) ? 'not_interested' : null;
+  };
+  const data = ordered.map((p: any) =>
+    serializePost(p, reacted.has(String(p._id)), p.sharedPostId ? snaps.get(String(p.sharedPostId)) : null,
+      { authorSignal: signalFor(p.authorId?._id ?? p.authorId), notify: notify.has(String(p._id)) }));
+  return c.json({ data, meta: { total: data.length, cursor } });
 }
 
 // GET /api/v1/feed/posts/:postId — a single post + its first page of replies.
@@ -273,6 +357,15 @@ export async function createPost(c: any) {
     attachments = [card];
   }
 
+  // Uploaded photos/GIFs. Photos are allowed anywhere; GIFs only on comments
+  // (a reply, i.e. parentPostId set) — a top-level post is photo-only.
+  if (body.media && body.media.length) {
+    if (!parent && body.media.some((m) => m.type === 'gif')) {
+      return c.json({ error: { code: 'GIF_ON_POST', message: 'GIFs can only be added to comments, not posts' } }, 400);
+    }
+    attachments.push(...body.media.map((m) => ({ type: m.type, url: m.url, title: m.caption?.trim() || null })));
+  }
+
   const post = await FeedPost.create({
     authorId: user.sub,
     parentPostId: parent ? parent._id : null,
@@ -295,6 +388,20 @@ export async function createPost(c: any) {
       type: 'feed_reply', title: 'New reply', body: 'Someone replied to your post.',
       icon: 'reply', linkUrl: `/feed/${parent._id}`,
     });
+  }
+  // Notify everyone who turned on notifications for this post (minus the
+  // commenter and the author, who's already covered above).
+  if (parent) {
+    const subs = await FeedNotifySub.find({ postId: parent._id }).select('userId').lean();
+    const targets = (subs as any[])
+      .map((s) => String(s.userId))
+      .filter((id) => id !== user.sub && id !== String(parent.authorId));
+    if (targets.length) {
+      await notifyUsers(targets, {
+        type: 'feed_reply', title: 'New comment', body: 'New comment on a post you follow.',
+        icon: 'reply', linkUrl: `/feed/${parent._id}`,
+      });
+    }
   }
   if (shared && String(shared.authorId) !== user.sub) {
     await notifyUsers([shared.authorId], {
@@ -374,4 +481,81 @@ export async function unreactPost(c: any) {
   const fresh = await FeedPost.findById((post as any)._id).select('reactionCount').lean();
   const reactionCount = (fresh as any)?.reactionCount ?? 0;
   return c.json({ data: { reacted: false, reactionCount } });
+}
+
+/* ─── Feed preferences (interested / hide / report / notify) ───────────── */
+
+const signalSchema = z.object({
+  authorId: objectId,
+  // 'clear' removes any existing signal for that author.
+  type: z.enum(['interested', 'not_interested', 'clear']),
+});
+
+// POST /api/v1/feed/signals — set/clear the viewer's per-author feed preference.
+export async function setSignal(c: any) {
+  const user = c.get('user');
+  const body = signalSchema.parse(await c.req.json());
+  if (body.authorId === user.sub) {
+    return c.json({ error: { code: 'SELF_SIGNAL', message: "You can't set a preference on your own posts" } }, 400);
+  }
+  if (body.type === 'clear') {
+    await FeedSignal.deleteOne({ userId: user.sub, authorId: body.authorId });
+    return c.json({ data: { authorId: body.authorId, type: null } });
+  }
+  await FeedSignal.updateOne(
+    { userId: user.sub, authorId: body.authorId },
+    { $set: { type: body.type } },
+    { upsert: true },
+  );
+  return c.json({ data: { authorId: body.authorId, type: body.type } });
+}
+
+// POST /api/v1/feed/posts/:postId/hide — hide this post for the viewer for 24h.
+export async function hidePost(c: any) {
+  const user = c.get('user');
+  const post = await FeedPost.findById(c.req.param('postId')).select('_id').lean();
+  if (!post) return c.json({ error: { code: 'NOT_FOUND', message: 'Post not found' } }, 404);
+  const hiddenUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await FeedHiddenPost.updateOne(
+    { userId: user.sub, postId: (post as any)._id },
+    { $set: { hiddenUntil } },
+    { upsert: true },
+  );
+  return c.json({ data: { hidden: true, hiddenUntil } });
+}
+
+const reportSchema = z.object({ reason: z.string().max(500).optional() });
+
+// POST /api/v1/feed/posts/:postId/report — flag a post for moderation review.
+export async function reportPost(c: any) {
+  const user = c.get('user');
+  const post = await FeedPost.findById(c.req.param('postId')).select('_id').lean();
+  if (!post) return c.json({ error: { code: 'NOT_FOUND', message: 'Post not found' } }, 404);
+  const body = reportSchema.parse(await c.req.json().catch(() => ({})));
+  await FeedReport.updateOne(
+    { userId: user.sub, postId: (post as any)._id },
+    { $set: { reason: body.reason ?? null, status: 'pending' }, $unset: { resolvedBy: '' } },
+    { upsert: true },
+  );
+  return c.json({ data: { reported: true } });
+}
+
+// POST /api/v1/feed/posts/:postId/notify — get notified on new comments.
+export async function subscribePost(c: any) {
+  const user = c.get('user');
+  const post = await FeedPost.findById(c.req.param('postId')).select('_id').lean();
+  if (!post) return c.json({ error: { code: 'NOT_FOUND', message: 'Post not found' } }, 404);
+  await FeedNotifySub.updateOne(
+    { userId: user.sub, postId: (post as any)._id },
+    { $setOnInsert: { userId: user.sub, postId: (post as any)._id } },
+    { upsert: true },
+  );
+  return c.json({ data: { subscribed: true } });
+}
+
+// DELETE /api/v1/feed/posts/:postId/notify — stop comment notifications.
+export async function unsubscribePost(c: any) {
+  const user = c.get('user');
+  await FeedNotifySub.deleteOne({ userId: user.sub, postId: c.req.param('postId') });
+  return c.json({ data: { subscribed: false } });
 }

@@ -123,8 +123,14 @@ src/
                        #   search; its empty "My Clubs" state cross-links to Friends),
                        #   FriendsPanel (was profile/FriendsScreen — friends/requests/
                        #   find, geolocated suggestions, DM hand-off; restyled to v2 and
-                       #   owns its own signed-out state). Club **detail** screens stay
-                       #   in clubs/ below. Scoped by `.pb-v2.v2-social` in v2.css.
+                       #   owns its own signed-out state). PickleFeed posts carry photos
+                       #   (post: photo-only, each w/ optional caption) + comments carry
+                       #   photos & GIFs — FeedMedia.tsx renders them, feedAttachments.ts
+                       #   splits media vs share cards. Every post has a ⋯ menu (FeedPanel):
+                       #   author→edit/delete, others→interested/not-interested/report/
+                       #   hide-24h/notify-on-comment.
+                       #   Club **detail** screens stay in clubs/ below. Scoped by
+                       #   `.pb-v2.v2-social` in v2.css.
     clubs/             # club DETAIL screens (the list lives in social/ above).
                        #   ClubDetails (live: detail + members +
                        #   Facebook-style feed with post/like + photo/GIF
@@ -615,7 +621,7 @@ src/
 | Checkout payment options (deposit/full/pay-at-venue) + 7% service fee | `features/bookings/BookCourtScreen.tsx` (review + checkout steps); owner config in `tabs/ListingEditorTab.tsx`; fee % from `getSettings` |
 | Admin venue-claim review (approve/reject/needs-info) | `features/admin/AdminClaimsScreen.tsx` (`admin-claims`, gated by `admin.moderation.manage`); entry "Venue claims" row in `OwnerProfileScreen.tsx` (admins) / "Admin" section in `v2/ProfileScreenV2.tsx` (moderators); `listClaims`/`reviewClaim` in `shared/lib/api.ts` |
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
-| Social tab (PickleFeed + Clubs + Friends, the request badge) | `features/social/{SocialScreen,FeedPanel,FeedPostCard,FeedComposerSheet,FeedShareCard,FeedPostScreen,RepostQuote,feedTime,ClubsPanel,FriendsPanel}.tsx`; Feed API client in `shared/lib/api.ts` (`FEED_PREFIX`); badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/feed.sh` |
+| Social tab (PickleFeed + Clubs + Friends, the request badge) | `features/social/{SocialScreen,FeedPanel,FeedPostCard,FeedComposerSheet,FeedShareCard,FeedMedia,feedAttachments,FeedPostScreen,RepostQuote,feedTime,ClubsPanel,FriendsPanel}.tsx`; Feed API client in `shared/lib/api.ts` (`FEED_PREFIX`, `uploadFeedMedia`); post photos (per-photo caption) + comment photos/GIFs via `FeedMedia`/`feedAttachments` (GIFs added by pasting from the keyboard/clipboard into the comment field — `onCommentPaste` — or uploading a .gif); per-post ⋯ menu (interested/not-interested/report/hide/notify) via `setFeedSignal`/`hideFeedPost`/`reportFeedPost`/`subscribeFeedPost`; badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/feed.sh` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one). `Button` variants: primary/brand/dark/outline/ghost/`destructive` (soft red) / `danger` (solid red, for unmissable destructive actions) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |

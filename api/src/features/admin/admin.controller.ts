@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { User } from '../auth/auth.model.js';
 import { Venue } from '../venues/venues.model.js';
 import { Review, ReviewReport } from '../interactions/interactions.model.js';
+import { FeedReport, FeedPost } from '../feed/feed.model.js';
 import { VenueClaim, SuggestedEdit } from '../venues/venue-management.model.js';
 import { Subscription, AuditLog } from '../subscriptions/subscriptions.model.js';
 import { Booking } from '../bookings/bookings.model.js';
@@ -29,13 +30,13 @@ export async function requireAdmin(c: any, next: any) {
 
 export async function getDashboard(c: any) {
   const [userCount, venueCount, pendingReviewCount, unclaimedVenueCount,
-    pendingReportCount, pendingClaimCount, pendingEditCount, bookingCount] = await Promise.all([
+    pendingReportCount, pendingClaimCount, pendingEditCount, bookingCount, pendingPostReportCount] = await Promise.all([
     User.countDocuments(), Venue.countDocuments(), Review.countDocuments({ status: 'pending_moderation' }),
     Venue.countDocuments({ state: 'unclaimed' }), ReviewReport.countDocuments({ status: 'pending' }),
     VenueClaim.countDocuments({ status: 'pending' }), SuggestedEdit.countDocuments({ status: 'pending' }),
-    Booking.countDocuments(),
+    Booking.countDocuments(), FeedReport.countDocuments({ status: 'pending' }),
   ]);
-  return c.json({ data: { totalUsers: userCount, totalVenues: venueCount, pendingReviews: pendingReviewCount, unclaimedVenues: unclaimedVenueCount, pendingReports: pendingReportCount, pendingClaims: pendingClaimCount, pendingEdits: pendingEditCount, totalBookings: bookingCount } });
+  return c.json({ data: { totalUsers: userCount, totalVenues: venueCount, pendingReviews: pendingReviewCount, unclaimedVenues: unclaimedVenueCount, pendingReports: pendingReportCount, pendingClaims: pendingClaimCount, pendingEdits: pendingEditCount, totalBookings: bookingCount, pendingPostReports: pendingPostReportCount } });
 }
 
 export async function listUsers(c: any) {
@@ -116,6 +117,48 @@ export async function resolveReport(c: any) {
   const result = await ReviewReport.findByIdAndUpdate(id, { status: body.status, resolvedBy: user.sub }, { new: true }).lean();
   if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Report not found' } }, 404);
   return c.json({ data: { ...result, id: result._id } });
+}
+
+// GET /api/v1/admin/feed-reports — reported PickleFeed posts to triage. Each
+// row carries the reported post (body/author/deleted) + the reporter, so an
+// admin can judge without a second look-up.
+export async function listFeedReports(c: any) {
+  const status = c.req.query('status') || 'pending';
+  const rows = await FeedReport.find({ status })
+    .sort({ createdAt: -1 }).limit(100)
+    .populate('userId', 'displayName')
+    .populate({ path: 'postId', select: 'body authorId isDeleted attachments createdAt', populate: { path: 'authorId', select: 'displayName' } })
+    .lean();
+  const data = rows.map((r: any) => {
+    const post = r.postId && typeof r.postId === 'object' ? r.postId : null;
+    const reporter = r.userId && typeof r.userId === 'object' ? r.userId : null;
+    const author = post?.authorId && typeof post.authorId === 'object' ? post.authorId : null;
+    return {
+      id: String(r._id),
+      reason: r.reason || null,
+      status: r.status,
+      createdAt: r.createdAt,
+      reporter: reporter ? { id: String(reporter._id), displayName: reporter.displayName ?? null } : null,
+      post: post ? {
+        id: String(post._id),
+        body: post.isDeleted ? null : (post.body ?? null),
+        isDeleted: !!post.isDeleted,
+        hasMedia: Array.isArray(post.attachments) && post.attachments.some((a: any) => a.type === 'image' || a.type === 'gif'),
+        author: author ? { id: String(author._id), displayName: author.displayName ?? null } : null,
+        createdAt: post.createdAt,
+      } : null,
+    };
+  });
+  return c.json({ data });
+}
+
+// PATCH /api/v1/admin/feed-reports/:id — resolve or dismiss a post report.
+export async function resolveFeedReport(c: any) {
+  const user = c.get('user'); const id = c.req.param('id');
+  const body = resolveReportSchema.parse(await c.req.json());
+  const result = await FeedReport.findByIdAndUpdate(id, { status: body.status, resolvedBy: user.sub }, { new: true }).lean();
+  if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Report not found' } }, 404);
+  return c.json({ data: { ...result, id: (result as any)._id } });
 }
 
 export async function listAuditLogs(c: any) {
