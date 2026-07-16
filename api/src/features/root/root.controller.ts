@@ -149,7 +149,7 @@ export function listEndpoints(c: any) {
       name: 'Coaches',
       endpoints: [
         { path: '/api/v1/coaches', methods: ['GET', 'POST'], description: 'List coaches (?subscribed=true returns only coaches with a live coach subscription — powers Find Coach); POST creates the current user\'s coach profile (unlisted until verified; requires coach.profile.manage + an active coach subscription, else 402)' },
-        { path: '/api/v1/coaches/me', methods: ['GET', 'PATCH'], description: 'Current user coach profile; PATCH requires coach.profile.manage', auth: 'user' },
+        { path: '/api/v1/coaches/me', methods: ['GET', 'PATCH'], description: 'Current user coach profile; PATCH requires coach.profile.manage and also sets rates — pricePrivatePerHour/priceGroupPerPlayer (standard) plus venueRates[] (per-venue overrides, sent whole; a venue omitted falls back to the standard rate, and a venue the coach isn\'t approved at returns 403 VENUE_NOT_APPROVED)', auth: 'user' },
         { path: '/api/v1/coaches/:id', methods: ['GET'], description: 'Single coach by slug or _id' },
         { path: '/api/v1/coaches/:id/reviews', methods: ['GET', 'POST'], description: 'Coach reviews (POST requires auth)' },
         { path: '/api/v1/coach-reviews/:id', methods: ['PATCH', 'DELETE'], description: 'Edit / delete a coach review', auth: 'user' },

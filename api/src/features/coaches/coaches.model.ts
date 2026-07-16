@@ -1,6 +1,12 @@
 import { Schema, model } from 'mongoose';
 import type { Types } from 'mongoose';
 
+export interface ICoachVenueRate {
+  venueId: Types.ObjectId;
+  pricePrivatePerHour?: number;
+  priceGroupPerPlayer?: number;
+}
+
 export interface ICoach {
   _id: Types.ObjectId;
   coachId?: string;
@@ -29,6 +35,8 @@ export interface ICoach {
   isListed?: boolean;
   isLeadCoachAnywhere?: boolean;
   venues: Types.ObjectId[];
+  /** Per-venue rate overrides. A venue absent here bills at the global rate. */
+  venueRates?: ICoachVenueRate[];
   venuesWorkedAt?: string[];
   phone?: string;
   email?: string;
@@ -50,6 +58,12 @@ export interface ICoach {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const coachVenueRateSchema = new Schema({
+  venueId:             { type: Schema.Types.ObjectId, ref: 'Venue', required: true },
+  pricePrivatePerHour: Number,
+  priceGroupPerPlayer: Number,
+}, { _id: false });
 
 const coachSchema = new Schema({
   coachId:           { type: String, maxlength: 50 },
@@ -78,6 +92,9 @@ const coachSchema = new Schema({
   isListed:          { type: Boolean, default: true },
   isLeadCoachAnywhere: Boolean,
   venues:            [{ type: Schema.Types.ObjectId, ref: 'Venue' }],
+  // A coach charges differently per venue (court fees, club cuts), so a rate can
+  // be pinned per venue. Absent → the global pricePrivatePerHour applies.
+  venueRates:        [coachVenueRateSchema],
   venuesWorkedAt:    [String],
   phone:             { type: String, maxlength: 20 },
   email:             { type: String, maxlength: 255 },

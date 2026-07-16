@@ -5,6 +5,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { apiImageUrl, listCoaches, type ApiCoach } from '../../shared/lib/api';
+import { useAuthStore } from '../../shared/lib/authStore';
 import { getInitials } from '../../shared/lib/initials';
 import type { Navigate } from '../../shared/lib/navigation';
 import { coachRate, coachLocation } from './coachDisplay';
@@ -19,6 +20,12 @@ export function FindCoachScreen({ onNavigate, onBack }: FindCoachScreenProps) {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState('');
+  const currentUser = useAuthStore((s) => s.user);
+
+  // A coach browsing Find Coach shouldn't be offered themselves — you can't book
+  // yourself (the API 400s with SELF_BOOKING), so hide your own listing. Derived
+  // rather than filtered on fetch, so it stays right if the session lands later.
+  const visible = coaches.filter((c) => !currentUser || c.userId !== currentUser.id);
 
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -77,7 +84,7 @@ export function FindCoachScreen({ onNavigate, onBack }: FindCoachScreenProps) {
           />
         )}
 
-        {!loading && !failed && coaches.length === 0 && (
+        {!loading && !failed && visible.length === 0 && (
           <EmptyState
             icon="sports_tennis"
             title={query ? 'No coaches match that search' : 'No coaches yet'}
@@ -90,9 +97,9 @@ export function FindCoachScreen({ onNavigate, onBack }: FindCoachScreenProps) {
           />
         )}
 
-        {!loading && !failed && coaches.length > 0 && (
+        {!loading && !failed && visible.length > 0 && (
           <ul className="flex flex-col gap-2.5">
-            {coaches.map((coach) => {
+            {visible.map((coach) => {
               const photo = apiImageUrl(coach.avatarUrl || coach.imageUrl);
               return (
                 <li key={coach.id}>

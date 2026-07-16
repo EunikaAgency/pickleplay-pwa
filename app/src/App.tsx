@@ -17,6 +17,7 @@ import { PaymentHistoryScreen } from './features/profile/PaymentHistoryScreen';
 import { PlayerProfileScreen } from './features/profile/PlayerProfileScreen';
 import { CoachSubscribeScreen } from './features/coaches/CoachSubscribeScreen';
 import { CoachBookingsScreen } from './features/coaches/CoachBookingsScreen';
+import { CoachPricingScreen } from './features/coaches/CoachPricingScreen';
 import { FindCoachScreen } from './features/coaches/FindCoachScreen';
 import { CoachDetailScreen } from './features/coaches/CoachDetailScreen';
 import { BookCoachScreen } from './features/coaches/BookCoachScreen';
@@ -134,6 +135,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'organizer-subscribe': 'player.profile.manage',
   'book-coach': 'player.bookings.create',
   'coach-bookings': 'coach.profile.manage',
+  'coach-pricing': 'coach.profile.manage',
   'create-club': 'player.clubs.create',
   'edit-club': 'player.clubs.create',
   'club-post-edit': 'player.clubs.post',
@@ -199,6 +201,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'coach-subscribe': 'become a coach',
   'organizer-subscribe': 'become an organizer',
   'coach-bookings': 'manage your coaching sessions',
+  'coach-pricing': 'set your coaching rates',
   'book-coach': 'book a coach',
   'create-club': 'start a club',
   'edit-club': 'edit your club',
@@ -692,6 +695,8 @@ function AppInner() {
         return <CoachSubscribeScreen plan="organizer" onNavigate={navigate} onBack={goBack} />;
       case 'coach-bookings':
         return <CoachBookingsScreen onBack={goBack} />;
+      case 'coach-pricing':
+        return <CoachPricingScreen onNavigate={navigate} onBack={goBack} />;
       case 'find-coach':
         return <FindCoachScreen onNavigate={navigate} onBack={goBack} />;
       case 'coach-detail':

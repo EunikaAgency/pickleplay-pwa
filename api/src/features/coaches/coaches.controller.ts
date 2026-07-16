@@ -52,6 +52,14 @@ const updateMyCoachSchema = z.object({
   priceCurrency: z.string().max(10).nullable().optional(),
   bookingLeadTimeHours: z.number().int().min(0).max(720).nullable().optional(),
   isListed: z.boolean().optional(),
+  // Per-venue rate overrides. Sent as the full list (a venue omitted here is
+  // cleared back to the global rate), and every venueId must be one the coach
+  // is actually approved at — checked in updateMyCoach, not by the schema.
+  venueRates: z.array(z.object({
+    venueId: z.string().regex(/^[0-9a-fA-F]{24}$/),
+    pricePrivatePerHour: z.number().min(0).nullable().optional(),
+    priceGroupPerPlayer: z.number().min(0).nullable().optional(),
+  })).optional(),
 });
 
 // Self-service coach profile creation at registration. The profile is created
@@ -117,24 +125,25 @@ async function findCoachForUser(userId: string) {
   return Coach.findOne({ $or: or });
 }
 
+/** Every venue the coach works at — linked directly on the profile or granted by
+ *  an approved application. This is exactly the set a per-venue rate may target. */
+async function approvedVenueIds(coach: any): Promise<string[]> {
+  const linked = (coach.venues || []).map((id: any) => id?.toString()).filter(Boolean);
+  const or: Record<string, any>[] = [{ coachId: coach._id }];
+  if (coach.userId) or.push({ coachUserId: coach.userId });
+  const apps = await CoachApplication.find({ status: 'approved', $or: or }).select('venueId').lean();
+  const applied = apps.map((a: any) => a.venueId?.toString()).filter(Boolean);
+  return [...new Set([...linked, ...applied])];
+}
+
 async function coachPayload(coach: any) {
   const coachId = coach._id.toString();
-  const linkedVenueIds = (coach.venues || []).map((id: any) => id?.toString()).filter(Boolean);
-  const applicationFilter: Record<string, any> = { status: 'approved' };
-  const applicationOr: Record<string, any>[] = [{ coachId: coach._id }];
-  if (coach.userId) applicationOr.push({ coachUserId: coach.userId });
-  applicationFilter.$or = applicationOr;
 
   const [services, venues] = await Promise.all([
     CoachService.find({ coachId }).lean(),
-    CoachApplication.find(applicationFilter).select('venueId').lean()
-      .then((apps: any[]) => {
-        const applicationVenueIds = apps.map((a) => a.venueId?.toString()).filter(Boolean);
-        const venueIds = [...new Set([...linkedVenueIds, ...applicationVenueIds])];
-        return venueIds.length
-          ? Venue.find({ _id: { $in: venueIds } }).select('displayName slug area region fullAddress').lean()
-          : [];
-      }),
+    approvedVenueIds(coach).then((venueIds) => (venueIds.length
+      ? Venue.find({ _id: { $in: venueIds } }).select('displayName slug area region fullAddress').lean()
+      : [])),
   ]);
   const base = typeof coach.toObject === 'function' ? coach.toObject() : coach;
   const result: Record<string, any> = { ...base, id: coach._id };
@@ -189,7 +198,7 @@ export async function listCoaches(c: any) {
     const users = await User.find({ _id: { $in: userIds } }).select('_id avatarUrl').lean();
     const byId = new Map(users.map((u: any) => [u._id.toString(), u.avatarUrl]));
     for (const r of needAvatar) {
-      const av = byId.get(r.userId.toString());
+      const av = byId.get(String(r.userId));
       if (av) r.avatarUrl = av;
     }
   }
@@ -232,6 +241,22 @@ export async function updateMyCoach(c: any) {
   if (!coach) return c.json({ error: { code: 'NOT_FOUND', message: 'Coach profile not found' } }, 404);
 
   const body = updateMyCoachSchema.parse(await c.req.json());
+
+  if (body.venueRates) {
+    // A rate may only target a venue the coach actually works at, or a coach
+    // could price venues they have no relationship with.
+    const allowed = new Set(await approvedVenueIds(coach));
+    const stray = body.venueRates.find((r) => !allowed.has(r.venueId));
+    if (stray) {
+      return c.json({ error: { code: 'VENUE_NOT_APPROVED', message: 'You are not an approved coach at that venue.' } }, 403);
+    }
+    // An entry with no prices left on it just means "bill this venue at the
+    // global rate" — that's the absence of an override, so don't store a row.
+    body.venueRates = body.venueRates.filter(
+      (r) => r.pricePrivatePerHour != null || r.priceGroupPerPlayer != null,
+    );
+  }
+
   coach.set(body);
   await coach.save();
   return c.json({ data: await coachPayload(coach) });

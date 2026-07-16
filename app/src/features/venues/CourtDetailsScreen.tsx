@@ -1116,50 +1116,34 @@ function CourtDetail({
                 <div className="hd-2 mt-1">Book a lesson at this venue</div>
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            {/* Mirrors the home tab's friends rail: a scrolling row of round
+                avatars with a name + sub-label under each. That rail's CSS is
+                scoped to `.pb-v2.v2-home`, so this v1 screen re-creates the
+                look with its own `scroll-x` idiom rather than reusing it. */}
+            <div className="scroll-x flex gap-4 -mx-1 px-1 pb-1.5">
               {venueCoaches.map((coach) => {
                 const photo = apiImageUrl(coach.avatarUrl || coach.imageUrl);
-                const rate = coach.pricePrivatePerHour ?? coach.rateFrom;
                 return (
                   <button
                     key={coach.id}
                     type="button"
                     onClick={() => onNavigate('coach-detail', { id: coach.slug || coach.id })}
-                    className="flex w-full items-center gap-3 rounded-[14px] border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] p-3 text-left"
+                    className="shrink-0 w-[84px] flex flex-col items-center gap-1.5 text-center active:scale-[0.98] transition-transform"
                   >
-                    <span className="avatar flex-none h-11 w-11 overflow-hidden rounded-full">
+                    <span className="avatar h-16 w-16 overflow-hidden rounded-full shadow-[var(--shadow-card)]">
                       {photo
                         ? <img src={photo} alt="" className="h-full w-full object-cover" />
                         : <span>{getInitials(coach.displayName)}</span>}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate font-heading text-[14px] font-extrabold text-[var(--ink)]">{coach.displayName}</span>
-                        {coach.isVerified && (
-                          <span className="flex-none text-[var(--primary)]" title="Verified"><Icon name="verified" size={14} /></span>
-                        )}
-                      </span>
-                      <span className="mt-0.5 flex items-center gap-2 text-[12px] text-[var(--muted)]">
-                        {coach.specialty
-                          ? <span className="truncate">{coach.specialty}</span>
-                          : <span className="truncate">Coach</span>}
-                        {!!coach.rating && (
-                          <span className="flex flex-none items-center gap-0.5">
-                            <Icon name="star" size={12} />
-                            {coach.rating.toFixed(1)}
-                          </span>
-                        )}
-                      </span>
+                    <span className="flex w-full items-center justify-center gap-0.5">
+                      <span className="truncate text-[12px] font-bold leading-tight text-[var(--ink)]">{coach.displayName}</span>
+                      {coach.isVerified && (
+                        <span className="flex-none text-[var(--primary)]" title="Verified"><Icon name="verified" size={12} /></span>
+                      )}
                     </span>
-                    {!!rate && (
-                      <span className="flex-none text-right">
-                        <span className="block font-heading text-[13px] font-extrabold text-[var(--ink)]">
-                          {currencySymbol(coach.priceCurrency)}{rate.toLocaleString('en-PH')}
-                        </span>
-                        <span className="block text-[11px] text-[var(--muted)]">per hour</span>
-                      </span>
-                    )}
-                    <Icon name="forward" size={14} className="flex-none text-[var(--muted)]" />
+                    <span className="w-full truncate text-[11px] leading-tight text-[var(--muted)]">
+                      {coach.specialty || 'Coach'}
+                    </span>
                   </button>
                 );
               })}

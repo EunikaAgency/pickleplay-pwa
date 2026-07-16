@@ -87,6 +87,13 @@ src/
                              #   returns ONLY coaches with a live coach subscription
                              #   (powers Find Coach); POST /coaches (createMyCoach)
                              #   requires one (402 SUBSCRIPTION_REQUIRED).
+                             #   Rates: pricePrivatePerHour/priceGroupPerPlayer are
+                             #   the standard ones; Coach.venueRates[] pins a rate to
+                             #   a venue and wins for sessions booked there (see
+                             #   coach-bookings). PATCH /coaches/me takes venueRates
+                             #   whole (omitted venue = back to standard) and 403s
+                             #   VENUE_NOT_APPROVED for a venue the coach doesn't
+                             #   work at — approvedVenueIds() is the shared gate.
     coach-applications/      # coaches apply to venues; owners approve/reject.
                              #   Submitting now requires a live coach subscription
                              #   (402) — the paid plan is what buys "become a coach
@@ -97,8 +104,9 @@ src/
                              #   `Booking` — a session is a claim on a person's time,
                              #   not a court). pending → coach accepts (confirmed) /
                              #   declines; either party cancels. Price is server-
-                             #   derived from the CoachService or the coach's hourly
-                             #   rate — never trusted from the client. Guards:
+                             #   derived, never trusted from the client, in this order:
+                             #   the CoachService → the coach's venueRates[] entry for
+                             #   the booked venueId → their global hourly rate. Guards:
                              #   COACH_NOT_SUBSCRIBED / SLOT_TAKEN / SELF_BOOKING.
     partner-subscriptions/   # the PAID, PLATFORM-level coach/organizer plan.
                              #   PartnerSubscription model + hasActivePartnerSubscription

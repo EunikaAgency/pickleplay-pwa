@@ -4543,6 +4543,16 @@ export interface ApiCoach {
   bookingLeadTimeHours?: number | null;
   isVerified?: boolean | null;
   userId?: string | null;
+  /** Rates pinned to specific venues; a venue absent here bills at the global rate. */
+  venueRates?: ApiCoachVenueRate[];
+}
+
+/** A coach's rate at one venue. Overrides `pricePrivatePerHour` for sessions
+ *  booked at that venue; only venues the coach is approved at are accepted. */
+export interface ApiCoachVenueRate {
+  venueId: string;
+  pricePrivatePerHour?: number | null;
+  priceGroupPerPlayer?: number | null;
 }
 
 export interface ApiCoachService {
@@ -4599,6 +4609,19 @@ export async function createMyCoach(body: {
   pricePrivatePerHour?: number; priceGroupPerPlayer?: number; experienceYears?: number;
 }): Promise<ApiCoachDetail> {
   return request<ApiCoachDetail>('/api/v1/coaches', { method: 'POST', body, auth: true });
+}
+
+/** Update the signed-in user's own coach profile. `venueRates` is sent whole —
+ *  a venue left out of the list is cleared back to the global rate. */
+export async function updateMyCoach(body: {
+  displayName?: string; specialty?: string | null; bio?: string | null;
+  pricePrivatePerHour?: number | null;
+  priceGroupPerPlayer?: number | null;
+  priceCurrency?: string | null;
+  bookingLeadTimeHours?: number | null;
+  venueRates?: ApiCoachVenueRate[];
+}): Promise<ApiCoachDetail> {
+  return request<ApiCoachDetail>('/api/v1/coaches/me', { method: 'PATCH', body, auth: true });
 }
 
 /* ─── Coach bookings (a player books a session) ─────────────────── */

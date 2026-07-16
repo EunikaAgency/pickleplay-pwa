@@ -74,9 +74,14 @@ export async function createCoachBooking(c: any) {
     return c.json({ error: { code: 'SELF_BOOKING', message: 'You cannot book yourself.' } }, 400);
   }
 
-  // Price comes from the chosen service, else the coach's private hourly rate.
-  // Never trust a client-sent amount.
-  let amount = (coach as any).pricePrivatePerHour ?? (coach as any).rateFrom ?? 0;
+  // Price comes from the chosen service, else the coach's rate pinned to this
+  // venue, else their global private hourly rate. Never trust a client-sent
+  // amount. (`??` not `||` — a venue rate of 0 is a real "free here" price.)
+  const venueRate = body.venueId
+    ? ((coach as any).venueRates || []).find((r: any) => String(r.venueId) === String(body.venueId))
+    : null;
+  let amount = venueRate?.pricePrivatePerHour
+    ?? (coach as any).pricePrivatePerHour ?? (coach as any).rateFrom ?? 0;
   let durationMinutes = body.durationMinutes ?? 60;
   if (body.serviceId) {
     const service = await CoachService.findOne({ _id: body.serviceId, coachId: coach._id }).lean();

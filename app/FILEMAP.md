@@ -162,7 +162,15 @@ src/
                        #   calls authStore.restore() so the new coach role lands without a
                        #   re-login. FindCoachScreen (`find-coach`, /coaches) — lists ONLY
                        #   coaches holding a live subscription (listCoaches({subscribed:true})),
-                       #   debounced server-side search. CoachDetailScreen (`coach-detail`,
+                       #   debounced server-side search; hides the viewer's OWN listing (you
+                       #   can't book yourself — the API 400s SELF_BOOKING). CoachPricingScreen
+                       #   (`coach-pricing`, /coach/pricing) = where a coach sets their rates:
+                       #   standard private/group, plus a per-venue override per approved venue
+                       #   (blank = bill the standard rate); saves via updateMyCoach. Reached
+                       #   from CoachSubscribeScreen's partner tools. A coach profile is only
+                       #   created by a venue owner APPROVING an application, so this screen
+                       #   404s → "no coach profile yet" for a subscriber who hasn't applied.
+                       #   CoachDetailScreen (`coach-detail`,
                        #   Threads-style public profile via shared PublicProfileHero — About/
                        #   Sessions/Venues tabs, Book + Message actions) →
                        #   BookCoachScreen (`book-coach`): pick a CoachService or the plain
@@ -614,7 +622,7 @@ src/
 | Live notification badge (unread) | `shared/lib/notificationStore.ts` + `shared/hooks/useNotificationPolling.ts` (started in `App.tsx`); `shared/components/ui/NotificationBadge.tsx` on the home bell + TabBar "You" tab |
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |
 | Permissions / role gating | `shared/lib/permissions.ts`, `SCREEN_PERMISSIONS` in `App.tsx` |
-| Coach subscription / Find Coach / book a coach | `features/coaches/` (entry: Profile tab → "Coaching"; the Home `.coach-cta` only links there). ⚠️ Gate the subscribe CTAs on **`user.coachSubscriptionActive`**, never on `roles.includes('coach')` — a venue owner approving a coach application grants that role with **no** subscription, and the role survives a lapsed one. Backed by `api/src/features/partner-subscriptions/` + `coach-bookings/` |
+| Coach subscription / Find Coach / book a coach / coach rates | `features/coaches/` (entry: Profile tab → "Coaching"; the Home `.coach-cta` only links there). ⚠️ Gate the subscribe CTAs on **`user.coachSubscriptionActive`**, never on `roles.includes('coach')` — a venue owner approving a coach application grants that role with **no** subscription, and the role survives a lapsed one. ⚠️ Subscribing does **not** create a `Coach` profile — only a venue owner approving an application does, so a subscriber with no approval has no listing and no rates screen. Rates (standard + per-venue) live in `CoachPricingScreen` → `updateMyCoach`. Backed by `api/src/features/partner-subscriptions/` + `coach-bookings/` |
 | Another player's public profile | `features/profile/PlayerProfileScreen.tsx` (`player-profile`, `/players/:id`); `getPublicUser` in `shared/lib/api.ts` → `GET /api/v1/users/:id`; badges via `shared/lib/roleDisplay.ts` |
 | Venue-owner console (manage venues) | `features/owner/` (entry row in `ProfileScreen.tsx`); owner endpoints in `shared/lib/api.ts` |
 | Owner subscription plans (membership tiers) | `features/owner/SubscriptionPlansScreen.tsx` (`owner-subscription-plans`, from Members tab "Manage Subscription"), `features/owner/components/CreateEditPlanSheet.tsx` (create/edit form), `shared/lib/api.ts` → `listSubscriptionPlans`/`createSubscriptionPlan`/`updateSubscriptionPlan`(versioning)/`deleteSubscriptionPlan`/`duplicateSubscriptionPlan`/`toggleSubscriptionPlan`/`listPublicPlans`/`subscribeToPlan`; player-side: `MembershipSheet.tsx` uses `listPublicPlans` when the owner has active plans (falls back to hardcoded defaults); backed by `SubscriptionPlan`/`SubscriptionPlanVersion`/`VenueSubscription` models in `api/src/features/venues/` |
