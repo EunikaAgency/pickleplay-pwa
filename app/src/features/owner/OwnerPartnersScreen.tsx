@@ -516,13 +516,13 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
     venueNamesByUser.get(app.applicant.userId)?.length ?? (app.venue ? 1 : 0);
 
   const toolbar = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       {(feed?.venues?.length ?? 0) > 1 && (
         <select
           id="partner-venue"
           value={venueId}
           onChange={(e) => handleVenueChange(e.target.value)}
-          className="h-9 max-w-[200px] rounded-full bg-[var(--surface)] border border-[var(--field-border)] px-3 text-[13px] font-semibold text-[var(--ink)] outline-none focus:border-[var(--primary)]"
+          className="h-9 min-w-0 flex-1 sm:flex-none sm:max-w-[200px] rounded-full bg-[var(--surface)] border border-[var(--field-border)] px-3 text-[13px] font-semibold text-[var(--ink)] outline-none focus:border-[var(--primary)]"
         >
           <option value="">All venues</option>
           {feed?.venues.map((v) => (
@@ -533,7 +533,7 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
       <button
         type="button"
         onClick={() => showToast('Partner invites are coming soon')}
-        className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[var(--primary)] text-white font-bold text-[13px] active:scale-95 transition-transform whitespace-nowrap"
+        className="inline-flex shrink-0 items-center gap-1.5 h-9 px-3.5 rounded-full bg-[var(--primary)] text-white font-bold text-[13px] active:scale-95 transition-transform whitespace-nowrap"
       >
         <Icon name="plus" size={15} /> Invite Partner
       </button>
@@ -567,11 +567,13 @@ export function OwnerPartnersScreen({ onNavigate, onBack }: OwnerPartnersScreenP
         {/* Toolbar: mobile-only */}
         <div className="sm:hidden">{toolbar}</div>
 
-        {/* KPI summary cards */}
-        <div className="grid grid-cols-3 gap-3">
-          <KpiCard label="Active coaches" value={String(kpis.activeCoaches)} icon="school" tone="primary" sub="Approved at your venues" />
-          <KpiCard label="Active organisers" value={String(kpis.activeOrganizers)} icon="trophy" tone="blue" sub="Approved at your venues" />
-          <KpiCard label="Pending review" value={String(kpis.pendingReview)} icon="hourglass_top" tone="coral" sub="Awaiting your decision" />
+        {/* KPI summary cards — three across only once a tile can hold its label
+            beside the icon; on a phone that's 2-up with Pending review (the one
+            that needs action) spanning the row. */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <KpiCard label="Active coaches" value={String(kpis.activeCoaches)} icon="school" tone="primary" sub="At your venues" />
+          <KpiCard label="Active organisers" value={String(kpis.activeOrganizers)} icon="trophy" tone="blue" sub="At your venues" />
+          <KpiCard label="Pending review" value={String(kpis.pendingReview)} icon="hourglass_top" tone="coral" sub="Awaiting your decision" className="col-span-2 sm:col-span-1" />
         </div>
 
         {/* Kind tabs + search */}

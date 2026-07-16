@@ -4575,6 +4575,13 @@ export async function listCoaches(params?: {
   return request<ApiCoach[]>(`/api/v1/coaches${qs ? `?${qs}` : ''}`);
 }
 
+/** Coaches attached to a venue — the ones an owner approved to coach there.
+ *  Unlike `listCoaches({ venueId })` this also picks up approved applications
+ *  whose coach row isn't linked to the venue yet. */
+export async function listVenueCoaches(venueId: string): Promise<ApiCoach[]> {
+  return request<ApiCoach[]>(`/api/v1/venues/${venueId}/coaches`);
+}
+
 /** One coach by slug or id, with their bookable services + venues. */
 export async function getCoach(id: string): Promise<ApiCoachDetail> {
   return request<ApiCoachDetail>(`/api/v1/coaches/${id}`);

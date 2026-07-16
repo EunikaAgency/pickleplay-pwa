@@ -10,7 +10,7 @@ import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { MembershipSheet } from './MembershipSheet';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import type { Navigate } from '../../shared/lib/navigation';
-import { apiImageUrl, getVenue, listGames, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, submitCoachApplication, getMyCoachApplicationForVenue, cancelCoachApplication, submitOrganizerApplication, getMyOrganizerApplicationForVenue, cancelOrganizerApplication, ApiError, type ApiVenueDetail, type ApiGame, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
+import { apiImageUrl, getVenue, listGames, listVenueCoaches, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, submitCoachApplication, getMyCoachApplicationForVenue, cancelCoachApplication, submitOrganizerApplication, getMyOrganizerApplicationForVenue, cancelOrganizerApplication, ApiError, type ApiVenueDetail, type ApiGame, type ApiCoach, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
@@ -19,6 +19,7 @@ import {
   indoorLabel, priceRangeLabel, currencySymbol, locationLine, venueAmenities,
   mapsUrl, venueImage, venueCoords,
 } from '../../shared/lib/venueDisplay';
+import { getInitials } from '../../shared/lib/initials';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { getCurrentLocation, haversineKm, formatDistance } from '../../shared/lib/geo';
 import { resolveHourlyRate } from '../../shared/lib/pricing';
@@ -419,6 +420,18 @@ function CourtDetail({
   // raw ref when apiPlans hasn't loaded yet.
   const planByRef = (ref: string | null | undefined) =>
     apiPlans?.find((p) => p.id === ref || p.name === ref);
+
+  // ── Coaches here — everyone the owner approved to coach at this venue.
+  // Public (like "Games here"), so guests see it too. Silent on failure: a
+  // missing coach list shouldn't blank out the rest of the venue page.
+  const [venueCoaches, setVenueCoaches] = useState<ApiCoach[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    listVenueCoaches(venue.id)
+      .then((rows) => { if (!cancelled) setVenueCoaches(rows); })
+      .catch(() => { /* section just stays hidden */ });
+    return () => { cancelled = true; };
+  }, [venue.id]);
 
   // ── Partner applications (become a coach / organiser here) ──────────
   // Player-only: owners/staff lack player.dashboard.access and never see the
@@ -1089,6 +1102,67 @@ function CourtDetail({
                   <Icon name="forward" size={14} className="ml-auto text-[var(--muted)]" />
                 </a>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Coaches here — the approved coaching roster. Tapping a row opens the
+            coach's public profile (/coaches/:slug), same target as Find Coach. */}
+        {venueCoaches.length > 0 && (
+          <div className="section p-0!">
+            <div className="section-head px-0">
+              <div>
+                <div className="t-eyebrow">Coaches here</div>
+                <div className="hd-2 mt-1">Book a lesson at this venue</div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {venueCoaches.map((coach) => {
+                const photo = apiImageUrl(coach.avatarUrl || coach.imageUrl);
+                const rate = coach.pricePrivatePerHour ?? coach.rateFrom;
+                return (
+                  <button
+                    key={coach.id}
+                    type="button"
+                    onClick={() => onNavigate('coach-detail', { id: coach.slug || coach.id })}
+                    className="flex w-full items-center gap-3 rounded-[14px] border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] p-3 text-left"
+                  >
+                    <span className="avatar flex-none h-11 w-11 overflow-hidden rounded-full">
+                      {photo
+                        ? <img src={photo} alt="" className="h-full w-full object-cover" />
+                        : <span>{getInitials(coach.displayName)}</span>}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-heading text-[14px] font-extrabold text-[var(--ink)]">{coach.displayName}</span>
+                        {coach.isVerified && (
+                          <span className="flex-none text-[var(--primary)]" title="Verified"><Icon name="verified" size={14} /></span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-2 text-[12px] text-[var(--muted)]">
+                        {coach.specialty
+                          ? <span className="truncate">{coach.specialty}</span>
+                          : <span className="truncate">Coach</span>}
+                        {!!coach.rating && (
+                          <span className="flex flex-none items-center gap-0.5">
+                            <Icon name="star" size={12} />
+                            {coach.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    {!!rate && (
+                      <span className="flex-none text-right">
+                        <span className="block font-heading text-[13px] font-extrabold text-[var(--ink)]">
+                          {currencySymbol(coach.priceCurrency)}{rate.toLocaleString('en-PH')}
+                        </span>
+                        <span className="block text-[11px] text-[var(--muted)]">per hour</span>
+                      </span>
+                    )}
+                    <Icon name="forward" size={14} className="flex-none text-[var(--muted)]" />
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

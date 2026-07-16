@@ -15,6 +15,8 @@ interface KpiCardProps {
   sub?: string;
   /** For metrics where a decrease is good (cancellation/no-show): flips the colour. */
   invertDelta?: boolean;
+  /** Extra classes on the tile — e.g. a grid span. */
+  className?: string;
 }
 
 const TONE_CLASS: Record<KpiTone, string> = {
@@ -30,7 +32,7 @@ const TONE_CLASS: Record<KpiTone, string> = {
 // coloured trend indicator (or a supporting line). The app's answer to the
 // reference dashboard's KPI cards — white surface + brand tones, not the
 // reference's dark cards.
-export function KpiCard({ label, value, icon, tone = 'primary', delta, deltaSuffix, sub, invertDelta }: KpiCardProps) {
+export function KpiCard({ label, value, icon, tone = 'primary', delta, deltaSuffix, sub, invertDelta, className = '' }: KpiCardProps) {
   const hasDelta = delta != null && Number.isFinite(delta);
   const rising = (delta ?? 0) > 0;
   const flat = (delta ?? 0) === 0;
@@ -39,9 +41,11 @@ export function KpiCard({ label, value, icon, tone = 'primary', delta, deltaSuff
   const arrow = flat ? 'trending_flat' : rising ? 'arrow_upward' : 'arrow_downward';
 
   return (
-    <div className="rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] shadow-sm p-4 transition-shadow hover:shadow-md">
+    <div className={`rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] shadow-sm p-3.5 sm:p-4 transition-shadow hover:shadow-md ${className}`}>
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] leading-tight">{label}</span>
+        {/* min-w-0 + break-words: a long single-word label (e.g. "ORGANISERS") would
+            otherwise hold its min-content width and push the icon outside the tile. */}
+        <span className="min-w-0 break-words text-[11px] font-bold uppercase tracking-wider text-[var(--muted)] leading-tight">{label}</span>
         <span className={`w-8 h-8 rounded-[10px] flex items-center justify-center shrink-0 ${TONE_CLASS[tone]}`}>
           <Icon name={icon} size={16} />
         </span>
