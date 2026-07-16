@@ -456,10 +456,10 @@ async function notifyHostJoined(game: any, joinerId: string) {
 export async function joinGame(c: any) {
   const user = c.get('user');
   const id = c.req.param('id');
-  // Organizers manage games — they don't join as players.
-  if (hasPermission(user, 'organizer.access')) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Organizer accounts manage tournaments and events — they cannot join games as a player.' } }, 403);
-  }
+  // An organizer subscription is an add-on capability, not a separate account
+  // type — the organizer role inherits PLAYER_BASE_PERMISSIONS ("organisers are
+  // players too", see permissions.ts). So a subscribed organizer takes a roster
+  // seat in someone else's game or Open Play like any other player.
   const game = await Game.findById(id);
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
   if (game.status === 'cancelled') {
