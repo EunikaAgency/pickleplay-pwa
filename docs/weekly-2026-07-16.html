@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PickleBallers — Weekly Progress Update (16 July 2026)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --olive:#44620A; --olive-deep:#354D06; --olive-soft:#6B8C2A;
+    --lime:#D7F205; --wash:#F1F5E6; --ink:#1F2812; --body:#2C3524; --muted:#6C7A5C; --rule:#DCE4CC;
+    --amber-bg:#FFF4E5; --amber-bd:#C8791A; --amber-tx:#8A5410;
+    --blue:#2F4FE0; --coral:#E5484D;
+  }
+  *{box-sizing:border-box;}
+  @page{ size:A4; margin:20mm 16mm 18mm 16mm; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ margin:0; font-family:'Nunito Sans','Liberation Sans',sans-serif; color:var(--body); font-size:10.4pt; line-height:1.62; }
+  h1,h2,h3,h4,.brandface{ font-family:'Fredoka','Liberation Sans',sans-serif; }
+
+  /* Cover */
+  .cover{ height:247mm; display:flex; flex-direction:column; justify-content:center; text-align:center; page-break-after:always; }
+  .cover .bar-dark{ height:13mm; background:var(--olive); border-radius:2px; margin:0 6mm; }
+  .cover .bar-lime{ height:9mm; background:var(--lime); border-radius:2px; margin:0 6mm; }
+  .cover .eyebrow{ font-family:'Fredoka'; letter-spacing:.18em; font-size:13pt; color:var(--olive-soft); font-weight:600; margin:16mm 0 3mm; }
+  .cover h1{ font-size:30pt; color:var(--olive); margin:0 0 6mm; font-weight:600; letter-spacing:-.01em; }
+  .cover .rule{ height:1.6px; background:#8FA9C9; margin:0 auto 6mm; width:78%; }
+  .cover .sub{ font-size:13pt; color:#5C6B4E; margin:0 0 14mm; }
+  .cover .meta{ font-size:11pt; } .cover .meta b{ color:var(--olive); }
+  .cover .note{ font-style:italic; color:#7A8A6B; font-size:9.6pt; margin-top:14mm; padding:0 12mm; }
+
+  h2{ font-size:17.5pt; color:var(--olive); margin:11mm 0 4mm; font-weight:600; page-break-after:avoid; }
+  h2:first-of-type{ margin-top:0; }
+  h3{ font-size:12.6pt; color:var(--olive-soft); margin:7mm 0 2.5mm; font-weight:600; page-break-after:avoid; }
+  h4{ font-size:11pt; color:var(--olive); margin:5mm 0 2mm; font-weight:600; page-break-after:avoid; }
+  p{ margin:0 0 3.2mm; } ul{ margin:0 0 3.4mm; padding-left:6mm; } li{ margin-bottom:1.6mm; }
+  strong{ color:var(--ink); font-weight:700; }
+  .lead{ font-size:10.8pt; }
+
+  table{ width:100%; border-collapse:collapse; margin:4mm 0 5mm; font-size:9.6pt; page-break-inside:auto; }
+  thead{ display:table-header-group; }
+  th{ background:var(--olive); color:#fff; text-align:left; padding:2.6mm 3mm; font-family:'Fredoka'; font-weight:500; font-size:9.8pt; }
+  td{ padding:2.6mm 3mm; border-bottom:1px solid var(--rule); vertical-align:top; }
+  tr{ page-break-inside:avoid; }
+  .kv td:first-child{ background:var(--wash); font-weight:700; color:var(--olive); width:34%; }
+
+  .st-done{ color:#2E7D32; font-weight:700; }
+  .st-ref { color:#1F6F8B; font-weight:700; }
+  .st-prog{ color:#B26A00; font-weight:700; }
+  .st-wait{ color:#7A5CB8; font-weight:700; }
+  .st-plan{ color:#6C7A5C; font-weight:700; }
+
+  .callout{ border:1.6px solid var(--olive); background:var(--wash); border-radius:3px; padding:3.4mm 4mm; margin:4mm 0; page-break-inside:avoid; }
+  .callout .ttl{ font-family:'Fredoka'; font-weight:600; color:var(--olive); margin-bottom:1.4mm; font-size:10.4pt; }
+  .callout p:last-child{ margin-bottom:0; }
+  .callout.amber{ border-color:var(--amber-bd); background:var(--amber-bg); }
+  .callout.amber .ttl{ color:var(--amber-tx); }
+  .callout.win{ border-color:#2E7D32; background:#EFF7EE; }
+  .callout.win .ttl{ color:#1F5A2B; }
+
+  figure{ margin:5mm 0; page-break-inside:avoid; }
+  .shot{ position:relative; line-height:0; border:1px solid var(--rule); border-radius:4px; overflow:hidden; background:#fff; }
+  .shot img{ width:100%; height:auto; display:block; }
+  .shot svg{ position:absolute; inset:0; width:100%; height:100%; }
+  figcaption{ font-size:8.9pt; color:var(--muted); line-height:1.5; margin-top:2mm; border-left:2.5px solid var(--lime); padding-left:2.5mm; }
+  figcaption b{ color:var(--ink); }
+  .figtag{ display:inline-block; font-family:'Fredoka'; font-size:7.4pt; letter-spacing:.06em; text-transform:uppercase;
+           background:var(--olive); color:#fff; padding:.6mm 2mm; border-radius:2px; margin-right:2mm; vertical-align:1px; }
+  .figtag.mob{ background:#2F4FE0; }
+  .lbl{ display:inline-block; font-family:'Fredoka'; font-size:7.6pt; font-weight:600; letter-spacing:.03em;
+        padding:.6mm 2mm; border-radius:2px; margin-right:2mm; vertical-align:1px; white-space:nowrap; }
+  .lbl-new { background:#DFF0DC; color:#1F5A2B; }
+  .lbl-imp { background:#E4EBF5; color:#284C7A; }
+  .lbl-bef { background:#EFEFEF; color:#555; }
+  .lbl-aft { background:#DFF0DC; color:#1F5A2B; }
+  .lbl-prog{ background:#FFEFD6; color:#8A5410; }
+
+  .phone{ width:58mm; margin:0 auto; }
+  .phone-pair{ display:flex; gap:6mm; justify-content:center; align-items:flex-start; }
+  .phone-pair figure{ margin:0; flex:0 0 58mm; }
+  .ba{ display:flex; gap:5mm; align-items:flex-start; justify-content:center; }
+  .ba figure{ margin:0; flex:0 0 72mm; }
+  .ba.wide{ display:block; }                 /* desktop comparisons stack full-width */
+  .ba.wide figure{ margin:0 0 4mm; }
+
+  .an-box{ fill:none; stroke:var(--coral); stroke-width:5; }
+  .an-box-lg{ fill:none; stroke:var(--coral); stroke-width:8; }
+  .an-ring{ fill:none; stroke:var(--coral); stroke-width:5; }
+  .an-ring-lg{ fill:none; stroke:var(--coral); stroke-width:8; }
+  .an-ok{ fill:none; stroke:#2E7D32; stroke-width:8; }
+  .an-txt{ font-family:'Fredoka','Liberation Sans',sans-serif; fill:#fff; font-weight:600; }
+  .an-chip{ fill:var(--coral); } .an-chip-ok{ fill:#2E7D32; }
+
+  .pagebreak{ page-break-before:always; }
+  .avoid{ page-break-inside:avoid; }
+  .tight li{ margin-bottom:.9mm; }
+  .footnote{ font-size:8.6pt; color:var(--muted); font-style:italic; }
+  .rolebar{ display:inline-block; font-family:'Fredoka'; font-size:8pt; font-weight:600; background:var(--olive);
+            color:#fff; padding:.8mm 2.4mm; border-radius:3px; letter-spacing:.04em; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ COVER ═══════════ -->
+<section class="cover">
+  <div class="bar-dark"></div>
+  <div class="eyebrow">PICKLEBALLERS</div>
+  <h1>Weekly Progress Update</h1>
+  <div class="rule"></div>
+  <div class="sub">What we have accomplished since the 8 July meeting</div>
+  <div class="bar-lime"></div>
+  <div style="height:12mm"></div>
+  <div class="meta">
+    <p><b>Reporting period: 9 – 16 July 2026</b></p>
+    <p>Baseline: the product as it stood at the 8 July meeting</p>
+    <p>Prepared for the PickleBallers Team</p>
+  </div>
+  <div class="note">
+    This is a progress report, not a repeat of the July 8 minutes. It covers only what was added,
+    changed, or decided during the past seven days. Every item was checked against the running
+    application and the development record before being included.
+  </div>
+  <div style="height:12mm"></div>
+  <div class="bar-dark"></div>
+</section>
+
+<!-- ═══════════ 1. PURPOSE ═══════════ -->
+<h2>1. Purpose and Reporting Period</h2>
+<table class="kv">
+  <tr><td>Purpose</td><td>To show what meaningful work was completed or advanced since the 8 July meeting. Items already delivered and presented before that meeting are deliberately excluded.</td></tr>
+  <tr><td>Reporting period</td><td>Thursday 9 July – Thursday 16 July 2026 (seven days)</td></tr>
+  <tr><td>Baseline</td><td>The product as it stood at the 8 July meeting, plus the state captured in the updated minutes issued on 12 July.</td></tr>
+  <tr><td>How this was verified</td><td>Ninety development updates were reviewed against the running application, the change record, and the written decision log. Daily team reports were used as leads and then confirmed — anything that could not be confirmed was left out.</td></tr>
+  <tr><td>Screenshots</td><td>Captured from the running product on 16 July 2026 — player views on a phone screen, management views on a desktop screen. Sample data is used where a feature needs content to be visible.</td></tr>
+</table>
+
+<!-- ═══════════ 2. BASELINE ═══════════ -->
+<h2>2. Baseline: Where We Stood on 8 July</h2>
+<p>At the meeting, the Play experience had just been reorganised, manual reservations were working,
+Social had been merged, and coaching was live. Four things were explicitly <b>unresolved</b>, and they
+shaped everything discussed:</p>
+<ul class="tight">
+  <li><b>Open Play had no lobby</b> — joining was a single “I’m Interested” tap.</li>
+  <li><b>No eligibility rules</b> — a women-only or skill-restricted session could not be created or enforced.</li>
+  <li><b>No money model</b> — nobody could charge for Open Play; coach sessions were paid off-platform.</li>
+  <li><b>No platform-wide social feed</b> — only club-specific feeds existed.</li>
+</ul>
+<p>Two smaller items were also raised for alignment: Events was reachable only through a dropdown, and
+venue staff could still see venue revenue on their dashboard.</p>
+
+<div class="callout win">
+  <div class="ttl">The headline: all four are now resolved or delivered</div>
+  <p>In the seven days since, the team <b>settled the four open questions</b> and <b>built three of the
+  four features</b>. Eligibility, the money model and the social feed all went from “not started” to
+  working. Both smaller alignment items are closed. The remaining piece — the Open Play lobby — has its
+  foundation built and is scheduled next.</p>
+</div>
+
+<!-- ═══════════ 3. EXEC SUMMARY ═══════════ -->
+<h2>3. Executive Summary of the Week</h2>
+<p class="lead">Two distinct kinds of progress happened this week. First, the <b>business questions were
+answered</b> — the ones that were blocking development. Second, with those answers in hand, a
+substantial amount of <b>product shipped</b>.</p>
+
+<table>
+  <thead><tr><th style="width:38%">What changed</th><th style="width:22%">Status</th><th>Who benefits</th></tr></thead>
+  <tbody>
+    <tr><td><b>The money model was decided</b> — subscription is the licence to charge; 7% on court bookings only</td><td class="st-done">Decided 14 July</td><td>The business</td></tr>
+    <tr><td><b>Eligibility is live</b> — men-only / women-only / open-to-all, plus skill-band rules</td><td class="st-done">Completed</td><td>Players, hosts</td></tr>
+    <tr><td><b>PickleFeed</b> — a platform-wide player newsfeed</td><td class="st-done">Completed</td><td>Players</td></tr>
+    <tr><td><b>Organizer subscription</b> (₱999 / 30 days) — the licence to charge for Open Play</td><td class="st-done">Completed</td><td>Organizers, the business</td></tr>
+    <tr><td><b>Recurring bookings</b> — repeat a court hold across chosen days</td><td class="st-done">Completed</td><td>Players, venues</td></tr>
+    <tr><td><b>Refunds</b> — a 3-day free-cancellation window with figures shown up front</td><td class="st-done">Completed</td><td>Players</td></tr>
+    <tr><td><b>Public profiles redesigned</b> — one clean layout for players and coaches</td><td class="st-done">Completed</td><td>Players, coaches</td></tr>
+    <tr><td><b>Five new Discover filters</b> — who can play, cost, invite-only, how often, venue</td><td class="st-done">Completed</td><td>Players</td></tr>
+    <tr><td><b>Events now sits beside Open Play</b> as a visible tab</td><td class="st-done">Completed</td><td>Players</td></tr>
+    <tr><td><b>Staff permissions tightened</b> — revenue, pricing and social removed</td><td class="st-done">Completed</td><td>Venue owners</td></tr>
+    <tr><td><b>Messages reorganised</b> — tabs, shared venue inbox, venue identity</td><td class="st-ref">Working, being refined</td><td>Players, venues, staff</td></tr>
+    <tr><td><b>Open Play lobby</b> — foundation built, full changeover next</td><td class="st-prog">In progress</td><td>Players</td></tr>
+  </tbody>
+</table>
+
+<!-- ═══════════ 4. DECISIONS MADE ═══════════ -->
+<h2 class="pagebreak">4. Decisions Made Since the Meeting</h2>
+<p>These were the questions the 8 July minutes carried as open. All were settled on <b>14–15 July</b> and
+recorded in writing. This is what unblocked the week’s build work.</p>
+
+<div class="callout win">
+  <div class="ttl">The revenue model, in one line</div>
+  <p><b>The subscription is the licence to charge.</b> PickleBallers takes <b>7% on court bookings and
+  nothing else</b>. An organizer who subscribes may charge a join fee for Open Play and <b>keeps every
+  peso of it</b>. Coach lessons go through the app at <b>0% commission</b>. On a refund, whoever
+  cancelled bears the cost — outside a <b>3-day free window</b>.</p>
+</div>
+
+<table>
+  <thead><tr><th style="width:30%">Question from 8 July</th><th style="width:20%">Status</th><th>The decision</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>Should Open Play have a lobby?</b></td>
+      <td class="st-done">Decision made<br>14 July</td>
+      <td><b>Yes</b> — a real lobby with a roster and a cap the host sets and can edit after booking. Open Play becomes player-booked: any player can create one, no special role needed.</td>
+    </tr>
+    <tr>
+      <td><b>Who charges for Open Play, and does PickleBallers take a cut?</b></td>
+      <td class="st-done">Decision made<br>14 July</td>
+      <td><b>Free to join</b> unless the host is a subscribed organizer, who sets the fee and <b>keeps all of it</b>. PickleBallers takes <b>7% on the court booking only</b>.</td>
+    </tr>
+    <tr>
+      <td><b>Hide sessions you can’t join, or show them marked?</b></td>
+      <td class="st-done">Decision made<br>14 July · built</td>
+      <td><b>Show them, clearly marked — and lock the card</b> so it cannot be opened, with the Join button disabled as a second safeguard. Now live (§6.1).</td>
+    </tr>
+    <tr>
+      <td><b>How should coach session payments work?</b></td>
+      <td class="st-done">Decision made<br>14 July</td>
+      <td>Coach lessons go <b>through the app at 0% commission</b>. The platform earns from the court booking, not the lesson.</td>
+    </tr>
+    <tr>
+      <td><b>Are “Like” and “Interested” intentionally different?</b></td>
+      <td class="st-done">Resolved<br>14 July</td>
+      <td><b>No decision needed</b> — they never overlapped. “Interested” belonged only to Open Play; “Like” only to club posts. Interest is replaced by the lobby roster anyway.</td>
+    </tr>
+    <tr>
+      <td><b>Homepage wording</b></td>
+      <td class="st-done">Settled<br>14 July · built</td>
+      <td>Existing copy stays. One line changed because of the lobby decision: cards now read <b>“3 spots left”</b> instead of “5 interested” — what a player actually needs to know (§6.2).</td>
+    </tr>
+    <tr>
+      <td><b>Events vs Tournaments</b></td>
+      <td class="st-done">Settled<br>14 July</td>
+      <td><b>Leave Events as it is.</b> It is a container for competitive formats — round-robin, mini tournament, bracketing — not a synonym for “tournament”. It looks sparse only because the public game is the first format built. Tournaments stay separate for now.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Further decisions taken on 15 July</h3>
+<ul class="tight">
+  <li><b>Every money value is admin-configurable.</b> Fees and subscription prices are all editable from the dashboard — nothing is fixed in the code.</li>
+  <li><b>Recurring sessions</b> — one booking per occurrence, paid as each date nears rather than all upfront, across an eight-week horizon.</li>
+  <li><b>The ₱499 coach subscription stays</b>, with the price made admin-configurable.</li>
+  <li><b>The pricing engine stays</b>; only the demand-based price <i>suggestions</i> were removed. The underlying analytics remain.</li>
+  <li><b>Equipment rental</b> is presented as “Coming soon” rather than hidden or removed (§7.3).</li>
+  <li><b>Request-to-book</b> (per-venue approval) is kept as an opt-in venue setting.</li>
+</ul>
+
+<!-- ═══════════ 5. NEW FEATURES ═══════════ -->
+<h2 class="pagebreak">5. Newly Completed Features</h2>
+<p>Each of these did not exist at the 8 July meeting.</p>
+
+<h3>5.1 Eligibility — who can join a session <span class="lbl lbl-new">Completed</span></h3>
+<p><span class="rolebar">PLAYER · HOST</span></p>
+<p>The meeting asked for women-only, men-only and skill-based sessions. All of it is now live. A host
+chooses who may join when publishing a game; the app checks it against the player’s profile and shows
+the outcome <b>before</b> the player taps in.</p>
+<ul class="tight">
+  <li><b>Who can play:</b> Everyone, Men, or Women — enforced from the player’s profile.</li>
+  <li><b>Skill bands:</b> a player outside the session’s rating range cannot join or mark interest.</li>
+  <li><b>Clear signalling:</b> restricted sessions carry a “Women only” badge, and an ineligible player sees a locked, disabled Join button explaining why.</li>
+  <li><b>Gender</b> is now a required field at sign-up and on the profile editor, so the rules have something to check against. Existing accounts were updated where possible.</li>
+</ul>
+
+<div class="phone-pair">
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p05-women-only-game.png" alt="Women-only session with a locked join button">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-box" x="368" y="336" width="222" height="56" rx="28"/>
+      <rect class="an-box" x="300" y="808" width="182" height="72" rx="14"/>
+      <rect class="an-box-lg" x="236" y="1540" width="514" height="94" rx="18"/>
+    </svg>
+  </div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-new">New this week</span><b>A women-only
+    session, seen by a male player.</b> The “Women only” badge sits on the hero, the skill tile reads
+    <b>Not eligible</b>, and the join button is locked with the reason: “Not eligible — women only”.</figcaption>
+</figure>
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p04-whocanplay-filter.png" alt="Filter sheet with five new filters">
+    <svg viewBox="0 0 780 1286" preserveAspectRatio="none">
+      <rect class="an-box" x="26" y="118" width="728" height="100" rx="12"/>
+      <rect class="an-box" x="26" y="480" width="728" height="100" rx="12"/>
+      <rect class="an-box" x="26" y="622" width="728" height="100" rx="12"/>
+      <rect class="an-box" x="26" y="764" width="728" height="100" rx="12"/>
+    </svg>
+  </div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-new">New this week</span><b>Five filters
+    added.</b> <b>Who can play</b>, <b>Cost to join</b>, <b>Who can join</b>, <b>How often</b> and <b>Venue</b> —
+    the complete set the meeting asked for, now live alongside the existing ones.</figcaption>
+</figure>
+</div>
+
+<h3>5.2 PickleFeed — a platform-wide player newsfeed <span class="lbl lbl-new">Completed</span></h3>
+<p><span class="rolebar">PLAYER</span></p>
+<p>At the meeting a global social feed was a concept only; club feeds were the sole social surface. A
+full newsfeed has since been built and now sits as the first section of Social.</p>
+<ul class="tight">
+  <li>Players post, like, comment and repost.</li>
+  <li>Games, open play sessions and clubs can be shared into the feed as tappable cards, turning the feed into a way to fill sessions.</li>
+  <li>Links posted as text become clickable automatically; authors can edit or delete their own posts.</li>
+  <li>Social is now organised as <b>PickleFeed · Clubs · Friends</b>.</li>
+</ul>
+
+<div class="phone">
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p07-picklefeed.png" alt="PickleFeed newsfeed">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-box" x="30" y="300" width="722" height="96" rx="16"/>
+      <rect class="an-box" x="34" y="424" width="716" height="126" rx="18"/>
+    </svg>
+  </div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-new">New this week</span><b>PickleFeed.</b>
+    A player newsfeed with posting, likes, comments and reposts. Social now carries three sections
+    (outlined). Content shown is sample data.</figcaption>
+</figure>
+</div>
+
+<h3 class="pagebreak">5.3 Organizer subscription — the licence to charge <span class="lbl lbl-new">Completed</span></h3>
+<p><span class="rolebar">ORGANIZER · THE BUSINESS</span></p>
+<p>This is the mechanism that puts the new money model into practice. A player subscribes for
+<b>₱999 / 30 days</b> to become an organizer. Only a subscribed organizer may charge a join fee for
+Open Play — and they keep the whole fee. It can be cancelled at any time, and the role stays active
+until the current term ends.</p>
+
+<div class="phone">
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p11-organizer-subscribe.png" alt="Organizer subscription screen">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-box-lg" x="58" y="448" width="300" height="82" rx="12"/>
+      <rect class="an-box" x="60" y="660" width="700" height="86" rx="12"/>
+    </svg>
+  </div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-new">New this week</span><b>Become an
+    organizer.</b> ₱999 / 30 days, described in the app as “the licence to charge”. The first benefit
+    listed is the commercial rule agreed on 14 July: <b>charge for Open Play — and keep every peso</b>.</figcaption>
+</figure>
+</div>
+
+<h3>5.4 Recurring bookings and refunds <span class="lbl lbl-new">Completed</span></h3>
+<p><span class="rolebar">PLAYER · VENUE</span></p>
+<p>Two commercial mechanics arrived together on 15 July:</p>
+<ul class="tight">
+  <li><b>Repeat this booking</b> — while booking a private court hold, a player can repeat it across chosen days (weekdays, weekends, Mon/Wed/Fri, or a custom set) for a number of weeks. Each future date is held, and paid for as it approaches rather than all upfront. Weeks already taken are skipped automatically.</li>
+  <li><b>A 3-day free-cancellation window</b> — cancel more than three days ahead and the refund is whole. The refund screen now shows the real “you paid / fee / you’ll get back” figures <b>before</b> the player confirms, instead of afterwards.</li>
+</ul>
+<p>A <b>demo card gate</b> was also added, so the test payment card behaves like a real one and a wrong
+card is properly declined — making end-to-end demonstrations trustworthy.</p>
+
+<h3>5.5 Public profiles, redesigned <span class="lbl lbl-new">Completed</span></h3>
+<p><span class="rolebar">PLAYER · COACH</span></p>
+<p>Player and coach profiles now share one clean layout: a sticky top bar, the player’s name with a
+verified check, a stat grid, and a fixed action bar at the bottom — Book and Message for a coach,
+Message and Share for a player. Coach profiles gained About / Sessions / Venues tabs. Friends and
+suggested players are now tappable through to these profiles.</p>
+
+<div class="phone">
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p09-public-profile.png" alt="Redesigned public player profile">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-box" x="30" y="420" width="722" height="420" rx="16"/>
+      <rect class="an-box" x="26" y="1430" width="728" height="112" rx="16"/>
+    </svg>
+  </div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-new">New this week</span><b>The redesigned
+    public profile.</b> A stat grid (outlined) and a fixed action bar at the foot. Coaches use the same
+    layout with Book and Message actions.</figcaption>
+</figure>
+</div>
+
+<!-- ═══════════ 6. IMPROVEMENTS ═══════════ -->
+<h2 class="pagebreak">6. Improvements to Previously Presented Features</h2>
+<p>These areas existed before, and were shown at or just after the meeting. Each has been materially
+improved during the week — including <b>both</b> items the 12 July minutes raised for alignment.</p>
+
+<h3 class="pagebreak">6.1 Events now sits beside Open Play <span class="lbl lbl-imp">Improved</span></h3>
+<p><span class="rolebar">PLAYER</span></p>
+<p>The meeting asked that Open Play and Events be visible side by side rather than hidden in a dropdown.
+That is now the case: they are a pair of tabs at the top of the Play screen, and Play opens on Open
+Play by default.</p>
+
+<div class="ba">
+<figure>
+  <div class="shot">
+    <img src="minutes-assets/m02b-section-dropdown.png" alt="Before: Events inside a dropdown">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-box-lg" x="30" y="420" width="720" height="212" rx="16"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-bef">Before · 12 July</span><b>Events was inside a dropdown</b> and only
+    appeared after tapping.</figcaption>
+</figure>
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p02-play-tabs.png" alt="After: Open Play and Events as visible tabs">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-ok" x="418" y="150" width="336" height="86" rx="43"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-aft">Now · 16 July</span><b>Both are visible tabs.</b> Open Play is
+    selected by default; Events is one tap away and always in view.</figcaption>
+</figure>
+</div>
+
+<h3>6.2 The home screen speaks the meeting’s language <span class="lbl lbl-imp">Improved</span></h3>
+<p><span class="rolebar">PLAYER</span></p>
+<p>The main action now reads <b>Open Play</b> — the wording the meeting originally asked for — with a
+pickleball icon, and Find Coach was simplified to a person icon. Session cards now say
+<b>“3 spots left”</b> rather than “5 interested”, following the lobby decision: what a player needs
+before tapping is whether there is room.</p>
+
+<div class="ba">
+<figure>
+  <div class="shot">
+    <img src="minutes-assets/m01-home.png" alt="Before: Play button">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-box" x="24" y="558" width="240" height="242" rx="16"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-bef">Before · 12 July</span>The action read <b>“Play”</b>, and cards
+    counted people who were merely interested.</figcaption>
+</figure>
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/p01-home-openplay.png" alt="After: Open Play button and spots left">
+    <svg viewBox="0 0 780 1688" preserveAspectRatio="none">
+      <rect class="an-ok" x="26" y="562" width="238" height="248" rx="16"/>
+      <rect class="an-ok" x="514" y="1108" width="180" height="76" rx="38"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-aft">Now · 16 July</span>It reads <b>“Open Play”</b> with a new icon,
+    and the card shows <b>“3 spots left”</b>.</figcaption>
+</figure>
+</div>
+
+<h3>6.3 Venue staff now see only their own job <span class="lbl lbl-imp">Improved</span></h3>
+<p><span class="rolebar">VENUE OWNER · VENUE STAFF</span></p>
+<p>The 12 July minutes raised one item for alignment: staff could still see venue revenue on their
+dashboard. That is now closed, along with a wider tightening of the staff role.</p>
+<ul class="tight">
+  <li><b>Revenue is gone</b> from the staff dashboard — both the banner and the money tiles.</li>
+  <li><b>Pricing, Social and Create game</b> were removed from the staff sidebar.</li>
+  <li><b>Staff keep everything operational:</b> the approval queue with Confirm/Decline, bookings, the calendar, reservations, and each venue’s daily takings.</li>
+  <li>The change is covered by automated tests, so it cannot quietly regress.</li>
+</ul>
+
+<div class="ba wide">
+<figure>
+  <div class="shot">
+    <img src="minutes-assets/d10-staff-home-revenue.png" alt="Before: staff dashboard showing revenue">
+    <svg viewBox="0 0 2880 1800" preserveAspectRatio="none">
+      <rect class="an-box-lg" x="540" y="470" width="1250" height="180" rx="14"/>
+      <rect class="an-box-lg" x="530" y="1230" width="2320" height="220" rx="14"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-bef">Before · 12 July</span><b>Staff saw the owner’s revenue</b> —
+    ₱9,400 for the month and ₱6,800 for the week.</figcaption>
+</figure>
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/s01-staff-home-no-revenue.png" alt="After: staff dashboard without revenue">
+    <svg viewBox="0 0 2880 1800" preserveAspectRatio="none">
+      <rect class="an-ok" x="524" y="700" width="2330" height="220" rx="14"/>
+      <rect class="an-ok" x="30" y="640" width="440" height="120" rx="16"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-aft">Now · 16 July</span><b>No revenue anywhere.</b> The dashboard leads
+    with the approval queue staff actually work from, and Pricing and Social have left the sidebar.</figcaption>
+</figure>
+</div>
+
+<h3>6.4 The owner Partners screen shows real numbers <span class="lbl lbl-imp">Improved</span></h3>
+<p><span class="rolebar">VENUE OWNER</span></p>
+<p>The 12 July minutes noted that this screen displayed a “₱229,000 partner revenue” figure the platform
+did not actually collect. The invented figures were removed on 14 July and the screen now reports only
+what is real: active coaches, active organizers, and applications awaiting a decision.</p>
+
+<div class="ba wide">
+<figure>
+  <div class="shot">
+    <img src="minutes-assets/x02-partners.png" alt="Before: invented partner revenue">
+    <svg viewBox="0 0 2880 1800" preserveAspectRatio="none">
+      <rect class="an-box-lg" x="2262" y="240" width="546" height="248" rx="16"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-bef">Before · 12 July</span>A <b>₱229,000</b> “partner revenue” tile that
+    did not reflect real money.</figcaption>
+</figure>
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/o01-partners-real-stats.png" alt="After: real partner stats">
+    <svg viewBox="0 0 2880 1800" preserveAspectRatio="none">
+      <rect class="an-ok" x="556" y="236" width="2252" height="252" rx="16"/>
+    </svg>
+  </div>
+  <figcaption><span class="lbl lbl-aft">Now · 16 July</span>Only <b>real, checkable numbers</b>: active
+    coaches, active organizers, and pending reviews.</figcaption>
+</figure>
+</div>
+
+<!-- ═══════════ 7. BY ROLE ═══════════ -->
+<h2 class="pagebreak">7. Updates by User</h2>
+
+<h3>7.1 Players</h3>
+<table>
+  <thead><tr><th style="width:42%">Update</th><th style="width:20%">Status</th><th>What it means for them</th></tr></thead>
+  <tbody>
+    <tr><td>Eligibility rules — women-only, men-only, skill bands</td><td class="st-done">Completed</td><td>You can see before tapping whether a session is for you.</td></tr>
+    <tr><td>PickleFeed newsfeed</td><td class="st-done">Completed</td><td>A place to find people to play with, not just courts to book.</td></tr>
+    <tr><td>Five new Discover filters</td><td class="st-done">Completed</td><td>Free vs paid, invite-only, recurring, venue and who-can-play.</td></tr>
+    <tr><td>Redesigned public profiles</td><td class="st-done">Completed</td><td>A proper identity to share, and a clearer view of any coach.</td></tr>
+    <tr><td>Repeat a booking across chosen days</td><td class="st-done">Completed</td><td>Regular players book their weekly slot once.</td></tr>
+    <tr><td>3-day free cancellation, figures shown up front</td><td class="st-done">Completed</td><td>No surprises when cancelling.</td></tr>
+    <tr><td>Home reads “Open Play”; cards read “3 spots left”</td><td class="st-done">Completed</td><td>Clearer language throughout.</td></tr>
+    <tr><td>Messages reorganised into tabs with unread counts</td><td class="st-ref">Being refined</td><td>Personal and venue conversations no longer mix.</td></tr>
+    <tr><td>Booking steps always open at the top of the page</td><td class="st-done">Completed</td><td>A small fix that removes a persistent annoyance.</td></tr>
+    <tr><td>Invitations behave correctly</td><td class="st-done">Completed</td><td>Accepted invites no longer reappear; only players are invited.</td></tr>
+  </tbody>
+</table>
+
+<div class="phone-pair">
+<figure>
+  <div class="shot"><img src="weekly-assets/p12-messages.png" alt="Messages with tabs"></div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-prog">Being refined</span><b>Messages,
+    reorganised.</b> Direct Messages and Venues are now separate tabs with unread counters, so venue
+    business does not bury a friend’s message.</figcaption>
+</figure>
+<figure>
+  <div class="shot"><img src="weekly-assets/p03-events-tab.png" alt="Events tab"></div>
+  <figcaption><span class="figtag mob">Mobile</span><span class="lbl lbl-imp">Improved</span><b>The Events
+    half of Play.</b> Reached in one tap. It holds competitive formats — round-robin and similar — and will
+    fill out as more formats are built.</figcaption>
+</figure>
+</div>
+
+<h3>7.2 Venue owners</h3>
+<table>
+  <thead><tr><th style="width:42%">Update</th><th style="width:20%">Status</th><th>What it means for them</th></tr></thead>
+  <tbody>
+    <tr><td>Partners screen reports real figures</td><td class="st-done">Completed</td><td>Numbers that can be trusted and acted on.</td></tr>
+    <tr><td>Staff can no longer see revenue, pricing or social</td><td class="st-done">Completed</td><td>Business information stays with the owner.</td></tr>
+    <tr><td>Shared venue inbox for owners and staff</td><td class="st-ref">Being refined</td><td>The team answers players together without duplicate replies; personal messages stay private.</td></tr>
+    <tr><td>Venue conversations show the venue’s name and photo</td><td class="st-done">Completed</td><td>Players see the business, not the owner’s personal profile.</td></tr>
+    <tr><td>Equipment rental marked “Coming soon”</td><td class="st-done">Completed</td><td>An honest placeholder rather than an unusable screen.</td></tr>
+    <tr><td>Owner menu items restored (Shop/Rental, Members, Calendar, Partners)</td><td class="st-done">Completed</td><td>Navigation that had gone missing is back.</td></tr>
+    <tr><td>Demand-based price suggestions removed</td><td class="st-done">Completed</td><td>Pricing control and analytics stay; the guesswork is gone.</td></tr>
+  </tbody>
+</table>
+
+<h3>7.3 Venue staff</h3>
+<p>The staff role was deliberately narrowed this week so that it matches the job. Staff keep the front
+desk, calendar, bookings, reservations and daily takings; they no longer reach pricing, revenue,
+social or game creation. Venue messages are now shared with the owner through one inbox, with read
+status synced across the team so two people do not answer the same player.</p>
+
+<div class="phone">
+<figure>
+  <div class="shot">
+    <img src="weekly-assets/o02-rental-coming-soon.png" alt="Rental marked coming soon">
+  </div>
+  <figcaption><span class="figtag">Desktop</span><span class="lbl lbl-imp">Improved</span><b>Equipment rental
+    is now labelled “Coming soon”.</b> A decision from 15 July: keep it visible and honest rather than
+    hide it. The full stock manager is preserved for when the player-facing side is built.</figcaption>
+</figure>
+</div>
+
+<h3>7.4 Organizers</h3>
+<p>Organizers gained the ability to earn. The ₱999 subscription is now the licence to charge a join
+fee for Open Play, with the organizer keeping the entire fee. Venue pages show a clear prompt to
+subscribe when a player without an active subscription applies to coach or organize, and the prompt
+links straight to the subscription screen.</p>
+
+<h3>7.5 Administrators and technical</h3>
+<ul class="tight">
+  <li><b>Every money value is now admin-configurable</b> — the platform fee, transaction fee, and both subscription prices are settings rather than fixed values, ready for the payment provider.</li>
+  <li><b>Branding</b> — the PickleBallers icon is now the browser tab icon and appears in the app and console sidebars.</li>
+  <li><b>Demo and test accounts</b> restored, with working one-click sign-in for demonstrations.</li>
+  <li><b>Content moderation</b> — reporting of feed posts is under active development (§8).</li>
+</ul>
+
+<!-- ═══════════ 8. IN PROGRESS ═══════════ -->
+<h2 class="pagebreak">8. Currently Being Refined and In Progress</h2>
+
+<h3>Being refined <span class="lbl lbl-prog">Working, under refinement</span></h3>
+<ul class="tight">
+  <li><b>Messages</b> — the tabbed layout and the shared venue inbox are working; unread counts and read-sync across a venue team are being polished.</li>
+  <li><b>Play ranking</b> — the relevance order works and is stable; re-tuning it against real player behaviour is deliberately left until there is usage to learn from.</li>
+</ul>
+
+<h3>In progress <span class="lbl lbl-prog">In progress</span></h3>
+<ul class="tight">
+  <li><b>The Open Play lobby changeover.</b> The foundation is built — a session now takes a real roster seat, with capacity, gender and skill rules applied, and the host sets the cap. What remains is routing Open Play through the full lobby (roster and chat), creating a session via a court booking, and retiring the older interest-only records. This is the single biggest remaining piece and is next.</li>
+  <li><b>The two money flows.</b> The rules are decided and the card gate and refunds are done. Still to connect: charging the organizer’s join fee on a paid Open Play, and routing the coach lesson fee through checkout. Both pair with the lobby changeover.</li>
+  <li><b>Feed moderation.</b> Post reporting and an admin review queue are being built now, so the newsfeed has proper controls before it opens up widely.</li>
+</ul>
+
+<h3>Planned for the next phase <span class="lbl lbl-plan">Planned</span></h3>
+<p>Deliberately deferred, with no impact on the work above: cart-style checkout, the player-facing side
+of equipment rental, additional staff permission levels, and building out the remaining competitive
+formats inside Events.</p>
+
+<!-- ═══════════ 9. CARRIED OVER ═══════════ -->
+<h2>9. Open Questions Carried Over — and Where They Stand</h2>
+<p>Every open question from the 8 July minutes has moved. None is unchanged.</p>
+<table>
+  <thead><tr><th style="width:34%">Raised on 8 July</th><th style="width:24%">Status now</th><th>What changed</th></tr></thead>
+  <tbody>
+    <tr><td>Should Open Play have a lobby?</td><td class="st-done">Decision made — being implemented</td><td>Yes, with a host-set cap. Foundation built; changeover in progress.</td></tr>
+    <tr><td>Open Play payment rules by host type</td><td class="st-done">Decision made</td><td>Free unless a subscribed organizer charges; they keep the fee. Platform takes 7% on the booking.</td></tr>
+    <tr><td>Gender and eligibility rules</td><td class="st-done">Decided and delivered</td><td>Built and live, including the “show it, but lock it” treatment.</td></tr>
+    <tr><td>Coach session payments</td><td class="st-done">Decision made — build pending</td><td>Through the app at 0% commission. Routing the fee through checkout is queued.</td></tr>
+    <tr><td>Like vs Interested</td><td class="st-done">Resolved — no decision needed</td><td>They never overlapped; interest is replaced by the lobby roster.</td></tr>
+    <tr><td>Homepage wording</td><td class="st-done">Settled and applied</td><td>Copy stays; “interested” became “spots left”.</td></tr>
+    <tr><td>Events sitting apart from Tournaments</td><td class="st-done">Settled</td><td>Events stays as the container for competitive formats. Tournaments stay separate for now.</td></tr>
+    <tr><td>Events reachable only via a dropdown</td><td class="st-done">Closed</td><td>Now a visible tab beside Open Play.</td></tr>
+    <tr><td>Staff seeing venue revenue</td><td class="st-done">Closed</td><td>Removed, with tests to keep it that way.</td></tr>
+  </tbody>
+</table>
+
+<!-- ═══════════ 10. NEW APPROVALS ═══════════ -->
+<h2>10. New Approvals Requested</h2>
+<p>Two things emerged from the week that would benefit from a clear yes.</p>
+
+<div class="callout amber">
+  <div class="ttl">1. Confirm the commercial model in principle <span class="lbl lbl-prog">Waiting for client approval</span></div>
+  <p>The team settled the money model on 14 July and has built against it: <b>subscription as the licence
+  to charge, 7% on court bookings only, organizers keep their join fee, coach lessons at 0%.</b> It is
+  working in the product today. We would like this confirmed as the intended commercial direction before
+  the remaining payment flows are connected.</p>
+</div>
+
+<div class="callout amber">
+  <div class="ttl">2. The subscriptions that now carry the business <span class="lbl lbl-prog">Waiting for clarification</span></div>
+  <p>Two subscriptions are live and purchasable — <b>₱499 coach</b> and <b>₱999 organizer</b> — and they
+  are currently the platform’s only revenue. Both prices are now admin-configurable, so they can be
+  changed without an app update. Please confirm the price points, and whether a free trial or an
+  introductory waiver should exist to attract the first coaches and organizers, since both must pay
+  before they can earn.</p>
+</div>
+
+<!-- ═══════════ 11. NEXT WEEK ═══════════ -->
+<h2>11. Recommended Priorities for the Coming Week</h2>
+<ol>
+  <li><b>Complete the Open Play lobby changeover</b> — route Open Play through the real lobby with its roster and chat, and create sessions from a court booking. This is the last structural piece from the meeting.</li>
+  <li><b>Connect the two money flows</b> — the organizer join fee and the coach lesson through checkout — so the decided model is fully operational.</li>
+  <li><b>Finish feed moderation</b> before PickleFeed is opened up more widely.</li>
+  <li><b>Confirm the commercial model and subscription pricing</b> (§10), which the remaining payment work depends on.</li>
+  <li><b>Settle the payment provider timing</b>, so the transaction fee can move from its ₱0 placeholder to a real figure.</li>
+  <li><b>Begin observing real usage</b> of Discover ranking and the new filters, and tune only against evidence.</li>
+</ol>
+
+<!-- ═══════════ 12. CLOSING ═══════════ -->
+<h2>12. Closing Summary</h2>
+<p>This was a week in which the product stopped waiting on questions. The four items the 8 July meeting
+left open — the lobby, eligibility, the money model, and a social feed — have all been answered, and
+three of the four are already working in the product. The commercial model moved from an open debate to
+a written rule that the app now implements.</p>
+<p>Alongside that, both of the smaller items raised for alignment on 12 July were closed: Events is now
+visible beside Open Play, and venue staff no longer see the owner’s revenue. The Partners screen was
+corrected to show only real figures.</p>
+<p>The remaining work is concentrated and well understood: complete the Open Play lobby changeover, and
+connect the two payment flows that pair with it. Both are already designed and partly built.</p>
+
+<div class="callout win">
+  <div class="ttl">In one line</div>
+  <p>Seven days, four long-standing questions answered, and the biggest gaps in the product — eligibility,
+  the money model, and a social feed — closed. The lobby is next, and its groundwork is already in place.</p>
+</div>
+
+</body>
+</html>
