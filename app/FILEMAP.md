@@ -62,8 +62,13 @@ src/
                        #   gameId prop it switches to the MANAGE form: edit details + kick players,
                        #   venue/time locked), MyGames (manage games you created: status + edit/delete),
                        #   InvitePlayers, GameChat (per-game group chat for the roster — opened from
-                       #   GameDetails' "Chat"; realtime via realtimeBus 'game.message'; gated by
-                       #   player.games.chat), GameFilterSheet + gameFilters (when/skill/type/openings
+                       #   GameDetails' "Chat" AND from the player-hosted Open Play detail, whose
+                       #   roster is interestedUserIds; realtime via realtimeBus 'game.message';
+                       #   gated by player.games.chat),
+                       #   v2/OpenPlayChat (group chat for an organizer-published OpenPlaySession —
+                       #   listOpenPlayMessages/sendOpenPlayMessage, realtime 'openplay.message';
+                       #   same shared ChatThread, same player.games.chat gate),
+                       #   GameFilterSheet + gameFilters (when/skill/type/openings
                        #   filter model+predicate), gameDisplay (API-wired: create/edit/delete/
                        #   list/detail/join/kick/group-chat; invite-send still demo).
                        #   playRanking.ts NO LONGER SCORES — the Discover feed is ranked by the
@@ -482,7 +487,8 @@ src/
   over all upcoming published games; the **quick chips + `GameFilterSheet` now filter for real**
   (client-side via `gameFilters.ts` — when/skill/type/has-openings; both edit one `GameFilters`
   state, the header button shows an active-filter count). The search box was removed; the
-  Game-Details **chat** is still demo (no endpoint yet).
+  Game-Details **chat** is live (`GET|POST /games/:id/messages`), and so is Open Play's —
+  see the games slice notes above.
 - **Social tab = Clubs + Friends.** Both are "people I play with", so they share one
   tab (`social`, path `/social?tab=clubs|friends`). Friends used to sit three taps deep
   in Profile and nobody found it; it is now half of a top-level tab, and the **badge**

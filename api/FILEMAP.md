@@ -161,8 +161,13 @@ src/
                              #   Open play: OpenPlaySeries + OpenPlaySession + OpenPlayRegistration —
                              #     create recurring series (generates instances)/mine/cancel
                              #     series|instance + INTEREST toggle (join/leave = "I'm Interested",
-                             #     no capacity/waitlist; getOpenPlaySession returns interestedUsers)
-                             #     + roster + reg mgmt.
+                             #     no capacity/waitlist; getOpenPlaySession returns interestedUsers
+                             #     + viewerIsOrganizer) + roster + reg mgmt.
+                             #   Session GROUP CHAT (OpenPlayMessage model; GET/POST
+                             #     /open-play/:id/messages, roster = organizer + everyone who joined;
+                             #     post gated by player.games.chat — Open Play is part of the games
+                             #     family, so no near-duplicate permission; POST realtime-fans-out
+                             #     openplay.message.created via userEvents + a collapsed notification).
     games/                   # player games: gameType open=INTEREST-only Open Play (interestedUserIds
                              #   + POST /:id/interest toggle, no roster/capacity; join/leave rejected;
                              #   targetPlayers = soft headcount goal), public=format-driven capped game
@@ -172,9 +177,12 @@ src/
                              #   after a 2nd leave (leaveLog); full = fullAt starts a 1h free-leave
                              #   window, after it POST /:id/request-leave → host POST /:id/approve-leave
                              #   (pendingLeaveUserIds). Per-game GROUP CHAT
-                             #   (GameMessage model; GET/POST /:id/messages, roster-only, gated by
+                             #   (GameMessage model; GET/POST /:id/messages, gated by
                              #   player.games.chat; POST realtime-fans-out game.message.created via
-                             #   shared/lib/userEvents.ts). create (POST takes
+                             #   shared/lib/userEvents.ts). The chat roster (chatRoster/isOnRoster) is
+                             #   host + participantIds + interestedUserIds — the last one is what gives
+                             #   gameType 'open' Open Play a chat, since it has no participantIds.
+                             #   create (POST takes
                              #   venueId + the host's bookingId — the court is booked + paid first
                              #   via the bookings flow; createGame tags that booking bookingType:
                              #   'game' so it's hidden from "My bookings" and shows only as a game)
