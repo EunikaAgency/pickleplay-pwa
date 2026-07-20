@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { User, UserRole } from '../auth/auth.model.js';
+import { User } from '../auth/auth.model.js';
 import { Payment } from '../payments/payments.model.js';
 import { isPaymentTestMode, getPartnerSubscriptionPricing } from '../settings/settings.controller.js';
 import {
@@ -51,20 +51,6 @@ function subscriptionPayload(s: any) {
     // Derived so clients never have to compare clocks themselves.
     isActive: s.status === 'active' && new Date(s.expiresAt).getTime() > Date.now(),
   };
-}
-
-/**
- * Subscribing grants the GLOBAL `coach` (or `organizer`) role, which is what
- * unlocks `coach.profile.manage` / `coach.applications.manage` — i.e. the
- * ability to create a coach profile and apply to venues. Venue-scoped grants
- * are separate and still come from an owner approving a CoachApplication.
- */
-async function grantGlobalRole(userId: string, role: PartnerPlan): Promise<void> {
-  await UserRole.updateOne(
-    { userId, role, scopeType: null, scopeId: null },
-    { $setOnInsert: { userId, role, scopeType: null, scopeId: null } },
-    { upsert: true },
-  );
 }
 
 /** GET /partner-subscriptions/me — every subscription this user holds, the
@@ -167,7 +153,9 @@ export async function subscribe(c: any) {
   sub.set('paymentId', payment._id);
   await sub.save();
 
-  await grantGlobalRole(tokenUser.sub, plan);
+  // No role changes hands: the subscriber stays a `player`, and the live term is
+  // what carries `coach.*` / `organizer.*` (SUBSCRIPTION_PERMISSIONS, resolved
+  // into /me and the access token). Re-login (or refresh) to pick them up.
 
   return c.json({ data: { ...subscriptionPayload(sub), paymentId: payment._id } }, 201);
 }

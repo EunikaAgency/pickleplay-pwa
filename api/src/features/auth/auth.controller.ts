@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { User, UserRole, PasswordResetToken, EmailVerificationToken } from './auth.model.js';
 import { Venue, VenueStaff } from '../venues/venues.model.js';
 import { signAccessToken, signRefreshToken, verifyToken } from '../../shared/lib/jwt.js';
-import { resolveRolePermissions } from '../../shared/lib/permissions.js';
+import { resolveRolePermissions, resolveSubscriptionPermissions } from '../../shared/lib/permissions.js';
 import { getOAuthUrl, exchangeCode, isGmailConfigured, hasValidTokens, sendEmail, getStoredTokens } from '../../shared/lib/gmail.js';
 import { passwordChangedEmail, passwordResetEmail, welcomeEmail } from '../../shared/lib/email-templates.js';
 import { PartnerSubscription, expireLapsedSubscriptions } from '../partner-subscriptions/partner-subscriptions.model.js';
@@ -26,6 +26,9 @@ const registerSchema = z.object({
   // Optional here, not required: `web` also registers through this endpoint and
   // doesn't collect a gender. The PWA's sign-up form is what requires one.
   gender: z.enum(['male', 'female']).optional(),
+  // `YYYY-MM-DD`. Optional for the same reason as gender — `web`'s sign-up
+  // doesn't collect one. The PWA's form requires it.
+  birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   phone: z.string().max(20).optional(),
   homeCityId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
   skillLevel: z.coerce.number().optional(),
@@ -83,18 +86,35 @@ const updateProfileSchema = z.object({
   }).optional(),
 });
 
+// `coach` and `organizer` are no longer account roles — a partner is a player who
+// holds a live PAID subscription (features/partner-subscriptions), which is what
+// carries their permissions now (see partnerPermissionsFor). Venue-scoped grants
+// with those roles still exist and still render the "Coach at <venue>" badges
+// (built from UserRole below), they just don't put the role on the account.
+const NON_ROLE_GRANTS = new Set(['coach', 'organizer']);
+
 async function getUserRoles(user: { _id: any; roleDefault?: string | null }) {
   const roles = new Set<string>();
-  if (user.roleDefault) roles.add(user.roleDefault);
-  // Merge roles granted via per-venue partner applications (coach/organizer at a
-  // venue). The UserRole table stores one row per grant; the unique index on
-  // (userId, role, scopeType, scopeId) prevents duplicates.
+  if (user.roleDefault && !NON_ROLE_GRANTS.has(user.roleDefault)) roles.add(user.roleDefault);
+  // Merge roles granted via UserRole (e.g. an owner's global grant). The table
+  // stores one row per grant; the unique index on (userId, role, scopeType,
+  // scopeId) prevents duplicates.
   const grants = await UserRole.find({ userId: user._id }).select('role').lean();
   for (const g of grants as any[]) {
-    if (g.role) roles.add(g.role);
+    if (g.role && !NON_ROLE_GRANTS.has(g.role)) roles.add(g.role);
   }
   if (!roles.size) roles.add('player');
   return [...roles];
+}
+
+/** The plans this user is currently subscribed to, lazily expiring lapsed terms
+ *  first so a stale row can never keep a permission alive. */
+async function livePartnerPlans(userId: any): Promise<Set<string>> {
+  await expireLapsedSubscriptions(userId);
+  const rows = await PartnerSubscription.find({
+    userId, status: 'active', expiresAt: { $gt: new Date() },
+  }).select('plan').lean() as any[];
+  return new Set(rows.map((s) => s.plan));
 }
 
 // Does this user manage any venue — owns one OR is active staff on one? Drives
@@ -109,7 +129,11 @@ async function userManagesVenues(userId: any): Promise<boolean> {
 
 async function authUserPayload(user: any) {
   const roles = await getUserRoles(user);
-  const permissions = resolveRolePermissions(roles);
+  const livePlans = await livePartnerPlans(user._id);
+  const permissions = [...new Set([
+    ...resolveRolePermissions(roles),
+    ...resolveSubscriptionPermissions(livePlans),
+  ])];
   // Build per-venue partner badges from venue-scoped UserRole grants (e.g.
   // "Coach at Quezon Smash Club"). These are what the app renders as role chips
   // on the player/owner profile.
@@ -136,15 +160,9 @@ async function authUserPayload(user: any) {
     return [{ role: g.role, venueId, venueName }];
   });
 
-  // Live partner subscriptions. The app gates the "Become a coach" CTA on THIS,
-  // not on the coach role — an approved venue application grants that role
-  // without a subscription, and a lapsed subscription leaves it behind.
-  await expireLapsedSubscriptions(user._id);
-  const liveSubs = await PartnerSubscription.find({
-    userId: user._id, status: 'active', expiresAt: { $gt: new Date() },
-  }).select('plan').lean() as any[];
-  const livePlans = new Set(liveSubs.map((s) => s.plan));
-
+  // Live partner subscriptions (resolved above, since they also carry the
+  // coach/organiser permissions). The app gates the "Become a coach" CTA on
+  // THIS — it is the only thing that makes someone a partner now.
   return {
     coachSubscriptionActive: livePlans.has('coach'),
     organizerSubscriptionActive: livePlans.has('organizer'),
@@ -199,12 +217,18 @@ async function authUserPayload(user: any) {
 
 async function tokenPayloadFor(user: any) {
   const roles = await getUserRoles(user);
+  // Partner permissions ride in the token too, so every requirePermission check
+  // sees them without a DB read — the term is re-checked on each refresh.
+  const livePlans = await livePartnerPlans(user._id);
   return {
     sub: user._id.toString(),
     email: user.email,
     role: user.roleDefault || 'player',
     roles,
-    permissions: resolveRolePermissions(roles),
+    permissions: [...new Set([
+      ...resolveRolePermissions(roles),
+      ...resolveSubscriptionPermissions(livePlans),
+    ])],
     // Carried in the JWT so effectiveOwnerId() can scope a staff member to their
     // owner's resources without a DB lookup on every request. Omitted otherwise.
     // A staff sub-account inherits its owner's whole portfolio — per-venue
@@ -226,6 +250,7 @@ export async function register(c: any) {
     firstName: body.firstName || null, lastName: body.lastName || null,
     roleDefault: body.role,
     gender: body.gender || undefined,
+    birthday: body.birthday || undefined,
     phone: body.phone || undefined,
     homeCityId: body.homeCityId || undefined,
     skillLevel: body.skillLevel,

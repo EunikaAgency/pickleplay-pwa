@@ -91,11 +91,20 @@ const PLAYER_BASE_PERMISSIONS: Permission[] = [
 // Full player role = the player dashboard + the base capabilities.
 const PLAYER_PERMISSIONS: Permission[] = ['player.dashboard.access', ...PLAYER_BASE_PERMISSIONS];
 
+// Coach / organiser capabilities. These are NOT account roles any more: every
+// partner is a `player` whose partner surfaces are unlocked by a live PAID
+// subscription (features/partner-subscriptions) — see SUBSCRIPTION_PERMISSIONS
+// below. The lists stay here because the legacy `coach`/`organizer` entries in
+// ROLE_PERMISSIONS still seed the DB Role collection (and per-venue partner
+// badges still record a `coach`/`organizer` grant), so the two must not drift.
+const COACH_PERMISSIONS: Permission[] = ['coach.access', 'coach.profile.manage', 'coach.venues.view', 'coach.applications.manage'];
+const ORGANIZER_PERMISSIONS: Permission[] = ['organizer.access', 'organizer.games.manage', 'organizer.events.manage', 'organizer.tournaments.manage', 'organizer.brackets.manage'];
+
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   player: PLAYER_PERMISSIONS,
   // Coaches can also act as players, so they inherit the full player set
   // (including player.dashboard.access).
-  coach: [...PLAYER_PERMISSIONS, 'coach.access', 'coach.profile.manage', 'coach.venues.view', 'coach.applications.manage'],
+  coach: [...PLAYER_PERMISSIONS, ...COACH_PERMISSIONS],
   // Owners run a separate console and must NOT receive player.dashboard.access
   // by default — they only get the player base capabilities.
   owner: [
@@ -151,15 +160,33 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   organizer: [
     ...PLAYER_BASE_PERMISSIONS,
     'player.dashboard.access',  // organisers are players too — can apply to more venues
-    'organizer.access',
-    'organizer.games.manage',
-    'organizer.events.manage',
-    'organizer.tournaments.manage',
-    'organizer.brackets.manage',
+    ...ORGANIZER_PERMISSIONS,
   ],
   moderator: ['admin.access', 'admin.moderation.manage', 'admin.reports.view', 'player.clubs.create', 'player.clubs.join', 'player.clubs.post', 'player.clubs.react', 'player.clubs.chat'],
   admin: [...ALL_PERMISSIONS],
 };
+
+/**
+ * What a LIVE partner subscription unlocks, on top of whatever the account's
+ * role already grants. This is now the only way a user holds `coach.*` /
+ * `organizer.*`: subscribing is what buys the capability, and letting the term
+ * lapse takes it away — no role changes hands in either direction.
+ */
+export const SUBSCRIPTION_PERMISSIONS: Record<'coach' | 'organizer', Permission[]> = {
+  coach: COACH_PERMISSIONS,
+  organizer: ORGANIZER_PERMISSIONS,
+};
+
+/** Permissions granted by the plans a user is currently subscribed to. */
+export function resolveSubscriptionPermissions(plans: Iterable<string>): Permission[] {
+  const permissions = new Set<Permission>();
+  for (const plan of plans) {
+    for (const permission of SUBSCRIPTION_PERMISSIONS[plan as 'coach' | 'organizer'] ?? []) {
+      permissions.add(permission);
+    }
+  }
+  return [...permissions];
+}
 
 // Human-facing catalogue of every permission, grouped by domain. This is the
 // source the admin Roles & Permissions page renders as a checkbox matrix.

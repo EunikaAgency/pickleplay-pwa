@@ -121,31 +121,62 @@ same fragility with an extra field.
 You asked for something like *"book a week ahead → owner has a day."* That's the right
 instinct, but a single fixed window breaks at short lead times: a booking made at 7pm
 for 8pm tonight cannot give the owner 24 hours. The deadline has to be the tightest of
-three constraints:
+several constraints:
 
 ```
 approvalDeadline = min(
     now + venue.approvalWindowHours,   // the venue's own policy, default 24h
-    now + (leadTime × 0.5),            // never burn more than half the runway
+    now + (leadTime × share),          // the owner's slice of the runway
     playStart − 30 minutes             // must resolve before the court time
 )
 floored at 15 minutes from now
 ```
 
-One formula, three caps. What it produces:
+…where `share` tightens as the game gets closer:
 
-| Player books… | Lead time | Owner gets | Which cap bound it |
+| Lead time | Owner's share | Why |
+|---|---|---|
+| More than 48 h | 50% | Venue window binds anyway — effectively a flat 24 h |
+| 12 – 48 h | 25% | Same-day-tomorrow; owner still gets hours, player keeps most of the runway |
+| Under 12 h | **10%** | Urgent — the player keeps 90% of the time to rebook elsewhere |
+
+What that produces end to end:
+
+| Player books… | Lead time | Owner gets | Which rule bound it |
 |---|---|---|---|
 | 2 weeks out | 14 days | 24 h | venue window |
 | 3 days out | 72 h | 24 h | venue window |
-| Tomorrow 9am (booked 9pm) | 36 h | 18 h | half-runway |
-| Later today (10 h out) | 10 h | 5 h | half-runway |
-| In 3 hours | 3 h | 1 h 30 m | half-runway |
+| Tomorrow 9am (booked 9pm) | 36 h | 9 h | 25% band |
+| Tomorrow, 14 h out | 14 h | 3 h 30 m | 25% band |
+| Later today (10 h out) | 10 h | **1 h** | 10% band |
+| In 3 hours | 3 h | **18 m** | 10% band |
 | In 45 minutes | 45 m | 15 m | floor + play-start cap |
 
-The half-runway rule is what makes it feel fair to both sides: the player never waits
-more than half the time until their game to find out, and the owner's window shrinks
-only when the booking is genuinely urgent.
+The principle underneath: **the owner's window is their slice of the player's runway,
+and it shrinks fast as the game approaches.** A player booking 10 hours out learns
+within the hour and still has 9 hours to find another court. A player booking 2 weeks
+out has no urgency, so the owner gets a full day and a once-a-day check-in still catches
+it.
+
+Two notes on the shape of this:
+
+- **The band edges are deliberate steps, not a smooth curve.** Each boundary is about a
+  2–2.5× change (24h→12h at 48h; 3h→1.2h at 12h) rather than the 5× cliff you'd get
+  jumping straight from 50% to 10%. That's small enough not to feel arbitrary to an
+  owner watching two similar bookings, and it keeps the rule explainable in one table —
+  which matters more than mathematical elegance, because owners have to be able to
+  predict it.
+- **The 50% band is nearly always redundant** at the default 24h venue window, since 50%
+  of anything over 48h exceeds it. Keep the term anyway: it does real work for a venue
+  that sets a longer window (at 72h, a 3-day booking is held to 36h rather than 72h).
+
+**A related setting worth offering:** several venues will find 18 minutes on a
+3-hour-out booking unworkable — not because the rule is wrong, but because manual
+approval itself is wrong for same-day bookings at a venue with no one watching the
+inbox. Rather than loosening the formula for everyone, let a court set *"auto-accept
+bookings under N hours out"* so short-lead requests skip approval entirely. That fixes
+the mismatch at its source and keeps the urgent-lead rule tight for the venues that do
+staff their inbox.
 
 `venue.approvalWindowHours` should be a real venue setting with a default of 24, sitting
 next to the existing `bookingPayWindowHours` (`venues.model.ts:227`). Let owners tighten

@@ -10,6 +10,7 @@
     "db:seed:users": "tsx src/shared/db/seed-dummy-users.ts",
     "db:seed:dummy": "tsx src/shared/db/seed-dummy-data.ts",
     "db:seed:coach-subs": "tsx src/shared/db/seed-coach-subscribers.ts",
+    "db:partner-roles": "tsx src/shared/db/partner-roles-to-subscriptions.ts",
     "db:import": "tsx src/shared/db/import-real-data.ts",
     "db:link-owners": "tsx src/shared/db/link-owner-venues.ts",
     "db:courts": "tsx src/shared/db/generate-courts.ts",

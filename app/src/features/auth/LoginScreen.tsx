@@ -36,6 +36,23 @@ const TEST_ACCOUNTS: { label: string; email: string; password: string }[] = [
   { label: 'Organizer 2', email: '637fa51b.reyes@example.com',       password: 'password123' },
 ];
 
+/** Today as `YYYY-MM-DD` in the user's own timezone — the birthday input's
+ *  upper bound. `toISOString()` would be UTC and could read as tomorrow here. */
+const TODAY = (() => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+})();
+
+/** A typed (rather than picked) date can be nonsense, and the native picker's
+ *  `max` isn't enforced on keyboard entry — so validate it ourselves. */
+function birthdayError(value: string): string | undefined {
+  if (!value) return 'Birthday is required.';
+  if (value > TODAY) return 'Birthday can’t be in the future.';
+  if (value < '1900-01-01') return 'Enter a valid birthday.';
+  return undefined;
+}
+
 export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenProps) {
   const login = useAuthStore((s) => s.login);
   const register = useAuthStore((s) => s.register);
@@ -44,7 +61,10 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
   const [role, setRole] = useState<RegisterRole>('player');
   // Required to register. Blank until picked, which holds the submit below.
   const [gender, setGender] = useState<Gender | ''>('');
+  // Required to register, same as gender. Held blank until picked.
+  const [birthday, setBirthday] = useState('');
   const [nameTouched, setNameTouched] = useState(false);
+  const [birthdayTouched, setBirthdayTouched] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -89,6 +109,8 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
         role,
         // Never blank: the submit is gated on a gender being picked.
         gender: gender as Gender,
+        // Likewise gated — always a valid `YYYY-MM-DD` by this point.
+        birthday,
       });
       onLoginSuccess();
     } catch (err) {
@@ -107,13 +129,15 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
     setMode(next);
     setSubmitError(null);
     setNameTouched(false);
+    setBirthdayTouched(false);
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (mode === 'register') {
       setNameTouched(true);
-      if (!name.trim() || !gender || !form.isValid) return;
+      setBirthdayTouched(true);
+      if (!name.trim() || !gender || birthdayError(birthday) || !form.isValid) return;
       void createAccount();
     } else {
       if (!form.isValid) return;
@@ -176,6 +200,21 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
                 onChange={(e) => setGender(e.target.value as Gender)}
                 placeholder="Select your gender"
                 required
+              />
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <div className="field">
+              <FormField
+                label="Birthday"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                onBlur={() => setBirthdayTouched(true)}
+                error={birthdayTouched ? birthdayError(birthday) : undefined}
+                max={TODAY}
+                hint="Used for age-based divisions and events."
               />
             </div>
           )}
@@ -252,7 +291,7 @@ export function LoginScreen({ onLoginSuccess, onBack, onNavigate }: LoginScreenP
           )}
 
           <div className="px-5 mt-4">
-            <Button type="submit" fullWidth disabled={loading || !form.isValid || (mode === 'register' && (!name.trim() || !gender))}>
+            <Button type="submit" fullWidth disabled={loading || !form.isValid || (mode === 'register' && (!name.trim() || !gender || !!birthdayError(birthday)))}>
               {loading ? (
                 <>
                   <span className="inline-flex animate-spin">
