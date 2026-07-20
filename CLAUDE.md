@@ -12,6 +12,16 @@
 > - ⛔ NEVER add a `Co-Authored-By: Claude` trailer (or any Claude/AI
 >   attribution) to commit messages. Plain commit messages only.
 
+> [!IMPORTANT]
+> ## 🔴 `reports/` IS IVAN'S REPORT DIR — DO NOT WRITE THERE
+> **Never create, move, or save any file into `reports/` unless the user
+> explicitly says to put it in "Ivan's report dir".**
+> - `reports/` holds hand-written `.md` reports only. No screenshots, scripts,
+>   HTML, PDFs, or generated output.
+> - Scratch files, screenshots, capture/build scripts, generated galleries →
+>   the session scratchpad dir, or `report-assets/` if they must be kept.
+> - Applies to every agent and subagent.
+
 @AGENTS.md
 
 The line above imports the shared, all-agents conventions from AGENTS.md (the
