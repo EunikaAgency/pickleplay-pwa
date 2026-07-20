@@ -14,6 +14,10 @@ export interface IUser {
   phone?: string;
   /** Self-reported gender. The app's profile editor requires one to be set. */
   gender?: string;
+  /** Date of birth as `YYYY-MM-DD`. Deliberately a string, not a Date: a
+   *  birthday is a calendar date, and storing it as a UTC instant shifts it a
+   *  day for anyone east/west of the server. */
+  birthday?: string;
   skillLevel?: number;
   skillLevelLabel?: string;
   homeCityId?: Types.ObjectId;
@@ -88,6 +92,7 @@ const userSchema = new Schema({
   // without one, and a schema-level requirement would fail their next save.
   // The profile editor is what enforces that a value gets set.
   gender:          { type: String, enum: ['male', 'female'] },
+  birthday:        { type: String, maxlength: 10 },
   skillLevel:      Number,
   skillLevelLabel: { type: String, maxlength: 20 },
   homeCityId:      { type: Schema.Types.ObjectId, ref: 'City' },

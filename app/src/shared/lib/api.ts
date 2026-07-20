@@ -222,6 +222,7 @@ export interface ApiUser {
   skillLevelLabel?: string | null;
   bio?: string | null;
   gender?: string | null;
+  birthday?: string | null;
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
@@ -279,6 +280,7 @@ export function toAppUser(api: ApiUser): AppUser {
     skillLevelLabel: api.skillLevelLabel ?? undefined,
     bio: api.bio ?? undefined,
     gender: normalizeGender(api.gender),
+    birthday: api.birthday ?? undefined,
     address1: api.address1 ?? undefined,
     address2: api.address2 ?? undefined,
     city: api.city ?? undefined,
@@ -406,6 +408,8 @@ export interface ProfileUpdate {
   lastName?: string;
   bio?: string;
   gender?: Gender;
+  /** `YYYY-MM-DD`; an empty string clears it. */
+  birthday?: string;
   address1?: string;
   address2?: string;
   city?: string;

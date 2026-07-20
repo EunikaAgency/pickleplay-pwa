@@ -194,6 +194,8 @@ export interface AppUser {
   /** Unset on accounts created before the field existed; the profile editor
    *  makes the user pick one before they can save. */
   gender?: Gender;
+  /** Date of birth as `YYYY-MM-DD`. Optional — accounts can save without one. */
+  birthday?: string;
   /** Postal address. Required before subscribing as a coach or organizer. */
   address1?: string;
   address2?: string;

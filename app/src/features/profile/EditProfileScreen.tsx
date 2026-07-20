@@ -19,6 +19,14 @@ interface EditProfileScreenProps {
   onBack: () => void;
 }
 
+/** Today as `YYYY-MM-DD` in the user's own timezone — the birthday input's
+ *  upper bound. `toISOString()` would be UTC and could read as tomorrow here. */
+const TODAY = (() => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+})();
+
 export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   const currentUser = useAuthStore((s) => s.user);
   const updateProfile = useAuthStore((s) => s.updateProfile);
@@ -75,6 +83,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       // Accounts predating the field have none, so this starts blank and the
       // validator below holds the save until they pick one.
       gender: (currentUser?.gender ?? '') as Gender | '',
+      birthday: currentUser?.birthday ?? '',
       bio: currentUser?.bio ?? '',
       address1: currentUser?.address1 ?? '',
       address2: currentUser?.address2 ?? '',
@@ -87,6 +96,15 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       firstName: (v) => (!v || !(v as string).trim() ? 'First name is required.' : undefined),
       lastName: (v) => (!v || !(v as string).trim() ? 'Last name is required.' : undefined),
       gender: (v) => (!v ? 'Gender is required.' : undefined),
+      // Optional — but a date that's typed rather than picked can be nonsense,
+      // and the native picker's `max` isn't enforced on keyboard entry.
+      birthday: (v) => {
+        const value = (v as string) || '';
+        if (!value) return undefined;
+        if (value > TODAY) return 'Birthday can’t be in the future.';
+        if (value < '1900-01-01') return 'Enter a valid birthday.';
+        return undefined;
+      },
     },
   });
 
@@ -177,6 +195,8 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         displayName: `${firstName} ${lastName}`.trim(),
         // Never blank: the validator gates the submit on a gender being picked.
         gender: form.values.gender as Gender,
+        // Sent even when blank — '' is how the server clears a birthday.
+        birthday: form.values.birthday,
         bio: form.values.bio.trim(),
         address1: form.values.address1.trim(),
         address2: form.values.address2.trim(),
@@ -286,6 +306,19 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             disabled
             hint="Contact support to change your email."
             trailingSlot={<span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] bg-[var(--surface)] border border-[var(--hairline)] rounded-full px-2 py-0.5 select-none">Read-only</span>}
+          />
+        </div>
+
+        <div className="field">
+          <FormField
+            label="Birthday"
+            type="date"
+            value={form.values.birthday}
+            onChange={(e) => form.setField('birthday', e.target.value)}
+            onBlur={() => form.setTouched('birthday')}
+            error={form.touched.birthday ? form.errors.birthday : undefined}
+            max={TODAY}
+            hint="Used for age-based divisions and events."
           />
         </div>
 

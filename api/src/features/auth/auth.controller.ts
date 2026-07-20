@@ -50,6 +50,9 @@ const updateProfileSchema = z.object({
   // Optional to send, but there's no way to send a blank one — clearing an
   // already-set gender isn't a thing the profile editor offers.
   gender: z.enum(['male', 'female']).optional(),
+  // `YYYY-MM-DD`. Empty string clears it — unlike gender, the profile editor
+  // does let a user blank out an optional birthday.
+  birthday: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]).optional(),
   skillLevel: z.string().optional(),
   skillLevelLabel: z.string().max(20).optional(),
   modePreference: z.enum(['player', 'owner', 'coach', 'organizer']).optional(),
@@ -163,6 +166,7 @@ async function authUserPayload(user: any) {
     modePreference: user.modePreference,
     phone: user.phone,
     gender: user.gender ?? null,
+    birthday: user.birthday ?? null,
     skillLevel: user.skillLevel,
     skillLevelLabel: user.skillLevelLabel,
     homeCityId: user.homeCityId,
@@ -306,6 +310,13 @@ export async function updateMe(c: any) {
   // notification must not wipe the others or the saved units).
   const { preferences, ...rest } = body;
   const update: Record<string, unknown> = { ...rest };
+  // A blank birthday means "clear it", which needs $unset — assigning '' would
+  // leave an empty string that reads as a set-but-invalid date downstream.
+  const unset: Record<string, ''> = {};
+  if (rest.birthday === '') {
+    delete update.birthday;
+    unset.birthday = '';
+  }
   if (preferences) {
     if (preferences.notifications) {
       for (const [key, value] of Object.entries(preferences.notifications)) {
@@ -315,7 +326,11 @@ export async function updateMe(c: any) {
     if (preferences.units !== undefined) update['preferences.units'] = preferences.units;
     if (preferences.searchRadiusKm !== undefined) update['preferences.searchRadiusKm'] = preferences.searchRadiusKm;
   }
-  const user = await User.findByIdAndUpdate(tokenUser.sub, update, { new: true });
+  const user = await User.findByIdAndUpdate(
+    tokenUser.sub,
+    Object.keys(unset).length ? { $set: update, $unset: unset } : update,
+    { new: true },
+  );
   if (!user) return c.json({ error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
   return c.json({ data: await authUserPayload(user) });
 }
