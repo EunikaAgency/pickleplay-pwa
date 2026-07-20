@@ -6,7 +6,7 @@ import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { DateTimeFilterBar } from './DateTimeFilterBar';
 import { listAllVenues, batchVenueAvailability, type ApiVenue } from '../../../shared/lib/api';
 import { venueImage, priceLabel, locationLine, indoorLabel, venueCoords } from '../../../shared/lib/venueDisplay';
-import { haversineKm, formatDistance, getCurrentLocation, type LatLng } from '../../../shared/lib/geo';
+import { haversineKm, formatDistance, getCurrentLocation, homeCoords, type LatLng } from '../../../shared/lib/geo';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
 
@@ -168,7 +168,14 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>(canLocate ? 'distance' : 'rating');
-  const [userLoc, setUserLoc] = useState<LatLng | null>(null);
+  // Where we sort from. A live device fix wins; otherwise the home coordinates
+  // saved at onboarding, so the list opens sorted by distance instead of waiting
+  // on — or being defeated by — a GPS read that's slow, refused, or unavailable.
+  // Derived, so a cold load picks the account up as soon as the session lands.
+  const [liveLoc, setLiveLoc] = useState<LatLng | null>(null);
+  const userLoc = liveLoc ?? homeCoords(currentUser);
+  // Tracks the live read only. The UI keys "we have nowhere to sort from" off
+  // `userLoc`, not this — a failed read is not a dead end when a home is on file.
   const [locStatus, setLocStatus] = useState<'idle' | 'locating' | 'on' | 'denied'>(canLocate ? 'locating' : 'idle');
   // The list is the primary surface (open expanded, over the map) — the user
   // collapses the sheet to reveal the full map. Mirrors the v1 Nearby list-first UX.
@@ -243,7 +250,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     if (userLoc) { if (wasCollapsed) setFocusNonce((n) => n + 1); return; }
     setLocStatus('locating');
     getCurrentLocation()
-      .then((loc) => { setUserLoc(loc); setLocStatus('on'); })
+      .then((loc) => { setLiveLoc(loc); setLocStatus('on'); })
       .catch(() => setLocStatus('denied'));
   };
   // Auto-locate once on mount. locStatus already starts 'locating' (above), so the
@@ -251,7 +258,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   useEffect(() => {
     if (!canLocate) return;
     getCurrentLocation()
-      .then((loc) => { setUserLoc(loc); setLocStatus('on'); })
+      .then((loc) => { setLiveLoc(loc); setLocStatus('on'); })
       .catch(() => setLocStatus('denied'));
   }, [canLocate]);
 
@@ -357,14 +364,17 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
   const subtitle = loading
     ? 'Loading…'
-    : locStatus === 'locating'
+    // Only "finding" when we'd otherwise have nothing — with a saved home the
+    // list is already sorted, and the live read just refines it in the background.
+    : locStatus === 'locating' && !userLoc
       ? 'Finding courts near you…'
       : sort === 'distance' && userLoc
         ? `${sorted.length} court${sorted.length === 1 ? '' : 's'} near you`
         : `${sorted.length} court${sorted.length === 1 ? '' : 's'}`;
 
   const collapsed = sheet === 'collapsed';
-  const located = locStatus === 'on' && !!userLoc;
+  // We have somewhere to sort from — live fix or the saved home, either counts.
+  const located = !!userLoc;
   // Distance is offered only to users who can locate (mirrors the list's fallback).
   const sortOptions: SortKey[] = canLocate
     ? ['distance', 'rating', 'courts', 'reviews', 'name']
@@ -514,8 +524,10 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
           </div>
 
           <div className="sheet-list">
-            {/* Location off / denied → let the user retry, so Distance can rank by proximity. */}
-            {canLocate && locStatus === 'denied' && sort === 'distance' && (
+            {/* Nowhere to rank from → let the user retry. Gated on `userLoc`, not
+                just the failed read: with a saved home the list already ranks by
+                proximity, so this would be offering to fix a working screen. */}
+            {canLocate && locStatus === 'denied' && !userLoc && sort === 'distance' && (
               <button onClick={locate} className="locate-retry">
                 📍 Turn on location for nearest courts
               </button>

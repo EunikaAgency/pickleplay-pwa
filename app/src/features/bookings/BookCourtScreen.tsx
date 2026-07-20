@@ -84,6 +84,10 @@ const GENDER_OPTIONS: { v: GenderPolicy; label: string; full: string; icon: stri
   { v: 'men', label: 'Men', full: 'Men only', icon: '👨' },
   { v: 'women', label: 'Women', full: 'Women only', icon: '👩' },
 ];
+// The server caps a lobby at 16 (createSchema). The stepper used to run to 64,
+// offering sizes that would have been rejected outright.
+const MAX_LOBBY = 16;
+
 const genderPolicyLabel = (p: GenderPolicy) =>
   GENDER_OPTIONS.find((o) => o.v === p)?.full ?? 'Open to all';
 
@@ -169,6 +173,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [opDesc, setOpDesc] = useState('');
   // Lobby size for open play — a hard cap: once the lobby is full, no one else joins.
   const [opTarget, setOpTarget] = useState(8);
+  // Host-gated joining for this Open Play. Off unless the host asks for it.
+  const [opRequiresApproval, setOpRequiresApproval] = useState(false);
   // Public-game details (collected in step 1 when bookingMode === 'public_game').
   // Name/description reuse opName/opDesc (only one mode is active at a time).
   const [pgFormat, setPgFormat] = useState<GameFormat | null>(null);
@@ -282,6 +288,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const { rateInfo, rate, hours, hourlyBreakdown, equipAmount, surcharge, subtotal, serviceFeePercent, serviceFee, grandTotal } = pricing;
 
   const isTest = settings?.paymentTestMode ?? false;
+  // Can a host gate their own lobby on approval? Defaults true if settings haven't
+  // loaded — the server is the real gate, so a slow read shouldn't hide a working
+  // control. NOTE: unrelated to `requiresApproval` below, which is the *venue*
+  // approving the court booking. Same word, different thing.
+  const approvalAllowed = settings?.allowPlayerApprovalLobbies ?? true;
   // Per-court approval — a court set to 'manual' requires owner approval before the
   // player pays; anything else confirms instantly.
   const requiresApproval = selectedCourt?.approvalMode === 'manual';
@@ -506,7 +517,13 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         vibe: gameVibe,
         genderPolicy,
         skillLabel: opSkill,
-        targetPlayers: opTarget,
+        // The lobby size the host picked is the REAL cap, so it has to go to
+        // `capacity` — the field every guard and spotsLeft reads. It used to be
+        // sent as `targetPlayers` only, which the server ignores for capacity, so
+        // every lobby silently fell back to the default of 4 while the form
+        // promised 8. `targetPlayers` is legacy; new games don't write it.
+        capacity: opTarget,
+        requiresApproval: opRequiresApproval,
         timeLabel: to12h(startTime),
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
         date,
@@ -533,6 +550,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         vibe: gameVibe,
         genderPolicy,
         capacity: pgSlots,
+        requiresApproval: opRequiresApproval,
         skillLabel: pgSkill,
         timeLabel: to12h(startTime),
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
@@ -1126,13 +1144,38 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                       <Icon name="minus" size={18} />
                     </button>
                     <div className="w-12 text-center font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums">{opTarget}</div>
-                    <button type="button" aria-label="Raise target" onClick={() => setOpTarget((n) => Math.min(64, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget >= 64}>
+                    <button type="button" aria-label="Raise target" onClick={() => setOpTarget((n) => Math.min(MAX_LOBBY, n + 1))} className="w-11 h-11 flex items-center justify-center text-[var(--ink)] disabled:opacity-40" disabled={opTarget >= MAX_LOBBY}>
                       <Icon name="plus" size={18} />
                     </button>
                   </div>
                   <div className="text-[12px] font-semibold text-[var(--muted)]">The lobby holds {opTarget} — once it’s full, no one else can join.</div>
                 </div>
               </div>
+
+              {/* Same question as the size above: who gets in. Off unless the host
+                  ticks it, so an Open Play behaves exactly as it always has by
+                  default. Hidden when an admin has switched the ability off — the
+                  server forces it false regardless, so this only avoids showing a
+                  control that would do nothing. */}
+              {approvalAllowed && (
+                <div className="field mt-4">
+                  <div className="lbl">Joining</div>
+                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] px-4 py-3.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
+                      checked={opRequiresApproval}
+                      onChange={(e) => setOpRequiresApproval(e.target.checked)}
+                    />
+                    <span>
+                      <span className="block text-[14px] font-bold text-[var(--ink)]">Approve players before they join</span>
+                      <span className="block text-[12px] font-semibold text-[var(--muted)] mt-0.5">
+                        Players ask first and wait for you. Only the ones you approve get a slot and see the lobby.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <div className="field mt-4">
                 <div className="lbl">Game name (optional)</div>
@@ -1395,6 +1438,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               <ReviewRow label="Vibe" value={gameVibe === 'casual' ? 'Casual' : 'Competitive'} />
               <ReviewRow label="Who can play" value={genderPolicyLabel(genderPolicy)} />
               <ReviewRow label="Lobby size" value={`${opTarget} players`} />
+              {approvalAllowed && (
+                <ReviewRow label="Joining" value={opRequiresApproval ? 'You approve each player' : 'Anyone can join'} />
+              )}
               {opName.trim() && <ReviewRow label="Name" value={opName.trim()} />}
               {opDesc.trim() && (
                 <div className="px-4 py-3.5 border-t-[0.5px] border-[var(--hairline)]">

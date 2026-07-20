@@ -39,16 +39,31 @@ const gameSchema = new Schema({
   // createGame; a non-organizer can never store a non-zero fee.
   joinFee:       { type: Number, default: 0 },
   participantIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  // Open Play interest: players who tapped "I'm Interested" (a soft signal, not a
-  // committed roster). Only meaningful for gameType 'open'; capacity does not apply.
+  // LEGACY. Open Play interest: players who tapped "I'm Interested" (a soft signal,
+  // not a committed roster). Since the merge, Open Play takes a real roster seat in
+  // participantIds through joinGame like every other gameType — capacity, gender,
+  // and skill guards all apply. Kept only so old rows keep their history; nothing
+  // reads it as a roster any more.
   interestedUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  // Soft headcount target for open play ("aiming for 8"). Not a cap — interest
-  // board shows progress toward this goal but anyone can still show interest.
+  // LEGACY. Soft headcount goal for open play ("aiming for 8"). Never a cap —
+  // `capacity` is the cap for every gameType. Some pre-merge open-play rows stored
+  // their real cap here and left `capacity` unset; see `seats()` in the controller.
   targetPlayers:  { type: Number },
-  // Leave / join timing policy — per-lobby state machine (applies to lobby games:
-  // singles/doubles/public; open play uses interest, not roster).
+  // Leave / join timing policy — per-lobby state machine. Applies to every
+  // gameType, open play included (it has a real roster since the merge).
   fullAt:         { type: Date },                         // when the lobby became full (starts the 1h free-leave window)
   pendingLeaveUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }], // players awaiting host approval to leave
+  // Host-gated joining. When true, a join lands in pendingJoinUserIds and the host
+  // must approve before the player takes a seat. Opt-in per lobby and default off,
+  // so every existing game keeps today's open-join behaviour with no backfill.
+  // Can be switched off platform-wide via AppSettings.allowPlayerApprovalLobbies.
+  requiresApproval: { type: Boolean, default: false },
+  // Players who asked to join and are awaiting the host's decision. They hold NO
+  // seat: capacity, spotsLeft, the roster, and chat access all read participantIds,
+  // so a pending player is invisible to every one of them. Deliberately survives a
+  // full lobby — that is the waiting list, so the host can admit from the queue if
+  // someone drops.
+  pendingJoinUserIds: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   // A rolling log of leaves this lobby has seen: { user, leftAt }. The most recent
   // two entries per user drive the 1h re-join cooldown.
   leaveLog:       [{ user: { type: Schema.Types.ObjectId, ref: 'User' }, leftAt: { type: Date, default: Date.now } }],

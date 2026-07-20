@@ -51,6 +51,20 @@ export async function getTransactionFeePercent(): Promise<number> {
   return s?.transactionFeePercent ?? 0;
 }
 
+/** The player-capability kill switches, both defaulting ON. Imported by the games
+ *  controller, which is the gate that actually matters — the app hides the
+ *  matching controls off the same flags in the public read below, but that's
+ *  cosmetic and a crafted client ignores it. */
+export async function getPlayerCapabilities(): Promise<{
+  allowNonOrganizerEvents: boolean; allowPlayerApprovalLobbies: boolean;
+}> {
+  const s = await getSingleton();
+  return {
+    allowNonOrganizerEvents: s?.allowNonOrganizerEvents ?? true,
+    allowPlayerApprovalLobbies: s?.allowPlayerApprovalLobbies ?? true,
+  };
+}
+
 /** Price + term of the coach/organizer partner subscriptions. Imported by the
  *  partner-subscriptions controller so the price is never hard-coded twice. */
 export async function getPartnerSubscriptionPricing(): Promise<{
@@ -70,6 +84,7 @@ function publicShape(s: {
   emailBccEnabled?: boolean;
   emailBccAddress?: string; pricingMode?: string; coachSubscriptionPrice?: number;
   organizerSubscriptionPrice?: number; partnerSubscriptionDays?: number;
+  allowNonOrganizerEvents?: boolean; allowPlayerApprovalLobbies?: boolean;
 } | null) {
   return {
     paymentTestMode: s?.paymentTestMode ?? true,
@@ -80,6 +95,10 @@ function publicShape(s: {
     emailBccEnabled: s?.emailBccEnabled ?? false,
     emailBccAddress: s?.emailBccAddress ?? 'info@eunika.agency',
     pricingMode: (s?.pricingMode as 'start' | 'blend') ?? 'start',
+    // Public so the app can hide the matching controls when they're switched off.
+    // The server gate in the games controller is the real enforcement.
+    allowNonOrganizerEvents: s?.allowNonOrganizerEvents ?? true,
+    allowPlayerApprovalLobbies: s?.allowPlayerApprovalLobbies ?? true,
     // Public so the subscribe screen can render the price before committing.
     partnerSubscription: {
       coach: s?.coachSubscriptionPrice ?? 499,
@@ -115,6 +134,8 @@ const updateSchema = z.object({
   coachSubscriptionPrice: z.number().min(0).optional(),
   organizerSubscriptionPrice: z.number().min(0).optional(),
   partnerSubscriptionDays: z.number().int().min(1).max(3650).optional(),
+  allowNonOrganizerEvents: z.boolean().optional(),
+  allowPlayerApprovalLobbies: z.boolean().optional(),
 });
 
 /** Admin-only write of the payment mode + service fee. */
@@ -134,6 +155,8 @@ export async function updateSettings(c: any) {
   if (body.coachSubscriptionPrice !== undefined) update.coachSubscriptionPrice = body.coachSubscriptionPrice;
   if (body.organizerSubscriptionPrice !== undefined) update.organizerSubscriptionPrice = body.organizerSubscriptionPrice;
   if (body.partnerSubscriptionDays !== undefined) update.partnerSubscriptionDays = body.partnerSubscriptionDays;
+  if (body.allowNonOrganizerEvents !== undefined) update.allowNonOrganizerEvents = body.allowNonOrganizerEvents;
+  if (body.allowPlayerApprovalLobbies !== undefined) update.allowPlayerApprovalLobbies = body.allowPlayerApprovalLobbies;
   const s = await AppSettings.findOneAndUpdate(
     { key: 'global' },
     update,

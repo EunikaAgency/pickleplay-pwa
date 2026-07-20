@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { CalendarDatePicker } from '../../../shared/components/ui/CalendarDatePicker';
 
 /* ─── Helpers ────────────────────────────────────────────────────────── */
@@ -106,20 +106,48 @@ function HourDropdown({ initialHour, onApply, onClose, label }: {
   const [am, setAm] = useState(init < 12);
   const [h12, setH12] = useState(init % 12 === 0 ? 12 : init % 12);
   const [placement, setPlacement] = useState<'down' | 'up'>('down');
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const resolved24 = h12 === 12 ? (am ? 0 : 12) : am ? h12 : h12 + 12;
 
-  const ref = useCallback((el: HTMLDivElement | null) => {
-    (wrapRef as any).current = el;
-    if (el) {
-      const rect = el.parentElement?.getBoundingClientRect();
-      if (rect) {
-        const below = window.innerHeight - rect.bottom - 12;
-        const above = rect.top - 12;
-        setPlacement(below >= above ? 'down' : 'up');
-      }
-    }
+  // The panel is taller than the Nearby sheet is when collapsed (188px), so it
+  // can't live inside the sheet's `overflow: hidden` in either direction. Going
+  // `position: fixed` escapes that clip — same trick `.dt-sheet-backdrop` uses.
+  // Fixed coords resolve against the transformed `.app` frame, not the
+  // viewport, so measure the frame and subtract its origin.
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    const pill = el?.parentElement?.querySelector('button');
+    const bar = el?.closest('.dt-filter-bar');
+    if (!el || !pill || !bar) return;
+
+    const place = () => {
+      const frame = el.closest('.app')?.getBoundingClientRect();
+      const anchor = pill.getBoundingClientRect();
+      const barRect = bar.getBoundingClientRect();
+      const height = el.offsetHeight;
+      const GAP = 6;
+      const EDGE = 8;
+      const lowest = window.innerHeight - EDGE - height;
+      // Prefer opening downward; flip up when it doesn't fit; clamp into the
+      // frame when neither side has room.
+      const below = anchor.bottom + GAP;
+      const above = anchor.top - GAP - height;
+      const top = below <= lowest ? below
+        : above >= EDGE ? above
+        : Math.max(EDGE, Math.min(below, lowest));
+      setPlacement(top < anchor.top ? 'up' : 'down');
+      setPos({
+        top: top - (frame?.top ?? 0),
+        left: barRect.left - (frame?.left ?? 0),
+        width: barRect.width,
+      });
+    };
+
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
   }, []);
 
   useEffect(() => {
@@ -136,7 +164,12 @@ function HourDropdown({ initialHour, onApply, onClose, label }: {
   }, [onClose]);
 
   return (
-    <div ref={ref} className={`dt-time-drop${placement === 'up' ? ' up' : ''}`} role="dialog">
+    <div
+      ref={wrapRef}
+      className={`dt-time-drop${placement === 'up' ? ' up' : ''}`}
+      role="dialog"
+      style={pos ? { position: 'fixed', top: pos.top, left: pos.left, width: pos.width } : undefined}
+    >
       <div className="dt-time-label">{label}</div>
       <div className="dt-ampm-row">
         <button type="button" className={`dt-ampm-btn${am ? ' active' : ''}`} onClick={() => setAm(true)}>AM</button>

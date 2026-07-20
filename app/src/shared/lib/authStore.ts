@@ -45,10 +45,21 @@ interface AuthState {
 
   /**
    * Mark first-run onboarding as done on the account (so the user is never
-   * re-onboarded), optionally saving the skill level they picked. Best-effort:
-   * swallows errors so a transient failure never traps the user in onboarding.
+   * re-onboarded), optionally saving the skill level and home place they picked.
+   * Best-effort: swallows errors so a transient failure never traps the user in
+   * onboarding.
    */
-  completeOnboarding: (data?: { skillLevel?: number; skillLevelLabel?: string }) => Promise<void>;
+  completeOnboarding: (data?: {
+    skillLevel?: number;
+    skillLevelLabel?: string;
+    city?: string;
+    province?: string;
+    zipcode?: string;
+    address1?: string;
+    address2?: string;
+    lat?: number;
+    lng?: number;
+  }) => Promise<void>;
 
   /** Best-effort server logout; always clears the local session. */
   logout: () => void;
@@ -114,6 +125,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       patch.skillLevel = String(data.skillLevel);
       if (data.skillLevelLabel) patch.skillLevelLabel = data.skillLevelLabel;
     }
+    if (data?.city) patch.city = data.city;
+    if (data?.province) patch.province = data.province;
+    if (data?.zipcode) patch.zipcode = data.zipcode;
+    if (data?.address1) patch.address1 = data.address1;
+    if (data?.address2) patch.address2 = data.address2;
+    if (data?.lat != null) patch.lat = data.lat;
+    if (data?.lng != null) patch.lng = data.lng;
     try {
       const user = await updateMe(patch);
       set({ user, isLoggedIn: true });

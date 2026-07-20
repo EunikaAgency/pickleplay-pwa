@@ -269,7 +269,7 @@ src/
       components/      # BookingLinkShare (copy/share the auto-generated booking link +
 
                        # optional custom slug; rendered on the Overview tab + Listing
-                       # editor), AddressAutocomplete (live type-ahead geocode search),
+                       # editor),
                        # CreateEditPlanSheet (owner creates/edits subscription plans —
                        # name/price/billing-cycle/benefits/status/settings; BottomSheet
                        # matching the player MembershipSheet design).
@@ -304,10 +304,6 @@ src/
       components/      # reusable blocks: OwnerSection/OwnerStat/KpiCard (analytics summary tile
                        # w/ trend delta, used by the Reports dashboard)/VenueCard/OwnerBookingRow/
                        # OwnerGameCard/CompletenessMeter/
-                       # AddressAutocomplete (true type-ahead address field — debounced
-                       # /geocode/suggest list; pick → drop pin + auto-fill city (free-text
-                       # field, silently links a seeded cityId on match) / address line1 /
-                       # postcode; used by new-venue form + LocationEditor pin search)/
                        # BookingLinkShare (the auto-generated …/venues/<slug> booking link +
                        # Copy/Share — on the venue Overview card AND the Listing editor)/
                        # WeeklyHoursEditor (per-court weekly open/close + hours-pricing grid;
@@ -365,7 +361,11 @@ src/
                         # CalendarDatePicker (month-grid date picker),
                         # Chart (dependency-free BarChart/LineChart/Sparkline/Heatmap/DonutChart), … (see folder)
     components/layout/  # TabBar (mobile), Sidebar (desktop)
-    components/forms/   # FormField, FormSelect (renders Dropdown), FormTierPicker
+    components/forms/   # FormField, FormSelect (renders Dropdown), FormTierPicker,
+                        # AddressAutocomplete (true type-ahead address/place field —
+                        # debounced /geocode/suggest list, keyboard nav; pick → parsed
+                        # city/region/line1/postcode + coords. Used by onboarding step 2,
+                        # the new-venue form, and the LocationEditor pin search)
     hooks/              # useForm, useTheme, usePrefersReducedMotion, useDragScroll
                         #   (drag/wheel-pan a .scroll-x carousel on desktop), useVenueAvailability
                         #   (per-hour availability → greys out taken hours; pass a courtId to

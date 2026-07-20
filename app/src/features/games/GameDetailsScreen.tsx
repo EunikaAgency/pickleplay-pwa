@@ -12,7 +12,7 @@ import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
 import { FeedComposerSheet } from '../social/FeedComposerSheet';
-import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
+import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, approveJoinGame, rejectJoinGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
@@ -42,6 +42,8 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [approvingLeave, setApprovingLeave] = useState<string | null>(null);
+  // The pending player currently being approved/declined (null = idle).
+  const [decidingJoin, setDecidingJoin] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // Set once the host deletes the lobby — keeps the post-delete success view up
@@ -96,6 +98,11 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const leaveMinsLeft = game ? Math.ceil(freeLeaveMsLeft(game) / 60_000) : 0;
   const pendingLeaves = game?.pendingLeaveUsers ?? [];
   const viewerPendingLeave = !!(me && pendingLeaves.some((p) => p.id === me.id));
+  // Approval-gated joining. Pending players hold no seat, so they never appear in
+  // `participants` and never move `spotsLeft` — the host reviews them separately.
+  const requiresApproval = !!game?.requiresApproval;
+  const pendingJoins = game?.pendingJoinUsers ?? [];
+  const viewerPendingJoin = !!game?.viewerPendingJoin;
 
   // Actually book the joiner in (the auth gate runs in handleJoin).
   const doJoin = async () => {
@@ -113,7 +120,10 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   };
 
   const handleJoin = () => {
-    if (!game || isJoined || joining || lobbyFull || blockedReason) return;
+    // A full lobby still takes REQUESTS when it's approval-gated — that's the
+    // waiting list. Only a full open-join lobby is a dead end.
+    if (!game || isJoined || joining || viewerPendingJoin || blockedReason) return;
+    if (lobbyFull && !requiresApproval) return;
     // Browsing the game is free; committing to it requires an account. The server
     // enforces the re-join cooldown (leave twice → wait 1h) and returns a clear
     // message that lands in actionError.
@@ -149,6 +159,36 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
       setActionError(e instanceof Error ? e.message : 'Could not approve the request.');
     } finally {
       setApprovingLeave(null);
+    }
+  };
+
+  // Host admits a player waiting on an approval-gated lobby. The server re-checks
+  // capacity here (the queue outlives the lobby filling), so a 409 is expected and
+  // its message is worth showing verbatim rather than a generic failure.
+  const handleApproveJoin = async (userId: string) => {
+    if (!game || decidingJoin) return;
+    setDecidingJoin(userId);
+    setActionError(null);
+    try {
+      setGame(await approveJoinGame(game.id, userId));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not approve the request.');
+    } finally {
+      setDecidingJoin(null);
+    }
+  };
+
+  // Host declines a request — they drop off the queue without taking a seat.
+  const handleRejectJoin = async (userId: string) => {
+    if (!game || decidingJoin) return;
+    setDecidingJoin(userId);
+    setActionError(null);
+    try {
+      setGame(await rejectJoinGame(game.id, userId));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not decline the request.');
+    } finally {
+      setDecidingJoin(null);
     }
   };
 
@@ -422,6 +462,36 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </div>
             </div>
 
+            {/* Host-only: players waiting to be let in. Shown even when the lobby is
+                full — it's a waiting list, so the host can admit from it after a drop
+                (approving into a full lobby is refused server-side, with a message). */}
+            {isHost && pendingJoins.length > 0 && (
+              <div className="rounded-2xl bg-[var(--lime-soft)] border-[0.5px] border-[var(--primary)]/30 px-4 py-3.5 mb-4">
+                <div className="text-[13px] font-bold text-[var(--ink)] mb-2.5">
+                  {pendingJoins.length === 1 ? 'A player wants to join' : `${pendingJoins.length} players want to join`}
+                  {lobbyFull && <span className="font-semibold text-[var(--muted)]"> · lobby full</span>}
+                </div>
+                <div className="flex flex-col gap-2.5">
+                  {pendingJoins.map((p) => (
+                    <div key={p.id} className="flex items-center gap-3">
+                      <Avatar src={p.avatarUrl} name={p.displayName} size={32} />
+                      <div className="flex-1 text-[13px] font-semibold text-[var(--ink)]">{p.displayName}</div>
+                      <button
+                        className="text-[13px] font-bold text-[var(--muted)] px-2 disabled:opacity-50"
+                        onClick={() => handleRejectJoin(p.id)}
+                        disabled={decidingJoin === p.id}
+                      >
+                        Decline
+                      </button>
+                      <Button variant="primary" onClick={() => handleApproveJoin(p.id)} disabled={decidingJoin === p.id}>
+                        {decidingJoin === p.id ? 'Working…' : 'Approve'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="organizer">
               <Avatar src={game.creator?.avatarUrl} name={game.creator?.displayName || 'Host'} size={48} variant="lime" />
               <div className="meta">
@@ -612,19 +682,40 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </button>
               )
             ) : (
-              <button className={`btn-join ${blockedReason ? 'btn-locked' : ''}`} onClick={handleJoin} disabled={joining || isFull || !!blockedReason}>
+              <button
+                className={`btn-join ${blockedReason || viewerPendingJoin ? 'btn-locked' : ''}`}
+                onClick={handleJoin}
+                // A full approval-gated lobby stays tappable: joining the waiting
+                // list is the whole point. Only a full open-join lobby is disabled.
+                disabled={joining || viewerPendingJoin || !!blockedReason || (isFull && !requiresApproval)}
+              >
                 {joining ? (
                   <>
                     <span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span>
-                    Joining…
+                    {requiresApproval ? 'Requesting…' : 'Joining…'}
                   </>
                 ) : blockedReason ? (
                   <>
                     <Icon name="lock" size={16} />
                     {blockedReason}
                   </>
+                ) : viewerPendingJoin ? (
+                  <>
+                    <Icon name="clock" size={16} />
+                    Requested — waiting for the host
+                  </>
+                ) : isFull && requiresApproval ? (
+                  <>
+                    <Icon name="groups" size={16} />
+                    Join the waiting list
+                  </>
                 ) : isFull ? (
                   'Game full'
+                ) : requiresApproval ? (
+                  <>
+                    <Icon name="groups" size={16} />
+                    Request to join
+                  </>
                 ) : (
                   <>
                     <Icon name="bolt" size={16} />

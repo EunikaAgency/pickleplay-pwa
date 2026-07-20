@@ -1567,7 +1567,7 @@
   border-bottom: none;
   padding: 0 16px 10px;
 }
-.pb-v2.v2-nearby .nearby-sheet .section-head { flex-shrink: 0; padding: 0 16px 10px; }
+.pb-v2.v2-nearby .nearby-sheet .section-head { flex-shrink: 0; padding: 12px 16px 10px; }
 .pb-v2.v2-nearby .sheet-list {
   flex: 1;
   overflow-y: auto;
@@ -2020,7 +2020,11 @@
   flex-shrink: 0;
 }
 
-/* Time dropdown — matches HourSelect's dropdown style */
+/* Time dropdown — matches HourSelect's dropdown style. The absolute box here is
+   only the pre-measure state (it gives the panel its real width, so JS can read
+   an accurate height); HourDropdown then switches it to `position: fixed` with
+   measured coords so it escapes .nearby-sheet's overflow clip. Keep offsets out
+   of this rule — the inline top/left would fight them. */
 .pb-v2.v2-nearby .dt-time-drop {
   position: absolute;
   z-index: 50;
@@ -2032,13 +2036,9 @@
   background: var(--surface, #fff);
   box-shadow: 0 8px 22px rgba(26,33,56,0.16);
   padding: 10px;
-  margin-top: 6px;
   animation: dtDropIn 0.15s ease-out;
 }
 .pb-v2.v2-nearby .dt-time-drop.up {
-  bottom: 100%;
-  margin-bottom: 6px;
-  margin-top: 0;
   animation: dtDropUp 0.15s ease-out;
 }
 @keyframes dtDropIn {

@@ -227,6 +227,9 @@ export interface ApiUser {
   city?: string | null;
   province?: string | null;
   zipcode?: string | null;
+  /** Coordinates of the saved address — restores the profile map's pin. */
+  lat?: number | null;
+  lng?: number | null;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean | null;
   preferences?: UserPreferences | null;
@@ -281,6 +284,8 @@ export function toAppUser(api: ApiUser): AppUser {
     city: api.city ?? undefined,
     province: api.province ?? undefined,
     zipcode: api.zipcode ?? undefined,
+    lat: typeof api.lat === 'number' ? api.lat : undefined,
+    lng: typeof api.lng === 'number' ? api.lng : undefined,
     hasOnboarded: api.hasOnboarded ?? false,
     preferences: api.preferences ?? DEFAULT_PREFERENCES,
     privacySetting: normalizePrivacy(api.privacySetting),
@@ -406,6 +411,9 @@ export interface ProfileUpdate {
   city?: string;
   province?: string;
   zipcode?: string;
+  /** Coordinates for the address above — saved so the profile map can restore the pin. */
+  lat?: number;
+  lng?: number;
   skillLevel?: string;
   skillLevelLabel?: string;
   hasOnboarded?: boolean;
@@ -1685,6 +1693,15 @@ export interface ApiGame {
   /** Players awaiting host approval to leave a locked (full, window-closed) lobby. */
   pendingLeaveUsers?: ApiGamePerson[];
   pendingLeaveCount?: number | null;
+  /** Host-gated joining: a join becomes a request the host must approve. */
+  requiresApproval?: boolean;
+  /** Players who asked to join and are waiting on the host. They hold no seat, so
+   *  they're absent from `participants` and don't reduce `spotsLeft`. Deliberately
+   *  non-empty even on a full lobby — that's the waiting list. */
+  pendingJoinUsers?: ApiGamePerson[];
+  pendingJoinCount?: number | null;
+  /** Whether the viewer's own join request is waiting on the host. */
+  viewerPendingJoin?: boolean;
   /** How many times the viewer has left this lobby (drives the re-join cooldown). */
   viewerLeaves?: number | null;
   creator?: ApiGamePerson | null;
@@ -1745,10 +1762,14 @@ export interface CreateGamePayload {
   durationLabel?: string;
   /** Explicit YYYY-MM-DD from the date picker; overrides the derived date. */
   date?: string;
-  /** Player cap. Optional — the server defaults it (4) for open/interest games. */
+  /** Player cap for every game type. Optional — the server defaults it to 4. */
   capacity?: number;
-  /** Lobby size for open play — a cap: once the lobby is full, no one else joins. */
+  /** LEGACY soft headcount goal for open play ("aiming for 8"). Never a cap —
+   *  `capacity` is the cap. Kept for old rows; new games shouldn't set it. */
   targetPlayers?: number;
+  /** Host-gated joining: joins become requests the host approves. Defaults false.
+   *  Forced false server-side when the admin switch is off. */
+  requiresApproval?: boolean;
   visibility: 'public' | 'invite';
   /** The host's court reservation (created + paid via the booking flow) to link. */
   bookingId?: string;
@@ -1820,6 +1841,18 @@ export async function requestLeaveGame(id: string): Promise<ApiGame> {
 /** Host approves a pending leave request — removes that player from the roster. */
 export async function approveLeaveGame(id: string, userId: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/approve-leave`, { method: 'POST', body: { userId }, auth: true });
+}
+
+/** Host admits a player waiting on an approval-gated lobby. There's no matching
+ *  `requestJoinGame`: on such a lobby `joinGame` IS the request — the server
+ *  branches and returns the game with the caller in `pendingJoinUsers`. */
+export async function approveJoinGame(id: string, userId: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/approve-join`, { method: 'POST', body: { userId }, auth: true });
+}
+
+/** Host declines a pending join request — drops them from the queue, no seat. */
+export async function rejectJoinGame(id: string, userId: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/reject-join`, { method: 'POST', body: { userId }, auth: true });
 }
 
 /** Host removes a player from the roster. */
@@ -3326,6 +3359,11 @@ export interface AppSettings {
   emailBccAddress?: string;
   /** Pricing mode: 'start' = rate based on booking start time (default); 'blend' = per-hour resolution. */
   pricingMode?: 'start' | 'blend';
+  /** Admin kill switches for player capabilities, both default true. Use them to
+   *  hide the matching controls — the server gates independently, so a stale or
+   *  missing value here can't let anything through. */
+  allowNonOrganizerEvents?: boolean;
+  allowPlayerApprovalLobbies?: boolean;
   /** Price + term of the paid coach/organizer subscriptions. */
   partnerSubscription?: {
     coach: number;

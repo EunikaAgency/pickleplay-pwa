@@ -200,6 +200,10 @@ export interface AppUser {
   city?: string;
   province?: string;
   zipcode?: string;
+  /** Coordinates of the address above — restores the profile map's pin, and is
+   *  what `/friends/suggestions` ranks "people near you" by. */
+  lat?: number;
+  lng?: number;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean;
   /** Account preferences (notification toggles + display units + search radius). */

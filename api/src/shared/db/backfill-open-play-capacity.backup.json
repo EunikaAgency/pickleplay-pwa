@@ -1,0 +1,72 @@
+[
+  {
+    "id": "6a4ded0cb300ad7d389df8af",
+    "title": "Tonight’s Drop-In Open Play",
+    "gameType": "open",
+    "targetPlayers": 12,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 12,
+    "clampedToSchemaMax": false
+  },
+  {
+    "id": "6a4ded0cb300ad7d389df8b0",
+    "title": "Beginner-Friendly Morning Rally",
+    "gameType": "open",
+    "targetPlayers": 8,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 8,
+    "clampedToSchemaMax": false
+  },
+  {
+    "id": "6a56e6fb2efd24cf65be1609",
+    "title": "Men's Doubles Night",
+    "gameType": "open",
+    "targetPlayers": 8,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 8,
+    "clampedToSchemaMax": false
+  },
+  {
+    "id": "6a56e7242efd24cf65be161c",
+    "title": "Ladies' Open Play",
+    "gameType": "open",
+    "targetPlayers": 8,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 8,
+    "clampedToSchemaMax": false
+  },
+  {
+    "id": "6a56fd4e81e3b4971c8a9f83",
+    "title": "(untitled)",
+    "gameType": "open",
+    "targetPlayers": 8,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 8,
+    "clampedToSchemaMax": false
+  },
+  {
+    "id": "6a58499fe5e7be7d60b0dea4",
+    "title": "(untitled)",
+    "gameType": "open",
+    "targetPlayers": 8,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 8,
+    "clampedToSchemaMax": false
+  },
+  {
+    "id": "6a59edabca64dcc38999370c",
+    "title": "(untitled)",
+    "gameType": "open",
+    "targetPlayers": 8,
+    "participants": 1,
+    "capacityBefore": 4,
+    "capacityAfter": 8,
+    "clampedToSchemaMax": false
+  }
+]

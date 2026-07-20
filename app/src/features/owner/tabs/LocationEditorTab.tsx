@@ -6,7 +6,7 @@ import { Button } from '../../../shared/components/ui/Button';
 import { Toast } from '../../../shared/components/ui/Toast';
 import { FormField } from '../../../shared/components/forms/FormField';
 import { OwnerSection } from '../components/OwnerSection';
-import { AddressAutocomplete } from '../components/AddressAutocomplete';
+import { AddressAutocomplete } from '../../../shared/components/forms/AddressAutocomplete';
 import { updateVenue, type OwnerVenueDetail, type GeocodeSuggestion } from '../../../shared/lib/api';
 
 interface LocationEditorTabProps {

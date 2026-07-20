@@ -93,6 +93,10 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const [spots, setSpots] = useState(4);
+  // Host-gated joining, off by default. Owners and organizers use this V1 wizard
+  // (playerV2 = !isOwner && !isOrganizer), so it needs the choice too — not just
+  // the V2 form ordinary players get.
+  const [reqApproval, setReqApproval] = useState(false);
   const [vis, setVis] = useState<'public' | 'invite'>('public');
 
   // Checkout.
@@ -340,6 +344,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
         durationLabel: `${hours} hr`,
         date,
         capacity: spots,
+        requiresApproval: reqApproval,
         visibility: vis,
         bookingId: booking.id,
       });
@@ -592,6 +597,26 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
               <button className={`time-pick ${vis === 'invite' ? 'active' : ''}`} onClick={() => setVis('invite')}>🔒 Invite only</button>
             </div>
           </div>
+
+          {(settings?.allowPlayerApprovalLobbies ?? true) && (
+            <div className="field">
+              <div className="lbl">Joining</div>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
+                  checked={reqApproval}
+                  onChange={(e) => setReqApproval(e.target.checked)}
+                />
+                <span>
+                  <span className="block text-[14px] font-bold text-[var(--ink)]">Approve players before they join</span>
+                  <span className="block text-[12px] text-[var(--muted)] mt-0.5">
+                    Players ask first and wait for you. Only the ones you approve get a slot and see the lobby.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
         </>
       )}
 
@@ -692,6 +717,10 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
   const [desc, setDesc] = useState('');
   const [spots, setSpots] = useState(4);
   const [vis, setVis] = useState<'public' | 'invite'>('public');
+  // Host-gated joining. Must exist here as well as in CreateGameV2: create and edit
+  // are different screens, so a field added to only one silently drifts.
+  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [approvalAllowed, setApprovalAllowed] = useState(true);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -716,12 +745,23 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
         setName(g.title || '');
         setDesc(g.description || '');
         if (g.capacity) setSpots(g.capacity);
+        setRequiresApproval(!!g.requiresApproval);
         setVis(g.visibility === 'invite' ? 'invite' : 'public');
       })
       .catch((e) => { if (alive) setLoadError(e instanceof Error ? e.message : 'Could not load this game.'); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [gameId]);
+
+  // Hide the approval toggle if an admin switched the capability off. Failure
+  // leaves it shown — the server gates regardless.
+  useEffect(() => {
+    let alive = true;
+    getSettings()
+      .then((s) => { if (alive && s.allowPlayerApprovalLobbies === false) setApprovalAllowed(false); })
+      .catch(() => { /* keep it shown — the server decides either way */ });
+    return () => { alive = false; };
+  }, []);
 
   const participants = game?.participants ?? [];
   const creatorId = game?.creatorId || game?.creator?.id;
@@ -751,6 +791,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
         gameType: type,
         skillLabel: skill,
         capacity: spots,
+        requiresApproval,
         visibility: vis,
       });
       setGame(updated);
@@ -881,6 +922,30 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
           <button className={`time-pick ${vis === 'invite' ? 'active' : ''}`} onClick={() => setVis('invite')}>🔒 Invite only</button>
         </div>
       </div>
+
+      {/* Same control as CreateGameV2's step 2 — this is the edit half of it.
+          Turning it off here leaves anyone already queued in the queue: they asked
+          under the old rule, so the host still decides on each rather than the
+          switch deciding for them. */}
+      {approvalAllowed && (
+        <div className="field">
+          <div className="lbl">Joining</div>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
+              checked={requiresApproval}
+              onChange={(e) => setRequiresApproval(e.target.checked)}
+            />
+            <span>
+              <span className="block text-[14px] font-bold text-[var(--ink)]">Approve players before they join</span>
+              <span className="block text-[12px] text-[var(--muted)] mt-0.5">
+                Players ask first and wait for you. Only the ones you approve get a slot and see the lobby.
+              </span>
+            </span>
+          </label>
+        </div>
+      )}
 
       {/* Roster — the host can remove players. */}
       <div className="field">

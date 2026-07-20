@@ -1,9 +1,22 @@
 // Distance helpers for location-based court sorting. Coordinates are `[lat, lng]`
 // in decimal degrees (the same shape `venueCoords` returns); distances come back
-// in kilometres. Kept dependency-free so the Courts screen can sort/format
-// client-side without touching the API.
+// in kilometres. Kept dependency-free (the type-only import below adds no
+// runtime edge) so the Courts screen can sort/format client-side without
+// touching the API.
+
+import type { AppUser } from './permissions';
 
 export type LatLng = [number, number];
+
+/**
+ * The account's saved home coordinates — captured during onboarding, editable on
+ * the profile map. Null unless both halves are on file. Lets a screen sort by
+ * distance immediately, instead of blocking on a live device fix that may be
+ * slow, refused, or unavailable.
+ */
+export function homeCoords(user: AppUser | null): LatLng | null {
+  return user?.lat != null && user?.lng != null ? [user.lat, user.lng] : null;
+}
 
 const EARTH_RADIUS_KM = 6371;
 

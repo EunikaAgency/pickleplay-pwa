@@ -11,7 +11,7 @@ import { Button } from '../../shared/components/ui/Button';
 import { getInitials } from '../../shared/lib/initials';
 import { MapPinPicker } from '../../shared/components/ui/MapPinPicker';
 import { ApiError, reverseGeocode, uploadAvatar } from '../../shared/lib/api';
-import { getCurrentLocation } from '../../shared/lib/geo';
+import { getCurrentLocation, homeCoords } from '../../shared/lib/geo';
 import { genderOptions, userHasPermission, type Gender } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
 
@@ -104,9 +104,13 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   }, [currentUser, resetForm]);
 
   // ── Address from the map ────────────────────────────────────────────────
-  // The pin is an input aid, not saved state: the account stores the address
-  // text, not coordinates, so the pin lives only for this editing session.
-  const [pin, setPin] = useState<[number, number] | null>(null);
+  // The pin is saved state — the account stores the address's coordinates, so
+  // the map opens on the place already on file instead of making the user find
+  // it again. Derived, not synced: a pin dropped this session wins, otherwise
+  // it falls back to the account's. That fallback is re-read every render, so a
+  // cold load (session restoring after first paint) needs no seeding effect.
+  const [droppedPin, setDroppedPin] = useState<[number, number] | null>(null);
+  const pin = droppedPin ?? homeCoords(currentUser);
   const [flyTo, setFlyTo] = useState<[number, number] | null>(null);
   const [detecting, setDetecting] = useState(false);
   const [pinLabel, setPinLabel] = useState<string | null>(null);
@@ -127,7 +131,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
   };
 
   const handlePin = async (lat: number, lng: number) => {
-    setPin([lat, lng]);
+    setDroppedPin([lat, lng]);
     setPinError(null);
     setPinLabel(null);
     setDetecting(true);
@@ -179,6 +183,9 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         city: form.values.city.trim(),
         province: form.values.province.trim(),
         zipcode: form.values.zipcode.trim(),
+        // Persist the pin so the map reopens on it. Omitted when there's none,
+        // so saving an unpinned form can't wipe coordinates already on file.
+        ...(pin ? { lat: pin[0], lng: pin[1] } : {}),
         // Only players/coaches carry a skill level — don't write one for others.
         ...(showSkillLevel
           ? { skillLevel: String(duprForTier(form.values.tier)), skillLevelLabel: tierName }

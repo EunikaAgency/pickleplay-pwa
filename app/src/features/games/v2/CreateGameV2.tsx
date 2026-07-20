@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { CompletionScreen } from '../../../shared/components/ui/CompletionScreen';
-import { getBooking, createGame, type ApiBooking, type CreateGamePayload } from '../../../shared/lib/api';
+import { getBooking, createGame, getSettings, type ApiBooking, type CreateGamePayload } from '../../../shared/lib/api';
 import { hoursBetween, prettyDate, timeRange, to12h } from '../../bookings/bookingDisplay';
 
 interface Props extends V2ScreenChrome {
@@ -45,6 +45,10 @@ export function CreateGameV2(props: Props) {
   const [vibe, setVibe] = useState<'casual' | 'competitive'>('casual');
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
+  // Host-gated joining, off by default: joins land in a queue the host reviews.
+  // Hidden (and forced off server-side) when the admin switch is off.
+  const [requiresApproval, setRequiresApproval] = useState(false);
+  const [approvalAllowed, setApprovalAllowed] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneId, setDoneId] = useState<string | null>(null);
@@ -59,6 +63,16 @@ export function CreateGameV2(props: Props) {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [bookingId]);
+
+  // Is the approval capability switched on platform-wide? Failure leaves it shown:
+  // the server is the gate, so a settings hiccup shouldn't remove a working control.
+  useEffect(() => {
+    let alive = true;
+    getSettings()
+      .then((s) => { if (alive && s.allowPlayerApprovalLobbies === false) setApprovalAllowed(false); })
+      .catch(() => { /* keep it shown — the server decides either way */ });
+    return () => { alive = false; };
+  }, []);
 
   const hours = useMemo(
     () => (booking ? hoursBetween(booking.startTime ?? '', booking.endTime ?? '') : 0),
@@ -92,6 +106,7 @@ export function CreateGameV2(props: Props) {
         format,
         vibe,
         capacity: slots,
+        requiresApproval,
         skillLabel: skill,
         timeLabel: booking.startTime ? to12h(booking.startTime) : undefined,
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
@@ -204,6 +219,25 @@ export function CreateGameV2(props: Props) {
                 <button type="button" className="stepper-btn" onClick={() => bump(1)} disabled={slots >= MAX_SLOTS} aria-label="More slots">+</button>
               </div>
               <p className="vis-help">Only this many players can join the play. You’re counted as one, so {slots - 1} more can join.</p>
+              {/* Sits with slots because it's the same question: who gets in. Hidden
+                  when an admin has switched the capability off — the server forces it
+                  off regardless, so this is only about not showing a dead control. */}
+              {approvalAllowed && (
+                <label className="mt-4 flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
+                    checked={requiresApproval}
+                    onChange={(e) => setRequiresApproval(e.target.checked)}
+                  />
+                  <span>
+                    <span className="block text-[14px] font-bold text-[var(--ink)]">Approve players before they join</span>
+                    <span className="block text-[12px] text-[var(--muted)] mt-0.5">
+                      Players ask first and wait for you. Only the ones you approve get a slot and see the lobby.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
           )}
 

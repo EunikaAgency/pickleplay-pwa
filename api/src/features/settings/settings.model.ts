@@ -27,6 +27,18 @@ const appSettingsSchema = new Schema({
   coachSubscriptionPrice:     { type: Number, default: 499, min: 0 },
   organizerSubscriptionPrice: { type: Number, default: 999, min: 0 },
   partnerSubscriptionDays:    { type: Number, default: 30, min: 1, max: 3650 },
+  // Player-capability switches. Both ship ON — the decision was to launch the
+  // capability and keep a kill switch, rather than gate it behind more discussion.
+  // Turning either off is a hard gate: the server rejects the action and the app
+  // hides the control (it reads these from the public GET /settings).
+  //
+  // Can a player without an organizer subscription create a 'public' (event/
+  // competitive-format) game? Off → only subscribed organizers can.
+  allowNonOrganizerEvents:    { type: Boolean, default: true },
+  // Can a host mark their own lobby "requires my approval to join"? Off → new and
+  // edited games are forced open-join. Existing queues are left alone: a global
+  // switch must not silently drop players who are already waiting.
+  allowPlayerApprovalLobbies: { type: Boolean, default: true },
   updatedBy:       { type: Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 

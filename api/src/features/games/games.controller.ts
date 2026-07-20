@@ -8,6 +8,7 @@ import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
 import { hasActivePartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
+import { getPlayerCapabilities } from '../settings/settings.controller.js';
 import { toWebpUrl } from '../../shared/lib/webp.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
@@ -25,13 +26,28 @@ const FULL_LOBBY_LEAVE_GRACE_MS = 3_600_000; // 1 hour
 // this many ms (prevents join/leave spam).
 const LEAVE_COOLDOWN_MS = 3_600_000; // 1 hour
 
+/** How many seats a game has. Mirrors the model's `capacity` default so the guards
+ *  and the serialized `spotsLeft` can never disagree.
+ *
+ *  A handful of legacy open-play rows predate `capacity` having a default and store
+ *  no value at all (they used `targetPlayers` as the cap instead). Those read as
+ *  capacity 0 under a `?? 0` fallback, so every guard called them full while
+ *  `spotsLeft` — which already defaulted to 4 — advertised free seats. Always go
+ *  through here rather than defaulting at each call site. */
+const DEFAULT_CAPACITY = 4;
+function seats(g: { capacity?: number | null }): number {
+  return g.capacity ?? DEFAULT_CAPACITY;
+}
+
 const createSchema = z.object({
   title: z.string().max(120).optional(),
   description: z.string().max(500).optional(),
   venueId: objectId.optional(),
   venueName: z.string().max(120).optional(),
-  // 'open' = interest-based Open Play (no roster); 'public' = format-driven, capped
-  // game with a lobby; 'singles'/'doubles' = classic fixed-seat lobbies.
+  // 'open' = Open Play; 'public' = format-driven competitive game (see `format`);
+  // 'singles'/'doubles' = classic fixed-seat lobbies. Since the merge every type
+  // behaves the same on join: a real roster seat in participantIds, capped by
+  // `capacity`, guarded by gender + skill.
   gameType: z.enum(['singles', 'doubles', 'open', 'public']).default('doubles'),
   format: gameFormat.optional(),
   vibe: vibeEnum.optional(),
@@ -49,6 +65,9 @@ const createSchema = z.object({
   // Open Play join fee (pesos). Accepted from any client, but only honoured for a
   // subscribed organizer — everyone else is forced to 0 in the handler.
   joinFee: z.number().min(0).max(100000).optional(),
+  // Host-gated joining. Accepted from any client, but forced to false in the
+  // handler when the admin switch is off.
+  requiresApproval: z.boolean().optional(),
   visibility: z.enum(['public', 'invite']).default('public'),
   // The host's court reservation, created + paid via the book-a-court flow before
   // the game is posted. Links the game to its booked court.
@@ -75,6 +94,7 @@ const updateSchema = z.object({
   capacity: z.number().int().min(2).max(16).optional(),
   targetPlayers: z.number().int().min(2).max(64).optional(),
   joinFee: z.number().min(0).max(100000).optional(),
+  requiresApproval: z.boolean().optional(),
   visibility: z.enum(['public', 'invite']).optional(),
 });
 
@@ -100,6 +120,7 @@ const POPULATE = [
   { path: 'participantIds', select: 'displayName avatarUrl' },
   { path: 'interestedUserIds', select: 'displayName avatarUrl' },
   { path: 'pendingLeaveUserIds', select: 'displayName avatarUrl' },
+  { path: 'pendingJoinUserIds', select: 'displayName avatarUrl' },
   { path: 'venueId', select: VENUE_SELECT },
   { path: 'invitedUserIds.invitedBy', select: 'displayName avatarUrl' },
   // over the venue image (falls back to the venue image when the court has none).
@@ -223,7 +244,8 @@ export function serialize(r: any, viewerUserId?: string) {
   const participants = (r.participantIds ?? []).map(refPerson);
   const interestedUsers = (r.interestedUserIds ?? []).map(refPerson);
   const pendingLeaveUsers = (r.pendingLeaveUserIds ?? []).map(refPerson);
-  const capacity = r.capacity ?? 4;
+  const pendingJoinUsers = (r.pendingJoinUserIds ?? []).map(refPerson);
+  const capacity = seats(r);
   const creator = r.creatorId && typeof r.creatorId === 'object' ? refPerson(r.creatorId) : null;
   const venue = refVenue(r.venueId);
   // `bookingId` may be populated (with its court) for the court-image lookup, or
@@ -258,6 +280,13 @@ export function serialize(r: any, viewerUserId?: string) {
     fullAt: r.fullAt ? (r.fullAt instanceof Date ? r.fullAt.toISOString() : r.fullAt) : null,
     pendingLeaveUsers,
     pendingLeaveCount: pendingLeaveUsers.length,
+    // Host-gated joining. `pendingJoinUsers` hold no seat, so they're absent from
+    // participants/spotsLeft above — the host reviews them from the lobby.
+    requiresApproval: r.requiresApproval ?? false,
+    pendingJoinUsers,
+    pendingJoinCount: pendingJoinUsers.length,
+    // The viewer's own request state, mirroring how the client derives isJoined.
+    viewerPendingJoin: viewerUserId ? pendingJoinUsers.some((p: any) => p.id === viewerUserId) : false,
     // How many times has the viewer left this lobby (for the 1h cooldown check).
     viewerLeaves: viewerUserId
       ? (r.leaveLog ?? []).filter((e: any) => String(e.user ?? e.userId) === viewerUserId).length
@@ -357,6 +386,17 @@ export async function createGame(c: any) {
   if (body.gameType === 'open' && body.joinFee && body.joinFee > 0) {
     if (await hasActivePartnerSubscription(user.sub, 'organizer')) joinFee = body.joinFee;
   }
+  // The two admin kill switches. Both default ON, so this is a no-op until an admin
+  // turns one off — at which point it's a real gate, not just a hidden button.
+  const caps = await getPlayerCapabilities();
+  if (body.gameType === 'public' && !caps.allowNonOrganizerEvents) {
+    if (!(await hasActivePartnerSubscription(user.sub, 'organizer'))) {
+      return c.json({ error: { code: 'FORBIDDEN', message: 'Only organizers can create events right now.' } }, 403);
+    }
+  }
+  // Forced, not rejected: a client that can't see the toggle shouldn't fail to post
+  // a game just because it sent the field. The lobby simply stays open-join.
+  const requiresApproval = caps.allowPlayerApprovalLobbies ? (body.requiresApproval ?? false) : false;
   const game = await Game.create({
     creatorId: user.sub,
     title: body.title || null,
@@ -369,6 +409,7 @@ export async function createGame(c: any) {
     // Vibe applies to any type (host picks casual or competitive at creation).
     vibe: body.vibe || null,
     genderPolicy: body.genderPolicy,
+    requiresApproval,
     skillLabel: body.skillLabel || null,
     skillMin,
     skillMax,
@@ -431,10 +472,25 @@ async function notifyHostLobbyFull(game: any) {
   await notifyUser(game.creatorId, {
     type: 'game_full',
     title: 'Your lobby is full',
-    body: `The game is ready to play. All ${game.capacity ?? game.participantIds.length} spots are filled.`,
+    body: `The game is ready to play. All ${seats(game)} spots are filled.`,
     icon: 'bolt',
     linkUrl: `/games/${String(game._id)}`,
     tag: `game-full-${String(game._id)}`,
+  });
+}
+
+/** Tell the host someone wants in on an approval-gated lobby. Mirrors the leave
+ *  side's `game_leave_request`. The request holds no seat until the host acts. */
+async function notifyHostJoinRequest(game: any, requesterId: string) {
+  if (!game.creatorId) return;
+  const name = await actorName(requesterId);
+  await notifyUser(game.creatorId, {
+    type: 'game_join_request',
+    title: `${name} wants to join`,
+    body: `${name} is asking to join ${gameLabel(game)} — approve or decline in the lobby.`,
+    icon: 'group_add',
+    linkUrl: `/games/${String(game._id)}`,
+    tag: `game-join-req-${String(game._id)}`,
   });
 }
 
@@ -446,7 +502,7 @@ async function notifyHostJoined(game: any, joinerId: string) {
   await notifyUser(game.creatorId, {
     type: 'game_join',
     title: 'New player joined',
-    body: `${name} joined ${gameLabel(game)} — ${game.participantIds.length}/${game.capacity ?? game.participantIds.length} spots filled.`,
+    body: `${name} joined ${gameLabel(game)} — ${game.participantIds.length}/${seats(game)} spots filled.`,
     icon: 'group_add',
     linkUrl: `/games/${String(game._id)}`,
     tag: `game-join-${String(game._id)}`,
@@ -489,17 +545,38 @@ export async function joinGame(c: any) {
     // Skill band: a banded game only admits a player whose DUPR is inside it.
     const skillBlocked = await skillBlock(game, user.sub);
     if (skillBlocked) return c.json({ error: skillBlocked }, 403);
-    if (game.participantIds.length >= (game.capacity ?? 0)) {
+    // Host-gated lobby: the join becomes a request instead of a seat. This sits
+    // AFTER the eligibility guards (never queue someone who could never get in)
+    // and BEFORE the capacity check (a full lobby still accepts requests — that's
+    // the waiting list, so the host can admit from the queue if someone drops).
+    // The host never queues behind their own gate.
+    if ((game as any).requiresApproval && String(game.creatorId) !== user.sub) {
+      const pend = ((game as any).pendingJoinUserIds ?? []) as any[];
+      if (pend.some((p: any) => String(p) === user.sub)) {
+        return c.json({ error: { code: 'CONFLICT', message: 'You already asked to join — the host will review it.' } }, 409);
+      }
+      (game as any).pendingJoinUserIds = [...pend, user.sub];
+      await game.save();
+      await notifyHostJoinRequest(game, user.sub);
+      const pendingPopulated = await Game.findById(id).populate(POPULATE).lean();
+      return c.json({ data: serialize(pendingPopulated, user.sub) });
+    }
+    if (game.participantIds.length >= seats(game)) {
       return c.json({ error: { code: 'FULL', message: 'This game is full' } }, 409);
     }
     const wasFull = game.status === 'full';
     game.participantIds.push(user.sub);
+    // Drop any standing request of theirs: a host who switches requiresApproval off
+    // leaves the queue behind them, and without this the same player would sit on
+    // the roster AND in the host's pending list at once.
+    (game as any).pendingJoinUserIds = (((game as any).pendingJoinUserIds ?? []) as any[])
+      .filter((p: any) => String(p) !== user.sub);
     // Remove from invitedUserIds since they've joined now.
     (game as any).invitedUserIds = (game.invitedUserIds ?? []).filter((entry: any) => {
       const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
       return uid !== user.sub;
     }) as any;
-    const nowFull = game.participantIds.length >= (game.capacity ?? 0);
+    const nowFull = game.participantIds.length >= seats(game);
     if (nowFull) {
       game.status = 'full';
       (game as any).fullAt = new Date(); // start the 1h free-leave countdown
@@ -524,7 +601,7 @@ export async function leaveGame(c: any) {
 
   const isMember = game.participantIds.some((p: any) => String(p) === user.sub);
   const isHost = String(game.creatorId) === user.sub;
-  const isFull = game.participantIds.length >= (game.capacity ?? 0);
+  const isFull = game.participantIds.length >= seats(game);
 
   if (!isMember) {
     return c.json({ error: { code: 'NOT_FOUND', message: 'You are not in this lobby.' } }, 404);
@@ -550,7 +627,7 @@ export async function leaveGame(c: any) {
   const windowOpen = fullTime > 0 && (Date.now() - fullTime) < FULL_LOBBY_LEAVE_GRACE_MS;
   if (windowOpen) {
     game.participantIds = game.participantIds.filter((p: any) => String(p) !== user.sub) as any;
-    if (game.participantIds.length < (game.capacity ?? 0)) {
+    if (game.participantIds.length < seats(game)) {
       game.status = 'published';
       (game as any).fullAt = undefined; // no longer full — reset the clock
     }
@@ -625,7 +702,7 @@ export async function requestLeave(c: any) {
   if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
   const isMember = game.participantIds.some((p: any) => String(p) === user.sub);
   if (!isMember) return c.json({ error: { code: 'NOT_FOUND', message: 'You are not in this lobby.' } }, 404);
-  const isFull = game.participantIds.length >= (game.capacity ?? 0);
+  const isFull = game.participantIds.length >= seats(game);
   if (!isFull) {
     return c.json({ error: { code: 'INVALID_STATE', message: 'The lobby is not full — you can leave directly.' } }, 400);
   }
@@ -666,12 +743,74 @@ export async function approveLeave(c: any) {
   // Remove from both.
   (game as any).pendingLeaveUserIds = pend.filter((p: any) => String(p) !== userId);
   game.participantIds = game.participantIds.filter((p: any) => String(p) !== userId) as any;
-  if (game.participantIds.length < (game.capacity ?? 0)) {
+  if (game.participantIds.length < seats(game)) {
     game.status = 'published';
     (game as any).fullAt = undefined;
   }
   await game.save();
   await notifyUser(userId, { type: 'game_leave_approved', title: 'Leave approved', body: `The host approved your request — you've left ${gameLabel(game)}.`, icon: 'check', linkUrl: `/games/${String(game._id)}`, tag: `game-leave-ok-${String(game._id)}` });
+  const populated = await Game.findById(id).populate(POPULATE).lean();
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
+}
+
+/** Host admits a pending join request — the player moves from pendingJoinUserIds
+ *  into the roster. Body: { userId }. Capacity is re-checked HERE, not just at
+ *  request time: the queue is a waiting list, so it outlives the lobby filling up
+ *  and a request made against a free seat may be approved after it's gone. */
+export async function approveJoin(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  if (String(game.creatorId) !== user.sub) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can approve a join request.' } }, 403);
+  }
+  const { userId } = kickSchema.parse(await c.req.json());
+  const pend = ((game as any).pendingJoinUserIds ?? []) as any[];
+  if (!pend.some((p: any) => String(p) === userId)) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'That player has not asked to join.' } }, 404);
+  }
+  if (game.participantIds.length >= seats(game)) {
+    return c.json({ error: { code: 'FULL', message: 'The lobby is full — free a spot first, then approve.' } }, 409);
+  }
+  (game as any).pendingJoinUserIds = pend.filter((p: any) => String(p) !== userId);
+  const wasFull = game.status === 'full';
+  game.participantIds.push(userId as any);
+  // They're on the roster now, so a standing invite is spent — same as joinGame.
+  (game as any).invitedUserIds = (game.invitedUserIds ?? []).filter((entry: any) => {
+    const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
+    return uid !== userId;
+  }) as any;
+  const nowFull = game.participantIds.length >= seats(game);
+  if (nowFull) {
+    game.status = 'full';
+    (game as any).fullAt = new Date(); // starts the 1h free-leave window, as joinGame does
+  }
+  await game.save();
+  await notifyUser(userId, { type: 'game_join_approved', title: "You're in", body: `The host approved your request — you've joined ${gameLabel(game)}.`, icon: 'check', linkUrl: `/games/${String(game._id)}`, tag: `game-join-ok-${String(game._id)}` });
+  if (nowFull && !wasFull) await notifyHostLobbyFull(game);
+  const populated = await Game.findById(id).populate(POPULATE).lean();
+  return c.json({ data: serialize(populated, c.get('user')?.sub) });
+}
+
+/** Host declines a pending join request — drops them from the queue, no seat taken.
+ *  Body: { userId }. Nothing stops them asking again; the host can decline again. */
+export async function rejectJoin(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  if (String(game.creatorId) !== user.sub) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the host can decline a join request.' } }, 403);
+  }
+  const { userId } = kickSchema.parse(await c.req.json());
+  const pend = ((game as any).pendingJoinUserIds ?? []) as any[];
+  if (!pend.some((p: any) => String(p) === userId)) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'That player has not asked to join.' } }, 404);
+  }
+  (game as any).pendingJoinUserIds = pend.filter((p: any) => String(p) !== userId);
+  await game.save();
+  await notifyUser(userId, { type: 'game_join_rejected', title: 'Request declined', body: `The host declined your request to join ${gameLabel(game)}.`, icon: 'person_off', linkUrl: `/games/${String(game._id)}`, tag: `game-join-no-${String(game._id)}` });
   const populated = await Game.findById(id).populate(POPULATE).lean();
   return c.json({ data: serialize(populated, c.get('user')?.sub) });
 }
@@ -863,7 +1002,17 @@ export async function updateGame(c: any) {
   // Apply only provided fields; recompute derived values where inputs changed.
   if (body.title !== undefined) game.title = body.title || null;
   if (body.description !== undefined) game.description = body.description || null;
-  if (body.gameType !== undefined) game.gameType = body.gameType;
+  if (body.gameType !== undefined) {
+    // Same gate as creation: with the switch off, a non-organizer can't convert an
+    // existing game into an event via edit either.
+    if (body.gameType === 'public' && game.gameType !== 'public') {
+      const caps = await getPlayerCapabilities();
+      if (!caps.allowNonOrganizerEvents && !(await hasActivePartnerSubscription(user.sub, 'organizer'))) {
+        return c.json({ error: { code: 'FORBIDDEN', message: 'Only organizers can create events right now.' } }, 403);
+      }
+    }
+    game.gameType = body.gameType;
+  }
   if (body.format !== undefined) (game as any).format = body.format || null;
   if (body.skillLabel !== undefined) {
     game.skillLabel = body.skillLabel || null;
@@ -883,6 +1032,14 @@ export async function updateGame(c: any) {
     (game as any).joinFee = body.joinFee > 0 && await hasActivePartnerSubscription(user.sub, 'organizer')
       ? body.joinFee
       : 0;
+  }
+  if (body.requiresApproval !== undefined) {
+    // Same gate as creation — the switch can't be sidestepped via edit.
+    const caps = await getPlayerCapabilities();
+    (game as any).requiresApproval = caps.allowPlayerApprovalLobbies ? body.requiresApproval : false;
+    // Turning the gate off does NOT auto-admit or auto-drop the queue: those players
+    // asked under a rule the host has since changed, so deciding for them either way
+    // would be wrong. The host keeps the queue and can still approve or decline each.
   }
 
   // Singles 1v1 / Doubles 2v2 have a fixed seat count regardless of what was sent.

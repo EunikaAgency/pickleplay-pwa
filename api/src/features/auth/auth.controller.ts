@@ -59,6 +59,11 @@ const updateProfileSchema = z.object({
   city: z.string().max(100).optional(),
   province: z.string().max(100).optional(),
   zipcode: z.string().max(20).optional(),
+  // Coordinates for the address above. Until now nothing wrote these — only a
+  // seed script, with random values — while `/friends/suggestions` ranked
+  // "people near you" off them.
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
   bio: z.string().optional(),
   privacySetting: z.enum(['public', 'private', 'friends']).optional(),
   gcashNumber: z.string().max(20).optional(),
@@ -166,6 +171,8 @@ async function authUserPayload(user: any) {
     city: user.city,
     province: user.province,
     zipcode: user.zipcode,
+    lat: user.lat ?? null,
+    lng: user.lng ?? null,
     bio: user.bio,
     isVerified: user.isVerified,
     privacySetting: user.privacySetting,
