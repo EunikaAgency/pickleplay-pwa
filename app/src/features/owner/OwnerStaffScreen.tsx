@@ -4,7 +4,7 @@ import { Avatar } from '../../shared/components/ui/Avatar';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { OwnerSection } from './components/OwnerSection';
 import { useAuthStore } from '../../shared/lib/authStore';
-import { userHasPermission } from '../../shared/lib/permissions';
+import { userHasPermission, STAFF_GRANTABLE_PERMISSIONS } from '../../shared/lib/permissions';
 import {
   listStaffAccounts,
   createStaffAccount,
@@ -47,6 +47,8 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
   const [resetPassword, setResetPassword] = useState('');
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [rowError, setRowError] = useState('');
+  const [accessOpen, setAccessOpen] = useState<string | null>(null);
+  const [savingAccess, setSavingAccess] = useState(false);
 
   // Load on mount, when the management gate flips (auth restore), or when Retry
   // bumps reloadKey. State is set only inside async callbacks — never
@@ -115,6 +117,22 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
       setRowError("Couldn't reset the password. Try again.");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const onToggleAccess = async (m: StaffAccount, permKey: string) => {
+    setSavingAccess(true);
+    setRowError('');
+    const current = new Set(m.grantedPermissions ?? []);
+    if (current.has(permKey)) current.delete(permKey); else current.add(permKey);
+    const next = [...current];
+    try {
+      const updated = await updateStaffAccount(m.id, { grantedPermissions: next });
+      setStaff((s) => s.map((x) => (x.id === m.id ? { ...x, grantedPermissions: updated.grantedPermissions } : x)));
+    } catch {
+      setRowError("Couldn't update access. Try again.");
+    } finally {
+      setSavingAccess(false);
     }
   };
 
@@ -245,6 +263,14 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                     <div className="flex items-center gap-2 mt-2 pl-[46px]">
                       <button
                         type="button"
+                        onClick={() => { setAccessOpen(accessOpen === m.id ? null : m.id); setResetFor(null); setRowError(''); }}
+                        className="text-[12px] font-bold text-[var(--primary)] hover:underline"
+                      >
+                        Access
+                      </button>
+                      <span className="text-[var(--hairline)]">·</span>
+                      <button
+                        type="button"
                         onClick={() => { setResetFor(resetFor === m.id ? null : m.id); setResetPassword(''); setRowError(''); }}
                         className="text-[12px] font-bold text-[var(--primary)] hover:underline"
                       >
@@ -278,6 +304,45 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                       >
                         Save
                       </button>
+                    </div>
+                  )}
+
+                  {/* Per-staff Access toggles */}
+                  {accessOpen === m.id && (
+                    <div className="mt-2.5 pl-[46px]">
+                      <div className="t-xs text-[var(--muted)] mb-1.5 font-semibold uppercase tracking-wider">
+                        Access (all venues)
+                      </div>
+                      <div className="space-y-1.5">
+                        {STAFF_GRANTABLE_PERMISSIONS.map((perm) => {
+                          const isDefault = !['owner.pricing.manage', 'owner.analytics.view'].includes(perm.key);
+                          const isGranted = isDefault || (m.grantedPermissions ?? []).includes(perm.key);
+                          return (
+                            <label
+                              key={perm.key}
+                              className={`flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg ${
+                                isDefault ? 'cursor-default' : 'cursor-pointer hover:bg-[var(--surface-2)]'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isGranted}
+                                disabled={isDefault || savingAccess}
+                                onChange={() => onToggleAccess(m, perm.key)}
+                                className="w-4 h-4 rounded accent-[var(--primary)] disabled:opacity-50"
+                              />
+                              <Icon name={perm.icon} size={16} className="text-[var(--muted)]" />
+                              <span className="text-[13px] font-medium text-[var(--ink)]">{perm.label}</span>
+                              {isDefault && (
+                                <span className="t-xs text-[var(--muted)] ml-auto">Default</span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {savingAccess && (
+                        <div className="t-xs text-[var(--muted)] mt-1">Saving…</div>
+                      )}
                     </div>
                   )}
                 </div>

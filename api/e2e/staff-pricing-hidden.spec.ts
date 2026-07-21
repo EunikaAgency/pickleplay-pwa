@@ -1,12 +1,14 @@
 /**
- * Staff must not see the Pricing Override screen (/owner/pricing).
+ * Staff pricing access: default-hidden, owner-grantable.
  *
- * Pricing sets the rates players are charged — the owner's business, not the
- * delegated sub-account's. The screen + every entry point into it are gated by
- * `owner.pricing.manage`, which the owner role holds and the staff role does not
- * (same reasoning as /owner/reports and `owner.reports.view`).
+ * Pricing sets the rates players are charged — the owner's business. The staff
+ * role does NOT hold `owner.pricing.manage` by default, so the Pricing screen,
+ * sidebar entry, and slot-override endpoints are all gated away.
  *
- * The gate must hold for BOTH the nav affordances and a hand-typed URL.
+ * NEW: An owner can now GRANT pricing (and other owner.* permissions) to a
+ * specific staff sub-account via `PATCH /staff/:id { grantedPermissions: [...] }`.
+ * The granted permissions are unioned into the staff member's effective set at
+ * their next login. This file tests BOTH the default-gated AND post-grant states.
  *
  * Prereqs: API on :9002, PWA on :9000, seeded data.
  */
@@ -122,6 +124,150 @@ test.describe('Staff cannot reach /owner/pricing', () => {
       await staff.goto(`${APP}/owner/pricing`);
       await staff.waitForTimeout(2000);
       await expect(staff.getByText('Pricing Override')).toHaveCount(0);
+    } finally {
+      if (staffId) {
+        await fetch(`${API}/api/v1/staff/${staffId}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${ownerTok}` },
+        });
+      }
+    }
+  });
+
+  // ── Grant flow ──────────────────────────────────────────────────────────
+  // An owner grants pricing to a staff sub-account. After re-login the staff
+  // can see Pricing. Without the grant, slot-override endpoints 403 for staff.
+
+  test('T6: after owner grants pricing, staff can see Pricing sidebar + grid', async ({ browser }) => {
+    const ownerTok = await tokenFor(OWNER);
+    const sub = { email: `pricing-grant-${Date.now()}@test.com`, password: 'password123' };
+
+    // Create a staff sub-account.
+    const created = await fetch(`${API}/api/v1/staff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerTok}` },
+      body: JSON.stringify({ ...sub, displayName: 'Pricing Granted Staff' }),
+    });
+    const staffId = ((await created.json()) as { data?: { id?: string } }).data?.id;
+    expect(created.ok, 'staff created').toBeTruthy();
+
+    try {
+      // Grant pricing to the staff member.
+      const patched = await fetch(`${API}/api/v1/staff/${staffId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerTok}` },
+        body: JSON.stringify({ grantedPermissions: ['owner.pricing.manage'] }),
+      });
+      expect(patched.ok, 'grant persisted').toBeTruthy();
+      const body = (await patched.json()) as { data?: { grantedPermissions?: string[] } };
+      expect(body.data?.grantedPermissions).toContain('owner.pricing.manage');
+
+      // Staff logs in AFTER the grant → JWT carries the new permission.
+      const staff = await pageAs(browser, sub);
+      await staff.goto(APP);
+      await staff.waitForTimeout(1500);
+      await expect(staff.locator('.sidebar')).toBeVisible({ timeout: 6000 });
+
+      // The sidebar now HAS Pricing (was absent before the grant).
+      await expect(sidebarPricing(staff)).toBeVisible({ timeout: 6000 });
+
+      // The grid itself renders.
+      await staff.goto(`${APP}/owner/pricing`);
+      await staff.waitForTimeout(2000);
+      await expect(staff.getByText('Pricing Override')).toBeVisible({ timeout: 8000 });
+    } finally {
+      if (staffId) {
+        await fetch(`${API}/api/v1/staff/${staffId}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${ownerTok}` },
+        });
+      }
+    }
+  });
+
+  test('T7: slot-override backend enforces pricing permission for staff', async () => {
+    const ownerTok = await tokenFor(OWNER);
+    const sub = { email: `slot-gate-${Date.now()}@test.com`, password: 'password123' };
+
+    const created = await fetch(`${API}/api/v1/staff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerTok}` },
+      body: JSON.stringify({ ...sub, displayName: 'Slot Gate Staff' }),
+    });
+    const staffId = ((await created.json()) as { data?: { id?: string } }).data?.id;
+    expect(created.ok, 'staff created').toBeTruthy();
+
+    try {
+      // Login as the new staff (no pricing grant yet).
+      const staffLogin = await fetch(`${API}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub),
+      });
+      const staffTok = ((await staffLogin.json()) as { data?: { accessToken?: string } }).data?.accessToken!;
+
+      // Staff must also be venue staff on at least one venue to reach the endpoint
+      // (requireVenueManager). Add them to the owner's first venue.
+      const venues = await fetch(`${API}/api/v1/venues?ownerUserId=&pageSize=1`, {
+        headers: { Authorization: `Bearer ${ownerTok}` },
+      });
+      const venueId = ((await venues.json()) as { data?: Array<{ id: string }> }).data?.[0]?.id;
+      expect(venueId, 'owner has a venue').toBeTruthy();
+
+      await fetch(`${API}/api/v1/venues/${venueId}/staff`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerTok}` },
+        body: JSON.stringify({ userId: staffId, staffRole: 'manager' }),
+      });
+
+      const slot = { date: '2099-12-25', startTime: '10:00', endTime: '11:00', price: 500 };
+
+      // Without pricing grant → 403.
+      const denied = await fetch(`${API}/api/v1/venues/${venueId}/slot-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${staffTok}` },
+        body: JSON.stringify(slot),
+      });
+      expect(denied.status, 'staff w/o pricing = 403').toBe(403);
+
+      // Grant pricing permission.
+      await fetch(`${API}/api/v1/staff/${staffId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${ownerTok}` },
+        body: JSON.stringify({ grantedPermissions: ['owner.pricing.manage'] }),
+      });
+
+      // Staff re-logs in → fresh token with the granted permission.
+      const relogin = await fetch(`${API}/api/v1/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub),
+      });
+      const newTok = ((await relogin.json()) as { data?: { accessToken?: string } }).data?.accessToken!;
+
+      // With pricing grant → 201.
+      const allowed = await fetch(`${API}/api/v1/venues/${venueId}/slot-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${newTok}` },
+        body: JSON.stringify(slot),
+      });
+      expect(allowed.status, 'staff w/ pricing = 201').toBe(201);
+
+      // Clean up the override.
+      const createdSlot = ((await allowed.json()) as { data?: { id?: string } }).data?.id;
+      if (createdSlot) {
+        await fetch(`${API}/api/v1/venues/slot-overrides/${createdSlot}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${ownerTok}` },
+        });
+      }
+
+      // Remove staff from venue.
+      const staffRows = await fetch(`${API}/api/v1/venues/${venueId}/staff`, {
+        headers: { Authorization: `Bearer ${ownerTok}` },
+      });
+      const vStaff = ((await staffRows.json()) as { data?: Array<{ id: string }> }).data ?? [];
+      const row = vStaff.find((r: any) => r.userId === staffId);
+      if (row) {
+        await fetch(`${API}/api/v1/venues/staff/${row.id}`, {
+          method: 'DELETE', headers: { Authorization: `Bearer ${ownerTok}` },
+        });
+      }
     } finally {
       if (staffId) {
         await fetch(`${API}/api/v1/staff/${staffId}`, {

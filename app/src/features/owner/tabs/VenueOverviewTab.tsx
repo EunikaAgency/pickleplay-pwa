@@ -43,7 +43,7 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
   // Staff intentionally hold no analytics permission (the 16 Jul meeting ruled they
   // must not see revenue). Used to suppress the "ask an admin to enable analytics"
   // nudge, which is misleading for them — it's withheld on purpose, not missing.
-  const isStaff = user?.role === 'staff';
+  const isStaff = user?.roleDefault === 'staff';
 
   const [analytics, setAnalytics] = useState<OwnerAnalytics | null>(null);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
