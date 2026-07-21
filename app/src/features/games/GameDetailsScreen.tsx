@@ -12,7 +12,7 @@ import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
 import { FeedComposerSheet } from '../social/FeedComposerSheet';
-import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, approveJoinGame, rejectJoinGame, cancelJoinGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
+import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, approveJoinGame, rejectJoinGame, cancelJoinGame, updateGame, getSettings, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame, type CreateGamePayload } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
@@ -61,6 +61,13 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [saved, setSaved] = useState(() => {
     try { return JSON.parse(localStorage.getItem('pb-saved-games') || '[]').includes(gameId); } catch { return false; }
   });
+  // ── Focused lobby edit (host). Patches only the fields updateGame actually
+  //    applies, so a V2 'public' game keeps its type/format/vibe — unlike routing
+  //    to the V1 edit form, which would silently rewrite it to 'doubles'. ──
+  const [editOpen, setEditOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [approvalAllowed, setApprovalAllowed] = useState(true);
+  const [editForm, setEditForm] = useState({ title: '', description: '', skillLabel: '', capacity: 4, visibility: 'public', requiresApproval: false });
 
   const [prevFetchKey, setPrevFetchKey] = useState(`${gameId}|${reloadKey}`);
   const fetchKey = `${gameId}|${reloadKey}`;
@@ -84,6 +91,16 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
     return () => { alive = false; };
   }, [gameId, reloadKey]);
 
+  // The admin can hard-off approval lobbies; when off, hide the toggle on edit too
+  // (mirrors CreateGameV2). The server forces requiresApproval=false regardless.
+  useEffect(() => {
+    let alive = true;
+    getSettings()
+      .then((s) => { if (alive && s.allowPlayerApprovalLobbies === false) setApprovalAllowed(false); })
+      .catch(() => { /* non-fatal: default to allowed */ });
+    return () => { alive = false; };
+  }, []);
+
   const participants = game?.participants ?? [];
   const isJoined = !!(game && me && participants.some((p) => p.id === me.id));
   const spotsLeft = game?.spotsLeft ?? 0;
@@ -95,6 +112,8 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   // The host can cancel (delete) their own game from inside the lobby — deleting
   // also releases the linked court reservation (handled server-side).
   const canManageGame = isHost && userHasPermission(me, 'player.games.manage');
+  // Edit is offered only before play starts (mirrors the V1 EDITABLE = {published, full}).
+  const canEdit = canManageGame && (game?.status === 'published' || game?.status === 'full');
 
   // Lobby / leave-policy state — all derived from the shared rules so the UI and
   // the validation never drift apart. A full lobby gives everyone a 1h window to
@@ -138,6 +157,47 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
       setActionError(e instanceof Error ? e.message : 'Could not cancel your request.');
     } finally {
       setJoining(false);
+    }
+  };
+
+  // Prefill the edit sheet from the current game and open it.
+  const openEdit = () => {
+    if (!game) return;
+    setActionError(null);
+    setEditForm({
+      title: game.title ?? '',
+      description: game.description ?? '',
+      skillLabel: game.skillLabel ?? '',
+      capacity: game.capacity ?? 4,
+      visibility: (game.visibility as string) ?? 'public',
+      requiresApproval: !!game.requiresApproval,
+    });
+    setEditOpen(true);
+  };
+
+  const doSaveEdit = async () => {
+    if (!game || savingEdit) return;
+    setSavingEdit(true);
+    setActionError(null);
+    try {
+      // Only the fields updateGame applies today — deliberately NOT gameType,
+      // format, vibe, or genderPolicy (those aren't safely round-trippable here).
+      const patch: Partial<CreateGamePayload> = {
+        title: editForm.title.trim() || undefined,
+        description: editForm.description.trim() || undefined,
+        skillLabel: editForm.skillLabel.trim() || undefined,
+        capacity: editForm.capacity,
+        visibility: editForm.visibility as 'public' | 'invite',
+        requiresApproval: approvalAllowed ? editForm.requiresApproval : false,
+      };
+      const updated = await updateGame(game.id, patch);
+      setGame(updated);
+      setEditOpen(false);
+    } catch (e) {
+      // Server guards (e.g. capacity below the current roster) surface here.
+      setActionError(e instanceof Error ? e.message : 'Could not save your changes.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -672,6 +732,17 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
             </div>
             {isHost ? (
               canManageGame ? (
+                <>
+                {canEdit && (
+                  <button
+                    className="btn-join btn-message"
+                    onClick={openEdit}
+                    disabled={deleting || savingEdit}
+                  >
+                    <Icon name="edit" size={16} />
+                    Edit lobby
+                  </button>
+                )}
                 <button
                   className="btn-join btn-leave"
                   onClick={() => { setActionError(null); setConfirmDeleteOpen(true); }}
@@ -689,6 +760,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                     </>
                   )}
                 </button>
+                </>
               ) : (
                 <button className="btn-join joined" disabled>
                   <Icon name="shield" size={16} />
@@ -804,6 +876,69 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                     <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Deleting…</>
                   ) : (
                     'Delete lobby'
+                  )}
+                </Button>
+              </div>
+            </div>
+          </BottomSheet>
+
+          {/* Host edit — patches only the fields updateGame applies (keeps a
+              'public' game's type/format/vibe intact). */}
+          <BottomSheet open={editOpen} onClose={() => setEditOpen(false)} title="Edit lobby">
+            <div className="px-1 pb-1 flex flex-col gap-4">
+              <label className="block">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Title</span>
+                <input className="control" value={editForm.title} maxLength={120}
+                  placeholder="e.g. Friday Night Dinks"
+                  onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Skill label</span>
+                <input className="control" value={editForm.skillLabel} maxLength={30}
+                  placeholder="e.g. 3.0–3.5 or All levels"
+                  onChange={(e) => setEditForm((f) => ({ ...f, skillLabel: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Players (capacity)</span>
+                <input className="control" type="number" inputMode="numeric"
+                  min={Math.max(2, participants.length)} max={16} value={editForm.capacity}
+                  onChange={(e) => setEditForm((f) => ({ ...f, capacity: Number(e.target.value) }))} />
+                <span className="block text-[12px] text-[var(--muted)] mt-1">Can't go below the {participants.length} already in the lobby.</span>
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Description</span>
+                <textarea className="control" value={editForm.description} maxLength={500} rows={3}
+                  placeholder="Anything players should know"
+                  onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Visibility</span>
+                <select className="control" value={editForm.visibility}
+                  onChange={(e) => setEditForm((f) => ({ ...f, visibility: e.target.value }))}>
+                  <option value="public">Public — anyone can find it</option>
+                  <option value="invite">Invite only</option>
+                </select>
+              </label>
+              {approvalAllowed && (
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
+                    checked={editForm.requiresApproval}
+                    onChange={(e) => setEditForm((f) => ({ ...f, requiresApproval: e.target.checked }))} />
+                  <span>
+                    <span className="block text-[14px] font-bold text-[var(--ink)]">Approve players before they join</span>
+                    <span className="block text-[12px] text-[var(--muted)] mt-0.5">
+                      Players ask first and wait for you. Only the ones you approve get a slot and see the lobby.
+                    </span>
+                  </span>
+                </label>
+              )}
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingEdit}>Cancel</Button>
+                <Button onClick={doSaveEdit} disabled={savingEdit}>
+                  {savingEdit ? (
+                    <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Saving…</>
+                  ) : (
+                    'Save changes'
                   )}
                 </Button>
               </div>

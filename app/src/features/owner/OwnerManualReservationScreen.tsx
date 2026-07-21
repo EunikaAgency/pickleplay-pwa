@@ -192,6 +192,36 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   };
 
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
+
+  // Which start-hours are already taken for the *currently selected* court + date,
+  // so the time picker can grey them + tag them ("Booked" / "Maint.") instead of
+  // offering a slot that will just bounce on save. Sourced from data the screen
+  // already holds — the venue's bookings + this date's Reserved/Maintenance grid
+  // overrides — so no extra fetch. Court scope mirrors the server's per-court view:
+  // a specific court is blocked by a booking on that same court OR a court-less
+  // (venue-wide) reservation; a booking on a *different* court doesn't block it.
+  const unavailableHours = useMemo(() => {
+    const map = new Map<number, string>();
+    const mark = (sh: number, eh: number, note: string) => {
+      if (Number.isNaN(sh) || Number.isNaN(eh)) return;
+      for (let h = sh; h < eh && h < 24; h++) if (!map.has(h)) map.set(h, note);
+    };
+    if (activeVenue) {
+      for (const b of bookings) {
+        if (b.status === 'cancelled') continue;
+        if ((b.venueId ?? '') !== activeVenue.id || (b.date ?? '') !== date) continue;
+        const bCourt = b.courtId ?? '';
+        if (courtId && bCourt && bCourt !== courtId) continue; // a different specific court
+        mark(Number((b.startTime ?? '').slice(0, 2)), Number((b.endTime ?? '').slice(0, 2)), 'Booked');
+      }
+    }
+    for (const ov of overrides) {
+      if (ov.note !== 'Reserved' && ov.note !== 'Maintenance') continue;
+      if (!sameScopeOverride(ov, courtId)) continue;
+      mark(Number(ov.startTime.slice(0, 2)), Number(ov.endTime.slice(0, 2)), ov.note === 'Maintenance' ? 'Maint.' : 'Booked');
+    }
+    return map;
+  }, [bookings, overrides, activeVenue, courtId, date]);
   const rateInfo = useMemo(() => resolveHourlyRate({
     venue: activeVenue, court: selectedCourt, hours: venueHours, overrides,
     date, startTime, isMember: false,
@@ -236,6 +266,19 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
       }
       if (blockingOverride?.note === 'Maintenance') {
         setError('This time is marked unavailable for maintenance. Pick another slot.');
+        return;
+      }
+
+      // Instant clash check against the booked-hour map (bookings + grid overrides)
+      // the picker already greys out — so picking a taken hour fails fast with a
+      // clear message instead of a server round-trip. The server's findSlotConflict
+      // (409 SLOT_CONFLICT, handled below) is still the authoritative guard.
+      const startH = Number(startTime.slice(0, 2));
+      const endH = Number(endTime.slice(0, 2));
+      const clash = Array.from({ length: Math.max(0, endH - startH) }, (_, i) => startH + i)
+        .some((h) => unavailableHours.has(h));
+      if (clash) {
+        setError('That court is already booked for part of that time. Pick another slot.');
         return;
       }
 
@@ -362,7 +405,12 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
           <div className="field px-0!">
             <div className="lbl">Time</div>
             <div className="grid grid-cols-2 gap-3">
-              <HourSelect aria-label="Start time" value={startTime} onChange={(v) => onStartChange(snapToHour(v))} />
+              <HourSelect
+                aria-label="Start time"
+                value={startTime}
+                onChange={(v) => onStartChange(snapToHour(v))}
+                hourInfo={(h) => (unavailableHours.has(h) ? { disabled: true, note: unavailableHours.get(h) } : {})}
+              />
               <HourSelect aria-label="End time" placeholder="Set end" value={endTime} after={startTime} onChange={setEndTime} />
             </div>
           </div>
