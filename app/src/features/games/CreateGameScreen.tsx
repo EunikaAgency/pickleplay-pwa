@@ -68,6 +68,8 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   // Court picker (priced venues only).
   const [venues, setVenues] = useState<ApiVenue[]>([]);
   const [venuesLoading, setVenuesLoading] = useState(true);
+  const [venuesError, setVenuesError] = useState(false);
+  const [venuesReloadKey, setVenuesReloadKey] = useState(0);
   const [selectedId, setSelectedId] = useState('');
   const [picking, setPicking] = useState(true);
   const [query, setQuery] = useState('');
@@ -111,6 +113,8 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
 
   useEffect(() => {
     let alive = true;
+    setVenuesLoading(true);
+    setVenuesError(false);
     listAllVenues()
       .then((items) => {
         if (!alive) return;
@@ -118,10 +122,10 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
         setVenues(bookable);
         setSelectedId((prev) => prev || bookable[0]?.id || '');
       })
-      .catch(() => { /* picker shows an empty-state */ })
+      .catch(() => { if (alive) setVenuesError(true); }) // G3: distinguish failure from empty
       .finally(() => { if (alive) setVenuesLoading(false); });
     return () => { alive = false; };
-  }, []);
+  }, [venuesReloadKey]);
 
   // Load the chosen venue's courts; default to the first (host can switch). Reset
   // while a fresh venue loads.
@@ -415,6 +419,11 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
 
             {venuesLoading ? (
               <LoadingSkeleton variant="card" count={3} />
+            ) : venuesError ? (
+              <div className="text-[13px] text-[var(--muted)] font-semibold py-2">
+                Couldn't load courts.{' '}
+                <button type="button" onClick={() => setVenuesReloadKey((k) => k + 1)} className="text-[var(--primary)] underline font-bold">Try again</button>
+              </div>
             ) : venues.length === 0 ? (
               <div className="text-[13px] text-[var(--muted)] font-semibold py-2">
                 No bookable courts right now — only venues with published rates can host a game.

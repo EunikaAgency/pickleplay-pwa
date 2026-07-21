@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { CourtIllustration } from '../../../shared/components/ui/CourtIllustration';
 import { EmptyState } from '../../../shared/components/ui/EmptyState';
+import { ErrorState } from '../../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ShareLobbySheet } from '../../../shared/components/ui/ShareLobbySheet';
 import { Avatar } from '../../../shared/components/ui/Avatar';
@@ -9,7 +10,7 @@ import { InvitePlayersSheet } from '../InvitePlayersSheet';
 import { GameDetailsScreen } from '../GameDetailsScreen';
 import { type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import {
-  getGame,
+  getGame, ApiError,
   getOpenPlaySession, joinOpenPlaySession, leaveOpenPlaySession,
   type ApiGame, type ApiGamePerson, type ApiOpenPlaySession,
 } from '../../../shared/lib/api';
@@ -91,21 +92,40 @@ function AutoOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V2Scre
 function GameOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V2ScreenChrome; onBack: () => void }) {
   const [game, setGame] = useState<ApiGame | null>(null);
   const [loading, setLoading] = useState(true);
+  // Distinguish a real 404 (removed) from a transient fetch error (G2).
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
+    setLoadError(false);
     getGame(id)
       .then((g) => { if (alive) setGame(g); })
-      .catch(() => { /* fall through to not-found */ })
+      .catch((e) => { if (alive && !(e instanceof ApiError && e.status === 404)) setLoadError(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [id]);
+  }, [id, reloadKey]);
 
   if (loading) {
     return (
       <div className="scroll safe-top safe-bottom px-4">
         <LoadingSkeleton variant="block" count={1} />
         <div className="mt-3"><LoadingSkeleton variant="card" count={3} /></div>
+      </div>
+    );
+  }
+  if (!game && loadError) {
+    return (
+      <div className="scroll safe-top safe-bottom">
+        <div className="detail-hero" style={{ minHeight: 140 }}>
+          <div className="img" style={{ backgroundImage: `url(/fallback-game.png)` }} />
+          <div className="grad" />
+          <div className="top-controls">
+            <button className="icon-btn" onClick={onBack} aria-label="Back"><Icon name="back" size={18} /></button>
+          </div>
+        </div>
+        <ErrorState message="Couldn't load this Open Play." onRetry={() => setReloadKey((k) => k + 1)} />
       </div>
     );
   }

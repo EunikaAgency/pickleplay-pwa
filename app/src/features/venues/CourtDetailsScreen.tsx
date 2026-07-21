@@ -10,6 +10,7 @@ import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { MembershipSheet } from './MembershipSheet';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
+import { Toast } from '../../shared/components/ui/Toast';
 import type { Navigate } from '../../shared/lib/navigation';
 import { apiImageUrl, getVenue, listGames, listVenueCoaches, joinVenueMembership, leaveVenueMembership, respondToVenueMembershipInvite, subscribeToPlan, getVenueConversation, listPublicPlans, listSlotOverrides, getHours, submitCoachApplication, getMyCoachApplicationForVenue, cancelCoachApplication, submitOrganizerApplication, getMyOrganizerApplicationForVenue, cancelOrganizerApplication, ApiError, type ApiVenueDetail, type ApiGame, type ApiCoach, type ApiSubscriptionPlan, type OwnerHourEntry, type SlotPriceOverride } from '../../shared/lib/api';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
@@ -312,6 +313,12 @@ function CourtDetail({
   const [saved, setSaved] = useState(() => readSavedVenues().includes(venue.id));
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [messageLoading, setMessageLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
   const currentUser = useAuthStore((s) => s.user);
   const [hoursOpen, setHoursOpen] = useState(false);
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
@@ -474,7 +481,11 @@ function CourtDetail({
       // rather than failing silently — this is the intended upsell path.
       if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
         onNavigate('coach-subscribe');
+        return;
       }
+      // V5: any other error (network, 500) — tell the user instead of a silent
+      // revert to idle.
+      setToast("Couldn't send your application. Please try again.");
     } finally {
       setApplyBusy('');
     }
@@ -549,7 +560,8 @@ function CourtDetail({
       const conv = await getVenueConversation(venue.id);
       onNavigate('chat', { id: conv.id, name: conv.contextLabel ?? 'Venue' });
     } catch {
-      /* network or the venue has no owner — silent, the button is disabled */
+      // V4: surface the failure instead of a dead-end re-enabled button.
+      setToast("Couldn't open a chat with this venue. Please try again.");
     } finally {
       setMessageLoading(false);
     }
@@ -1454,6 +1466,8 @@ function CourtDetail({
           </div>
         </div>
       )}
+
+      <Toast message={toast ?? ''} show={!!toast} />
     </div>
   );
 }

@@ -135,6 +135,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
   const [search, setSearch] = useState('');
   /** A Discover fetch failed. Distinct from "the catalogue is empty". */
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [secondaryError, setSecondaryError] = useState(false);
   /** Bumped to re-run the load effect when the user retries. */
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -214,6 +215,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
     let alive = true;
     setLoading(true);
     setFeedError(null);
+    setSecondaryError(false);
     // The two Discover fetches are the screen's reason to exist. Swallowing their
     // failure into `[]` renders "No open plays available" — telling the user the
     // catalogue is empty when the server actually errored. Record it instead.
@@ -224,9 +226,9 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       listPublicTournaments().catch(() => [] as ApiTournament[]),
       // Still fetched for the Joined tab — Discover comes ranked from the server now.
       listOpenPlaySessions({ pageSize: DISCOVER_PAGE_SIZE }).catch((e) => { onFeedError(e); return [] as ApiOpenPlaySession[]; }),
-      isLoggedIn ? listGames({ mine: true }).catch(() => [] as ApiGame[]) : Promise.resolve([] as ApiGame[]),
-      isLoggedIn ? listGames({ invited: true }).catch(() => [] as ApiGame[]) : Promise.resolve([] as ApiGame[]),
-      isLoggedIn ? listBookings().catch(() => [] as ApiBooking[]) : Promise.resolve([] as ApiBooking[]),
+      isLoggedIn ? listGames({ mine: true }).catch(() => { setSecondaryError(true); return [] as ApiGame[]; }) : Promise.resolve([] as ApiGame[]),
+      isLoggedIn ? listGames({ invited: true }).catch(() => { setSecondaryError(true); return [] as ApiGame[]; }) : Promise.resolve([] as ApiGame[]),
+      isLoggedIn ? listBookings().catch(() => { setSecondaryError(true); return [] as ApiBooking[]; }) : Promise.resolve([] as ApiBooking[]),
       isLoggedIn ? listMyTournamentRegistrations().catch(() => []) : Promise.resolve([]),
       isLoggedIn ? listMyOpenPlayRegistrations().catch(() => []) : Promise.resolve([]),
     ]).then(([ts, sessions, mine, invited, bks, tRegs, sRegs]) => {
@@ -767,6 +769,12 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               onClearControls={clearDiscoverControls}
               located={userLoc != null}
             />
+          )}
+          {!loading && secondaryError && view !== 'discover' && (
+            <div className="feat-meta" style={{ color: 'var(--coral)', fontWeight: 600, textAlign: 'center', padding: '8px 0' }}>
+              Couldn't load your list.{' '}
+              <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>Try again</button>
+            </div>
           )}
           {!loading && section === 'games' && view === 'joined' && (
             gamesJoined.length === 0

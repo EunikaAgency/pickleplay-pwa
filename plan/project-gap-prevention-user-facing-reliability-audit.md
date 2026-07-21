@@ -248,6 +248,30 @@ Build: ✅ passes, 0 new errors. 20 files changed. 13 fixed, 3 confirmed already
 
 ---
 
+### 🟢 DONE — PWA games / venues / booking screens swept (2026-07-21)
+
+This player-facing cluster wasn't reached by the original scan (see Coverage note). It was swept with the same rubric and every real issue fixed:
+
+| # | Level | What was wrong (plain language) | What we did |
+|---|-------|--------------------------------|-------------|
+| **P18** | 🟠 High | Joining a venue membership showed "**You're in!**" even when the payment/join actually failed. | Success only shows after the server confirms; a failure now shows an error and rolls back. |
+| **P19** | 🟡 Medium | Cancelling a booking in **My Bookings** failed silently — the booking reappeared with no reason. | Cancel failures now show a clear message. |
+| **G1** | 🟡 Medium | Same silent cancel on the **Games/Bookings tab**. | Same clear error message. |
+| **P20** | 🟡 Medium | Claiming a **waitlist slot** (time-critical) failed silently — user couldn't tell if it worked. | Claim failures now show a message. |
+| **Booking screen stuck** | 🟠 High | Opening a booking link when the venue failed to load **spun forever** on a skeleton. | Now shows an error with a Retry. |
+| **"No courts" (2 screens)** | 🟡 Medium | When the courts list failed to load, screens said "**No courts**" as if none existed. | Now shows "couldn't load — retry" instead of a fake empty. |
+| **Map availability** | 🟡 Medium | If the availability check failed, the map silently showed **every court as free** at the chosen time. | Now warns that times may not be accurate. |
+| **Message venue** | 🟡 Medium | "Message venue" that failed just **re-enabled the button** with no explanation. | Now shows an error toast. |
+| **Become a coach/organizer** | 🟡 Medium | A failed application (network/500) **silently did nothing**. | Now shows an error toast. |
+| **Open Play detail** | 🟠 High | A failed load said the play "**may have been removed**" (looked deleted) with no retry. | Real errors now show a Retry, separate from genuine 404s. |
+| **Create Game courts** | 🟡 Medium | A failed court load **hard-blocked** game creation with a fake "no courts". | Now shows "couldn't load — retry". |
+| **Games "Joined/Invites" tabs** | 🟢 Low | These tabs silently showed empty on a load failure. | Now show a retry line. |
+| **Invite search** | 🟢 Low | A failed player search looked like nothing happened. | Now says "couldn't search — try again". |
+
+Build: ✅ passes (Vite), 0 new type errors (47 pre-existing, unchanged). 11 files changed.
+
+---
+
 ## Prioritized remediation roadmap
 
 ### Phase 1 — Stop the bleeding (do this week)
@@ -272,4 +296,4 @@ Build: ✅ passes, 0 new errors. 20 files changed. 13 fixed, 3 confirmed already
 
 ## Coverage note
 
-Scans covered: `app/` boot/infra + shared components, and feature clusters **owner**, **social/clubs/messages/profile**, **organizer/tournaments/coaches/admin/home/search**; `api/` global middleware + all feature controllers incl. the bookings/rosters/waitlist mutation cluster; `web/` in full. The `app/` **games / venues / bookings** feature cluster (player-facing game and court-booking screens) did not return before compile — it is the one remaining area to sweep with the same rubric (null-access, missing error/empty states, optimistic rollback). The app-wide error boundary (P1) contains crash-severity there in the meantime.
+Scans covered: `app/` boot/infra + shared components, and feature clusters **owner**, **social/clubs/messages/profile**, **organizer/tournaments/coaches/admin/home/search**; `api/` global middleware + all feature controllers incl. the bookings/rosters/waitlist mutation cluster; `web/` in full. The `app/` **games / venues / bookings** feature cluster (player-facing game and court-booking screens) was **swept on 2026-07-21** with the same rubric — see "PWA games / venues / booking screens swept" above. All real findings (P18–P20 + the stuck-screen / fake-empty / silent-failure issues) are fixed. **No coverage gaps remain.**

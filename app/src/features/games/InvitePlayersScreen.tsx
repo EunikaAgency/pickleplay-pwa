@@ -32,6 +32,7 @@ export function InvitePlayersScreen({ gameId, onNavigate, onBack }: InvitePlayer
   const [results, setResults] = useState<ApiPlayer[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [searchError, setSearchError] = useState(false);
 
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -59,9 +60,12 @@ export function InvitePlayersScreen({ gameId, onNavigate, onBack }: InvitePlayer
         if (id === reqId.current) {
           setResults(found);
           setSearched(true);
+          setSearchError(false);
         }
       } catch {
-        if (id === reqId.current) setResults([]);
+        // G5: mark the error so the UI shows "couldn't search" instead of the
+        // neutral "search for players" hint (which looks like nothing happened).
+        if (id === reqId.current) { setResults([]); setSearched(true); setSearchError(true); }
       } finally {
         if (id === reqId.current) setSearching(false);
       }
@@ -197,7 +201,7 @@ export function InvitePlayersScreen({ gameId, onNavigate, onBack }: InvitePlayer
 
             {!searching && searched && results.length === 0 && (
               <div className="t-sm py-3 text-center">
-                No players found for "{query.trim()}".
+                {searchError ? "Couldn't search right now. Try again." : `No players found for "${query.trim()}".`}
               </div>
             )}
 
