@@ -194,6 +194,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   const [filterEndHour, setFilterEndHour] = useState<number | null>(null);
   const [availByVenue, setAvailByVenue] = useState<Map<string, number[]> | null>(null);
   const [availLoading, setAvailLoading] = useState(false);
+  const [availError, setAvailError] = useState(false);
 
   const applyFilter = async (date: string, startHour: number, endHour?: number) => {
     setFilterDate(date);
@@ -201,6 +202,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     setFilterEndHour(endHour ?? null);
     if (all.length === 0) return;
     setAvailLoading(true);
+    setAvailError(false);
     try {
       const ids = all.map((v) => v.id);
       const result = await batchVenueAvailability(ids, date);
@@ -208,7 +210,10 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       for (const v of result.venues) map.set(v.venueId, v.freeByHour);
       setAvailByVenue(map);
     } catch {
+      // V3: the availability check failed. Flag it so the list doesn't silently
+      // present every court as "free at your time" (the predicate falls open on null).
       setAvailByVenue(null);
+      setAvailError(true);
     } finally {
       setAvailLoading(false);
     }
@@ -530,6 +535,11 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
               </button>
             )}
 
+            {filterDate && availError && (
+              <div className="feat-meta" style={{ color: 'var(--coral)', fontWeight: 600, padding: '0 0 8px' }}>
+                Couldn't check availability — times shown may not be accurate.
+              </div>
+            )}
             {loading ? (
               <V2Skeleton variant="court-list" count={5} />
             ) : loadError && all.length === 0 ? (

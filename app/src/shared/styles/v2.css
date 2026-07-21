@@ -579,7 +579,7 @@
 .pb-v2.v2-home .qa-lime .qa-icon { background: #fff; }
 .pb-v2.v2-home .qa-blue { background: var(--blue); color: #fff; }
 .pb-v2.v2-home .qa-blue .qa-icon { background: rgba(255,255,255,0.18); }
-.pb-v2.v2-home .qa-neutral { background: var(--surface); color: var(--ink); border: 1.5px solid var(--border-subtle); box-shadow: var(--shadow-sm); }
+.pb-v2.v2-home .qa-neutral { background: var(--surface); color: var(--ink); border: 1.5px solid var(--border); box-shadow: var(--shadow-sm); }
 .pb-v2.v2-home .qa-neutral .qa-icon { background: var(--bg-app); }
 
 /* Become-a-coach CTA — a doorway to the Profile tab's subscribe screen. */
