@@ -1,0 +1,612 @@
+<html><head><!-- frame-runtime --><base href="/_f/1784537529-47e3/"><script>window.__FRAME_PREAMBLE={"capabilities":{"downloads":"downloads.BABDwU1K.js","mcp":"mcp.hoz5jxDa.js","permissions":"permissions.ByA9Fd8x.js","self":"self.D3u1zjZe.js","user":"user.Cp1-RnjB.js"},"transforms":"_transforms.DYk1Ltlh.js","comments":"_comments.Dp6RDy7J.js","translate":"_translate.C9eLA9Mu.js"}</script><script>(function(){"use strict";const Ee="modulepreload",we=function(e){return"/"+e},Se={},ee=function(t,n,c){let i=Promise.resolve();function s(u){const a=new Event("vite:preloadError",{cancelable:!0});if(a.payload=u,window.dispatchEvent(a),!a.defaultPrevented)throw u}return i.then(u=>{for(const a of u||[])a.status==="rejected"&&s(a.reason);return t().catch(s)})},te=["light","dark","system"];function ne(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function H(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function re(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&te.includes(n)}function se(e){try{typeof reportError=="function"?reportError(e):setTimeout(()=>{throw e},0)}catch{}}const oe=Object.freeze(Object.assign(Object.create(null),{user:Object.freeze(Object.assign(Object.create(null),{id:null,isOwner:!1,canEdit:!1,name:null,avatarUrl:null,email:null}))}));function W(e){if(window===top||e.type==="auxclick"&&e.button!==1)return;const t=e.composedPath?e.composedPath():[e.target];let n=null;for(let u=0;u<t.length;u++){const a=t[u];if(a&&a.matches&&a.matches("a[href],area[href]")){n=a;break}}if(!n&&e.target&&e.target.closest&&(n=e.target.closest("a[href],area[href]")),!n)return;const c=n.getAttribute("href");if(!c)return;let i,s;try{i=new URL(c,document.baseURI),s=new URL(document.baseURI).origin}catch{return}(i.protocol==="http:"||i.protocol==="https:")&&i.origin!==s&&(e.preventDefault(),parent.postMessage({__frame_nav:!0,url:i.href},"*"))}const Y={};function C(e){if(window===top)return;const t=Date.now();t-(Y[e]||0)<500||(Y[e]=t,parent.postMessage({__frame_engaged:!0,kind:e},"*"))}const ie=2e3,K=["wheel","touchstart","touchmove","keydown","pointerdown"];let x=0;function ae(e){e.isTrusted&&(x=Date.now())}function ce(){addEventListener("click",W,!0),addEventListener("auxclick",W,!0)}function le(){for(let e=0;e<K.length;e++)addEventListener(K[e],ae,{capture:!0,passive:!0});addEventListener("scroll",e=>{e.isTrusted&&Date.now()-x<ie&&C("scroll")},{capture:!0,passive:!0}),addEventListener("pointermove",e=>{e.isTrusted&&C("pointer")},{capture:!0,passive:!0}),addEventListener("click",e=>{e.isTrusted&&C("click")},{capture:!0,passive:!0})}const D="__frame_scroll",ue=150,fe=310,de=160,me=3e4;function pe(){let e=0,t=!1,n=!1,c=!1,i=0;const s=d=>{try{sessionStorage.setItem(D,JSON.stringify({y:d}))}catch{}},u=()=>{if(t){t=!1;return}n=!0,clearTimeout(e),e=setTimeout(()=>s(scrollY),ue)};try{addEventListener("scroll",u,{passive:!0}),addEventListener("pagehide",()=>{clearTimeout(e),s(scrollY)})}catch{}const a=()=>{let d;try{d=sessionStorage.getItem(D)}catch{return null}if(d===null)return null;let h;try{h=JSON.parse(d)}catch{h=null}const g=h?.y;if(!(typeof g=="number"&&Number.isFinite(g)&&g>=0)){try{sessionStorage.removeItem(D)}catch{}return null}return g};let y=!1;const _=d=>{try{const h=scrollY;scrollTo({top:d,left:0,behavior:"instant"}),i=d,c=!0,s(d);const g=scrollY;g!==h&&(t=!0),g!==d&&!y&&(y=!0,addEventListener("load",()=>{try{if(scrollY===g){const b=a();_(b!==null?b:i)}}catch{}},{once:!0}))}catch{}},o=()=>{try{return!!location.hash}catch{return!0}};let l=!1;const p=()=>{try{if(l||innerWidth>fe||innerHeight>de)return;l=!0;const d=Date.now(),h=()=>{try{removeEventListener("resize",h)}catch{}if(Date.now()-d>me||n||o())return;const g=a();_(g!==null?g:i)};addEventListener("resize",h)}catch{}};let m=!1,f=!1;return{restore(){if(m||(m=!0,o()))return;const d=a();d!==null&&(_(d),p())},promoted(){if(f||(f=!0,o()))return;const d=a();d!==null?(_(d),p()):c&&_(i)}}}function he(e,t,n){const c=[...t.values()].filter(i=>i.targets.some(s=>s.startsWith(e+".")));return{wrap(i,s){const u=`${e}.${i}`,a=c.filter(y=>y.targets.includes(u));return a.length===0?(...y)=>{try{return s(...y)}catch(_){return Promise.reject(_)}}:(...y)=>{let _=y;for(const l of a){const p=l.module.parameters;if(p)try{_=p(_)}catch{return Promise.reject({code:"transform_error",id:l.id,scope:e,message:"parameters transform failed"})}}let o;try{o=s(..._)}catch(l){o=Promise.reject(l)}return o.then(l=>{for(let p=a.length-1;p>=0;p--){const m=a[p],f=m.module.returns;if(f)try{l=f(l)}catch{return n({id:m.id,scope:e,leg:"returns"}),l}}return l},l=>{for(let p=a.length-1;p>=0;p--){const m=a[p],f=m.module.throws;if(f)try{l=f(l)}catch{return n({id:m.id,scope:e,leg:"throws"}),Promise.reject(l)}}return Promise.reject(l)})}}}}function ge(e,t,n,c=()=>{}){const i=new Set(e.changes??[]),s=new Map;for(const u of i){const a=t[u];a&&s.set(u,a)}return{contract:e.contract,changes:i,flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:s,shellOrigin:n.shellOrigin,mount:n.mount,pipe:u=>he(u,s,c)}}(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let c=0;for(let i=0;i<n.length;i++){const s=n[i];try{e(t,s,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[s]}catch{}try{e(t,s,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[s]=="function"&&c++}if(c&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:c},"*")}catch{}})();const _e=1e4,ye=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function J(e){for(const t of ye)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}const R=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),I=window.__FRAME_PREAMBLE?.transforms,U=window.__FRAME_PREAMBLE?.comments,z=window.__FRAME_PREAMBLE?.translate,T=/^[\w.-]+\.js$/,be=/^[a-z][a-z0-9_-]{0,63}$/;let G=null,j=null;function $(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}let q=!1;function V(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,q=!0):q&&(delete t.dataset.theme,t.style.colorScheme="",q=!1)}const A=Object.assign(Object.create(null),{mcp:Object.assign(Object.create(null),{watchTool:{handlerArg:3}})}),M=new Map;function X(e,t){const n=M.get(e);if(!n)return;const c=Object.assign(Object.create(null),t);Object.assign(n.impl,c),n.impl.__settled=()=>Promise.reject({code:"capability_removed",message:`${e}: method not in this runtime`});const i=n.queue;n.queue=[];for(const s of i){const u=c[s.method];if(u)if(A[e]?.[s.method])try{s.resolve(u(...s.args))}catch{k(s,A[e][s.method].handlerArg,{code:"transform_error",message:`${e}.${s.method} rejected its arguments`})}else u(...s.args).then(s.resolve,s.reject);else{const a={code:"capability_removed",message:`${e}.${s.method} is not in this runtime`},y=A[e]?.[s.method];if(y){k(s,y.handlerArg,a);continue}s.reject(a)}}}function ve(e,t){const n=M.get(e);if(!n)return;n.impl.__settled=()=>Promise.reject(t);const c=n.queue;n.queue=[];for(const i of c){const s=A[e]?.[i.method];if(s){k(i,s.handlerArg,t);continue}i.reject(t)}}function N(e,t){const n=oe[e];if(!n){ve(e,t);return}X(e,Object.fromEntries(Object.entries(n).map(([c,i])=>[c,()=>Promise.resolve(i)])))}function k(e,t,n){if(e.syncState?.dead)return;const c=e.args[t];typeof c=="function"&&queueMicrotask(()=>{if(!e.syncState?.dead)try{c({type:"error",error:n})}catch(i){se(i)}})}const B=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(B&&B.writable===!1)){ce(),le();let e=null;try{e=pe()}catch{}const t=B?.value??{};$(window,"claude",t);const n=o=>{const l={impl:Object.create(null),queue:[]};M.set(o,l);const p=new Proxy(l.impl,{get:(m,f)=>{if(typeof f!="string"||f==="then"||f==="toJSON"||f==="valueOf")return;if(f==="toString")return Object.prototype.toString;const d=A[o]?.[f];return d?(...h)=>{if(typeof h[d.handlerArg]!="function")throw new TypeError(`${o}.${f} requires a handler function`);const g=m[f];if(g)return g(...h);if(m.__settled){const w={dead:!1},S={args:[...h],syncState:w};return m.__settled().catch(P=>k(S,d.handlerArg,P)),()=>{w.dead=!0}}let b=null;const v={dead:!1};return l.queue.push({method:f,args:h,resolve:w=>{b=typeof w=="function"?w:null,v.dead&&b?.()},reject:()=>{},syncState:v}),()=>{v.dead=!0,b?.()}}:(...h)=>{const g=m[f]??m.__settled;return g?g(...h):new Promise((b,v)=>{l.queue.push({method:f,args:h,resolve:b,reject:v})})}},set:()=>!1});$(t,o,p)};for(const o of Object.keys(R)){if(t[o]!==void 0){$(t,o,t[o]);continue}n(o)}let c=null,i=null,s=0;const u=o=>{o.source!==parent||!J(o.origin)||ne(o.data)&&(c=o.data.__frame_init,j=o.origin,removeEventListener("message",u),clearTimeout(s),i?.())};addEventListener("message",u),parent.postMessage({__frame_connect:!0},"*");const a=new Promise(o=>{i=o,s=setTimeout(()=>{removeEventListener("message",u),o()},_e)}),y=document.readyState==="loading"?new Promise(o=>document.addEventListener("DOMContentLoaded",()=>o(),{once:!0})):Promise.resolve();y.then(()=>{try{e?.restore()}catch{}});const _=o=>{if(!(o.source!==parent||!J(o.origin))&&H(o.data)){removeEventListener("message",_);try{e?.promoted()}catch{}}};addEventListener("message",_),a.then(async()=>{if(!c||!j){for(const r of M.keys())N(r,{code:"not_granted",message:"frame initialization did not arrive - capability unavailable"});return}V(c.theme);const o=j;let l=!1,p=!1;addEventListener("message",r=>{if(r.source!==parent||r.origin!==o)return;re(r.data)&&V(r.data.__frame_theme.theme);const E=r.data?.__fc_mode;E&&typeof E=="object"&&!l&&U&&T.test(U)&&(l=!0,m(U).then(F=>F.install?.(o,E.on===!0)).catch(()=>{}));const O=r.data?.__ft_cmd;O&&typeof O=="object"&&!p&&z&&T.test(z)&&(p=!0,m(z).then(F=>F.install?.(o,O)).catch(()=>{}))});const m=r=>ee(()=>import("/_runtime/"+r),void 0),f=Object.keys(c.capabilities??{});for(const r of f)Object.hasOwn(R,r)||be.test(r)&&t[r]===void 0&&(n(r),N(r,{code:"capability_disabled",message:"capability not in this runtime generation"}));const d=f.filter(r=>Object.hasOwn(R,r)).map(r=>[r,R[r]]).filter(r=>typeof r[1]=="string"&&T.test(r[1])),[h,...g]=await Promise.allSettled([I&&T.test(I)?m(I):Promise.resolve({}),...d.map(([,r])=>m(r))]),b=j;G=ge(c,h.status==="fulfilled"&&h.value?.TRANSFORMS||{},{shellOrigin:b,mount:X},r=>parent.postMessage({__frame_cap_telemetry:r},b));const v=r=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:r}},b),w=G;g.forEach((r,E)=>{const O=d[E][0];if(r.status!=="fulfilled"){v(O);return}try{r.value?.install?.(w)}catch{v(O)}});for(const[r,E]of M)if(!(E.queue.length===0&&Object.keys(E.impl).length>0)){if(f.includes(r)){N(r,{code:"capability_disabled",message:"capability not available in this session"});continue}N(r,{code:"not_granted",message:"capability not available in this session"})}await y,parent.postMessage({__frame_ready:!0},j);let S=-1,P=0;const Q=()=>{P=0;const r=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);r!==S&&(S=r,parent.postMessage({__frame_size:!0,h:r},b))},L=()=>{P||(P=setTimeout(Q,200))},Z=new ResizeObserver(L);Z.observe(document.documentElement),document.body&&Z.observe(document.body),document.addEventListener("load",L,!0),document.fonts?.ready.then(L,()=>{}),addEventListener("beforeprint",()=>{S=-1,Q()}),L(),addEventListener("message",r=>{if(!(r.source!==parent||r.origin!==b)&&H(r.data)){try{e?.promoted()}catch{}S=-1,L()}})})}})();</script><!-- /frame-runtime --><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>PickleBallers — Launch Readiness Review</title>
+
+<style>
+  :root {
+    --ground: #F6F7FB;
+    --surface: #FFFFFF;
+    --edge: #E1E4EF;
+    --ink: #12172B;
+    --ink-soft: #4A5270;
+    --ink-mute: #6E7796;
+    --accent: #3355FF;
+    --accent-soft: #EBEEFF;
+    --lime: #B8E600;
+    --crit: #C8253F;
+    --crit-soft: #FCECEF;
+    --warn: #B26A00;
+    --warn-soft: #FDF2E0;
+    --good: #0E7A57;
+    --good-soft: #E6F5EF;
+    --hold: #5B54B8;
+    --hold-soft: #EFEDFB;
+
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0C0F1C;
+      --surface: #151A2C;
+      --edge: #262D45;
+      --ink: #E9EBF4;
+      --ink-soft: #B3BAD2;
+      --ink-mute: #8990AC;
+      --accent: #8098FF;
+      --accent-soft: #1C2445;
+      --lime: #C9F23D;
+      --crit: #FF8095;
+      --crit-soft: #331520;
+      --warn: #E5A93C;
+      --warn-soft: #2E2312;
+      --good: #4FD3A3;
+      --good-soft: #102E26;
+      --hold: #A9A2F0;
+      --hold-soft: #1F1D3A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0C0F1C;
+    --surface: #151A2C;
+    --edge: #262D45;
+    --ink: #E9EBF4;
+    --ink-soft: #B3BAD2;
+    --ink-mute: #8990AC;
+    --accent: #8098FF;
+    --accent-soft: #1C2445;
+    --lime: #C9F23D;
+    --crit: #FF8095;
+    --crit-soft: #331520;
+    --warn: #E5A93C;
+    --warn-soft: #2E2312;
+    --good: #4FD3A3;
+    --good-soft: #102E26;
+    --hold: #A9A2F0;
+    --hold-soft: #1F1D3A;
+  }
+
+  :root[data-theme="light"] {
+    --ground: #F6F7FB;
+    --surface: #FFFFFF;
+    --edge: #E1E4EF;
+    --ink: #12172B;
+    --ink-soft: #4A5270;
+    --ink-mute: #6E7796;
+    --accent: #3355FF;
+    --accent-soft: #EBEEFF;
+    --lime: #B8E600;
+    --crit: #C8253F;
+    --crit-soft: #FCECEF;
+    --warn: #B26A00;
+    --warn-soft: #FDF2E0;
+    --good: #0E7A57;
+    --good-soft: #E6F5EF;
+    --hold: #5B54B8;
+    --hold-soft: #EFEDFB;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+
+  /* ---- masthead ---- */
+  .mast { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .eyebrow::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: var(--lime);
+  }
+
+  h1 {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: clamp(2.1rem, 6vw, 3.1rem);
+    line-height: 1.03;
+    letter-spacing: -0.032em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standfirst {
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+    max-width: 34rem;
+    margin: 0;
+  }
+
+  /* ---- stat strip ---- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+    gap: 1px;
+    background: var(--edge);
+    border: 1px solid var(--edge);
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .stat {
+    background: var(--surface);
+    padding: 1.1rem 1.15rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .stat b {
+    font-family: var(--sans);
+    font-size: 2.05rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat span {
+    font-family: var(--sans);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: var(--ink-mute);
+  }
+  .stat.is-crit b { color: var(--crit); }
+  .stat.is-good b { color: var(--good); }
+  .stat.is-hold b { color: var(--hold); }
+
+  /* ---- sections ---- */
+  section { display: flex; flex-direction: column; gap: 1.35rem; }
+
+  h2 {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 1.5rem;
+    letter-spacing: -0.022em;
+    line-height: 1.2;
+    text-wrap: balance;
+    margin: 0;
+    padding-top: 1.35rem;
+    border-top: 2px solid var(--ink);
+  }
+
+  .sec-note {
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    color: var(--ink-mute);
+    margin: -0.9rem 0 0;
+  }
+
+  p { margin: 0; }
+  .prose { display: flex; flex-direction: column; gap: 0.95rem; }
+  strong { font-weight: 700; color: var(--ink); }
+  em { font-style: italic; }
+
+  /* ---- issue cards ---- */
+  .issues { display: flex; flex-direction: column; gap: 1rem; }
+
+  .issue {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-left: 5px solid var(--sev, var(--edge));
+    border-radius: 4px;
+    padding: 1.3rem 1.4rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .issue.sev-crit { --sev: var(--crit); }
+  .issue.sev-warn { --sev: var(--warn); }
+  .issue.sev-hold { --sev: var(--hold); }
+
+  .issue-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .num {
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--sev, var(--ink-mute));
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 700;
+    font-size: 1.1rem;
+    line-height: 1.3;
+    letter-spacing: -0.014em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .issue p { font-size: 0.98rem; }
+
+  /* ---- decision callout ---- */
+  .decided {
+    font-family: var(--sans);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    background: var(--accent-soft);
+    color: var(--ink);
+    border-radius: 3px;
+    padding: 0.7rem 0.9rem;
+  }
+  .decided b {
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ---- plain list ---- */
+  .bullets {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.05rem;
+  }
+  .bullets li {
+    padding-left: 1.15rem;
+    position: relative;
+    font-size: 0.99rem;
+  }
+  .bullets li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.66em;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* ---- held / undone panel ---- */
+  .panel {
+    background: var(--hold-soft);
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    padding: 1.5rem 1.5rem 1.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+  }
+  .panel .tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--hold);
+    font-weight: 600;
+  }
+  .figure {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  /* ---- table ---- */
+  .scroller { overflow-x: auto; border: 1px solid var(--edge); border-radius: 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    font-size: 0.94rem;
+  }
+  th {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    text-align: left;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--edge);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--edge);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td.chip-cell { white-space: nowrap; width: 1%; }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 0.24rem 0.5rem;
+    border-radius: 3px;
+    background: var(--good-soft);
+    color: var(--good);
+  }
+  .chip.fixed { background: var(--accent-soft); color: var(--accent); }
+
+  /* ---- ask ---- */
+  .ask {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 5px;
+    padding: 1.6rem 1.6rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+  }
+  .ask h2 { border-top: 0; padding-top: 0; }
+  .ask ol {
+    margin: 0;
+    padding-left: 1.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    font-size: 0.99rem;
+  }
+  .ask li::marker {
+    font-family: var(--sans);
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  /* ---- close ---- */
+  .verdict {
+    font-family: var(--sans);
+    font-size: 1.16rem;
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+  }
+
+  footer {
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    color: var(--ink-mute);
+    border-top: 1px solid var(--edge);
+    padding-top: 1.35rem;
+    line-height: 1.6;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--accent-soft);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">20 July 2026 · Internal review</div>
+    <h1>PickleBallers Launch Readiness Review</h1>
+    <p class="standfirst">Everything the 16 July meeting asked for, checked against what is actually built in the app today.</p>
+  </header>
+
+  <div class="stats">
+    <div class="stat is-crit"><b>7</b><span>Would hurt us on launch day</span></div>
+    <div class="stat"><b>12</b><span>Further items to fix</span></div>
+    <div class="stat is-good"><b>12</b><span>Confirmed already working</span></div>
+    <div class="stat is-hold"><b>2</b><span>Waiting on your decision</span></div>
+  </div>
+
+  <section>
+    <h2>The short version</h2>
+    <div class="prose">
+      <p>The app is further along than it looks from the outside. Most of what was asked for in the meeting is genuinely built and working — the Open Play and Events tabs, real live listings, walk-in bookings for venue owners, venue claiming, coach and organizer sign-up, and the whole social section. <strong>None of that needs to be re-done.</strong></p>
+      <p>The problems that remain are mostly not missing <em>screens</em>. They are missing <em>rules</em> — what the system does when something goes wrong, or when two people do the same thing at once. This matches exactly what the meeting predicted: a complete-looking interface is not the same thing as a launch-ready product.</p>
+      <p>Two of the biggest remaining items are waiting on business decisions from your side, not on development work. Those are the ones most likely to delay the launch.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The seven things that would hurt us on launch day</h2>
+    <div class="issues">
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">01</span><h3>Anyone can join an organizer's Open Play session — no approval needed</h3></div>
+        <p>The meeting was clear that joining should put a player on a <em>waiting list</em>, with the host deciding who gets in. That works for sessions created by ordinary players. For sessions created by <strong>organizers and venue owners, it doesn't work at all</strong> — anyone who taps "join" is instantly confirmed, there is no limit on numbers, and everyone who taps lands straight in the private lobby and group chat.</p>
+        <p>Why this matters most: organizer and venue sessions are the ones PickleBallers actually earns money from. The paid path is the unprotected one.</p>
+        <p class="decided"><b>Decided 20 July:</b> build it properly — waiting list, host approves or rejects, a real cap on numbers, and the lobby locked to approved players only.</p>
+      </article>
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">02</span><h3>Player-created sessions confirm people automatically</h3></div>
+        <p>The approval feature exists here, but it is <strong>switched off unless the host remembers to turn it on</strong>. So by default, joining still auto-confirms — the exact thing the meeting said must not happen.</p>
+        <p class="decided"><b>Decided 20 July:</b> switch it on by default.</p>
+      </article>
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">03</span><h3>Two people can book the same court at the same time</h3></div>
+        <p>If two players book the last available slot within a moment of each other, <strong>both bookings can go through</strong>. The system checks whether the slot is free, then saves the booking — and another person can slip in between those two steps.</p>
+        <p>This is already known internally and it is a small, cheap fix. It is also the single most damaging item on this list. Nothing erodes trust in a booking platform faster than two people turning up for the same court.</p>
+      </article>
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">04</span><h3>Bookings can get stuck forever, blocking a court</h3></div>
+        <p>When a booking needs the venue owner's approval and that owner simply never responds, <strong>the booking never expires</strong>. It sits there indefinitely and the court stays blocked for everyone else.</p>
+        <p>Related: the clean-up that should clear stale bookings only runs when a player happens to open their own bookings screen. Nothing runs on a schedule, so a court can be silently unavailable for days.</p>
+      </article>
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">05</span><h3>Players are never told when a booking is rejected</h3></div>
+        <p>If a venue owner turns down a booking request, <strong>the player receives nothing</strong> — no notification, no email. They find out by checking the app, or they don't find out and show up anyway.</p>
+        <p>The system also has no proper "rejected" status. A rejection is recorded the same way as a cancellation, so the two can't be told apart in reports.</p>
+      </article>
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">06</span><h3>Payments only work in test mode</h3></div>
+        <p>Payments currently run on a demo card number that always succeeds — normal for development. The problem is what happens when it is switched to real mode:</p>
+        <ul class="bullets">
+          <li><strong>Bookings</strong> would take the payment as "pending" and never confirm. The booking just hangs.</li>
+          <li><strong>Coach and organizer subscriptions</strong> are worse — the system grants the paid role <strong>even though no payment was taken</strong>. People would get paid features free.</li>
+        </ul>
+        <p>Blocked on the payment decision. Nothing here can be finished until we know whether GCash is manual, semi-automated, or a full gateway.</p>
+      </article>
+
+      <article class="issue sev-crit">
+        <div class="issue-head"><span class="num">07</span><h3>Venue staff can change prices</h3></div>
+        <p>There is a proper staff role, and it correctly blocks staff from revenue reports and financial data. That part works.</p>
+        <p>But the price controls are only hidden in the <em>interface</em> — they aren't actually blocked underneath. A staff member with some technical knowledge could change slot pricing and venue rates. Where the front desk is a part-time or casual hire, that is a genuine risk.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Five more things needed before launch</h2>
+    <div class="issues">
+
+      <article class="issue sev-warn">
+        <div class="issue-head"><h3>Senior and PWD discounts don't exist</h3></div>
+        <p>There is <strong>nothing</strong> in the system for senior citizen or PWD rates — not a setting, not a field, not a checkbox. Today the only way to give the discount is for staff to type a different amount by hand, which means it is never recorded as a discount and never appears in any report.</p>
+        <p>In the Philippines the 20% senior and PWD discount is required by law, so this is a compliance issue, not a convenience feature.</p>
+        <p class="decided"><b>Decided 20 July:</b> build the complete system — venues configure their own category rates, and both staff bookings and player self-service bookings can apply them.</p>
+      </article>
+
+      <article class="issue sev-warn">
+        <div class="issue-head"><h3>Venue owners can accidentally create duplicate venues</h3></div>
+        <p>The <em>claiming</em> process works well — an owner can find an existing venue, claim it, and an admin reviews the claim.</p>
+        <p>What's missing is the prompt. When an owner types a venue name that already exists, <strong>the system doesn't notice or say anything</strong>. So owners will keep creating duplicates of venues already listed, and you will be cleaning them up by hand.</p>
+      </article>
+
+      <article class="issue sev-warn">
+        <div class="issue-head"><h3>Player filters reset constantly</h3></div>
+        <p>The filters themselves are excellent and cover everything requested — dates, distance, gender, skill, cost. But <strong>nothing is remembered</strong>. Worse, switching between the Open Play and Events tabs actively wipes them back to default, so players re-configure every single time.</p>
+        <p>Good news: this is a small fix. The hard part — the filters — is already built.</p>
+      </article>
+
+      <article class="issue sev-warn">
+        <div class="issue-head"><h3>The map still clumps together on mobile</h3></div>
+        <p>The specific complaint from the meeting is unresolved. Venue pins are still drawn one by one, so venues near each other overlap into a blob.</p>
+        <p>Some improvements did land — the map zooms sensibly and you can slide the list up over it — but the overlapping-pins problem itself hasn't been addressed. A full-screen map does exist in the app, but <strong>no button anywhere leads to it</strong>.</p>
+      </article>
+
+      <article class="issue sev-warn">
+        <div class="issue-head"><h3>Coaches who pay stay invisible</h3></div>
+        <p>A coach can sign up and pay. But their profile is created as "not yet verified" and "not yet listed" — and <strong>there is no way for anyone, including an admin, to change that</strong>. The button doesn't exist.</p>
+        <p>So a coach pays for a subscription and is never visible to players. The sign-up page even advertises a "Verified Coach badge" that nobody can actually receive.</p>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Worth fixing, but not launch-critical</h2>
+    <ul class="bullets">
+      <li><strong>The brand colours are copied in eight different places.</strong> This matters for timing — when Marvin's new design arrives, applying it means making the same change eight times instead of once, and the worst offenders are the venue owner screens, which is exactly where the new design needs to reach. Tidying this up <em>before</em> the redesign arrives will save real time.</li>
+      <li><strong>Too many routes to the same place.</strong> Four different map and venue screens, two different booking screens, and the Home "Book Court" button leads to the identical screen as the Nearby tab. This is the duplicate-navigation confusion raised in the meeting — still there.</li>
+      <li><strong>Missing endings to the booking story.</strong> No-shows aren't handled at all. Refunds show a "processing, 5–10 business days" message but no refund actually happens. And a player can move a weekday booking to a busy weekend slot without paying the price difference.</li>
+      <li><strong>Most notifications aren't connected.</strong> The notification system itself works well, but only two events trigger one. Players aren't told when a booking is confirmed, cancelled, paid, refunded, or about to expire.</li>
+      <li><strong>Every walk-in booking leaves a stray ₱0 price tag</strong> on that time slot, which could make the slot free for whoever books it next.</li>
+      <li><strong>Finished features nobody can reach.</strong> The organizer Tournaments section and the Venue Requests screen are fully built, then hidden behind a disabled menu. Either turn them on or remove them — right now they are invisible work.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Deliberately left undone</h2>
+    <div class="panel">
+      <span class="tag">Held — not worked around</span>
+      <p class="figure">The database has 181 real venues and zero real courts.</p>
+      <p>The import tool works and fully supports courts. The courts spreadsheet we were given is <strong>empty</strong> — column headings, no rows.</p>
+      <p>We could have papered over this by auto-generating court entries from the venue records. <strong>You decided on 20 July not to do that.</strong> We are still in development, so it stays visibly undone rather than hidden behind placeholder data.</p>
+      <p>It does mean booking can't be properly tested against real data until the real spreadsheet arrives — which is on the client action list from the meeting.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Confirmed working</h2>
+    <p class="sec-note">Checked and genuinely built. Several of these appear on the meeting's action list but were already finished before the meeting happened — they don't need re-scoping.</p>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>Feature</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Open Play / Events tab switching</td><td class="chip-cell"><span class="chip">Working</span></td><td></td></tr>
+          <tr><td>Open Play showing real live listings</td><td class="chip-cell"><span class="chip">Working</span></td><td>Not mock-ups</td></tr>
+          <tr><td>Owner bookings for walk-in, phone and Facebook customers</td><td class="chip-cell"><span class="chip">Working</span></td><td>Same records, shows on the calendar</td></tr>
+          <tr><td>The disappearing filter menu on mobile</td><td class="chip-cell"><span class="chip fixed">Fixed</span></td><td>Raised at the meeting, already resolved</td></tr>
+          <tr><td>List / Map switching</td><td class="chip-cell"><span class="chip">Working</span></td><td>Slide-up panel</td></tr>
+          <tr><td>Venue claiming, with admin review</td><td class="chip-cell"><span class="chip">Working</span></td><td></td></tr>
+          <tr><td>Coach and organizer sign-up</td><td class="chip-cell"><span class="chip">Working</span></td><td>Paid subscription, then owner approves</td></tr>
+          <tr><td>Owners reviewing coach and organizer applications</td><td class="chip-cell"><span class="chip">Working</span></td><td></td></tr>
+          <tr><td>Social section — feed, clubs, friends, photos, sharing</td><td class="chip-cell"><span class="chip">Working</span></td><td>All real data, no mock-ups found</td></tr>
+          <tr><td>Owner dashboards showing real numbers</td><td class="chip-cell"><span class="chip">Working</span></td><td>No fake data found</td></tr>
+          <tr><td>Staff blocked from revenue reports</td><td class="chip-cell"><span class="chip">Working</span></td><td></td></tr>
+          <tr><td>The 7% platform fee and payout records</td><td class="chip-cell"><span class="chip">Working</span></td><td>Money moved manually by design, for now</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Still open from earlier reports</h2>
+    <ul class="bullets">
+      <li>The <strong>official BIR receipt screen</strong> for venue owners — the back end is finished, the screen was never built. The tracking sheet incorrectly marks this as done.</li>
+      <li><strong>Collecting Open Play join fees</strong> and tracking organizer payouts — waiting on the payment decision.</li>
+      <li><strong>Player-created game listings show a price the joining player doesn't actually pay.</strong> It reads as though joining costs ₱350. This is a live hazard in any demo.</li>
+      <li><strong>The "Events" tab shows player-created games, not organizer tournaments</strong> — not what the name suggests. Needs a decision: move tournaments in, or rename the tab.</li>
+      <li><strong>17 venue-owner features are still marked "built but not tested."</strong> No later report ever confirmed them. If anyone asks whether everything is working, this is the honest answer — untested, not unbuilt.</li>
+    </ul>
+  </section>
+
+  <section class="ask">
+    <h2>What we need from you</h2>
+    <p>Two of the seven launch-day problems cannot be finished without business decisions. These are on the critical path — more so than any of the remaining development work.</p>
+    <ol>
+      <li><strong>The payment decision.</strong> Who collects the money, when PickleBallers takes its cut, and whether GCash is handled manually or through a proper gateway. Payments, refunds, join fees and organizer payouts are all waiting on this.</li>
+      <li><strong>The court spreadsheet.</strong> Until it arrives we have venues without courts, and the booking flow can't be tested against real data.</li>
+    </ol>
+    <p>Everything else on this list is ours to build.</p>
+  </section>
+
+  <section>
+    <h2>Honest assessment of the end-of-July target</h2>
+    <div class="prose">
+      <p class="verdict">It's achievable, but only if the scope freezes now.</p>
+      <p>The remaining work is mostly small and well-understood. The double-booking fix, the stuck-booking fix and the missing rejection notice are each modest pieces of work with large consequences. The Open Play approval flow and the senior/PWD pricing system are the two substantial builds, and both are now decided and ready to start.</p>
+      <p>The real risk isn't the code. It's the two decisions above, plus the 17 owner features that have never been tested by a human. <strong>Testing time needs to be in the plan, not squeezed out of the end of it.</strong></p>
+    </div>
+  </section>
+
+  <footer>
+    Reviewed 20 July 2026 against the meeting notes of 16 July 2026. Method: code inspection across the player app and API — no runtime testing, so items marked working are verified as built, not as bug-free. A technical version with exact code references for the development team is in the project folder as <code>docs/AUDIT-2026-07-20.md</code>.
+  </footer>
+
+</div>
+
+</body></html>

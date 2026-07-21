@@ -1,0 +1,290 @@
+{
+  "roleUsers": [],
+  "globalGrants": [
+    {
+      "id": "6a50bac434553c489987eb00",
+      "userId": "6a1e7292a6b0fd2e1a4915f2",
+      "role": "coach"
+    },
+    {
+      "id": "6a50c32334553c489988007b",
+      "userId": "6a4f16b5d2b28d59a068ecca",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4da0",
+      "userId": "6a573240985d38586532fa16",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4da6",
+      "userId": "6a573240985d38586532fa19",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4dac",
+      "userId": "6a573240985d38586532fa1c",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4db2",
+      "userId": "6a573240985d38586532fa1f",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4db8",
+      "userId": "6a573240985d38586532fa22",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4dbe",
+      "userId": "6a573240985d38586532fa25",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4dc4",
+      "userId": "6a573240985d38586532fa28",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4dca",
+      "userId": "6a573240985d38586532fa2b",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4dd0",
+      "userId": "6a573240985d38586532fa2e",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4dd6",
+      "userId": "6a573240985d38586532fa31",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4ddc",
+      "userId": "6a573240985d38586532fa34",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4de2",
+      "userId": "6a573240985d38586532fa37",
+      "role": "coach"
+    },
+    {
+      "id": "6a585388094a7a731cecff74",
+      "userId": "6a4f16b5d2b28d59a068ecca",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725336f",
+      "userId": "6a1ea54b8f397445e219ba35",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253378",
+      "userId": "6a4f122013abcfba8ba8507b",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253381",
+      "userId": "6a4f122013abcfba8ba8507c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725338a",
+      "userId": "6a4f122013abcfba8ba8507d",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253393",
+      "userId": "6a4f122013abcfba8ba8507e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725339c",
+      "userId": "6a4f122013abcfba8ba8507f",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533a5",
+      "userId": "6a4f122013abcfba8ba85080",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533ae",
+      "userId": "6a4f122013abcfba8ba85081",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533b7",
+      "userId": "6a4f122013abcfba8ba85082",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533c0",
+      "userId": "6a4f122013abcfba8ba85083",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533c9",
+      "userId": "6a4f122013abcfba8ba85084",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533d2",
+      "userId": "6a4f16b5d2b28d59a068ec6e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533db",
+      "userId": "6a4f16b5d2b28d59a068ec70",
+      "role": "coach"
+    },
+    {
+      "id": "6a585c1fc9840b74772533e4",
+      "userId": "6a4f16b5d2b28d59a068ec72",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533ed",
+      "userId": "6a4f16b5d2b28d59a068ec74",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533f6",
+      "userId": "6a4f16b5d2b28d59a068ec76",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533ff",
+      "userId": "6a4f16b5d2b28d59a068ec78",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253408",
+      "userId": "6a4f16b5d2b28d59a068ec7a",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253411",
+      "userId": "6a4f16b5d2b28d59a068ec7c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725341a",
+      "userId": "6a4f16b5d2b28d59a068ec7e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253423",
+      "userId": "6a4f16b5d2b28d59a068ec80",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725342f",
+      "userId": "6a4f16b5d2b28d59a068ec82",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725343b",
+      "userId": "6a4f16b5d2b28d59a068ec84",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253444",
+      "userId": "6a4f16b5d2b28d59a068ec86",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725344d",
+      "userId": "6a4f16b5d2b28d59a068ec88",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253456",
+      "userId": "6a4f16b5d2b28d59a068ec8a",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253461",
+      "userId": "6a4f16b5d2b28d59a068ec8c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253475",
+      "userId": "6a4f16b5d2b28d59a068ec8e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253488",
+      "userId": "6a4f16b5d2b28d59a068ec90",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253498",
+      "userId": "6a4f16b5d2b28d59a068ec92",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534a1",
+      "userId": "6a4f16b5d2b28d59a068ec94",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534ac",
+      "userId": "6a4f16b5d2b28d59a068ec96",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534b5",
+      "userId": "6a4f16b5d2b28d59a068ec98",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534be",
+      "userId": "6a4f16b5d2b28d59a068ec9a",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534c8",
+      "userId": "6a4f16b5d2b28d59a068ec9c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534d1",
+      "userId": "6a4f16b5d2b28d59a068ec9e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534da",
+      "userId": "6a4f16b5d2b28d59a068eca0",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534e3",
+      "userId": "6a4f16b5d2b28d59a068eca2",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534ec",
+      "userId": "6a4f16b5d2b28d59a068eca4",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534f5",
+      "userId": "6a4f16b5d2b28d59a068eca6",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534fe",
+      "userId": "6a4f16b5d2b28d59a068eca8",
+      "role": "organizer"
+    },
+    {
+      "id": "6a5dc00aa6d5396ee3657acb",
+      "userId": "6a4f16b5d2b28d59a068ec70",
+      "role": "organizer"
+    }
+  ]
+}
