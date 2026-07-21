@@ -10,6 +10,11 @@ interface CourtPickerProps {
   priceFor?: (court: ApiCourt) => string | undefined;
   /** Override the responsive column layout (default "grid-cols-2"). */
   gridClassName?: string;
+  /** Court ids that can't be picked for the current context (e.g. fully booked
+   *  on the chosen date) — shown greyed + tagged and not clickable. */
+  disabledCourtIds?: Set<string>;
+  /** Tag shown on a disabled court (default "Fully booked"). */
+  disabledLabel?: string;
 }
 
 /** Human label for a court: its name, else "Court <number>". */
@@ -29,11 +34,12 @@ function courtMeta(court: ApiCourt): string {
  * court drives both the time picker's availability and the booking it creates.
  * Presentational: the screen owns fetching the venue's courts and the selection.
  */
-export function CourtPicker({ courts, value, onChange, priceFor, gridClassName = 'grid-cols-2' }: CourtPickerProps) {
+export function CourtPicker({ courts, value, onChange, priceFor, gridClassName = 'grid-cols-2', disabledCourtIds, disabledLabel = 'Fully booked' }: CourtPickerProps) {
   return (
     <div className={`grid ${gridClassName} gap-2`} role="radiogroup" aria-label="Choose a court">
       {courts.map((court) => {
-        const sel = court.id === value;
+        const isDisabled = disabledCourtIds?.has(court.id) ?? false;
+        const sel = court.id === value && !isDisabled;
         const meta = courtMeta(court);
         const img = apiImageUrl(court.mainImageUrl);
         return (
@@ -42,14 +48,16 @@ export function CourtPicker({ courts, value, onChange, priceFor, gridClassName =
             type="button"
             role="radio"
             aria-checked={sel}
-            onClick={() => onChange(court.id)}
-            className={`time-pick !py-2.5 flex flex-col items-center gap-1 ${sel ? 'active' : ''}`}
+            aria-disabled={isDisabled}
+            disabled={isDisabled}
+            onClick={() => { if (!isDisabled) onChange(court.id); }}
+            className={`time-pick !py-2.5 flex flex-col items-center gap-1 ${sel ? 'active' : ''} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {img && (
               <img
                 src={img}
                 alt=""
-                className="mb-0.5 h-20 w-full rounded-lg object-cover"
+                className={`mb-0.5 h-20 w-full rounded-lg object-cover ${isDisabled ? 'grayscale' : ''}`}
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
             )}
@@ -57,10 +65,16 @@ export function CourtPicker({ courts, value, onChange, priceFor, gridClassName =
             {meta && (
               <span className={`text-[11px] font-semibold ${sel ? 'text-white/70' : 'text-[var(--muted)]'}`}>{meta}</span>
             )}
-            {/* Whether this court confirms instantly or has to be requested is
-                the single most useful thing to know BEFORE choosing it — a
-                player picking here shouldn't discover it two steps later. */}
-            {court.approvalMode === 'manual' && (
+            {/* A court with no free hour left on the chosen date can't be picked —
+                say so on the card instead of letting the owner select a dead end. */}
+            {isDisabled ? (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[var(--coral)]/15 text-[var(--coral)]">
+                {disabledLabel}
+              </span>
+            ) : court.approvalMode === 'manual' && (
+              // Whether this court confirms instantly or has to be requested is
+              // the single most useful thing to know BEFORE choosing it — a
+              // player picking here shouldn't discover it two steps later.
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                 sel ? 'bg-white/20 text-white' : 'bg-[var(--coral)]/15 text-[var(--coral)]'
               }`}>

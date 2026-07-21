@@ -81,6 +81,35 @@ function sameScopeOverride(ov: SlotPriceOverride, courtId: string): boolean {
   return ov.courtId === null || (courtId ? ov.courtId === courtId : ov.courtId === null);
 }
 
+// Start-hours already taken for one court on a date → hour ⇒ tag ("Booked" /
+// "Maint."). Court scope mirrors the server's per-court view: a specific court is
+// blocked by a booking on that same court OR a court-less (venue-wide) reservation
+// that consumes the pool; a booking on a *different* court doesn't block it. Grid
+// Reserved/Maintenance overrides are folded in the same way. Sourced from data the
+// screen already holds, so it needs no extra fetch.
+function bookedHoursForCourt(
+  cid: string, bookings: ApiBooking[], overrides: SlotPriceOverride[], venueId: string, date: string,
+): Map<number, string> {
+  const map = new Map<number, string>();
+  const mark = (sh: number, eh: number, note: string) => {
+    if (Number.isNaN(sh) || Number.isNaN(eh)) return;
+    for (let h = sh; h < eh && h < 24; h++) if (!map.has(h)) map.set(h, note);
+  };
+  for (const b of bookings) {
+    if (b.status === 'cancelled') continue;
+    if ((b.venueId ?? '') !== venueId || (b.date ?? '') !== date) continue;
+    const bCourt = b.courtId ?? '';
+    if (cid && bCourt && bCourt !== cid) continue; // a different specific court
+    mark(Number((b.startTime ?? '').slice(0, 2)), Number((b.endTime ?? '').slice(0, 2)), 'Booked');
+  }
+  for (const ov of overrides) {
+    if (ov.note !== 'Reserved' && ov.note !== 'Maintenance') continue;
+    if (!sameScopeOverride(ov, cid)) continue;
+    mark(Number(ov.startTime.slice(0, 2)), Number(ov.endTime.slice(0, 2)), ov.note === 'Maintenance' ? 'Maint.' : 'Booked');
+  }
+  return map;
+}
+
 // A dedicated owner screen for recording a manual reservation (phone / walk-in /
 // off-platform booking). Unlike the front-desk sheet, on save it ALSO writes a
 // `note: 'Reserved'` slot override for the same court/date/time — the exact
@@ -195,33 +224,43 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
 
   // Which start-hours are already taken for the *currently selected* court + date,
   // so the time picker can grey them + tag them ("Booked" / "Maint.") instead of
-  // offering a slot that will just bounce on save. Sourced from data the screen
-  // already holds — the venue's bookings + this date's Reserved/Maintenance grid
-  // overrides — so no extra fetch. Court scope mirrors the server's per-court view:
-  // a specific court is blocked by a booking on that same court OR a court-less
-  // (venue-wide) reservation; a booking on a *different* court doesn't block it.
-  const unavailableHours = useMemo(() => {
-    const map = new Map<number, string>();
-    const mark = (sh: number, eh: number, note: string) => {
-      if (Number.isNaN(sh) || Number.isNaN(eh)) return;
-      for (let h = sh; h < eh && h < 24; h++) if (!map.has(h)) map.set(h, note);
-    };
-    if (activeVenue) {
-      for (const b of bookings) {
-        if (b.status === 'cancelled') continue;
-        if ((b.venueId ?? '') !== activeVenue.id || (b.date ?? '') !== date) continue;
-        const bCourt = b.courtId ?? '';
-        if (courtId && bCourt && bCourt !== courtId) continue; // a different specific court
-        mark(Number((b.startTime ?? '').slice(0, 2)), Number((b.endTime ?? '').slice(0, 2)), 'Booked');
-      }
+  // offering a slot that will just bounce on save.
+  const unavailableHours = useMemo(
+    () => (activeVenue ? bookedHoursForCourt(courtId, bookings, overrides, activeVenue.id, date) : new Map<number, string>()),
+    [bookings, overrides, activeVenue, courtId, date],
+  );
+
+  // The venue's open hours for the selected date's weekday, unioned across its
+  // time blocks (a day can have several). Empty when the venue has no hours set
+  // for that day — in which case we can't tell "fully booked" from "unknown", so
+  // we never disable a court (fail open).
+  const openHours = useMemo(() => {
+    const set = new Set<number>();
+    const weekday = new Date(date + 'T00:00:00').getDay();
+    for (const h of venueHours) {
+      if (h.dayOfWeek !== weekday || h.isClosed) continue;
+      const oh = Number((h.openTime ?? '').slice(0, 2));
+      const ch = Number((h.closeTime ?? '').slice(0, 2));
+      if (Number.isNaN(oh) || Number.isNaN(ch)) continue;
+      for (let x = oh; x < ch && x < 24; x++) set.add(x);
     }
-    for (const ov of overrides) {
-      if (ov.note !== 'Reserved' && ov.note !== 'Maintenance') continue;
-      if (!sameScopeOverride(ov, courtId)) continue;
-      mark(Number(ov.startTime.slice(0, 2)), Number(ov.endTime.slice(0, 2)), ov.note === 'Maintenance' ? 'Maint.' : 'Booked');
+    return set;
+  }, [venueHours, date]);
+
+  // Courts with *every* open hour taken on the selected date — the picker greys
+  // these out and blocks selection, so the owner can't start a reservation on a
+  // court that has no room left that day. Needs the open-hours window to be known.
+  const fullyBookedCourtIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!activeVenue || openHours.size === 0) return set;
+    for (const c of courts) {
+      const booked = bookedHoursForCourt(c.id, bookings, overrides, activeVenue.id, date);
+      let full = true;
+      for (const h of openHours) if (!booked.has(h)) { full = false; break; }
+      if (full) set.add(c.id);
     }
-    return map;
-  }, [bookings, overrides, activeVenue, courtId, date]);
+    return set;
+  }, [courts, bookings, overrides, activeVenue, openHours, date]);
   const rateInfo = useMemo(() => resolveHourlyRate({
     venue: activeVenue, court: selectedCourt, hours: venueHours, overrides,
     date, startTime, isMember: false,
@@ -251,6 +290,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   const submit = async () => {
     setError(null);
     if (!vref) { setError('Choose a venue first.'); return; }
+    if (courtId && fullyBookedCourtIds.has(courtId)) { setError('That court is fully booked on this date. Pick another court or date.'); return; }
     if (hours <= 0) { setError('End time must be after the start time.'); return; }
     if (!customerName.trim()) { setError('Add a customer name.'); return; }
     setBusy(true);
@@ -377,7 +417,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
           <div className="field px-0!">
             <div className="lbl">Court</div>
             {courts.length > 0 ? (
-              <CourtPicker courts={courts} value={courtId} onChange={setCourtId} gridClassName="grid-cols-3 lg:grid-cols-4" priceFor={(c) => money(c.hourlyRate != null ? c.hourlyRate : (activeVenue?.priceFrom ?? 0), currency) + '/hr'} />
+              <CourtPicker courts={courts} value={courtId} onChange={setCourtId} gridClassName="grid-cols-3 lg:grid-cols-4" disabledCourtIds={fullyBookedCourtIds} priceFor={(c) => money(c.hourlyRate != null ? c.hourlyRate : (activeVenue?.priceFrom ?? 0), currency) + '/hr'} />
             ) : (
               <div className="rounded-[14px] border border-[var(--field-border)] bg-[var(--surface-2)] px-4 py-3 text-[13px] text-[var(--muted)]">
                 No courts at this venue yet — this reservation will apply venue-wide.{' '}
