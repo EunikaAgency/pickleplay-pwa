@@ -1,8 +1,8 @@
 module.exports = {
   apps: [
     {
-      name: 'pickleplay-pwa',
-      cwd: '/var/public/pickleplay/app',
+      name: 'pickleballer-pwa',
+      cwd: '/var/public/pickleballer.eunika.xyz/app',
       script: 'npm',
       // Run the Vite DEV server (HMR) — NOT `vite preview`. Preview serves a
       // static, pre-built `dist/`, so source edits never showed up without a

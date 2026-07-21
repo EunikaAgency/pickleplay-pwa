@@ -1,6 +1,6 @@
 {
   "name": "pickleballer-api",
-  "cwd": "/var/public/pickleplay/api",
+  "cwd": "/var/public/pickleballer.eunika.xyz/api",
   "script": "./node_modules/.bin/tsx",
   "args": "src/index.ts",
   "watch": false,

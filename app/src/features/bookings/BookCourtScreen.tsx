@@ -1616,17 +1616,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             that "6:00 PM today" isn't. The estimate mirrors the server formula;
             the authoritative deadline comes back on the created booking. */}
         {requiresApproval && (
-          <div className="rounded-2xl border border-[var(--coral)]/30 bg-[var(--coral)]/8 p-4 flex gap-3">
-            <Icon name="schedule" size={20} className="text-[var(--coral)] shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <div className="font-heading font-semibold text-[14px] text-[var(--ink)]">This court needs owner approval</div>
-              <div className="t-sm mt-1">
-                Your card won't be charged yet — we'll hold your slot while
-                {' '}{selected.displayName} reviews it.
-              </div>
-              <div className="t-sm mt-1.5">
-                They have until <strong className="text-[var(--ink)]">{deadlineLabel(estimatedDeadline)}</strong> to
-                respond. If they don't, your request is cancelled automatically and you'll be notified straight away.
+          <div className="field">
+            <div className="rounded-2xl border border-[var(--coral)]/30 bg-[var(--coral)]/8 p-4 flex gap-3">
+              <Icon name="schedule" size={20} className="text-[var(--coral)] shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <div className="font-heading font-semibold text-[14px] text-[var(--ink)]">This court needs owner approval</div>
+                <div className="t-sm mt-1">
+                  Your card won't be charged yet — we'll hold your slot while
+                  {' '}{selected.displayName} reviews it.
+                </div>
+                <div className="t-sm mt-1.5">
+                  They have until <strong className="text-[var(--ink)]">{deadlineLabel(estimatedDeadline)}</strong> to
+                  respond. If they don't, your request is cancelled automatically and you'll be notified straight away.
+                </div>
               </div>
             </div>
           </div>

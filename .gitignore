@@ -32,3 +32,7 @@ Thumbs.db
 # Nested repos managed independently (top-level only — don't match
 # any directory called "web" deeper in the tree like web/src/shared/web/).
 /web/
+
+# runtime artifacts (not project code)
+/db_backup/
+/.git.corrupt-bak/
