@@ -327,34 +327,26 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                                 {perm.label}
                               </span>
                               {isDefault ? (
-                                <span className="t-xs text-[var(--muted)] font-medium shrink-0">Included</span>
-                              ) : (
+                                <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] shrink-0">
+                                  Included
+                                </span>
+                              ) : isGranted ? (
                                 <button
-                                  role="switch"
-                                  aria-checked={isGranted}
-                                  aria-label={perm.label}
+                                  type="button"
                                   onClick={() => onToggleAccess(m, perm.key)}
                                   disabled={savingAccess}
-                                  className="shrink-0"
-                                  style={{
-                                    width: 40,
-                                    height: 22,
-                                    borderRadius: 'var(--radius-pill)',
-                                    border: 'none',
-                                    padding: 2,
-                                    background: isGranted ? 'var(--primary)' : 'var(--border)',
-                                    transition: 'background 0.15s ease',
-                                    display: 'flex',
-                                    justifyContent: isGranted ? 'flex-end' : 'flex-start',
-                                    cursor: savingAccess ? 'default' : 'pointer',
-                                    opacity: savingAccess ? 0.6 : 1,
-                                  }}
+                                  className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-[var(--primary)] text-white shrink-0 hover:bg-[var(--primary-hover)] disabled:opacity-50 transition-colors"
                                 >
-                                  <span style={{
-                                    width: 18, height: 18, borderRadius: '50%',
-                                    background: '#fff',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
-                                  }} />
+                                  Granted
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleAccess(m, perm.key)}
+                                  disabled={savingAccess}
+                                  className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted)] shrink-0 hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-50 transition-colors"
+                                >
+                                  Grant
                                 </button>
                               )}
                             </div>
