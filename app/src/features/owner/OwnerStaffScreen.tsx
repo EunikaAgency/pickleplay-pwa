@@ -310,38 +310,59 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                   {/* Per-staff Access toggles */}
                   {accessOpen === m.id && (
                     <div className="mt-2.5 pl-[46px]">
-                      <div className="t-xs text-[var(--muted)] mb-1.5 font-semibold uppercase tracking-wider">
+                      <div className="t-xs text-[var(--muted)] mb-2 font-semibold uppercase tracking-wider">
                         Access (all venues)
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-0.5">
                         {STAFF_GRANTABLE_PERMISSIONS.map((perm) => {
                           const isDefault = !['owner.pricing.manage', 'owner.analytics.view'].includes(perm.key);
                           const isGranted = isDefault || (m.grantedPermissions ?? []).includes(perm.key);
                           return (
-                            <label
+                            <div
                               key={perm.key}
-                              className={`flex items-center gap-2.5 py-1.5 px-2 -mx-2 rounded-lg ${
-                                isDefault ? 'cursor-default' : 'cursor-pointer hover:bg-[var(--surface-2)]'
-                              }`}
+                              className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg"
                             >
-                              <input
-                                type="checkbox"
-                                checked={isGranted}
-                                disabled={isDefault || savingAccess}
-                                onChange={() => onToggleAccess(m, perm.key)}
-                                className="w-4 h-4 rounded accent-[var(--primary)] disabled:opacity-50"
-                              />
-                              <Icon name={perm.icon} size={16} className="text-[var(--muted)]" />
-                              <span className="text-[13px] font-medium text-[var(--ink)]">{perm.label}</span>
-                              {isDefault && (
-                                <span className="t-xs text-[var(--muted)] ml-auto">Default</span>
+                              <Icon name={perm.icon} size={17} className="text-[var(--muted)] shrink-0" />
+                              <span className="text-[13px] font-medium text-[var(--ink)] flex-1 min-w-0">
+                                {perm.label}
+                              </span>
+                              {isDefault ? (
+                                <span className="t-xs text-[var(--muted)] font-medium shrink-0">Included</span>
+                              ) : (
+                                <button
+                                  role="switch"
+                                  aria-checked={isGranted}
+                                  aria-label={perm.label}
+                                  onClick={() => onToggleAccess(m, perm.key)}
+                                  disabled={savingAccess}
+                                  className="shrink-0"
+                                  style={{
+                                    width: 40,
+                                    height: 22,
+                                    borderRadius: 'var(--radius-pill)',
+                                    border: 'none',
+                                    padding: 2,
+                                    background: isGranted ? 'var(--primary)' : 'var(--border)',
+                                    transition: 'background 0.15s ease',
+                                    display: 'flex',
+                                    justifyContent: isGranted ? 'flex-end' : 'flex-start',
+                                    cursor: savingAccess ? 'default' : 'pointer',
+                                    opacity: savingAccess ? 0.6 : 1,
+                                  }}
+                                >
+                                  <span style={{
+                                    width: 18, height: 18, borderRadius: '50%',
+                                    background: '#fff',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.18)',
+                                  }} />
+                                </button>
                               )}
-                            </label>
+                            </div>
                           );
                         })}
                       </div>
                       {savingAccess && (
-                        <div className="t-xs text-[var(--muted)] mt-1">Saving…</div>
+                        <div className="t-xs text-[var(--muted)] mt-1.5">Saving…</div>
                       )}
                     </div>
                   )}
