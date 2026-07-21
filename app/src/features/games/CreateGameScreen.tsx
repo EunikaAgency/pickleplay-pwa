@@ -330,14 +330,29 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
   const totalSteps = 3;
   const back = () => (step > 0 ? (setError(null), setStep((s) => s - 1)) : onBack());
 
+  // P17: the flow is createBooking → checkout → createGame. If a later step
+  // fails, a naive retry would re-book and RE-CHARGE. We remember which steps
+  // already succeeded so a retry resumes from where it failed — the card is
+  // charged at most once, and no duplicate booking is created.
+  const bookingRef = useRef<string | null>(null);
+  const paidRef = useRef(false);
+
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
     setSubmitting(true);
     setError(null);
     try {
-      // Pay for + reserve the court, then post the game at that booked court.
-      const booking = await createBooking({ venueId: selected.id, courtId: courtId || undefined, date, startTime, endTime, amount: total });
-      await checkout({ bookingId: booking.id, amount: total, currency, method: isTest ? 'test_card' : 'card', card });
+      // 1. Reserve the court (only once).
+      if (!bookingRef.current) {
+        const booking = await createBooking({ venueId: selected.id, courtId: courtId || undefined, date, startTime, endTime, amount: total });
+        bookingRef.current = booking.id;
+      }
+      // 2. Charge (only once — a retry after this point never re-charges).
+      if (!paidRef.current) {
+        await checkout({ bookingId: bookingRef.current, amount: total, currency, method: isTest ? 'test_card' : 'card', card });
+        paidRef.current = true;
+      }
+      // 3. Post the game at that booked+paid court.
       const game = await createGame({
         title: name.trim() || undefined,
         description: desc.trim() || undefined,
@@ -350,11 +365,15 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
         capacity: spots,
         requiresApproval: reqApproval,
         visibility: vis,
-        bookingId: booking.id,
+        bookingId: bookingRef.current,
       });
+      bookingRef.current = null;
+      paidRef.current = false;
       setDoneId(game.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create your game. Please try again.');
+      setError(e instanceof Error
+        ? (paidRef.current ? `${e.message} Your court is booked & paid — tap Create again to finish setting up the game.` : e.message)
+        : 'Could not create your game. Please try again.');
     } finally {
       setSubmitting(false);
     }

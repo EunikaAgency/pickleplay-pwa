@@ -254,6 +254,7 @@ This player-facing cluster wasn't reached by the original scan (see Coverage not
 
 | # | Level | What was wrong (plain language) | What we did |
 |---|-------|--------------------------------|-------------|
+| **P17** | 🟠 High | Creating a game **charged the card**, then if the last step failed it reported an error — and tapping **retry charged the card again** (double-charge). | The flow now remembers each step that succeeded: the card is charged **at most once**, and a retry resumes from where it failed instead of re-booking/re-charging. |
 | **P18** | 🟠 High | Joining a venue membership showed "**You're in!**" even when the payment/join actually failed. | Success only shows after the server confirms; a failure now shows an error and rolls back. |
 | **P19** | 🟡 Medium | Cancelling a booking in **My Bookings** failed silently — the booking reappeared with no reason. | Cancel failures now show a clear message. |
 | **G1** | 🟡 Medium | Same silent cancel on the **Games/Bookings tab**. | Same clear error message. |
@@ -268,7 +269,7 @@ This player-facing cluster wasn't reached by the original scan (see Coverage not
 | **Games "Joined/Invites" tabs** | 🟢 Low | These tabs silently showed empty on a load failure. | Now show a retry line. |
 | **Invite search** | 🟢 Low | A failed player search looked like nothing happened. | Now says "couldn't search — try again". |
 
-Build: ✅ passes (Vite), 0 new type errors (47 pre-existing, unchanged). 11 files changed.
+Build: ✅ passes (Vite), 0 new type errors (47 pre-existing, unchanged). 12 files changed.
 
 ---
 
@@ -296,4 +297,4 @@ Build: ✅ passes (Vite), 0 new type errors (47 pre-existing, unchanged). 11 fil
 
 ## Coverage note
 
-Scans covered: `app/` boot/infra + shared components, and feature clusters **owner**, **social/clubs/messages/profile**, **organizer/tournaments/coaches/admin/home/search**; `api/` global middleware + all feature controllers incl. the bookings/rosters/waitlist mutation cluster; `web/` in full. The `app/` **games / venues / bookings** feature cluster (player-facing game and court-booking screens) was **swept on 2026-07-21** with the same rubric — see "PWA games / venues / booking screens swept" above. All real findings (P18–P20 + the stuck-screen / fake-empty / silent-failure issues) are fixed. **No coverage gaps remain.**
+Scans covered: `app/` boot/infra + shared components, and feature clusters **owner**, **social/clubs/messages/profile**, **organizer/tournaments/coaches/admin/home/search**; `api/` global middleware + all feature controllers incl. the bookings/rosters/waitlist mutation cluster; `web/` in full. The `app/` **games / venues / bookings** feature cluster (player-facing game and court-booking screens) was **swept on 2026-07-21** with the same rubric — see "PWA games / venues / booking screens swept" above. All real findings (P17 create-game double-charge, P18–P20 + the stuck-screen / fake-empty / silent-failure issues) are fixed. **No coverage gaps remain.**

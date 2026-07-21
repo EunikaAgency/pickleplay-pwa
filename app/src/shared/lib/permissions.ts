@@ -122,16 +122,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // for ALL of that owner's venues, bookings, and clubs (scoped server-side by
   // parentOwnerUserId). Mirrors the owner role minus owner.staff.manage,
   // owner.venues.create / owner.venues.claim (staff can't create staff or add new
-  // venues to the owner's org), and owner.reports.view (the cross-venue
-  // revenue/KPI report is the owner's business, not the staff member's — they
-  // still work bookings via the front desk, calendar, and per-venue inbox).
+  // venues to the owner's org), owner.reports.view (the cross-venue revenue/KPI
+  // report is the owner's business), and owner.analytics.view (the 16 Jul meeting
+  // ruled staff must NOT see per-venue revenue/analytics either) — they still work
+  // bookings via the front desk and calendar.
   // Keep in sync with api shared/lib/permissions.ts.
   staff: [
     ...PLAYER_PERMISSIONS,
     'owner.access',
     'owner.venues.manage',
     'owner.bookings.manage',
-    'owner.analytics.view',
     'owner.games.view',
     'owner.market.view',
     'owner.reviews.manage',

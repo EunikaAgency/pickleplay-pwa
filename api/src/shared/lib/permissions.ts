@@ -135,16 +135,16 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   // server-side by parentOwnerUserId → effectiveOwnerId), but cannot create more
   // staff (owner.staff.manage), nor create/claim new venues, nor open the
   // cross-venue revenue report at /owner/reports (owner.reports.view), nor set
-  // the rates players are charged at /owner/pricing (owner.pricing.manage) —
-  // those stay the owner's own administrative actions. The operational owner.*
-  // set mirrors the owner role minus those five keys. Staff still work bookings
-  // via the front desk, calendar, and per-venue inbox.
+  // the rates players are charged at /owner/pricing (owner.pricing.manage), nor
+  // see per-venue revenue/analytics (owner.analytics.view — the 16 Jul meeting
+  // ruled staff must NOT see revenue, so it's withheld too). Those stay the
+  // owner's own actions. The operational owner.* set mirrors the owner role minus
+  // those six keys. Staff still work bookings via the front desk and calendar.
   staff: [
     ...PLAYER_BASE_PERMISSIONS,
     'owner.access',
     'owner.venues.manage',
     'owner.bookings.manage',
-    'owner.analytics.view',
     'owner.games.view',
     'owner.market.view',
     'owner.reviews.manage',

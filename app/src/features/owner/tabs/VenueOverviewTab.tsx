@@ -40,6 +40,10 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
   const user = useAuthStore((s) => s.user);
   const canAnalytics = userHasPermission(user, 'owner.analytics.view');
   const canBookings = userHasPermission(user, 'owner.bookings.manage');
+  // Staff intentionally hold no analytics permission (the 16 Jul meeting ruled they
+  // must not see revenue). Used to suppress the "ask an admin to enable analytics"
+  // nudge, which is misleading for them — it's withheld on purpose, not missing.
+  const isStaff = user?.role === 'staff';
 
   const [analytics, setAnalytics] = useState<OwnerAnalytics | null>(null);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
@@ -115,7 +119,7 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-3">
-        <OwnerStat label="Revenue this month" value={money(kpis?.revenue.month ?? 0)} icon="payments" tone="primary" />
+        {canAnalytics && <OwnerStat label="Revenue this month" value={money(kpis?.revenue.month ?? 0)} icon="payments" tone="primary" />}
         <OwnerStat label="Today's bookings" value={kpis?.bookings.today ?? 0} icon="calendar" tone="lime" />
         {canBookings && (kpis?.bookings.pending ?? 0) > 0 ? (
           <button type="button" className="text-left" onClick={() => onOpenTab('bookings')}>
@@ -127,7 +131,7 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
         <OwnerStat label="Occupancy (wk)" value={`${kpis?.occupancyPct.week ?? 0}%`} icon="donut_large" tone="neutral" />
       </div>
 
-      {!canAnalytics && (
+      {!canAnalytics && !isStaff && (
         <div className="card p-4 t-sm">
           You don't have the venue-analytics permission yet, so revenue and occupancy show as zero. Ask an admin to enable
           {' '}<span className="font-semibold">View venue analytics</span> for your role.
