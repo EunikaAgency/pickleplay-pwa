@@ -19,7 +19,10 @@ async function resolveVenue(idOrSlug: string) {
 }
 
 type PlayerLite = { id: string; name: string; avatarUrl: string | null };
-function toPlayer(u: any): PlayerLite {
+function toPlayer(u: any): PlayerLite | null {
+  // A checked-in user who since deleted their account resolves to null via
+  // populate — guard so one dangling ref doesn't 500 the whole panel (A11).
+  if (!u || !u._id) return null;
   return { id: String(u._id), name: u.displayName || 'Player', avatarUrl: u.avatarUrl ?? null };
 }
 
@@ -83,7 +86,7 @@ export async function getVenueCheckIns(c: any) {
       venueId: String(venue._id),
       venueName: venue.displayName ?? 'this venue',
       count,
-      players: rows.map((r: any) => toPlayer(r.userId)).filter((p) => p.id !== 'undefined'),
+      players: rows.map((r: any) => toPlayer(r.userId)).filter((p): p is PlayerLite => p !== null),
       checkedIn,
     },
   });
@@ -112,7 +115,7 @@ export async function getHotspot(c: any) {
       venueName: venue?.displayName ?? 'a venue',
       venueSlug: venue?.slug ?? null,
       count: hot.count,
-      players: users.map(toPlayer),
+      players: users.map(toPlayer).filter((p): p is PlayerLite => p !== null),
     },
   });
 }

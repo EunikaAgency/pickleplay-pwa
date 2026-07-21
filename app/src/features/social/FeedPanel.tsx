@@ -12,6 +12,7 @@ import {
   type ApiFeedPost, type FeedSharedPost,
 } from '../../shared/lib/api';
 import { FeedPostCard } from './FeedPostCard';
+import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { FeedComposerSheet } from './FeedComposerSheet';
 
 interface FeedPanelProps {
@@ -52,6 +53,8 @@ export function FeedPanel({ chrome }: FeedPanelProps) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [composerOpen, setComposerOpen] = useState(false);
@@ -68,11 +71,11 @@ export function FeedPanel({ chrome }: FeedPanelProps) {
   useEffect(() => {
     let alive = true;
     listFeed({ pageSize: 12 })
-      .then((page) => { if (alive) { setPosts(page.items); setCursor(page.cursor); } })
-      .catch(() => {})
+      .then((page) => { if (alive) { setPosts(page.items); setCursor(page.cursor); setError(false); } })
+      .catch(() => { if (alive) setError(true); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, reloadKey]);
 
   // Infinite scroll — Intersection Observer on the sentinel.
   useEffect(() => {
@@ -137,9 +140,13 @@ export function FeedPanel({ chrome }: FeedPanelProps) {
   const confirmDelete = async () => {
     if (!actionTarget) return;
     const id = actionTarget.id;
+    const target = actionTarget;
     setActionTarget(null);
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, isDeleted: true, body: null } : p)));
-    try { await deleteFeedPost(id); } catch { showToast("Couldn't delete"); }
+    try { await deleteFeedPost(id); } catch {
+      showToast("Couldn't delete");
+      setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, isDeleted: target.isDeleted, body: target.body } : p)));
+    }
   };
 
   // ── Non-author post actions (interested / hide / report / notify) ──
@@ -154,6 +161,7 @@ export function FeedPanel({ chrome }: FeedPanelProps) {
     const authorId = post.author?.id;
     if (!authorId) return;
     const next = post.viewerAuthorSignal === type ? 'clear' : type;
+    const prevPosts = [...posts];
     if (next === 'not_interested') {
       setPosts((prev) => prev.filter((p) => p.author?.id !== authorId));
       showToast(`You'll see less from ${authorName(post)}`);
@@ -164,15 +172,16 @@ export function FeedPanel({ chrome }: FeedPanelProps) {
       setPosts((prev) => prev.map((p) => (p.author?.id === authorId ? { ...p, viewerAuthorSignal: null } : p)));
       showToast('Preference cleared');
     }
-    setFeedSignal(authorId, next).catch(() => showToast("Couldn't save that"));
+    setFeedSignal(authorId, next).catch(() => { showToast("Couldn't save that"); setPosts(prevPosts); });
   };
 
   const hidePost = (post: ApiFeedPost) => {
     setActionTarget(null);
     if (!requireAuth('hide posts')) return;
+    const prevPosts = [...posts];
     setPosts((prev) => prev.filter((p) => p.id !== post.id));
     showToast('Hidden for a day');
-    hideFeedPost(post.id).catch(() => showToast("Couldn't hide"));
+    hideFeedPost(post.id).catch(() => { showToast("Couldn't hide"); setPosts(prevPosts); });
   };
 
   // Tapping "Report post" opens a reason picker; picking a reason submits it.
@@ -212,6 +221,8 @@ export function FeedPanel({ chrome }: FeedPanelProps) {
 
       {loading ? (
         <V2Skeleton variant="club-list" count={4} />
+      ) : error ? (
+        <ErrorState message="Couldn't load posts." onRetry={() => { setError(false); setReloadKey((k) => k + 1); }} />
       ) : posts.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">📣</div>

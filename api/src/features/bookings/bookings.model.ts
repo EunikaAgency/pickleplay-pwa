@@ -93,6 +93,16 @@ bookingSchema.index({ courtId: 1, date: 1, subUnitIndex: 1 });
 // Drives the expiry sweeper and the reminder pass, both of which query
 // outstanding requests by deadline.
 bookingSchema.index({ status: 1, approvalDeadline: 1 });
+// A1 — hard DB guard against overselling the exact same court-slot. Partial +
+// unique so only CONFIRMED bookings on a real (non-pooled) court are constrained:
+// two near-simultaneous instant-books on the same court/date/start/sub-unit can't
+// both persist — the loser hits E11000, which the central handler maps to 409.
+// (Overlap conflicts across different start times are still caught by
+// findSlotConflict; this closes the exact-slot double-tap race.)
+bookingSchema.index(
+  { courtId: 1, date: 1, startTime: 1, subUnitIndex: 1 },
+  { unique: true, partialFilterExpression: { status: 'confirmed', courtId: { $type: 'objectId' } } },
+);
 
 export const Booking = model('Booking', bookingSchema);
 

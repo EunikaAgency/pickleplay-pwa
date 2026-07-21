@@ -5,6 +5,7 @@ import { userHasPermission } from '../../shared/lib/permissions';
 import { ROLE_META, primaryRole } from '../../shared/lib/roleDisplay';
 import { getInitials } from '../../shared/lib/initials';
 import { money } from '../bookings/bookingDisplay';
+import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { useTheme, type ThemePreference } from '../../shared/hooks/useTheme';
 import { useNotificationStore } from '../../shared/lib/notificationStore';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -85,7 +86,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   // portfolio (which can be hundreds of venues).
   const isStaff = role === 'staff';
   const {
-    canAnalytics, venues, combined, structural, statsReady, monthBookings, pending,
+    canAnalytics, venues, combined, structural, statsReady, monthBookings, pending, status, retry,
   } = useOwnerDashboard({ withBookings: canBookings && !isStaff, withAnalytics: !isStaff });
 
   const name = user?.displayName ?? 'Owner';
@@ -119,6 +120,13 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     ...(canModerate ? [{ key: 'post-reports', icon: <Flag />, label: 'Post reports', sub: 'Review reported posts', onClick: () => onNavigate('admin-post-reports') } as Row] : []),
     { key: 'settings', icon: <SettingsIco />, label: 'Settings', sub: 'Privacy & preferences', onClick: () => onNavigate('settings') },
   ];
+
+  if (status === 'loading' && venues.length === 0) {
+    return <div className="pb-v2 v2-profile"><div className="p-4 space-y-3">{[1,2,3].map((i) => <div key={i} className="h-16 rounded-xl bg-[var(--surface-2)] animate-pulse" />)}</div></div>;
+  }
+  if (status === 'error') {
+    return <div className="pb-v2 v2-profile"><ErrorState message="Couldn't load dashboard." onRetry={retry} /></div>;
+  }
 
   return (
     <div className="pb-v2 v2-profile">

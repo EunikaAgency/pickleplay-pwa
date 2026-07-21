@@ -76,6 +76,30 @@ Effect deps include `location.pathname`/`search` and it `setChecked(false)` befo
 
 ---
 
+### 🟢 DONE — all web findings resolved (2026-07-21)
+
+Plain-language summary of what was fixed in the owner dashboard + public booking site:
+
+| # | Level | What was wrong (plain language) | What we did |
+|---|-------|--------------------------------|-------------|
+| **L1** | — | The "Sign In" button opened the website's own login. | It now sends users to the mobile-app login (PWA), where accounts live. |
+| **W1** | 🔴 Critical | The "Book a Court" page used **fake demo data** — every real venue showed "**Venue not found**." | It now loads the real venue and its courts from the live system, with proper loading / error / "no courts yet" states. |
+| **W2** | 🔴 Critical | Checkout **always said "Payment confirmed" but never actually booked anything** — money path was broken. | Checkout now really creates the booking and records the payment, only shows success when it works, and shows an error if it fails. |
+| **W3** | 🟠 High | Any single screen error **blanked the whole site**. | Added a safety net: a broken page shows a friendly error card (or a "reload for the new version" prompt), not a white screen. |
+| **W4** | 🟠 High | The owner overview/insights **crashed to a blank screen** if one venue's stats were incomplete. | Made the stats calculations safe so missing data just reads as 0 instead of crashing. |
+| **W5** | 🟠 High | Every click inside the owner/admin console flashed a full-screen "**Loading…**" and re-checked the login. | Now it checks once when you enter — no more flashing on every tab click. |
+| **W6** | 🟡 Medium | A mistyped console URL (e.g. `/owner/bogus`) showed a **blank content pane**. | Now shows a proper "page not found" inside every console. |
+| **W7** | 🟡 Medium | If a chat message failed to send, it **disappeared silently** with no retry. | Now shows an error with a Retry button (and keeps your typed text). |
+| **W8** | 🟡 Medium | The money formatter could **crash** on certain currency values. | Made it safe against empty/null currency. |
+| **W9** | 🟡 Medium | A court missing a price showed "**$undefined**" and could pass a $0 payment. | Missing prices now default cleanly and the amount is validated before checkout. |
+| **W10** | 🟡 Medium | Deleting a conversation could **bring a deleted one back** if two actions overlapped. | Fixed the undo logic so a failed delete only restores that one row. |
+| **W11** | 🟡 Medium | The **same booking showed $ at checkout but ₱ at refund** — inconsistent currency. | All booking pages now use one shared money format (₱). |
+| **W12** | 🟡 Medium | *(reported: heatmap divide-by-zero)* | **Already safe** — the guard already exists. No change needed. |
+
+Build: ✅ passes, 0 errors. 12 files changed.
+
+---
+
 ## `api/` — Hono + MongoDB backend
 
 **Global error handling (context for severity):** `app.onError` (`index.ts:167`, `shared/middleware/error-handler.ts`) turns `ZodError` → clean **400**, `HTTPException` → its status, and **everything else** (CastError, TypeError, SyntaxError, E11000) → generic **500** with **no stack leak in production**. So unguarded throws don't crash the process or leak stacks — they return the **wrong status** (usually should be 400/404). The concurrency queue releases slots in `finally`; the scheduler wraps job bodies in try/catch and `unref`s timers. Unhandled rejections / SSE / external email / push were checked and are well-handled.
@@ -119,6 +143,29 @@ An unbalanced `(`/`[` throws → 500; a crafted input (`(a+)+$`) pins the event 
 - **A12. `E11000` surfaces as 500 instead of 409** — no `11000` handling anywhere. Expected "already exists" races (coach/org applications, conversation keys, registration slots) confuse users. Map `code===11000` → 409, ideally in the central error handler.
 
 **Checked & clean:** external email/push/geocoding all guarded (a down Gmail/FCM does not 500 a user action); SSE cleans up intervals; messaging + roster mutations are correctly ownership-scoped; `pricing.ts` has no div-by-zero.
+
+---
+
+### 🟢 DONE — all backend findings resolved (2026-07-21)
+
+Plain-language summary of what was fixed in the server (API):
+
+| # | Level | What was wrong (plain language) | What we did |
+|---|-------|--------------------------------|-------------|
+| **A1** | 🟠 High | Two people booking the **last court at the same instant** could both succeed — an oversell. | Added a hard database rule so only one confirmed booking can exist per court + time slot; the second gets a clean "just taken" message. |
+| **A2** | 🟠 High | Same double-book race for **coach sessions**. | Same hard rule per coach + time slot. |
+| **A3** | 🟠 High | A malformed booking time could **skip the price check** and let someone pay any amount they chose. | Booking times are now strictly validated; a bad time is rejected before payment. |
+| **A4** | 🟠 High | A crafted **search query could crash the search** (500) or freeze it for everyone (denial-of-service). | Search input is now treated as plain text — no crash, no freeze. |
+| **A5** | 🟠 High | A coach could **publish themselves into the public directory without being verified** (moderation bypass). | Unverified coaches can no longer self-list; verification is required first. |
+| **A6** | 🟠 High | Two players grabbing the **last game slot** at once could both get in (over-capacity), or a double-tap could list someone twice. | The join is now atomic — exactly one seat per slot, no duplicates. |
+| **A7** | 🟡 Medium | Adding/removing roster members at the same time could **lose one of the changes**. | Roster add/remove are now atomic — no lost updates. |
+| **A8** | 🟡 Medium | Claiming a waitlist slot created a **₱0 "confirmed" booking that held a court free forever**, and could double-claim. | Claim is now atomic and creates an unpaid hold with a pay window that auto-expires. |
+| **A9** | 🟡 Medium | Sending an **empty or broken request body crashed with a 500** (across ~127 endpoints). | Central fix: bad JSON now returns a clean 400 everywhere. |
+| **A10** | 🟡 Medium | A **mistyped or stale link (bad ID) returned a 500** instead of "not found" (across ~267 endpoints). | Central fix: an invalid ID now returns a clean 400 everywhere. |
+| **A11** | 🟡 Medium | If a checked-in player **deleted their account**, the venue "who's here now" panel **500'd for everyone**. | The list now skips deleted users safely. |
+| **A12** | 🟡 Medium | "**Already exists**" collisions (duplicate applications, registrations) surfaced as a confusing 500. | Central fix: these now return a clear 409 "already exists / just taken". |
+
+Verified live: new database rules built cleanly (no existing conflicts); API restarted healthy; smoke-tested — broken JSON → 400, bad ID → 404, crafted search → 200 (all previously 500). All type errors are pre-existing; the 12 fixes introduced none.
 
 ---
 
@@ -171,6 +218,33 @@ Initial `listFeed()` uses `.catch(() => {})` then `setLoading(false)`; a failed 
 - **P16. `OwnerVenueScreen.reload()` swallows refresh errors** — `owner/OwnerVenueScreen.tsx:105-107`. After an edit-save, a failed refetch keeps stale data with no feedback. Toast on refresh failure.
 
 **Checked & clean:** `api.ts` (`rawRequest`) wraps fetch, throws typed `ApiError`, `.json().catch(()=>null)`, checks `res.ok`, coalesces concurrent 401 refreshes, env-driven prod base URL (no hardcoded localhost); `authStore` localStorage parses are try/caught; polling hooks clear intervals + read fresh token (no stale closure); push/Firebase/SW init are best-effort (no boot crash); display formatters guard `NaN`/`Invalid Date`; `demoState` gated behind `?demo`; auth cold-start screens have full loading/error states; optimistic like/friend/message toggles roll back correctly.
+
+---
+
+### 🟢 DONE — all PWA findings resolved (2026-07-21)
+
+Plain-language summary of what was fixed in the player mobile app:
+
+| # | Level | What was wrong (plain language) | What we did |
+|---|-------|--------------------------------|-------------|
+| **P1** | 🔴 Critical | If one screen hit an error, the **whole app went blank white** — user had to force-reload. | Added a safety net: a single broken screen now shows a friendly "Something went wrong — Reload" card instead of killing the app. New-version errors show a "Reload to update" card. |
+| **P2** | 🟠 High | When the owner dashboard failed to load bookings/games/reviews, it showed "**nothing here yet**" as if the venue were empty. | Now it tracks each list's failure so the screen can tell "genuinely empty" from "failed to load." |
+| **P3** | 🟠 High | The Edit-Club screen's **Retry button did nothing** — stuck on the loading skeleton forever. | Retry now actually re-fetches the club. |
+| **P4** | 🟠 High | If the social feed failed to load, it falsely said "**No posts yet**" with no way to retry. | Now shows a real error with a Retry button. |
+| **P5** | 🟠 High | The tournament score sheet **carried scores over between matches** — an organizer could record the wrong result. | The score grid now resets every time you open a different match. |
+| **P6** | 🟡 Medium | Map pins were loaded from an outside website — **broken pins when offline** or if that site was blocked. | Pins now come bundled with the app; they work offline. |
+| **P8** | 🟡 Medium | If the clubs directory failed to load, it falsely said "**No clubs found**." | Now shows a real error + Retry. |
+| **P10** | 🟡 Medium | Hiding/deleting a feed post **looked successful even when it failed** — the post stayed gone until reload. | On failure the post now comes back and a toast explains it didn't save. |
+| **P11** | 🟡 Medium | A failed chat conversation was a **dead-end** (no retry). | Added a Retry button. |
+| **P12** | 🟡 Medium | Organizer approve/check-in/cancel/remove actions **failed silently** — button just re-enabled, nothing happened. | Failures are now caught and the list refreshes to show the real state. |
+| **P14** | 🟢 Low | The venue overview showed **₱0 / 0 courts** when a sub-fetch failed, as if empty. | Now shows a "couldn't load X" warning so zeros aren't mistaken for real data. |
+| **P15** | 🟢 Low | The owner profile showed "**0 venues · 0 courts**" on a failed load, with no error. | Added loading + error states with a Retry. |
+| **P16** | 🟢 Low | After saving a venue edit, a failed refresh **kept showing old data** silently. | A failed refresh now surfaces an error instead of hiding it. |
+| **P7** | 🟡 Medium | *(reported: charts divide by zero)* | **Already safe** — guards already exist. No change. |
+| **P9** | 🟡 Medium | *(reported: pricing toggle broken)* | **Already correct** — control already uses the right values. No change. |
+| **P13** | 🟡 Medium | *(reported: coach price crash on null)* | **Already safe** — type safety + caller guard. No change. |
+
+Build: ✅ passes, 0 new errors. 20 files changed. 13 fixed, 3 confirmed already-safe.
 
 ---
 

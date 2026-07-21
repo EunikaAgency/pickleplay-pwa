@@ -130,6 +130,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // "Change") — a deep link uses the venue-detail fetch instead (see #5).
   const [venues, setVenues] = useState<ApiVenue[]>([]);
   const [directoryLoaded, setDirectoryLoaded] = useState(false);
+  const [directoryError, setDirectoryError] = useState(false);
   const [selectedId, setSelectedId] = useState(venueId ?? '');
   const [picking, setPicking] = useState(!venueId); // show the list when nothing preselected
   const [query, setQuery] = useState('');
@@ -223,7 +224,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         setVenues(list);
         setSelectedId((prev) => prev || (venueId ?? '') || list[0]?.id || '');
       })
-      .catch(() => { /* picker shows an empty-state */ })
+      .catch(() => { if (alive) setDirectoryError(true); })
       .finally(() => { if (alive) setDirectoryLoaded(true); });
     return () => { alive = false; };
   }, [directoryLoaded, picking, venueId]);
@@ -231,7 +232,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // Per-venue (+ per-date override) data — courts, structured hours, slot overrides,
   // and the viewer's membership — in one keyed hook (see #5/#6). Replaces four
   // separate effects + their render-phase reset pairs.
-  const { detail, courts, venueHours, overrides, viewerIsMember } = useVenueBookingContext(selectedId, date);
+  const { detail, courts, venueHours, overrides, viewerIsMember, error: venueLoadError, reload: reloadVenue } = useVenueBookingContext(selectedId, date);
 
   // Reset the court pick when the venue changes; default to the first court (or the
   // deep-linked courtId) once the new venue's courts load, so a court is always
@@ -845,11 +846,24 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
             {selected && !picking ? (
               <SelectedVenueCard venue={selected} currency={currency} />
+            ) : !picking && venueLoadError ? (
+              /* Deep-linked venue whose detail failed to load — offer a retry
+                 instead of a skeleton that spins forever (B3). */
+              <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-5 text-center">
+                <div className="text-[13px] font-semibold text-[var(--ink)]">Couldn't load this venue.</div>
+                <button type="button" onClick={reloadVenue} className="mt-2 text-[13px] font-bold text-[var(--primary)] underline">Try again</button>
+              </div>
             ) : !picking ? (
               /* Deep-linked venue whose detail is still loading (picker not shown). */
               <LoadingSkeleton variant="card" count={1} />
             ) : directoryLoading ? (
               <LoadingSkeleton variant="card" count={3} />
+            ) : directoryError && venues.length === 0 ? (
+              /* A fetch failure, not a genuinely empty catalogue (B4). */
+              <div className="text-[13px] text-[var(--muted)] font-semibold py-2">
+                Couldn't load courts.{' '}
+                <button type="button" onClick={() => { setDirectoryError(false); setDirectoryLoaded(false); }} className="text-[var(--primary)] underline font-bold">Try again</button>
+              </div>
             ) : venues.length === 0 ? (
               <div className="text-[13px] text-[var(--muted)] font-semibold py-2">
                 No bookable courts right now — only venues with published rates can be booked.

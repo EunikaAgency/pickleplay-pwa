@@ -111,6 +111,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
   // Pay-after-approval (request-to-book): charging an 'awaiting_payment' booking.
   const [paying, setPaying] = useState<string | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   // Modify booking sheet.
   const [modifyTarget, setModifyTarget] = useState<ApiBooking | null>(null);
 
@@ -169,7 +170,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
   }, [visible, sort]);
 
   const detail = detailId ? bookings.find((b) => b.id === detailId) ?? null : null;
-  const closeDetail = () => { setDetailId(null); setConfirming(false); setPayError(null); };
+  const closeDetail = () => { setDetailId(null); setConfirming(false); setPayError(null); setCancelError(null); };
 
   // Pay an approved request to confirm it (card was saved at request time).
   const handlePay = async (b: ApiBooking) => {
@@ -194,12 +195,16 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
 
   const handleCancel = async (id: string) => {
     setCancelling(id);
+    setCancelError(null);
     try {
       const updated = await cancelBooking(id);
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: updated.status ?? 'cancelled' } : b)));
       setConfirming(false);
-    } catch {
-      setReloadKey((k) => k + 1);
+    } catch (e) {
+      // Surface the failure instead of silently reloading (P19).
+      setCancelError(e instanceof Error && /window|late|past/i.test(e.message)
+        ? "It's too late to cancel this booking."
+        : "Couldn't cancel. Please try again.");
     } finally {
       setCancelling(null);
     }
@@ -355,6 +360,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
                 <div className="text-[12px] text-[var(--muted)] mt-0.5">
                   Your court reservation will be released and the time freed up. This can't be undone.
                 </div>
+                {cancelError && <div className="mt-2 text-[12px] text-[var(--coral)] font-semibold">{cancelError}</div>}
                 <div className="flex gap-2 mt-3">
                   <button
                     type="button"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
+import { DEFAULT_ICON_OPTIONS } from '../../shared/lib/leafletIcons';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
@@ -55,15 +56,7 @@ const SAVED_KEY = 'pb-saved-venues';
 
 // Leaflet's default marker asset paths break under bundlers, so point them at the
 // CDN copies (same approach as NearbyScreen's map).
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const markerIcon = new L.Icon(DEFAULT_ICON_OPTIONS);
 
 // --- Small game-row formatters (kept local; the venues slice must not import the
 // games slice's gameDisplay.ts — cross-feature code only travels via shared/). ---
@@ -351,20 +344,24 @@ function CourtDetail({
     setMembershipOpen(true);
   };
 
-  const joinMembership = (planId: string) => {
+  const joinMembership = async (planId: string) => {
     const prev = membershipPlanId;
     // Optimistic: use the plan *name* so it matches viewerMembershipTier
     // (the API stores plan.name as the VenueMember tier).  After a page
     // reload the sheet's planByRef() can match either id or name.
     const planName = apiPlans?.find((p) => p.id === planId)?.name ?? planId;
-    setMembershipPlanId(planName); // optimistic — the sheet shows success right away
-    // When the venue has API plans, use subscribeToPlan so the VenueMember tier
-    // is the plan name (e.g. "Monthly") instead of the plan ObjectId. Falls back
-    // to joinVenueMembership for venues without API plans.
-    if (apiPlans && apiPlans.length > 0) {
-      subscribeToPlan(planId).catch(() => setMembershipPlanId(prev));
-    } else {
-      joinVenueMembership(venue.id, planId).catch(() => setMembershipPlanId(prev));
+    setMembershipPlanId(planName);
+    // Await the real call so the sheet only shows success on confirmation (P18);
+    // re-throw on failure so the sheet surfaces the error and rolls back here.
+    try {
+      if (apiPlans && apiPlans.length > 0) {
+        await subscribeToPlan(planId);
+      } else {
+        await joinVenueMembership(venue.id, planId);
+      }
+    } catch (e) {
+      setMembershipPlanId(prev);
+      throw e;
     }
   };
   const cancelMembership = () => {

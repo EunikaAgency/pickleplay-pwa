@@ -28,26 +28,35 @@ export interface VenueBookingContext {
   viewerIsMember: boolean;
   /** True while this venue's courts/hours/membership are still loading. */
   loading: boolean;
+  /** True when the venue fetch failed (so callers show an error, not a skeleton). */
+  error: boolean;
+  /** Retry the venue fetch after an error. */
+  reload: () => void;
 }
 
 export function useVenueBookingContext(venueId: string | undefined, date: string): VenueBookingContext {
   // Venue-scoped: detail (courts + membership) + structured hours, tagged with the
   // venue id so a previous venue's result is ignored while the next is in flight.
   const [venueData, setVenueData] = useState<{ id: string; detail: ApiVenueDetail; hours: OwnerHourEntry[] } | null>(null);
+  // Set true when the load-bearing getVenue call rejects, so callers can render
+  // an error+retry instead of a skeleton that spins forever (B3).
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   // Date-scoped: slot overrides for the chosen date.
   const [overrideData, setOverrideData] = useState<{ key: string; rows: SlotPriceOverride[] } | null>(null);
 
   useEffect(() => {
     if (!venueId) return;
     let alive = true;
+    setFailed(false);
     Promise.all([
       getVenue(venueId),
       getHours(venueId).catch(() => [] as OwnerHourEntry[]),
     ])
       .then(([detail, hours]) => { if (alive) setVenueData({ id: venueId, detail, hours }); })
-      .catch(() => { if (alive) setVenueData(null); });
+      .catch(() => { if (alive) { setVenueData(null); setFailed(true); } });
     return () => { alive = false; };
-  }, [venueId]);
+  }, [venueId, reloadKey]);
 
   useEffect(() => {
     if (!venueId || !date) return;
@@ -69,6 +78,8 @@ export function useVenueBookingContext(venueId: string | undefined, date: string
     venueHours: fresh?.hours ?? [],
     overrides,
     viewerIsMember: !!fresh?.detail.viewerIsMember,
-    loading: !!venueId && fresh == null,
+    loading: !!venueId && fresh == null && !failed,
+    error: failed,
+    reload: () => { setFailed(false); setReloadKey((k) => k + 1); },
   };
 }

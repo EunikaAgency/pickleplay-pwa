@@ -2,6 +2,9 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readdirSync, statSync, existsSync, createReadStream } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { basename, join } from 'node:path'
 
 // Dev-only: neutralise any service worker left behind by a previous production
 // (`vite preview`) build. The PWA SW precaches a hashed app shell; after a
@@ -44,9 +47,64 @@ self.addEventListener('activate', (event) => {
   }
 }
 
+// Serve the sibling `plan/` directory's PDFs to the app (read live, no build
+// step). Powers the /operational-gap viewer: `/__plan/list.json` enumerates the
+// PDFs currently in ../plan, and `/__plan/file/<name>` streams one for inline
+// preview. Not under `/api` (that prefix is proxied to the Hono backend), and
+// filenames are `basename`-sanitised so no path traversal can escape plan/.
+function planPdfServer(): Plugin {
+  const planDir = fileURLToPath(new URL('../plan', import.meta.url))
+  return {
+    name: 'plan-pdf-server',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url || '').split('?')[0]
+        if (url === '/__plan/list.json') {
+          try {
+            const files = existsSync(planDir)
+              ? readdirSync(planDir).filter((f) => f.toLowerCase().endsWith('.pdf'))
+              : []
+            const items = files
+              .map((name) => {
+                const st = statSync(join(planDir, name))
+                return { name, size: st.size, mtime: st.mtimeMs }
+              })
+              .sort((a, b) => b.mtime - a.mtime)
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(JSON.stringify({ items }))
+          } catch {
+            res.statusCode = 500
+            res.end(JSON.stringify({ items: [], error: 'read_failed' }))
+          }
+          return
+        }
+        if (url.startsWith('/__plan/file/')) {
+          const raw = decodeURIComponent(url.slice('/__plan/file/'.length))
+          const name = basename(raw) // strip any traversal segments
+          const full = join(planDir, name)
+          if (!name.toLowerCase().endsWith('.pdf') || !existsSync(full)) {
+            res.statusCode = 404
+            res.end('Not found')
+            return
+          }
+          res.setHeader('Content-Type', 'application/pdf')
+          res.setHeader('Content-Disposition', `inline; filename="${name}"`)
+          res.setHeader('Cache-Control', 'no-store')
+          createReadStream(full).pipe(res)
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     killStaleServiceWorker(),
+    planPdfServer(),
     react(),
     tailwindcss(),
     VitePWA({

@@ -16,7 +16,7 @@ interface MembershipSheetProps {
   /** True when the user's membership has expired — the sheet is for renewal. */
   isRenewal?: boolean;
   /** Persist a join/switch/renew to the chosen plan. */
-  onJoin: (planId: string) => void;
+  onJoin: (planId: string) => Promise<void> | void;
   /** Cancel the current membership. */
   onCancel: () => void;
   /** Optional: API subscription plans from the venue owner (takes precedence over hardcoded plans). */
@@ -98,7 +98,8 @@ export function MembershipSheet({
   // Default the selection to the current plan (for switching) or the first plan.
   const initial = currentPlanId ?? plans[0]?.id ?? '';
   const [selected, setSelected] = useState(initial);
-  const [phase, setPhase] = useState<'choose' | 'success'>('choose');
+  const [phase, setPhase] = useState<'choose' | 'joining' | 'success'>('choose');
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   // Re-seed the selection whenever the sheet (re)opens, so it reflects the latest
   // membership and always starts on the chooser.
@@ -115,10 +116,20 @@ export function MembershipSheet({
   const isCurrent = planByRef(currentPlanId)?.id === selected;
   const price = (n: number) => `${currency}${n.toLocaleString()}`;
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!selectedPlan) return;
-    onJoin(selected);
-    setPhase('success');
+    // Only show "You're in!" once the server actually confirms. Awaiting the
+    // real join/subscribe means a declined card / network error surfaces an
+    // error instead of a false success (P18).
+    setJoinError(null);
+    setPhase('joining');
+    try {
+      await onJoin(selected);
+      setPhase('success');
+    } catch {
+      setPhase('choose');
+      setJoinError("That didn't go through. Please try again.");
+    }
   };
 
   const successPlan = planByRef(currentPlanId) ?? selectedPlan ?? plans[0];
@@ -137,16 +148,23 @@ export function MembershipSheet({
             Done
           </Button>
         ) : plans.length === 0 ? null : (
-          <Button fullWidth onClick={handleJoin} disabled={isCurrent && !isRenewal}>
-            <Icon name={isRenewal ? 'refresh' : 'star'} size={16} />
-            {isCurrent && !isRenewal
-              ? 'Your current plan'
-              : isRenewal
-                ? `Renew ${selectedPlan.name} · ${price(selectedPlan.price)}/${selectedPlan.cadence}`
-                : currentPlanId
-                  ? `Switch to ${selectedPlan.name}`
-                  : `Join ${selectedPlan.name} · ${price(selectedPlan.price)}/${selectedPlan.cadence}`}
-          </Button>
+          <div className="w-full">
+            {joinError && (
+              <p className="mb-2 text-center text-[13px] font-semibold text-[var(--error)]">{joinError}</p>
+            )}
+            <Button fullWidth onClick={handleJoin} disabled={(isCurrent && !isRenewal) || phase === 'joining'}>
+              <Icon name={isRenewal ? 'refresh' : 'star'} size={16} />
+              {phase === 'joining'
+                ? 'Processing…'
+                : isCurrent && !isRenewal
+                  ? 'Your current plan'
+                  : isRenewal
+                    ? `Renew ${selectedPlan.name} · ${price(selectedPlan.price)}/${selectedPlan.cadence}`
+                    : currentPlanId
+                      ? `Switch to ${selectedPlan.name}`
+                      : `Join ${selectedPlan.name} · ${price(selectedPlan.price)}/${selectedPlan.cadence}`}
+            </Button>
+          </div>
         )
       }
     >

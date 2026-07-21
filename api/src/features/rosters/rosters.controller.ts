@@ -92,14 +92,27 @@ export async function addRosterMember(c: any) {
     if (!u) return c.json({ error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
     name = name || (u as any).displayName;
     email = email || (u as any).email;
-    if (loaded.roster.members.some((m: any) => m.userId?.toString() === userId)) {
-      return c.json({ error: { code: 'CONFLICT', message: 'Already in this roster' } }, 409);
-    }
   }
   if (!name) return c.json({ error: { code: 'VALIDATION', message: 'name or userId is required' } }, 400);
-  loaded.roster.members.push({ userId: userId || undefined, name, email });
-  await loaded.roster.save();
-  return c.json({ data: rosterView(loaded.roster.toObject()) }, 201);
+  // Atomic add (A7): $push instead of read-modify-save so a concurrent add/remove
+  // isn't clobbered. When a userId is given, the `$ne` guard makes the insert
+  // conditional on them not already being a member → 409 on the duplicate race.
+  const rosterId = loaded.roster._id;
+  if (userId) {
+    const updated = await OrganizerRoster.findOneAndUpdate(
+      { _id: rosterId, 'members.userId': { $ne: userId } },
+      { $push: { members: { userId, name, email } } },
+      { new: true },
+    );
+    if (!updated) return c.json({ error: { code: 'CONFLICT', message: 'Already in this roster' } }, 409);
+    return c.json({ data: rosterView(updated.toObject()) }, 201);
+  }
+  const updated = await OrganizerRoster.findByIdAndUpdate(
+    rosterId,
+    { $push: { members: { name, email } } },
+    { new: true },
+  );
+  return c.json({ data: rosterView(updated!.toObject()) }, 201);
 }
 
 // DELETE /api/v1/rosters/:id/members/:memberId
@@ -107,7 +120,11 @@ export async function removeRosterMember(c: any) {
   const loaded = await loadOwned(c);
   if (!loaded.ok) return loaded.res;
   const memberId = c.req.param('memberId');
-  loaded.roster.members = loaded.roster.members.filter((m: any) => m._id?.toString() !== memberId);
-  await loaded.roster.save();
-  return c.json({ data: rosterView(loaded.roster.toObject()) });
+  // Atomic remove (A7): $pull the one member so a concurrent add isn't lost.
+  const updated = await OrganizerRoster.findByIdAndUpdate(
+    loaded.roster._id,
+    { $pull: { members: { _id: memberId } } },
+    { new: true },
+  );
+  return c.json({ data: rosterView((updated ?? loaded.roster).toObject()) });
 }

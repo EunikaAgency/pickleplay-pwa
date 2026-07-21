@@ -62,9 +62,13 @@ export function TournamentDetailScreen({ tournamentId, onNavigate, onBack }: Tou
   }, [tournamentId, reloadKey]);
 
   const onManage = async (regId: string, body: ManageRegistrationBody) => {
-    await manageTournamentRegistration(tournamentId, regId, body);
-    const fresh = await getTournamentRegistrations(tournamentId);
-    setRegs(fresh);
+    try {
+      await manageTournamentRegistration(tournamentId, regId, body);
+      const fresh = await getTournamentRegistrations(tournamentId);
+      setRegs(fresh);
+    } catch {
+      setReloadKey((k) => k + 1); // refetch to show actual server state
+    }
   };
 
   const handleOpenRegistration = async () => {

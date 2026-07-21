@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { DEFAULT_ICON_OPTIONS } from '../../../shared/lib/leafletIcons';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { Button } from '../../../shared/components/ui/Button';
 import { Toast } from '../../../shared/components/ui/Toast';
@@ -18,13 +19,7 @@ interface LocationEditorTabProps {
 // Default map center: Metro Manila (the product's home market).
 const DEFAULT_CENTER: [number, number] = [14.5547, 121.0244];
 
-const pinIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+const pinIcon = new L.Icon(DEFAULT_ICON_OPTIONS);
 
 const toNum = (v: string) => {
   const n = parseFloat(v);

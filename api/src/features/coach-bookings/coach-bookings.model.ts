@@ -61,5 +61,12 @@ coachBookingSchema.index({ coachUserId: 1, createdAt: -1 });
 coachBookingSchema.index({ playerUserId: 1, createdAt: -1 });
 // Double-book guard: one live session per coach per exact slot.
 coachBookingSchema.index({ coachId: 1, date: 1, startTime: 1, status: 1 });
+// A2 — hard DB guard: at most one CONFIRMED session per coach per exact slot.
+// Pending requests may pile up, but only one can become confirmed; the second
+// confirm hits E11000 → 409 (central handler). Closes the coach double-book race.
+coachBookingSchema.index(
+  { coachId: 1, date: 1, startTime: 1 },
+  { unique: true, partialFilterExpression: { status: 'confirmed' } },
+);
 
 export const CoachBooking = model('CoachBooking', coachBookingSchema);

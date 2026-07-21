@@ -51,6 +51,9 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
   const [bookings, setBookings] = useState<OwnerBookingRow[]>([]);
   const [games, setGames] = useState<OwnerGameRow[]>([]);
   const [reviews, setReviews] = useState<OwnerReviewRow[]>([]);
+  const [bookingsError, setBookingsError] = useState(false);
+  const [gamesError, setGamesError] = useState(false);
+  const [reviewsError, setReviewsError] = useState(false);
 
   useEffect(() => {
     if (!ownerId) return;
@@ -83,48 +86,56 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
 
   // Bookings per venue (only when the consumer needs the actionable lists).
   useEffect(() => {
-    if (!withBookings || venues.length === 0) return;
+    if (!withBookings || venues.length === 0) { setBookingsError(false); return; }
     let cancelled = false;
+    setBookingsError(false);
     Promise.allSettled(venues.map((v) => getVenueBookings(v.slug || v.id))).then((results) => {
       if (cancelled) return;
       const rows: OwnerBookingRow[] = [];
+      let hadError = false;
       results.forEach((r, i) => {
-        if (r.status !== 'fulfilled') return;
+        if (r.status !== 'fulfilled') { hadError = true; return; }
         const v = venues[i];
         for (const b of r.value) rows.push({ ...b, venueId: b.venueId || v.id, venueName: v.displayName || 'Venue' });
       });
       setBookings(rows);
+      setBookingsError(hadError);
     });
     return () => { cancelled = true; };
   }, [withBookings, venues]);
 
   // Games per venue (community games played at the owner's courts).
   useEffect(() => {
-    if (!withGames || venues.length === 0) return;
+    if (!withGames || venues.length === 0) { setGamesError(false); return; }
     let cancelled = false;
+    setGamesError(false);
     // listGames matches the raw venueId (no slug resolution) — use the _id.
     Promise.allSettled(venues.map((v) => listGames({ venueId: v.id }))).then((results) => {
       if (cancelled) return;
       const rows: OwnerGameRow[] = [];
+      let hadError = false;
       results.forEach((r, i) => {
-        if (r.status !== 'fulfilled') return;
+        if (r.status !== 'fulfilled') { hadError = true; return; }
         const v = venues[i];
         for (const g of r.value) rows.push({ ...g, venueId: g.venueId || v.id, venueName: v.displayName || 'Venue' });
       });
       setGames(rows);
+      setGamesError(hadError);
     });
     return () => { cancelled = true; };
   }, [withGames, venues]);
 
   // Reviews per venue (only when the consumer needs them, e.g. notifications).
   useEffect(() => {
-    if (!withReviews || venues.length === 0) return;
+    if (!withReviews || venues.length === 0) { setReviewsError(false); return; }
     let cancelled = false;
+    setReviewsError(false);
     Promise.allSettled(venues.map((v) => getReviews(v.slug || v.id))).then((results) => {
       if (cancelled) return;
       const rows: OwnerReviewRow[] = [];
+      let hadError = false;
       results.forEach((r, i) => {
-        if (r.status !== 'fulfilled') return;
+        if (r.status !== 'fulfilled') { hadError = true; return; }
         const v = venues[i];
         const ref = v.slug || v.id;
         for (const review of r.value.items) {
@@ -132,6 +143,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
         }
       });
       setReviews(rows);
+      setReviewsError(hadError);
     });
     return () => { cancelled = true; };
   }, [withReviews, venues]);
@@ -140,11 +152,11 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
     const vals = Object.values(analytics);
     return vals.reduce(
       (acc, a) => ({
-        month: acc.month + a.kpis.revenue.month,
-        week: acc.week + a.kpis.revenue.week,
-        prevMonth: acc.prevMonth + a.kpis.revenue.prevMonth,
-        todayBookings: acc.todayBookings + a.kpis.bookings.today,
-        pending: acc.pending + a.kpis.bookings.pending,
+        month: acc.month + (a?.kpis?.revenue?.month ?? 0),
+        week: acc.week + (a?.kpis?.revenue?.week ?? 0),
+        prevMonth: acc.prevMonth + (a?.kpis?.revenue?.prevMonth ?? 0),
+        todayBookings: acc.todayBookings + (a?.kpis?.bookings?.today ?? 0),
+        pending: acc.pending + (a?.kpis?.bookings?.pending ?? 0),
       }),
       { month: 0, week: 0, prevMonth: 0, todayBookings: 0, pending: 0 },
     );
@@ -184,7 +196,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
   const glanceFor = useCallback((v: ApiVenue): Glance | null => {
     const a = analytics[venueKey(v)];
     if (!a) return null;
-    return { todayCount: a.kpis.bookings.today, pendingCount: a.kpis.bookings.pending, todayRevenue: a.kpis.revenue.today };
+    return { todayCount: a?.kpis?.bookings?.today ?? 0, pendingCount: a?.kpis?.bookings?.pending ?? 0, todayRevenue: a?.kpis?.revenue?.today ?? 0 };
   }, [analytics]);
 
   const today = todayYMD();
@@ -218,7 +230,7 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
     analyticsByVenue: analytics,
     combined, combinedRevenueDaily, monthBookings, statsReady, structural, glanceFor,
     bookings, pending, upcoming, removeBooking, updateBookingRow,
-    games, reviews,
+    games, reviews, bookingsError, gamesError, reviewsError,
   };
 }
 

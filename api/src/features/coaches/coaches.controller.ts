@@ -242,6 +242,14 @@ export async function updateMyCoach(c: any) {
 
   const body = updateMyCoachSchema.parse(await c.req.json());
 
+  // Moderation gate (A5): an unverified coach must not self-publish into the
+  // public directory. They may still edit everything else; they just can't flip
+  // `isListed` on until an admin verifies them. (Verified coaches keep full
+  // control of their own listing visibility.)
+  if (body.isListed === true && !coach.isVerified) {
+    return c.json({ error: { code: 'NOT_VERIFIED', message: 'Your coach profile must be verified before it can be listed publicly.' } }, 403);
+  }
+
   if (body.venueRates) {
     // A rate may only target a venue the coach actually works at, or a coach
     // could price venues they have no relationship with.

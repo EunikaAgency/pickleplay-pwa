@@ -309,10 +309,11 @@ function MyGamesSections({
 }
 
 /** A single court-booking card (date box · venue · duration/price · time range · status). */
-function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id: string) => void; cancelling: boolean }) {
+function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id: string) => Promise<boolean>; cancelling: boolean }) {
   // Two-step cancel: confirm before releasing the court (a paid reservation
   // shouldn't vanish on a single accidental tap).
   const [confirming, setConfirming] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const { wd, d } = dateBox(b.date);
   const chip = bookingStatusChip(b);
   const sub = [bookingDuration(b), b.amount != null ? money(b.amount) : null].filter(Boolean).join(' · ');
@@ -343,10 +344,11 @@ function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id
               <div className="text-[12px] text-[var(--muted)] mt-0.5">
                 Your court reservation will be released and the time freed up. This can’t be undone.
               </div>
+              {cancelError && <div className="mt-2 text-[12px] text-[var(--coral)] font-semibold">{cancelError}</div>}
               <div className="flex gap-2 mt-3">
                 <button
                   type="button"
-                  onClick={() => setConfirming(false)}
+                  onClick={() => { setConfirming(false); setCancelError(null); }}
                   disabled={cancelling}
                   className="flex-1 h-9 rounded-lg bg-[var(--surface-3)] text-[var(--ink)] font-heading font-semibold text-[13px] disabled:opacity-50"
                 >
@@ -354,7 +356,7 @@ function BookingCard({ b, onCancel, cancelling }: { b: ApiBooking; onCancel: (id
                 </button>
                 <button
                   type="button"
-                  onClick={() => onCancel(b.id)}
+                  onClick={async () => { setCancelError(null); const ok = await onCancel(b.id); if (!ok) setCancelError("Couldn't cancel. Please try again."); else setConfirming(false); }}
                   disabled={cancelling}
                   className="flex-1 h-9 rounded-lg bg-[var(--coral)] text-white font-heading font-semibold text-[13px] flex items-center justify-center gap-1 disabled:opacity-50"
                 >
@@ -568,13 +570,15 @@ export function GamesScreen({ onNavigate }: GamesScreenProps) {
 
   const openGame = (g: ApiGame) => onNavigate('game-details', { id: g.id });
 
-  const handleCancelBooking = async (id: string) => {
+  const handleCancelBooking = async (id: string): Promise<boolean> => {
     setCancelling(id);
     try {
       const updated = await cancelBooking(id);
       setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status: updated.status ?? 'cancelled' } : b)));
+      return true;
     } catch {
-      setBookingsReloadKey((k) => k + 1);
+      // Let the card surface the failure (P19) instead of a silent reload.
+      return false;
     } finally {
       setCancelling(null);
     }

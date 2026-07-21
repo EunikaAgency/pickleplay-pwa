@@ -397,7 +397,7 @@ export function ChatScreen({ conversationId, name, onBack }: ChatScreenProps) {
             <LoadingSkeleton variant="list-row" count={4} />
           </div>
         ) : error ? (
-          <ErrorState message={error} />
+          <ErrorState message={error} onRetry={() => { setError(''); setLoading(true); }} />
         ) : (
           <div className="flex flex-col gap-2 pt-4">
             {messages.length === 0 && (

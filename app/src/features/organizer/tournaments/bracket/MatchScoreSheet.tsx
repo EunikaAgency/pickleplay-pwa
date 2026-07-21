@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BottomSheet } from '../../../../shared/components/ui/BottomSheet';
 import { Button } from '../../../../shared/components/ui/Button';
 import type { ApiMatch, MatchFormat } from '../../../../shared/lib/api';
@@ -21,6 +21,15 @@ export function MatchScoreSheet({ open, onClose, match, matchFormat, onSubmit, o
   const [rows, setRows] = useState<{ a: string; b: string }[]>(() => Array.from({ length: count }, () => ({ a: '', b: '' })));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Re-seed the score grid every time the match changes or the sheet opens,
+  // since BottomSheet keeps children mounted and stale scores would persist.
+  useEffect(() => {
+    if (open && match) {
+      setRows(Array.from({ length: gamesForFormat(matchFormat) }, () => ({ a: '', b: '' })));
+      setError(null);
+    }
+  }, [open, match?.id, matchFormat]);
 
   const nameA = match?.entrantA?.displayName ?? 'TBD';
   const nameB = match?.entrantB?.displayName ?? 'TBD';

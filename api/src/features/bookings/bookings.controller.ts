@@ -317,8 +317,8 @@ const createSchema = z.object({
   sessionId: z.string().optional(),
   eventId: z.string().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   playerCount: z.number().int().min(1).max(50).optional().default(1),
   amount: z.string().or(z.number()),
   paymentMethod: z.string().optional(),
@@ -681,6 +681,11 @@ export async function createBooking(c: any) {
   if (body.bookingType !== 'blocked' && body.bookingType !== 'open_play' && body.startTime && body.endTime) {
     const startH = Number(body.startTime.split(':')[0]);
     const endH = Number(body.endTime.split(':')[0]);
+    // Defense-in-depth: a non-finite hour count makes expectedTotal NaN, and
+    // `NaN > 1` is false — which would silently pass any client-chosen amount.
+    if (!Number.isFinite(startH) || !Number.isFinite(endH)) {
+      return c.json({ error: { code: 'INVALID_TIME', message: 'Invalid start or end time.' } }, 400);
+    }
     const hours = Math.max(1, endH - startH);
 
     // Read pricing mode from settings: 'start' (default) = start-time rate × hours;

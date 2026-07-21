@@ -37,6 +37,7 @@ export function WaitlistSection() {
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
@@ -151,11 +152,16 @@ export function WaitlistSection() {
                       type="button"
                       onClick={async () => {
                         setClaiming(e.id);
+                        setClaimError(null);
                         try {
                           await claimWaitlistSlot(e.id);
                           setReloadKey((k) => k + 1);
-                        } catch {
-                          // Error claiming — refetch to get latest state.
+                        } catch (err) {
+                          // Surface the failure (P20) — a claim is time-critical
+                          // and race-prone, so the user must know if it didn't work.
+                          setClaimError(err instanceof Error && /taken|expired|available/i.test(err.message)
+                            ? 'This slot was just taken. It may have gone to the next person.'
+                            : "Couldn't claim the slot. Please try again.");
                           setReloadKey((k) => k + 1);
                         } finally {
                           setClaiming(null);
@@ -168,6 +174,7 @@ export function WaitlistSection() {
                         ? <><span className="inline-flex animate-spin"><Icon name="spinner" size={14} /></span> Claiming…</>
                         : <><Icon name="check" size={14} /> Claim this slot</>}
                     </button>
+                    {claimError && <div className="mt-2 text-[12px] text-[var(--coral)] font-semibold">{claimError}</div>}
                   </div>
                 )}
 

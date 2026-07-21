@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { DEFAULT_ICON_OPTIONS } from '../../shared/lib/leafletIcons';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
@@ -61,15 +62,7 @@ const ROW_GRADIENTS = [
   'linear-gradient(135deg, #404756, #1a1d24)',
 ];
 
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const markerIcon = new L.Icon(DEFAULT_ICON_OPTIONS);
 
 // Shared mapping of an API venue → list-card fields (distance is layered on by
 // the caller, which knows whether a user location is set).

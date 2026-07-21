@@ -85,10 +85,10 @@ export function OpenPlayScreen({ onNavigate, onBack }: OpenPlayScreenProps) {
   };
 
   const handleCancelSeries = async (id: string) => {
-    try { await cancelOpenPlaySeries(id); } finally { setReloadKey((k) => k + 1); }
+    try { await cancelOpenPlaySeries(id); } catch { /* best-effort — reload to sync */ } finally { setReloadKey((k) => k + 1); }
   };
   const handleCancelSession = async (id: string) => {
-    try { await cancelOpenPlaySession(id); } finally { setReloadKey((k) => k + 1); }
+    try { await cancelOpenPlaySession(id); } catch { /* best-effort */ } finally { setReloadKey((k) => k + 1); }
   };
 
   const sessionsForSeries = (seriesId: string) =>

@@ -38,9 +38,13 @@ export function SessionRosterScreen({ sessionId, onBack }: SessionRosterScreenPr
   }, [sessionId, reloadKey]);
 
   const onManage = async (regId: string, body: ManageRegistrationBody) => {
-    await manageOpenPlayRegistration(sessionId, regId, body);
-    const fresh = await getOpenPlayRegistrations(sessionId);
-    setRoster(fresh);
+    try {
+      await manageOpenPlayRegistration(sessionId, regId, body);
+      const fresh = await getOpenPlayRegistrations(sessionId);
+      setRoster(fresh);
+    } catch {
+      setReloadKey((k) => k + 1);
+    }
   };
 
   const paidCount = roster.filter((r) => r.paid).length;

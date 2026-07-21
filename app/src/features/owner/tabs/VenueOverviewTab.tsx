@@ -45,6 +45,7 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
   const [reviews, setReviews] = useState<{ rating: number | null; count: number }>({ rating: null, count: 0 });
   const [counts, setCounts] = useState<Counts>({ courts: null, hoursDays: null, faqs: null });
+  const [fetchErrors, setFetchErrors] = useState<string[]>([]);
   const [revMode, setRevMode] = useState<RevenueBucket>('day');
 
   useEffect(() => {
@@ -59,14 +60,19 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
       listFaqs(venueId),
     ]).then(([a, b, r, courts, hours, faqs]) => {
       if (cancelled) return;
-      if (a.status === 'fulfilled') setAnalytics(a.value);
-      if (b.status === 'fulfilled') setBookings(b.value);
-      if (r.status === 'fulfilled') setReviews({ rating: r.value.rating, count: r.value.count });
+      const failed: string[] = [];
+      if (a.status === 'fulfilled') setAnalytics(a.value); else if (canAnalytics) failed.push('analytics');
+      if (b.status === 'fulfilled') setBookings(b.value); else if (canBookings) failed.push('bookings');
+      if (r.status === 'fulfilled') setReviews({ rating: r.value.rating, count: r.value.count }); else failed.push('reviews');
+      if (courts.status !== 'fulfilled') failed.push('courts');
+      if (hours.status !== 'fulfilled') failed.push('hours');
+      if (faqs.status !== 'fulfilled') failed.push('faqs');
       setCounts({
         courts: courts.status === 'fulfilled' ? courts.value.length : 0,
         hoursDays: hours.status === 'fulfilled' ? hours.value.filter((h) => !h.isClosed && h.openTime).length : 0,
         faqs: faqs.status === 'fulfilled' ? faqs.value.length : 0,
       });
+      setFetchErrors(failed);
     });
     return () => { cancelled = true; };
   }, [venueId, canAnalytics, canBookings]);
@@ -90,6 +96,13 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
 
   return (
     <div className="space-y-5">
+      {/* Partial-fetch warning — some data tiles may show zero/counts as 0. */}
+      {fetchErrors.length > 0 && (
+        <div className="text-[13px] text-[var(--warning)] px-1">
+          Couldn't load: {fetchErrors.join(', ')}. Pull to refresh.
+        </div>
+      )}
+
       {/* Booking link — first thing the owner sees, so they can share it instantly. */}
       <section className="card p-4">
         <div className="flex items-center justify-between mb-1">

@@ -100,8 +100,9 @@ export type Screen =
   | { id: 'admin-post-reports' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
   | { id: 'open-play-book'; params: { venueId: string } }
-  // Public flowchart viewer (no auth required).
-  | { id: 'flowchart' }
+  // Public plan-PDF viewer — lists the PDFs in the plan/ dir and previews them
+  // inline (no auth required).
+  | { id: 'plan-pdfs' }
   // Public full-screen venue map (no auth required).
   | { id: 'map' };
 
@@ -208,7 +209,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'admin-claims': return '/admin/claims';
     case 'admin-post-reports': return '/admin/post-reports';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
-    case 'flowchart': return '/flowchart';
+    case 'plan-pdfs': return '/plan-pdfs';
     case 'map': return '/map';
   }
   return '/';
@@ -356,7 +357,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'venue-requests') return { id: 'organizer-venue-requests', params: opt(sp.get('tournamentId')) ? { tournamentId: sp.get('tournamentId')! } : {} };
       return { id: 'organizer-hub' };
     case 'shop': return { id: 'owner-shop' };
-    case 'flowchart': return { id: 'flowchart' };
+    case 'plan-pdfs': return { id: 'plan-pdfs' };
     case 'map': return { id: 'map' };
     case 'admin':
       if (b === 'claims') return { id: 'admin-claims' };
@@ -399,7 +400,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'admin-claims') return { id: 'profile' };
   if (id === 'admin-post-reports') return { id: 'profile' };
   if (id === 'open-play-book') return { id: 'nearby' };
-  if (id === 'flowchart') return { id: 'home' };
+  if (id === 'plan-pdfs') return { id: 'home' };
   if (id === 'map') return { id: 'nearby' };
   // Friends now lives in the Social tab, not behind Profile.
   if (id === 'friends' || id === 'clubs' || id === 'social') return { id: 'home' };

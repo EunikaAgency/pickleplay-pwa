@@ -1,0 +1,428 @@
+<html><head><!-- frame-runtime --><base href="/_f/1784617591-eb6d/"><script>window.__FRAME_PREAMBLE={"capabilities":{"downloads":"downloads.BABDwU1K.js","mcp":"mcp.hoz5jxDa.js","permissions":"permissions.ByA9Fd8x.js","self":"self.D3u1zjZe.js","user":"user.Cp1-RnjB.js"},"transforms":"_transforms.DYk1Ltlh.js","comments":"_comments.Dp6RDy7J.js","translate":"_translate.C9eLA9Mu.js"}</script><script>(function(){"use strict";const we="modulepreload",Oe=function(e){return"/"+e},Se={},ee=function(t,n,c){let i=Promise.resolve();function s(f){const a=new Event("vite:preloadError",{cancelable:!0});if(a.payload=f,window.dispatchEvent(a),!a.defaultPrevented)throw f}return i.then(f=>{for(const a of f||[])a.status==="rejected"&&s(a.reason);return t().catch(s)})},te=["light","dark","system"];function ne(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function Y(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function re(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&te.includes(n)}function se(e){try{typeof reportError=="function"?reportError(e):setTimeout(()=>{throw e},0)}catch{}}const oe=Object.freeze(Object.assign(Object.create(null),{user:Object.freeze(Object.assign(Object.create(null),{id:null,isOwner:!1,canEdit:!1,name:null,avatarUrl:null,email:null}))})),ie={};function K(e){if(window===top||e.type==="auxclick"&&e.button!==1)return;const t=e.composedPath?e.composedPath():[e.target];let n=null;for(let f=0;f<t.length;f++){const a=t[f];if(a&&a.matches&&a.matches("a[href],area[href]")){n=a;break}}if(!n&&e.target&&e.target.closest&&(n=e.target.closest("a[href],area[href]")),!n)return;const c=n.getAttribute("href");if(!c)return;let i,s;try{i=new URL(c,document.baseURI),s=new URL(document.baseURI).origin}catch{return}(i.protocol==="http:"||i.protocol==="https:")&&i.origin!==s&&(e.preventDefault(),parent.postMessage({__frame_nav:!0,url:i.href},"*"))}const x={};function I(e){if(window===top)return;const t=Date.now();t-(x[e]||0)<500||(x[e]=t,parent.postMessage({__frame_engaged:!0,kind:e},"*"))}const ae=2e3,J=["wheel","touchstart","touchmove","keydown","pointerdown"];let G=0;function ce(e){e.isTrusted&&(G=Date.now())}function le(){addEventListener("click",K,!0),addEventListener("auxclick",K,!0)}function ue(){for(let e=0;e<J.length;e++)addEventListener(J[e],ce,{capture:!0,passive:!0});addEventListener("scroll",e=>{e.isTrusted&&Date.now()-G<ae&&I("scroll")},{capture:!0,passive:!0}),addEventListener("pointermove",e=>{e.isTrusted&&I("pointer")},{capture:!0,passive:!0}),addEventListener("click",e=>{e.isTrusted&&I("click")},{capture:!0,passive:!0})}const U="__frame_scroll",fe=150,de=310,pe=160,me=3e4;function he(){let e=0,t=!1,n=!1,c=!1,i=0;const s=p=>{try{sessionStorage.setItem(U,JSON.stringify({y:p}))}catch{}},f=()=>{if(t){t=!1;return}n=!0,clearTimeout(e),e=setTimeout(()=>s(scrollY),fe)};try{addEventListener("scroll",f,{passive:!0}),addEventListener("pagehide",()=>{clearTimeout(e),s(scrollY)})}catch{}const a=()=>{let p;try{p=sessionStorage.getItem(U)}catch{return null}if(p===null)return null;let b;try{b=JSON.parse(p)}catch{b=null}const l=b?.y;if(!(typeof l=="number"&&Number.isFinite(l)&&l>=0)){try{sessionStorage.removeItem(U)}catch{}return null}return l};let _=!1;const h=p=>{try{const b=scrollY;scrollTo({top:p,left:0,behavior:"instant"}),i=p,c=!0,s(p);const l=scrollY;l!==b&&(t=!0),l!==p&&!_&&(_=!0,addEventListener("load",()=>{try{if(scrollY===l){const g=a();h(g!==null?g:i)}}catch{}},{once:!0}))}catch{}},o=()=>{try{return!!location.hash}catch{return!0}};let u=!1;const d=()=>{try{if(u||innerWidth>de||innerHeight>pe)return;u=!0;const p=Date.now(),b=()=>{try{removeEventListener("resize",b)}catch{}if(Date.now()-p>me||n||o())return;const l=a();h(l!==null?l:i)};addEventListener("resize",b)}catch{}};let m=!1,y=!1;return{restore(){if(m||(m=!0,o()))return;const p=a();p!==null&&(h(p),d())},promoted(){if(y||(y=!0,o()))return;const p=a();p!==null?(h(p),d()):c&&h(i)}}}function ge(e,t,n){const c=[...t.values()].filter(i=>i.targets.some(s=>s.startsWith(e+".")));return{wrap(i,s){const f=`${e}.${i}`,a=c.filter(_=>_.targets.includes(f));return a.length===0?(..._)=>{try{return s(..._)}catch(h){return Promise.reject(h)}}:(..._)=>{let h=_;for(const u of a){const d=u.module.parameters;if(d)try{h=d(h)}catch{return Promise.reject({code:"transform_error",id:u.id,scope:e,message:"parameters transform failed"})}}let o;try{o=s(...h)}catch(u){o=Promise.reject(u)}return o.then(u=>{for(let d=a.length-1;d>=0;d--){const m=a[d],y=m.module.returns;if(y)try{u=y(u)}catch{return n({id:m.id,scope:e,leg:"returns"}),u}}return u},u=>{for(let d=a.length-1;d>=0;d--){const m=a[d],y=m.module.throws;if(y)try{u=y(u)}catch{return n({id:m.id,scope:e,leg:"throws"}),Promise.reject(u)}}return Promise.reject(u)})}}}}function _e(e,t,n,c=()=>{}){const i=new Set(e.changes??[]),s=new Map;for(const f of i){const a=t[f];a&&s.set(f,a)}return{contract:e.contract,changes:i,flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:s,shellOrigin:n.shellOrigin,mount:n.mount,pipe:f=>ge(f,s,c)}}(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let c=0;for(let i=0;i<n.length;i++){const s=n[i];try{e(t,s,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[s]}catch{}try{e(t,s,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[s]=="function"&&c++}if(c&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:c},"*")}catch{}})();const ye=1e4,be=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function V(e){for(const t of be)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}const T=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),z=window.__FRAME_PREAMBLE?.transforms,q=window.__FRAME_PREAMBLE?.comments,$=window.__FRAME_PREAMBLE?.translate,C=/^[\w.-]+\.js$/,ve=/^[a-z][a-z0-9_-]{0,63}$/;let X=null,P=null;function B(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}let F=!1;function Q(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,F=!0):F&&(delete t.dataset.theme,t.style.colorScheme="",F=!1)}const M=Object.assign(Object.create(null),{mcp:Object.assign(Object.create(null),{watchTool:{handlerArg:3}})}),R=new Map;function Z(e,t){const n=R.get(e);if(!n)return;const c=Object.assign(Object.create(null),t);Object.assign(n.impl,c),n.impl.__settled=()=>Promise.reject({code:"capability_removed",message:`${e}: method not in this runtime`});const i=n.queue;n.queue=[];for(const s of i){const f=c[s.method];if(f)if(M[e]?.[s.method])try{s.resolve(f(...s.args))}catch{k(s,M[e][s.method].handlerArg,{code:"transform_error",message:`${e}.${s.method} rejected its arguments`})}else f(...s.args).then(s.resolve,s.reject);else{const a={code:"capability_removed",message:`${e}.${s.method} is not in this runtime`},_=M[e]?.[s.method];if(_){k(s,_.handlerArg,a);continue}s.reject(a)}}}function Ee(e,t){const n=R.get(e);if(!n)return;n.impl.__settled=()=>Promise.reject(t);const c=n.queue;n.queue=[];for(const i of c){const s=M[e]?.[i.method];if(s){k(i,s.handlerArg,t);continue}i.reject(t)}}function N(e,t){const n=oe[e];if(!n){Ee(e,t);return}Z(e,Object.fromEntries(Object.entries(n).map(([c,i])=>[c,()=>Promise.resolve(i)])))}function k(e,t,n){if(e.syncState?.dead)return;const c=e.args[t];typeof c=="function"&&queueMicrotask(()=>{if(!e.syncState?.dead)try{c({type:"error",error:n})}catch(i){se(i)}})}const H=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(H&&H.writable===!1)){le(),ue();let e=null;try{e=he()}catch{}const t=H?.value??{};B(window,"claude",t);const n=o=>{const u={impl:Object.create(null),queue:[]};R.set(o,u);const d=u.impl,m=ie[o],y=m===void 0?d:()=>{},p=new Proxy(y,{apply:(b,l,g)=>{const v=m,O=d[v]??d.__settled;return O?O(...g):new Promise((E,w)=>{u.queue.push({method:v,args:g,resolve:E,reject:w})})},get:(b,l)=>{if(typeof l!="string"||l==="then"||l==="toJSON"||l==="valueOf")return;if(l==="toString")return Object.prototype.toString;if(m!==void 0&&(l==="call"||l==="apply"||l==="bind"))return Function.prototype[l];const g=M[o]?.[l];return g?(...v)=>{if(typeof v[g.handlerArg]!="function")throw new TypeError(`${o}.${l} requires a handler function`);const O=d[l];if(O)return O(...v);if(d.__settled){const S={dead:!1},A={args:[...v],syncState:S};return d.__settled().catch(D=>k(A,g.handlerArg,D)),()=>{S.dead=!0}}let E=null;const w={dead:!1};return u.queue.push({method:l,args:v,resolve:S=>{E=typeof S=="function"?S:null,w.dead&&E?.()},reject:()=>{},syncState:w}),()=>{w.dead=!0,E?.()}}:(...v)=>{const O=d[l]??d.__settled;return O?O(...v):new Promise((E,w)=>{u.queue.push({method:l,args:v,resolve:E,reject:w})})}},set:()=>!1});B(t,o,p)};for(const o of Object.keys(T)){if(t[o]!==void 0){B(t,o,t[o]);continue}n(o)}let c=null,i=null,s=0;const f=o=>{o.source!==parent||!V(o.origin)||ne(o.data)&&(c=o.data.__frame_init,P=o.origin,removeEventListener("message",f),clearTimeout(s),i?.())};addEventListener("message",f),parent.postMessage({__frame_connect:!0},"*");const a=new Promise(o=>{i=o,s=setTimeout(()=>{removeEventListener("message",f),o()},ye)}),_=document.readyState==="loading"?new Promise(o=>document.addEventListener("DOMContentLoaded",()=>o(),{once:!0})):Promise.resolve();_.then(()=>{try{e?.restore()}catch{}});const h=o=>{if(!(o.source!==parent||!V(o.origin))&&Y(o.data)){removeEventListener("message",h);try{e?.promoted()}catch{}}};addEventListener("message",h),a.then(async()=>{if(!c||!P){for(const r of R.keys())N(r,{code:"not_granted",message:"frame initialization did not arrive - capability unavailable"});return}Q(c.theme);const o=P;let u=!1,d=!1;addEventListener("message",r=>{if(r.source!==parent||r.origin!==o)return;re(r.data)&&Q(r.data.__frame_theme.theme);const j=r.data?.__fc_mode;j&&typeof j=="object"&&!u&&q&&C.test(q)&&(u=!0,m(q).then(W=>W.install?.(o,j.on===!0)).catch(()=>{}));const L=r.data?.__ft_cmd;L&&typeof L=="object"&&!d&&$&&C.test($)&&(d=!0,m($).then(W=>W.install?.(o,L)).catch(()=>{}))});const m=r=>ee(()=>import("/_runtime/"+r),void 0),y=Object.keys(c.capabilities??{});for(const r of y)Object.hasOwn(T,r)||ve.test(r)&&t[r]===void 0&&(n(r),N(r,{code:"capability_disabled",message:"capability not in this runtime generation"}));const p=y.filter(r=>Object.hasOwn(T,r)).map(r=>[r,T[r]]).filter(r=>typeof r[1]=="string"&&C.test(r[1])),[b,...l]=await Promise.allSettled([z&&C.test(z)?m(z):Promise.resolve({}),...p.map(([,r])=>m(r))]),g=P;X=_e(c,b.status==="fulfilled"&&b.value?.TRANSFORMS||{},{shellOrigin:g,mount:Z},r=>parent.postMessage({__frame_cap_telemetry:r},g));const v=r=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:r}},g),O=X;l.forEach((r,j)=>{const L=p[j][0];if(r.status!=="fulfilled"){v(L);return}try{r.value?.install?.(O)}catch{v(L)}});for(const[r,j]of R)if(!(j.queue.length===0&&Object.keys(j.impl).length>0)){if(y.includes(r)){N(r,{code:"capability_disabled",message:"capability not available in this session"});continue}N(r,{code:"not_granted",message:"capability not available in this session"})}await _,parent.postMessage({__frame_ready:!0},P);let E=-1,w=0;const S=()=>{w=0;const r=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);r!==E&&(E=r,parent.postMessage({__frame_size:!0,h:r},g))},A=()=>{w||(w=setTimeout(S,200))},D=new ResizeObserver(A);D.observe(document.documentElement),document.body&&D.observe(document.body),document.addEventListener("load",A,!0),document.fonts?.ready.then(A,()=>{}),addEventListener("beforeprint",()=>{E=-1,S()}),A(),addEventListener("message",r=>{if(!(r.source!==parent||r.origin!==g)&&Y(r.data)){try{e?.promoted()}catch{}E=-1,A()}})})}})();</script><!-- /frame-runtime --><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>PickleBallers — Launch Task Board (21 Jul 2026)</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --surface-2: #eef1f5;
+    --ink: #191f28;
+    --ink-2: #454e5b;
+    --muted: #6b7686;
+    --line: #dde2e9;
+    --line-strong: #cbd2dc;
+    --accent: #0d7d72;
+    --accent-soft: #d9efec;
+
+    /* severity semantics — the information system */
+    --sev-critical: #d63c3c;
+    --sev-defect:   #c9720a;
+    --sev-partial:  #b08600;
+    --sev-blocked:  #6d6af0;
+    --sev-verify:   #2f6fd6;
+    --sev-done:     #1f9d57;
+
+    --shadow: 0 1px 2px rgba(20,28,40,.05), 0 2px 8px rgba(20,28,40,.04);
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1218; --surface: #161c25; --surface-2: #1d2530;
+      --ink: #e9edf3; --ink-2: #b9c2ce; --muted: #8592a1;
+      --line: #262f3b; --line-strong: #33404f;
+      --accent: #34b9ab; --accent-soft: #123c39;
+      --sev-critical: #f0655f; --sev-defect: #e6963a; --sev-partial: #d7b038;
+      --sev-blocked: #9a97ff; --sev-verify: #63a0f5; --sev-done: #4dc684;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5;
+    --ink: #191f28; --ink-2: #454e5b; --muted: #6b7686;
+    --line: #dde2e9; --line-strong: #cbd2dc;
+    --accent: #0d7d72; --accent-soft: #d9efec;
+    --sev-critical: #d63c3c; --sev-defect: #c9720a; --sev-partial: #b08600;
+    --sev-blocked: #6d6af0; --sev-verify: #2f6fd6; --sev-done: #1f9d57;
+    --shadow: 0 1px 2px rgba(20,28,40,.05), 0 2px 8px rgba(20,28,40,.04);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1218; --surface: #161c25; --surface-2: #1d2530;
+    --ink: #e9edf3; --ink-2: #b9c2ce; --muted: #8592a1;
+    --line: #262f3b; --line-strong: #33404f;
+    --accent: #34b9ab; --accent-soft: #123c39;
+    --sev-critical: #f0655f; --sev-defect: #e6963a; --sev-partial: #d7b038;
+    --sev-blocked: #9a97ff; --sev-verify: #63a0f5; --sev-done: #4dc684;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* ---- header ---- */
+  header { margin-bottom: 22px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 2px; }
+  h1 {
+    font-size: clamp(26px, 4.5vw, 38px); line-height: 1.08; margin: 12px 0 10px;
+    letter-spacing: -.02em; text-wrap: balance; font-weight: 700;
+  }
+  .lede { color: var(--ink-2); font-size: 15px; max-width: 68ch; margin: 0; }
+  .meta {
+    margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px 16px;
+    font-size: 12.5px; color: var(--muted); font-family: var(--mono);
+  }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  /* ---- stat row ---- */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin: 22px 0 8px;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 13px 14px; box-shadow: var(--shadow);
+  }
+  .stat .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat .l { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .stat.crit .n { color: var(--sev-critical); }
+  .stat.new  .n { color: var(--accent); }
+  .stat.blk  .n { color: var(--sev-blocked); }
+  .stat.done .n { color: var(--sev-done); }
+
+  /* ---- controls ---- */
+  .controls {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 14px 0 12px; margin: 10px 0 4px;
+    border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  .filter {
+    font-family: var(--sans); font-size: 13px; font-weight: 550;
+    padding: 7px 13px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-2);
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .filter:hover { border-color: var(--accent); color: var(--ink); }
+  .filter[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  :root[data-theme="dark"] .filter[aria-pressed="true"],
+  @media (prefers-color-scheme: dark){ .filter[aria-pressed="true"] { color: #04110f; } }
+  .count { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  /* ---- section ---- */
+  section { margin-top: 30px; }
+  .sec-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 4px; }
+  .sec-head h2 { font-size: 18px; letter-spacing: -.01em; margin: 0; font-weight: 680; }
+  .sec-head .sub { font-size: 12.5px; color: var(--muted); }
+  .sec-rule { height: 1px; background: var(--line); margin: 10px 0 16px; }
+
+  /* ---- task card ---- */
+  .grid { display: flex; flex-direction: column; gap: 10px; }
+  .task {
+    position: relative; background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--sev, var(--line-strong));
+    border-radius: 10px; padding: 14px 16px 14px 16px; box-shadow: var(--shadow);
+  }
+  .task[data-sev="critical"] { --sev: var(--sev-critical); }
+  .task[data-sev="defect"]   { --sev: var(--sev-defect); }
+  .task[data-sev="partial"]  { --sev: var(--sev-partial); }
+  .task[data-sev="blocked"]  { --sev: var(--sev-blocked); }
+  .task[data-sev="verify"]   { --sev: var(--sev-verify); }
+  .task[data-sev="done"]     { --sev: var(--sev-done); }
+
+  .task-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 5px; white-space: nowrap;
+    color: #fff; background: var(--sev, var(--muted));
+  }
+  @media (prefers-color-scheme: dark){ .chip { color: #0c1017; } }
+  :root[data-theme="dark"] .chip { color: #0c1017; }
+  :root[data-theme="light"] .chip { color: #fff; }
+
+  .title { font-weight: 640; font-size: 15px; letter-spacing: -.005em; flex: 1; min-width: 220px; }
+  .src { display: inline-flex; gap: 5px; }
+  .tag {
+    font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
+  }
+  .tag.newt { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 600; }
+  .body { font-size: 13.5px; color: var(--ink-2); margin: 4px 0 0; }
+  .refs { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .ref {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--line);
+    padding: 2px 7px; border-radius: 5px;
+  }
+  .ref b { color: var(--accent); font-weight: 600; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+
+  details.done-block > summary {
+    cursor: pointer; font-weight: 640; font-size: 15px; list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.done-block > summary::-webkit-details-marker { display: none; }
+  details.done-block > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  details.done-block[open] > summary::before { transform: rotate(90deg); }
+
+  .empty { display: none; text-align: center; color: var(--muted); font-size: 14px; padding: 40px 0; }
+  footer { margin-top: 42px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  a { color: var(--accent); }
+  @media (max-width: 620px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Engineering triage · verified against live build + DB</div>
+    <h1>PickleBallers — Launch Task Board</h1>
+    <p class="lede">Consolidated open work for the end-of-July launch. Merges the remaining 17 July tasks, still-open items from the 20 July audit, and new findings from the 21 July audit — the last run by signing up as real players + an owner and driving the running app, not just reading code.</p>
+    <div class="meta">
+      <span><b>Compiled</b> 21 Jul 2026</span>
+      <span><b>Sources</b> 17 Jul list · 20 Jul audit · 21 Jul audit</span>
+      <span><b>Refs</b> app = /app · api = /api</span>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat crit"><div class="n">10</div><div class="l">Launch-critical</div></div>
+    <div class="stat new"><div class="n">13</div><div class="l">New on 21 Jul</div></div>
+    <div class="stat blk"><div class="n">8</div><div class="l">Blocked on client</div></div>
+    <div class="stat done"><div class="n">6</div><div class="l">Shipped since 17 Jul</div></div>
+  </div>
+
+  <div class="controls">
+    <button class="filter" data-f="all" aria-pressed="true">All</button>
+    <button class="filter" data-f="critical" aria-pressed="false">Launch-critical</button>
+    <button class="filter" data-f="new" aria-pressed="false">New 21 Jul</button>
+    <button class="filter" data-f="blocked" aria-pressed="false">Blocked</button>
+    <button class="filter" data-f="done" aria-pressed="false">Done</button>
+    <span class="count" id="count">47 of 47 shown</span>
+  </div>
+
+  <div class="legend" style="margin-bottom:18px">
+    <span><i class="dot" style="background:var(--sev-critical)"></i>Not built</span>
+    <span><i class="dot" style="background:var(--sev-defect)"></i>Defect / gap</span>
+    <span><i class="dot" style="background:var(--sev-partial)"></i>Partial</span>
+    <span><i class="dot" style="background:var(--sev-verify)"></i>Verify / test</span>
+    <span><i class="dot" style="background:var(--sev-blocked)"></i>Blocked</span>
+    <span><i class="dot" style="background:var(--sev-done)"></i>Done</span>
+  </div>
+
+  <div id="board"><section data-section="Launch-critical"><div class="sec-head"><h2>Launch-critical</h2><span class="sub">development — must ship or the core journey breaks</span></div><div class="sec-rule"></div><div class="grid"><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Pending-join state doesn’t survive a reload → re-tap → error</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">getGame and listGames serialize with no viewer id, so viewerPendingJoin is always false on reads; the app trusts that field. After any refetch the “Requested — waiting for the host” button reverts to an enabled “Request to join” and re-tapping 409s. One-line fix: pass the viewer’s id to serialize in both read handlers.</p><div class="refs"><span class="ref"><b>api</b> games.controller.ts:445</span><span class="ref"><b>api</b> games.controller.ts:362</span><span class="ref"><b>app</b> GameDetailsScreen.tsx:111</span></div></article><article class="task" data-sev="critical" data-new="1" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">No way to cancel a pending join request</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">No cancel route; POST /leave 404s for a non-participant; the “Requested” button has no cancel affordance. Add DELETE /:id/join (or branch leaveGame to pull pendingJoinUserIds) + a Cancel button.</p><div class="refs"><span class="ref"><b>app</b> GameDetailsScreen.tsx:726</span></div></article><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Hosts can’t edit a lobby on the V2 app</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">The only entry to edit-game is GameManageActions, mounted only in the V1 games/my-games screens; the V2 profile has no “My games” link. Name / size / gender / fee / approval toggle can’t be changed after creation. Wire an edit entry into the V2 surface.</p><div class="refs"><span class="ref"><b>app</b> GameManageActions.tsx:75</span><span class="ref"><b>app</b> GamesScreenV2.tsx</span></div></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Two people can book the same court at once (double-booking race)</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">Known, commented in code: the slot is checked, then written, and another booking can slip between. Highest trust-damage bug on the list; cheap fix (atomic check + write).</p><div class="refs"><span class="ref"><b>api</b> bookings.controller.ts</span></div></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Approval-needed bookings never expire; expiry only runs on screen-open</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">If an owner never responds, the hold sits forever and the court stays blocked. The stale-booking cleanup only runs when a player opens their bookings screen — nothing is scheduled. Add a scheduled sweep.</p></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Players are never told when a booking is rejected</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">No notification or email on rejection, and no “rejected” status distinct from “cancelled,” so the two can’t be told apart in reports. Add the status + a notification.</p></article><article class="task" data-sev="defect" data-new="0" data-blocked="1" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Payments only work in test mode; real mode grants paid roles free</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">appsettings is still paymentTestMode:true. In real mode, bookings would hang as “pending” and coach/organizer subscriptions would grant the role with no payment taken. Blocked on the payment decision.</p></article><article class="task" data-sev="critical" data-new="0" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">Senior / PWD discount pricing does not exist</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">Still 0 discount fields across all 107 venue prices. A 20% PH legal-compliance item, not a nicety. Needs a customer-category concept in venue pricing + both staff and self-service booking flows. Decided 20 Jul to build the full system.</p></article><article class="task" data-sev="defect" data-new="1" data-blocked="1" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Staff can see per-venue revenue in the PWA</span><span class="src"><span class="tag newt">21Jul-new</span><span class="tag ">20Jul</span></span></div><p class="body">VenueOverviewTab (analytics-gated, a permission staff hold) renders “Revenue this month” + a trend chart, and it isn’t in the front-desk hidden-tabs set. Price controls are also only UI-hidden, not blocked server-side. Blocked on the staff-money decision.</p><div class="refs"><span class="ref"><b>app</b> tabs/VenueOverviewTab.tsx:118</span></div></article><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="1" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Owner payout details can’t be entered</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">OwnerSettlementsScreen is fully built but unreachable — its only nav trigger is commented out. Owners can’t add a bank/GCash payout method or see what they’re owed. Uncomment / add the entry.</p><div class="refs"><span class="ref"><b>app</b> OwnerHomeScreen.tsx:176</span></div></article></div></section><section data-section="Important"><div class="sec-head"><h2>Important</h2><span class="sub">owner &amp; coach journeys can’t complete end-to-end</span></div><div class="sec-rule"></div><div class="grid"><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Orphaned owner tools — built, imported by zero files</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">WeeklyHoursEditor (set court hours), ClosuresEditorTab (holiday closures), SlotPricingTab (surge/slot pricing) and BookingsInboxTab are all built but reachable from nowhere. OwnerNewVenueScreen advertises hours + closures that have no UI. Mount them into the venue tabs.</p><div class="refs"><span class="ref"><b>app</b> WeeklyHoursEditor.tsx</span><span class="ref"><b>app</b> ClosuresEditorTab.tsx</span><span class="ref"><b>app</b> SlotPricingTab.tsx</span></div></article><article class="task" data-sev="partial" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Partial</span><span class="title">“Search-before-create” for new venues still not built</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span><span class="tag newt">21Jul</span></span></div><p class="body">OwnerNewVenueScreen shows only a static “claim it instead” banner and does no name lookup before createVenue — duplicates remain possible. (ClaimVenueScreen does search, correctly.)</p><div class="refs"><span class="ref"><b>app</b> OwnerNewVenueScreen.tsx:170</span></div></article><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">New tournaments dead-end at draft</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">Create has no venue field; “Request a venue” has no receiving/approval side in the app, so a tournament never reaches approved and registration can’t open. The 43 live tournaments are all seeded open, which hides this.</p><div class="refs"><span class="ref"><b>app</b> CreateTournamentScreen.tsx</span><span class="ref"><b>app</b> TournamentDetailScreen.tsx:171</span></div></article><article class="task" data-sev="critical" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">No coach profile editor</span><span class="src"><span class="tag newt">21Jul-new</span><span class="tag ">20Jul</span></span></div><p class="body">Subscribe says “set up your profile,” but the only coach self-service screen is rates; createMyCoach is never called, and bio/photo/specialty/certs/languages have no editor. Coach reviews aren’t wired in the app either. And no one (incl. admin) can move a paid coach from unverified/unlisted → visible.</p><div class="refs"><span class="ref"><b>app</b> CoachPricingScreen.tsx:96</span><span class="ref"><b>api</b> createMyCoach (unused)</span></div></article><article class="task" data-sev="critical" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">No earnings visibility / real collection for organizers &amp; coaches</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">Open-Play/tournament “paid” is a manual peso toggle — no charge, receipt, or earnings screen. A player who books a coach has no screen to see/manage/pay the booking, and no “mark complete.”</p><div class="refs"><span class="ref"><b>app</b> ParticipantRow.tsx:86</span><span class="ref"><b>app</b> CoachBookingsScreen.tsx</span></div></article><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Organizer applicant routed to the wrong paywall</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">An unsubscribed user applying to organize lands on the ₱499 coach subscribe screen instead of the ₱999 organizer one.</p><div class="refs"><span class="ref"><b>app</b> CourtDetailsScreen.tsx:471</span></div></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Finished features hidden behind disabled menus</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">The organizer Tournaments section and the Venue Requests screen are built and then hidden behind a disabled menu — turn on or remove.</p></article><article class="task" data-sev="critical" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">BIR official-receipt screen for owners never built</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">Back end is finished; the screen was never built. The tracking sheet incorrectly marks this done.</p></article><article class="task" data-sev="verify" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Verify</span><span class="title">17 owner features “built but not tested”</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">venuestaffs still has 0 rows — the staff role has never been exercised end-to-end. Testing time must be scheduled, not squeezed out of the end.</p></article></div></section><section data-section="Polish / correctness"><div class="sec-head"><h2>Polish / correctness</h2><span class="sub">mostly not launch-blocking</span></div><div class="sec-rule"></div><div class="grid"><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Silent failures swallow errors</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">Club join, onboarding skill/address save, and open-play cancel all fail without any feedback to the user.</p><div class="refs"><span class="ref"><b>app</b> ClubsPanel.tsx:75</span><span class="ref"><b>app</b> OnboardingScreen.tsx:59</span></div></article><article class="task" data-sev="critical" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">No email-verification flow in the app</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">The backend supports it; the app client never calls it — accounts are usable with unverified/typo’d emails, which then breaks password reset.</p></article><article class="task" data-sev="defect" data-new="1" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Invite on an organizer Open Play session posts to the Game endpoint</span><span class="src"><span class="tag newt">21Jul-new</span></span></div><p class="body">InvitePlayersSheet is mounted with a session id but calls inviteToGame (a Game route). Largely dormant post-merge, but wrong — remove or repoint.</p><div class="refs"><span class="ref"><b>app</b> OpenPlayDetailScreen.tsx:403</span></div></article><article class="task" data-sev="verify" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Verify</span><span class="title">Mobile map still clumps pins; full-screen map unreachable</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">Pin clustering not done; FullMapScreen exists but nothing navigates to it (and it’s non-interactive).</p></article><article class="task" data-sev="verify" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Verify</span><span class="title">Duplicate “Book Court” navigation</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">Four map/venue screens and two booking screens; Home “Book Court” and the Nearby tab land on the same screen.</p></article><article class="task" data-sev="verify" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Verify</span><span class="title">Filters don’t persist; switching Open Play/Events wipes them</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">Small fix; the filters themselves are complete. The hidden-filter-menu WIP is now committed — verify on a real phone.</p></article><article class="task" data-sev="critical" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Not built</span><span class="title">Missing booking endings</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">No-shows unhandled; refunds show “processing” but don’t process; a weekday→weekend move charges no price difference; walk-ins leave a stray ₱0 slot tag.</p></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Most notifications aren’t connected</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">The system works, but only a couple of events fire one — no confirm / cancel / paid / refund / expiry notifications.</p></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Player-created game shows a price the joiner doesn’t pay</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">It reads as though joining costs ₱350. A live hazard in any demo.</p></article><article class="task" data-sev="partial" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Partial</span><span class="title">“Events” tab shows player games, not organizer tournaments</span><span class="src"><span class="tag ">20Jul</span></span></div><p class="body">Decide: move tournaments in, or rename the tab.</p></article><article class="task" data-sev="defect" data-new="0" data-blocked="0" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Defect</span><span class="title">Brand colours duplicated in ~8 places</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">Centralize before Marvin’s redesign lands (worst offenders are the owner screens). Plus a general performance / redundant-component pass.</p></article></div></section><section data-section="Blocked on the client / business"><div class="sec-head"><h2>Blocked on the client / business</h2><span class="sub">can’t finish without a decision or an asset</span></div><div class="sec-rule"></div><div class="grid"><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Bank / merchant / compliance requirements</span><span class="src"><span class="tag ">17Jul</span></span></div></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Payment decision — GCash manual vs semi-auto vs full gateway</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">Who collects, when the platform takes its cut. Blocks payments, join fees, refunds, and payouts.</p></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Latest venue AND court spreadsheet</span><span class="src"><span class="tag ">17Jul</span><span class="tag ">20Jul</span></span></div><p class="body">The one provided is empty (headings, no rows), so the DB has venues but no real courts — booking can’t be tested against real data.</p></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Previous competitive research + product documents</span><span class="src"><span class="tag ">17Jul</span></span></div></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Finalize Marvin’s UI direction</span><span class="src"><span class="tag ">17Jul</span></span></div><p class="body">Blocks the redesign; the app is already set up to theme centrally once direction arrives.</p></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Confirm commission / revenue-sharing rules</span><span class="src"><span class="tag ">17Jul</span></span></div></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Confirm the coach &amp; organizer business model</span><span class="src"><span class="tag ">17Jul</span></span></div></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Complete the manual player-journey audit</span><span class="src"><span class="tag ">17Jul</span></span></div></article></div></section><section data-section="Decisions needed"><div class="sec-head"><h2>Decisions needed</h2><span class="sub">not code — someone must call these</span></div><div class="sec-rule"></div><div class="grid"><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Can venue staff see their venue’s money?</span><span class="src"><span class="tag ">17Jul → now urgent</span></span></div><p class="body">As shipped, the answer is yes (staff can open a single venue’s revenue + trend chart). The meeting said no; the code deliberately grants owner.analytics.view. Settle which wins — it’s live today.</p></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">Scope disagreement between our own documents</span><span class="src"><span class="tag ">17Jul</span></span></div><p class="body">The 15 Jul plan lists “staff permission levels” as left-for-later; the 16 Jul meeting treats them as required.</p></article><article class="task" data-sev="blocked" data-new="0" data-blocked="1" data-critical="0" data-done="0"><div class="task-top"><span class="chip">Blocked</span><span class="title">The meeting’s 17 open questions remain</span><span class="src"><span class="tag ">17Jul</span></span></div><p class="body">Payment collection, commission timing, coach/venue financial arrangement, coach/organizer verification, refund/no-show behaviour, senior/PWD rate config.</p></article></div></section><section data-section="Done"><details class="done-block"><summary>Shipped since 17 July — do not re-do (6)</summary><div class="grid" style="margin-top: 14px;"><article class="task" data-sev="done" data-new="0" data-blocked="0" data-critical="0" data-done="1"><div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">Open Play request → approval → capacity → lobby → chat — shipped, live-verified 21 Jul.</span></div></article><article class="task" data-sev="done" data-new="0" data-blocked="0" data-critical="0" data-done="1"><div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">Open Play merge / clean-slate — openplaysessions 0; 78/87 games on a booked court.</span></div></article><article class="task" data-sev="done" data-new="0" data-blocked="0" data-critical="0" data-done="1"><div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">Capacity + gender/skill guards enforced server-side — verified (403 on a women-only join).</span></div></article><article class="task" data-sev="done" data-new="0" data-blocked="0" data-critical="0" data-done="1"><div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">Admin kill-switches — allowNonOrganizerEvents + allowPlayerApprovalLobbies, both ON.</span></div></article><article class="task" data-sev="done" data-new="0" data-blocked="0" data-critical="0" data-done="1"><div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">Venue ownership linked — all 102 venues now have an owner (were 0); claim pipeline works.</span></div></article><article class="task" data-sev="done" data-new="0" data-blocked="0" data-critical="0" data-done="1"><div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">Owner dashboards live · staff blocked from cross-venue reports · hidden mobile filter menu fixed · List/Map slide-up · Social fully real.</span></div></article></div></details></section></div>
+  <p class="empty" id="empty" style="display: none;">No tasks match this filter.</p>
+
+  <footer>Generated from tasks/2026-07-21-open-tasks.md · file:line references point at the live source tree.</footer>
+</div>
+
+<script>
+  const SEV = { critical:"Not built", defect:"Defect", partial:"Partial", blocked:"Blocked", verify:"Verify", done:"Done" };
+  const T = (t) => ({ critical:false, defect:false, partial:false, blocked:false, verify:false, done:false, ...t });
+
+  const DATA = [
+    { group:"Launch-critical", sub:"development — must ship or the core journey breaks", items:[
+      { sev:"defect", title:"Pending-join state doesn’t survive a reload → re-tap → error", new:true, src:["21Jul-new"],
+        body:"getGame and listGames serialize with no viewer id, so viewerPendingJoin is always false on reads; the app trusts that field. After any refetch the “Requested — waiting for the host” button reverts to an enabled “Request to join” and re-tapping 409s. One-line fix: pass the viewer’s id to serialize in both read handlers.",
+        refs:["api · games.controller.ts:445", "api · games.controller.ts:362", "app · GameDetailsScreen.tsx:111"] },
+      { sev:"critical", title:"No way to cancel a pending join request", new:true, src:["21Jul-new"],
+        body:"No cancel route; POST /leave 404s for a non-participant; the “Requested” button has no cancel affordance. Add DELETE /:id/join (or branch leaveGame to pull pendingJoinUserIds) + a Cancel button.",
+        refs:["app · GameDetailsScreen.tsx:726"] },
+      { sev:"defect", title:"Hosts can’t edit a lobby on the V2 app", new:true, src:["21Jul-new"],
+        body:"The only entry to edit-game is GameManageActions, mounted only in the V1 games/my-games screens; the V2 profile has no “My games” link. Name / size / gender / fee / approval toggle can’t be changed after creation. Wire an edit entry into the V2 surface.",
+        refs:["app · GameManageActions.tsx:75", "app · GamesScreenV2.tsx"] },
+      { sev:"defect", title:"Two people can book the same court at once (double-booking race)", src:["20Jul"],
+        body:"Known, commented in code: the slot is checked, then written, and another booking can slip between. Highest trust-damage bug on the list; cheap fix (atomic check + write).",
+        refs:["api · bookings.controller.ts"] },
+      { sev:"defect", title:"Approval-needed bookings never expire; expiry only runs on screen-open", src:["20Jul"],
+        body:"If an owner never responds, the hold sits forever and the court stays blocked. The stale-booking cleanup only runs when a player opens their bookings screen — nothing is scheduled. Add a scheduled sweep." },
+      { sev:"defect", title:"Players are never told when a booking is rejected", src:["20Jul"],
+        body:"No notification or email on rejection, and no “rejected” status distinct from “cancelled,” so the two can’t be told apart in reports. Add the status + a notification." },
+      { sev:"defect", title:"Payments only work in test mode; real mode grants paid roles free", src:["20Jul"],
+        body:"appsettings is still paymentTestMode:true. In real mode, bookings would hang as “pending” and coach/organizer subscriptions would grant the role with no payment taken. Blocked on the payment decision.", blocked:true },
+      { sev:"critical", title:"Senior / PWD discount pricing does not exist", src:["17Jul","20Jul"],
+        body:"Still 0 discount fields across all 107 venue prices. A 20% PH legal-compliance item, not a nicety. Needs a customer-category concept in venue pricing + both staff and self-service booking flows. Decided 20 Jul to build the full system." },
+      { sev:"defect", title:"Staff can see per-venue revenue in the PWA", new:true, src:["21Jul-new","20Jul"],
+        body:"VenueOverviewTab (analytics-gated, a permission staff hold) renders “Revenue this month” + a trend chart, and it isn’t in the front-desk hidden-tabs set. Price controls are also only UI-hidden, not blocked server-side. Blocked on the staff-money decision.", blocked:true,
+        refs:["app · tabs/VenueOverviewTab.tsx:118"] },
+      { sev:"defect", title:"Owner payout details can’t be entered", new:true, src:["21Jul-new"],
+        body:"OwnerSettlementsScreen is fully built but unreachable — its only nav trigger is commented out. Owners can’t add a bank/GCash payout method or see what they’re owed. Uncomment / add the entry.",
+        refs:["app · OwnerHomeScreen.tsx:176"] },
+    ]},
+
+    { group:"Important", sub:"owner & coach journeys can’t complete end-to-end", items:[
+      { sev:"defect", title:"Orphaned owner tools — built, imported by zero files", new:true, src:["21Jul-new"],
+        body:"WeeklyHoursEditor (set court hours), ClosuresEditorTab (holiday closures), SlotPricingTab (surge/slot pricing) and BookingsInboxTab are all built but reachable from nowhere. OwnerNewVenueScreen advertises hours + closures that have no UI. Mount them into the venue tabs.",
+        refs:["app · WeeklyHoursEditor.tsx", "app · ClosuresEditorTab.tsx", "app · SlotPricingTab.tsx"] },
+      { sev:"partial", title:"“Search-before-create” for new venues still not built", new:true, src:["17Jul","20Jul","21Jul"],
+        body:"OwnerNewVenueScreen shows only a static “claim it instead” banner and does no name lookup before createVenue — duplicates remain possible. (ClaimVenueScreen does search, correctly.)",
+        refs:["app · OwnerNewVenueScreen.tsx:170"] },
+      { sev:"defect", title:"New tournaments dead-end at draft", new:true, src:["21Jul-new"],
+        body:"Create has no venue field; “Request a venue” has no receiving/approval side in the app, so a tournament never reaches approved and registration can’t open. The 43 live tournaments are all seeded open, which hides this.",
+        refs:["app · CreateTournamentScreen.tsx", "app · TournamentDetailScreen.tsx:171"] },
+      { sev:"critical", title:"No coach profile editor", new:true, src:["21Jul-new","20Jul"],
+        body:"Subscribe says “set up your profile,” but the only coach self-service screen is rates; createMyCoach is never called, and bio/photo/specialty/certs/languages have no editor. Coach reviews aren’t wired in the app either. And no one (incl. admin) can move a paid coach from unverified/unlisted → visible.",
+        refs:["app · CoachPricingScreen.tsx:96", "api · createMyCoach (unused)"] },
+      { sev:"critical", title:"No earnings visibility / real collection for organizers & coaches", new:true, src:["21Jul-new"],
+        body:"Open-Play/tournament “paid” is a manual peso toggle — no charge, receipt, or earnings screen. A player who books a coach has no screen to see/manage/pay the booking, and no “mark complete.”",
+        refs:["app · ParticipantRow.tsx:86", "app · CoachBookingsScreen.tsx"] },
+      { sev:"defect", title:"Organizer applicant routed to the wrong paywall", new:true, src:["21Jul-new"],
+        body:"An unsubscribed user applying to organize lands on the ₱499 coach subscribe screen instead of the ₱999 organizer one.",
+        refs:["app · CourtDetailsScreen.tsx:471"] },
+      { sev:"defect", title:"Finished features hidden behind disabled menus", src:["20Jul"],
+        body:"The organizer Tournaments section and the Venue Requests screen are built and then hidden behind a disabled menu — turn on or remove." },
+      { sev:"critical", title:"BIR official-receipt screen for owners never built", src:["20Jul"],
+        body:"Back end is finished; the screen was never built. The tracking sheet incorrectly marks this done." },
+      { sev:"verify", title:"17 owner features “built but not tested”", src:["17Jul","20Jul"],
+        body:"venuestaffs still has 0 rows — the staff role has never been exercised end-to-end. Testing time must be scheduled, not squeezed out of the end." },
+    ]},
+
+    { group:"Polish / correctness", sub:"mostly not launch-blocking", items:[
+      { sev:"defect", title:"Silent failures swallow errors", new:true, src:["21Jul-new"],
+        body:"Club join, onboarding skill/address save, and open-play cancel all fail without any feedback to the user.",
+        refs:["app · ClubsPanel.tsx:75", "app · OnboardingScreen.tsx:59"] },
+      { sev:"critical", title:"No email-verification flow in the app", new:true, src:["21Jul-new"],
+        body:"The backend supports it; the app client never calls it — accounts are usable with unverified/typo’d emails, which then breaks password reset." },
+      { sev:"defect", title:"Invite on an organizer Open Play session posts to the Game endpoint", new:true, src:["21Jul-new"],
+        body:"InvitePlayersSheet is mounted with a session id but calls inviteToGame (a Game route). Largely dormant post-merge, but wrong — remove or repoint.",
+        refs:["app · OpenPlayDetailScreen.tsx:403"] },
+      { sev:"verify", title:"Mobile map still clumps pins; full-screen map unreachable", src:["17Jul","20Jul"],
+        body:"Pin clustering not done; FullMapScreen exists but nothing navigates to it (and it’s non-interactive)." },
+      { sev:"verify", title:"Duplicate “Book Court” navigation", src:["17Jul","20Jul"],
+        body:"Four map/venue screens and two booking screens; Home “Book Court” and the Nearby tab land on the same screen." },
+      { sev:"verify", title:"Filters don’t persist; switching Open Play/Events wipes them", src:["20Jul"],
+        body:"Small fix; the filters themselves are complete. The hidden-filter-menu WIP is now committed — verify on a real phone." },
+      { sev:"critical", title:"Missing booking endings", src:["20Jul"],
+        body:"No-shows unhandled; refunds show “processing” but don’t process; a weekday→weekend move charges no price difference; walk-ins leave a stray ₱0 slot tag." },
+      { sev:"defect", title:"Most notifications aren’t connected", src:["20Jul"],
+        body:"The system works, but only a couple of events fire one — no confirm / cancel / paid / refund / expiry notifications." },
+      { sev:"defect", title:"Player-created game shows a price the joiner doesn’t pay", src:["20Jul"],
+        body:"It reads as though joining costs ₱350. A live hazard in any demo." },
+      { sev:"partial", title:"“Events” tab shows player games, not organizer tournaments", src:["20Jul"],
+        body:"Decide: move tournaments in, or rename the tab." },
+      { sev:"defect", title:"Brand colours duplicated in ~8 places", src:["17Jul","20Jul"],
+        body:"Centralize before Marvin’s redesign lands (worst offenders are the owner screens). Plus a general performance / redundant-component pass." },
+    ]},
+
+    { group:"Blocked on the client / business", sub:"can’t finish without a decision or an asset", items:[
+      { sev:"blocked", title:"Bank / merchant / compliance requirements", src:["17Jul"], blocked:true, body:"" },
+      { sev:"blocked", title:"Payment decision — GCash manual vs semi-auto vs full gateway", src:["17Jul","20Jul"], blocked:true,
+        body:"Who collects, when the platform takes its cut. Blocks payments, join fees, refunds, and payouts." },
+      { sev:"blocked", title:"Latest venue AND court spreadsheet", src:["17Jul","20Jul"], blocked:true,
+        body:"The one provided is empty (headings, no rows), so the DB has venues but no real courts — booking can’t be tested against real data." },
+      { sev:"blocked", title:"Previous competitive research + product documents", src:["17Jul"], blocked:true, body:"" },
+      { sev:"blocked", title:"Finalize Marvin’s UI direction", src:["17Jul"], blocked:true, body:"Blocks the redesign; the app is already set up to theme centrally once direction arrives." },
+      { sev:"blocked", title:"Confirm commission / revenue-sharing rules", src:["17Jul"], blocked:true, body:"" },
+      { sev:"blocked", title:"Confirm the coach & organizer business model", src:["17Jul"], blocked:true, body:"" },
+      { sev:"blocked", title:"Complete the manual player-journey audit", src:["17Jul"], blocked:true, body:"" },
+    ]},
+
+    { group:"Decisions needed", sub:"not code — someone must call these", items:[
+      { sev:"blocked", title:"Can venue staff see their venue’s money?", src:["17Jul → now urgent"], blocked:true,
+        body:"As shipped, the answer is yes (staff can open a single venue’s revenue + trend chart). The meeting said no; the code deliberately grants owner.analytics.view. Settle which wins — it’s live today." },
+      { sev:"blocked", title:"Scope disagreement between our own documents", src:["17Jul"], blocked:true,
+        body:"The 15 Jul plan lists “staff permission levels” as left-for-later; the 16 Jul meeting treats them as required." },
+      { sev:"blocked", title:"The meeting’s 17 open questions remain", src:["17Jul"], blocked:true,
+        body:"Payment collection, commission timing, coach/venue financial arrangement, coach/organizer verification, refund/no-show behaviour, senior/PWD rate config." },
+    ]},
+  ];
+
+  const DONE = [
+    "Open Play request → approval → capacity → lobby → chat — shipped, live-verified 21 Jul.",
+    "Open Play merge / clean-slate — openplaysessions 0; 78/87 games on a booked court.",
+    "Capacity + gender/skill guards enforced server-side — verified (403 on a women-only join).",
+    "Admin kill-switches — allowNonOrganizerEvents + allowPlayerApprovalLobbies, both ON.",
+    "Venue ownership linked — all 102 venues now have an owner (were 0); claim pipeline works.",
+    "Owner dashboards live · staff blocked from cross-venue reports · hidden mobile filter menu fixed · List/Map slide-up · Social fully real.",
+  ];
+
+  const board = document.getElementById("board");
+  DATA.forEach(sec => {
+    const s = document.createElement("section");
+    s.dataset.section = sec.group;
+    s.innerHTML = `<div class="sec-head"><h2>${sec.group}</h2><span class="sub">${sec.sub}</span></div><div class="sec-rule"></div>`;
+    const grid = document.createElement("div"); grid.className = "grid";
+    sec.items.forEach(it => {
+      const el = document.createElement("article");
+      el.className = "task";
+      el.dataset.sev = it.sev;
+      el.dataset.new = it.new ? "1" : "0";
+      el.dataset.blocked = it.blocked ? "1" : "0";
+      el.dataset.critical = (sec.group === "Launch-critical") ? "1" : "0";
+      el.dataset.done = "0";
+      const tags = (it.src||[]).map(x => `<span class="tag ${/21Jul/.test(x)?'newt':''}">${x}</span>`).join("");
+      const refs = (it.refs||[]).map(r => {
+        const m = r.split(" · ");
+        return `<span class="ref">${m[0]?`<b>${m[0]}</b> `:""}${m[1]||r}</span>`;
+      }).join("");
+      el.innerHTML =
+        `<div class="task-top"><span class="chip">${SEV[it.sev]}</span>` +
+        `<span class="title">${it.title}</span><span class="src">${tags}</span></div>` +
+        (it.body ? `<p class="body">${it.body}</p>` : "") +
+        (refs ? `<div class="refs">${refs}</div>` : "");
+      grid.appendChild(el);
+    });
+    s.appendChild(grid);
+    board.appendChild(s);
+  });
+
+  // done block
+  const dsec = document.createElement("section");
+  dsec.dataset.section = "Done";
+  const det = document.createElement("details");
+  det.className = "done-block";
+  det.innerHTML = `<summary>Shipped since 17 July — do not re-do (${DONE.length})</summary>`;
+  const dg = document.createElement("div"); dg.className = "grid"; dg.style.marginTop = "14px";
+  DONE.forEach(d => {
+    const el = document.createElement("article");
+    el.className = "task"; el.dataset.sev = "done";
+    el.dataset.new="0"; el.dataset.blocked="0"; el.dataset.critical="0"; el.dataset.done="1";
+    el.innerHTML = `<div class="task-top"><span class="chip">Done</span><span class="title" style="font-weight:560">${d}</span></div>`;
+    dg.appendChild(el);
+  });
+  det.appendChild(dg); dsec.appendChild(det); board.appendChild(dsec);
+
+  // filters
+  const buttons = [...document.querySelectorAll(".filter")];
+  const countEl = document.getElementById("count");
+  const emptyEl = document.getElementById("empty");
+  function apply(f) {
+    buttons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.f === f)));
+    let shown = 0, total = 0;
+    document.querySelectorAll(".task").forEach(t => {
+      total++;
+      let vis = true;
+      if (f === "critical") vis = t.dataset.critical === "1";
+      else if (f === "new") vis = t.dataset.new === "1";
+      else if (f === "blocked") vis = t.dataset.blocked === "1";
+      else if (f === "done") vis = t.dataset.done === "1";
+      t.style.display = vis ? "" : "none";
+      if (vis) shown++;
+    });
+    // hide empty sections + auto-open done block when filtering to it
+    document.querySelectorAll("section[data-section]").forEach(s => {
+      const any = [...s.querySelectorAll(".task")].some(t => t.style.display !== "none");
+      s.style.display = any ? "" : "none";
+    });
+    const db = document.querySelector("details.done-block");
+    if (db) db.open = (f === "done" || f === "all") ? db.open : false;
+    if (f === "done" && db) db.open = true;
+    countEl.textContent = `${shown} of ${total} shown`;
+    emptyEl.style.display = shown === 0 ? "block" : "none";
+  }
+  buttons.forEach(b => b.addEventListener("click", () => apply(b.dataset.f)));
+  apply("all");
+</script>
+
+</body></html>

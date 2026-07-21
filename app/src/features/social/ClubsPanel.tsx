@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { V2ScreenChrome } from '../../shared/components/layout/V2Chrome';
+import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { V2Skeleton } from '../../shared/components/ui/V2Skeleton';
 import { listClubs, joinClub, apiImageUrl, type ApiClub } from '../../shared/lib/api';
 import { getInitials } from '../../shared/lib/initials';
@@ -20,6 +21,7 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
   const [allCursor, setAllCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -39,8 +41,8 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
     // re-run we update results in place rather than flashing the skeleton.
     const search = debouncedQuery || undefined;
     Promise.all([
-      listClubs({ search }).catch(() => ({ items: [], cursor: null })),
-      isLoggedIn ? listClubs({ mine: true, search }).catch(() => ({ items: [], cursor: null })) : Promise.resolve({ items: [], cursor: null }),
+      listClubs({ search }).catch(() => { setError(true); return { items: [], cursor: null }; }),
+      isLoggedIn ? listClubs({ mine: true, search }).catch(() => { setError(true); return { items: [], cursor: null }; }) : Promise.resolve({ items: [], cursor: null }),
     ])
       .then(([a, m]) => {
         if (!alive) return;
@@ -151,6 +153,8 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
 
         {loading ? (
           <V2Skeleton variant="club-list" count={5} />
+        ) : error ? (
+          <ErrorState message="Couldn't load clubs." onRetry={() => { setError(false); setLoading(true); }} />
         ) : (
           <>
             {/* MY CLUBS */}

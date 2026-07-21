@@ -20,6 +20,7 @@ interface EditClubScreenProps {
  */
 export function EditClubScreen({ clubId, onBack }: EditClubScreenProps) {
   const [status, setStatus] = useState<'loading' | 'error' | 'notfound' | 'forbidden' | 'ready'>('loading');
+  const [reloadKey, setReloadKey] = useState(0);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
@@ -60,7 +61,7 @@ export function EditClubScreen({ clubId, onBack }: EditClubScreenProps) {
         setStatus(e && /404|not found/i.test(String(e.message)) ? 'notfound' : 'error');
       });
     return () => { alive = false; };
-  }, [clubId]);
+  }, [clubId, reloadKey]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -103,7 +104,7 @@ export function EditClubScreen({ clubId, onBack }: EditClubScreenProps) {
     return <div className="scroll safe-top safe-bottom"><EmptyState icon="lock" title="You can't edit this club" description="Only the club host can edit its details." action={{ label: 'Back', onPress: onBack }} /></div>;
   }
   if (status === 'error') {
-    return <div className="scroll safe-top safe-bottom"><ErrorState title="Couldn't load this club" message="We couldn't fetch the club to edit. Tap to retry." onRetry={() => { setStatus('loading'); }} /></div>;
+    return <div className="scroll safe-top safe-bottom"><ErrorState title="Couldn't load this club" message="We couldn't fetch the club to edit. Tap to retry." onRetry={() => { setStatus('loading'); setReloadKey((k) => k + 1); }} /></div>;
   }
 
   return (

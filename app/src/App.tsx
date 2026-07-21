@@ -60,7 +60,7 @@ import { MembersScreen } from './features/profile/MembersScreen';
 import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
 import { AdminPostReportsScreen } from './features/admin/AdminPostReportsScreen';
 import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
-import FlowchartPage from './features/flowchart/FlowchartPage';
+import PlanPdfsPage from './features/plan-pdfs/PlanPdfsPage';
 import { FullMapScreen } from './features/venues/FullMapScreen';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
 import { TournamentsScreen } from './features/organizer/tournaments/TournamentsScreen';
@@ -77,6 +77,7 @@ import { Sidebar } from './shared/components/layout/Sidebar';
 import { InstallPrompt } from './shared/components/ui/InstallPrompt';
 import { OfflineBanner } from './shared/components/ui/OfflineBanner';
 import { AuthPromptSheet } from './shared/components/ui/AuthPromptSheet';
+import { ErrorBoundary } from './shared/components/ui/ErrorBoundary';
 import { DemoStateControl } from './shared/components/ui/DemoStateControl';
 import { DemoStateProvider, useDemoState } from './shared/lib/demoState';
 import { userHasPermission, type Permission } from './shared/lib/permissions';
@@ -368,6 +369,8 @@ function AppInner() {
     // — the user clicked a link from an email, not a cold app launch.
     const path = window.location.pathname;
     if (path.startsWith('/reset-password') || path.startsWith('/forgot-password')) return false;
+    // /plan-pdfs is a standalone public report viewer — no launch splash.
+    if (path.startsWith('/plan-pdfs')) return false;
     try { return sessionStorage.getItem(SPLASH_KEY) !== '1'; } catch { return true; }
   });
   const dismissSplash = () => {
@@ -548,7 +551,7 @@ function AppInner() {
   const canShowCreate = true;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
-  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'flowchart', 'map'].includes(screen.id);
+  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'plan-pdfs', 'map'].includes(screen.id);
   // Guests get the full chrome while browsing — that's how they roam the app.
   // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
   // app's mobile TabBar (and the install prompt riding above it) are suppressed.
@@ -824,8 +827,8 @@ function AppInner() {
         return <AdminPostReportsScreen onNavigate={navigate} onBack={goBack} />;
       case 'open-play-book':
         return <OpenPlayBookScreen key={screen.params.venueId} venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
-      case 'flowchart':
-        return <FlowchartPage />;
+      case 'plan-pdfs':
+        return <PlanPdfsPage />;
       case 'map':
         return <FullMapScreen />;
       default:
@@ -846,7 +849,7 @@ function AppInner() {
         <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} onOpenPostReports={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-post-reports') : undefined} postReportsActive={screen.id === 'admin-post-reports'} onOpenClaims={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-claims') : undefined} claimsActive={screen.id === 'admin-claims'} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
       )}
 
-      <main className="app-main">{renderScreen()}</main>
+      <main className="app-main"><ErrorBoundary>{renderScreen()}</ErrorBoundary></main>
 
       {showTabBar && (
         <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} isOrganizer={isOrganizer} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isAdmin={isAdmin} />

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { DEFAULT_ICON_OPTIONS } from '../../../shared/lib/leafletIcons';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { DateTimeFilterBar } from './DateTimeFilterBar';
@@ -28,15 +29,7 @@ const VISIBLE = 30;
 const MAP_FALLBACK_CENTER: [number, number] = [14.5995, 120.9842];
 
 // Leaflet's default pin (served from unpkg, matching the v1 Nearby map).
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const markerIcon = new L.Icon(DEFAULT_ICON_OPTIONS);
 
 // Always returns a `backgroundImage` (the photo, else a gradient). We must NOT
 // mix this with the `background` shorthand in the same style object: React sets
@@ -166,6 +159,8 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
   const [all, setAll] = useState<ApiVenue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>(canLocate ? 'distance' : 'rating');
   // Where we sort from. A live device fix wins; otherwise the home coordinates
@@ -229,12 +224,14 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   // Load the full venue set once (distance ranking needs every venue, not one page).
   useEffect(() => {
     let alive = true;
+    setLoading(true);
+    setLoadError(false);
     listAllVenues()
       .then((items) => { if (alive) setAll(items); })
-      .catch(() => { if (alive) setAll([]); })
+      .catch(() => { if (alive) { setAll([]); setLoadError(true); } })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, []);
+  }, [reloadKey]);
 
   // "Near me": drop the list to focus the map, then zoom/centre on the user and
   // surface the nearest court (the framing + popup happen in FrameMap, keyed off
@@ -535,6 +532,11 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
             {loading ? (
               <V2Skeleton variant="court-list" count={5} />
+            ) : loadError && all.length === 0 ? (
+              <div className="feat-meta" style={{ textAlign: 'center', padding: '16px 0' }}>
+                Couldn't load courts.{' '}
+                <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>Try again</button>
+              </div>
             ) : visible.length === 0 ? (
               <p className="feat-meta">No courts found{query ? ` for “${query}”` : ''}.</p>
             ) : (

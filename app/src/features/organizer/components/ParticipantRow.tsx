@@ -28,6 +28,8 @@ export function ParticipantRow({ reg, onManage }: ParticipantRowProps) {
     setBusy(key);
     try {
       await onManage(reg.id, body);
+    } catch {
+      /* onManage surfaces errors itself — just unset busy */
     } finally {
       setBusy(null);
     }

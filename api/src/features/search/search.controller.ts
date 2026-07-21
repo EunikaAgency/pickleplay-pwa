@@ -5,6 +5,13 @@ import { User } from '../auth/auth.model.js';
 import { Game, INVITABLE_ROLE } from '../games/games.model.js';
 import { Club } from '../clubs/clubs.model.js';
 
+// Escape regex metacharacters so a user query is matched literally — an
+// unbalanced `(`/`[` would throw (500) and a crafted `(a+)+$` would pin the
+// event loop (ReDoS). See A4.
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 const searchQuery = z.object({
   q: z.string().min(1).optional(),
   // A single type narrows the result to that entity; `all` returns the full
@@ -38,7 +45,7 @@ async function searchVenues(q: string) {
       if (rows.length > 0) return rows.map((r: any) => ({ ...r, id: r._id }));
     } catch { /* text index not available */ }
   }
-  const regex = new RegExp(q, 'i');
+  const regex = new RegExp(escapeRegex(q), 'i');
   const rows = await Venue.find({
     $or: [{ displayName: regex }, { area: regex }, { description: regex }],
   }).limit(10).lean();
@@ -59,7 +66,7 @@ async function searchCoaches(q: string) {
       if (rows.length > 0) return rows.map((r: any) => ({ ...r, id: r._id }));
     } catch { /* text index not available */ }
   }
-  const regex = new RegExp(q, 'i');
+  const regex = new RegExp(escapeRegex(q), 'i');
   const rows = await Coach.find({
     $or: [{ displayName: regex }, { specialty: regex }, { bio: regex }],
   }).limit(10).lean();
@@ -77,7 +84,7 @@ async function searchPlayers(
 ) {
   const filter: Record<string, any> = {};
   if (q) {
-    const regex = new RegExp(q, 'i');
+    const regex = new RegExp(escapeRegex(q), 'i');
     filter.$or = [{ displayName: regex }, { firstName: regex }, { lastName: regex }];
   }
   if (opts?.excludeUserId) filter._id = { $ne: opts.excludeUserId };
@@ -106,7 +113,7 @@ async function searchPlayers(
  *  render-ready card shape (with derived spots-left). Invite-only and cancelled
  *  games are excluded — search only surfaces things you can actually join. */
 async function searchGames(q: string) {
-  const regex = new RegExp(q, 'i');
+  const regex = new RegExp(escapeRegex(q), 'i');
   const rows = await Game.find({
     visibility: 'public',
     status: { $ne: 'cancelled' },
@@ -136,7 +143,7 @@ async function searchGames(q: string) {
 /** Find public clubs by name or description. Returns a lean card shape keyed by
  *  slug (the app/web club routes resolve either slug or id). */
 async function searchClubs(q: string) {
-  const regex = new RegExp(q, 'i');
+  const regex = new RegExp(escapeRegex(q), 'i');
   const rows = await Club.find({
     visibility: 'public',
     isDeleted: { $ne: true },

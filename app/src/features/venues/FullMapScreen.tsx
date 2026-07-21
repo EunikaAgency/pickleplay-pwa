@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
+import { DEFAULT_ICON_OPTIONS } from '../../shared/lib/leafletIcons';
 import { listAllVenues, type ApiVenue } from '../../shared/lib/api';
 import { venueCoords } from '../../shared/lib/venueDisplay';
 
 // Metro Manila fallback centre
 const FALLBACK_CENTER: [number, number] = [14.5995, 120.9842];
 
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
+const markerIcon = new L.Icon(DEFAULT_ICON_OPTIONS);
 
 interface Pin {
   v: ApiVenue;

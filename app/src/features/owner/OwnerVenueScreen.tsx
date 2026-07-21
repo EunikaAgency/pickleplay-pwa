@@ -103,7 +103,7 @@ export function OwnerVenueScreen({ venueId: slug, initialTab, onNavigate, onBack
   };
 
   const reload = useCallback(() => {
-    getOwnerVenue(slug).then(setVenue).catch(() => {});
+    getOwnerVenue(slug).then(setVenue).catch(() => setStatus('error'));
   }, [slug]);
 
   // Back always leaves the venue screen (returns to wherever the owner came

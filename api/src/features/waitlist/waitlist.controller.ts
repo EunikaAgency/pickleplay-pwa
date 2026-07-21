@@ -131,7 +131,21 @@ export async function claimWaitlist(c: any) {
     return c.json({ error: { code: 'CONFLICT', message: 'This slot is no longer available — someone else may have claimed it' } }, 409);
   }
 
-  // Create a confirmed booking from the waitlist entry.
+  // Atomically flip the entry promoted → claimed (A8). If a concurrent request
+  // already claimed it, bail before creating a second booking.
+  const claimedEntry = await WaitlistEntry.findOneAndUpdate(
+    { _id: entry._id, status: 'promoted' },
+    { status: 'claimed' },
+  );
+  if (!claimedEntry) {
+    return c.json({ error: { code: 'CONFLICT', message: 'This slot was just claimed.' } }, 409);
+  }
+
+  // Create the booking as an UNPAID HOLD, not a free `confirmed` slot (A8): an
+  // `awaiting_payment` booking with a pay window still blocks the court, but it
+  // auto-expires (via the overdue sweeper) if the player never checks out —
+  // instead of holding a court indefinitely at ₱0.
+  const paymentDueAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour to pay
   const booking = await Booking.create({
     userId: user.sub,
     venueId: entry.venueId,
@@ -140,13 +154,11 @@ export async function claimWaitlist(c: any) {
     startTime: (entry as any).startTime,
     endTime: (entry as any).endTime,
     playerCount: (entry as any).playerCount ?? 1,
-    amount: 0, // will be set by checkout; waitlist claim creates an unpaid booking
-    status: 'confirmed',
+    amount: 0, // set at checkout
+    status: 'awaiting_payment',
+    paymentDueAt,
     notes: 'Claimed from waitlist',
   });
-
-  entry.status = 'claimed';
-  await entry.save();
 
   return c.json({ data: { bookingId: String(booking._id), status: 'claimed' } }, 201);
 }

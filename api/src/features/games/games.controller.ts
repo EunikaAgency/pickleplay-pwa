@@ -561,32 +561,38 @@ export async function joinGame(c: any) {
       const pendingPopulated = await Game.findById(id).populate(POPULATE).lean();
       return c.json({ data: serialize(pendingPopulated, user.sub) });
     }
-    if (game.participantIds.length >= seats(game)) {
+    const seatCount = seats(game);
+    if (game.participantIds.length >= seatCount) {
       return c.json({ error: { code: 'FULL', message: 'This game is full' } }, 409);
     }
-    const wasFull = game.status === 'full';
-    game.participantIds.push(user.sub);
-    // Drop any standing request of theirs: a host who switches requiresApproval off
-    // leaves the queue behind them, and without this the same player would sit on
-    // the roster AND in the host's pending list at once.
-    (game as any).pendingJoinUserIds = (((game as any).pendingJoinUserIds ?? []) as any[])
-      .filter((p: any) => String(p) !== user.sub);
-    // Remove from invitedUserIds since they've joined now.
-    (game as any).invitedUserIds = (game.invitedUserIds ?? []).filter((entry: any) => {
+    // Atomic seat claim (A6): only add the seat if there is still room AND the
+    // player isn't already on the roster. Two concurrent joins on the last seat
+    // (or a double-tap) can't both pass — the loser gets a clean 409 instead of
+    // over-filling the lobby or listing the same user twice.
+    const claimed = await Game.findOneAndUpdate(
+      { _id: id, $expr: { $lt: [{ $size: '$participantIds' }, seatCount] }, participantIds: { $ne: user.sub } },
+      { $addToSet: { participantIds: user.sub }, $pull: { pendingJoinUserIds: user.sub as any } },
+      { new: true },
+    );
+    if (!claimed) {
+      return c.json({ error: { code: 'FULL', message: 'This game is full' } }, 409);
+    }
+    const nowFull = claimed.participantIds.length >= seatCount;
+    // Second targeted update (not a full-doc save that could clobber a concurrent
+    // join): clear this player's stale invite + flip to 'full' on the transition.
+    const invitedCleaned = (claimed.invitedUserIds ?? []).filter((entry: any) => {
       const uid = typeof entry === 'object' && entry.user ? String(entry.user) : String(entry);
       return uid !== user.sub;
-    }) as any;
-    const nowFull = game.participantIds.length >= seats(game);
-    if (nowFull) {
-      game.status = 'full';
-      (game as any).fullAt = new Date(); // start the 1h free-leave countdown
-    }
-    await game.save();
+    });
+    const post: any = {};
+    if (invitedCleaned.length !== (claimed.invitedUserIds ?? []).length) post.invitedUserIds = invitedCleaned;
+    if (nowFull && claimed.status !== 'full') { post.status = 'full'; post.fullAt = new Date(); }
+    if (Object.keys(post).length) await Game.updateOne({ _id: id }, { $set: post });
     // Notify the host when someone other than them joins: the richer "lobby full"
     // message on the transition into full, otherwise a plain "player joined".
-    if (String(game.creatorId) !== user.sub) {
-      if (nowFull && !wasFull) await notifyHostLobbyFull(game);
-      else if (!nowFull) await notifyHostJoined(game, user.sub);
+    if (String(claimed.creatorId) !== user.sub) {
+      if (nowFull) await notifyHostLobbyFull(claimed);
+      else await notifyHostJoined(claimed, user.sub);
     }
   }
   const populated = await Game.findById(id).populate(POPULATE).lean();

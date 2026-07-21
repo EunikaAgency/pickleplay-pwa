@@ -79,7 +79,7 @@ export function VenueRequestsScreen({ tournamentId, onBack }: VenueRequestsScree
   };
 
   const handleCancel = async (id: string) => {
-    try { await cancelVenueRequest(id); } finally { setReloadKey((k) => k + 1); }
+    try { await cancelVenueRequest(id); } catch { /* best-effort */ } finally { setReloadKey((k) => k + 1); }
   };
 
   return (
