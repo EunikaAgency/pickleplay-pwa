@@ -1880,6 +1880,12 @@ export async function rejectJoinGame(id: string, userId: string): Promise<ApiGam
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/reject-join`, { method: 'POST', body: { userId }, auth: true });
 }
 
+/** Pending player withdraws their OWN join request (mirrors the host's reject,
+ *  but self-service). No seat was held, so this just drops them from the queue. */
+export async function cancelJoinGame(id: string): Promise<ApiGame> {
+  return request<ApiGame>(`${GAMES_PREFIX}/${id}/join`, { method: 'DELETE', auth: true });
+}
+
 /** Host removes a player from the roster. */
 export async function kickPlayer(id: string, userId: string): Promise<ApiGame> {
   return request<ApiGame>(`${GAMES_PREFIX}/${id}/kick`, { method: 'POST', body: { userId }, auth: true });

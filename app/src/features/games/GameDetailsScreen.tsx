@@ -12,7 +12,7 @@ import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { ShareLobbySheet } from '../../shared/components/ui/ShareLobbySheet';
 import { FeedComposerSheet } from '../social/FeedComposerSheet';
-import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, approveJoinGame, rejectJoinGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
+import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, approveJoinGame, rejectJoinGame, cancelJoinGame, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
@@ -120,6 +120,22 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
       setGame(updated);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Could not join this game.');
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  // Withdraw a pending join request on an approval-gated lobby. No seat was held,
+  // so this just drops the caller from the queue and re-opens the Request button.
+  const doCancelRequest = async () => {
+    if (!game) return;
+    setJoining(true);
+    setActionError(null);
+    try {
+      const updated = await cancelJoinGame(game.id);
+      setGame(updated);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not cancel your request.');
     } finally {
       setJoining(false);
     }
@@ -706,6 +722,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </button>
               )
             ) : (
+              <>
               <button
                 className={`btn-join ${blockedReason || viewerPendingJoin ? 'btn-locked' : ''}`}
                 onClick={handleJoin}
@@ -747,6 +764,16 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   </>
                 )}
               </button>
+              {viewerPendingJoin && !joining && (
+                <button
+                  type="button"
+                  onClick={doCancelRequest}
+                  className="mt-1.5 w-full text-center text-[13px] font-semibold text-[var(--muted)]"
+                >
+                  Cancel request
+                </button>
+              )}
+              </>
             )}
           </div>
 

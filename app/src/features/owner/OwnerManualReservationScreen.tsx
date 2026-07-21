@@ -14,7 +14,7 @@ import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import {
-  listCourts, getHours, listSlotOverrides, createVenueBooking, createSlotOverride, getVenueBookings, getVenueAvailability, ApiError,
+  listCourts, getHours, listSlotOverrides, createVenueBooking, createSlotOverride, getVenueBookings, ApiError,
   updateBookingStatus,
   type ApiBooking, type ApiVenue, type OwnerCourt, type VenueBookingPayload,
   type OwnerHourEntry, type SlotPriceOverride,
@@ -239,15 +239,13 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
         return;
       }
 
-      const availability = await getVenueAvailability(vref, date, courtId || undefined);
-      const startHour = Number(startTime.slice(0, 2));
-      const endHour = Number(endTime.slice(0, 2));
-      const hasUnavailableHour = Array.from({ length: Math.max(0, endHour - startHour) }, (_, idx) => startHour + idx)
-        .some((hour) => (availability.hours.find((entry) => entry.hour === hour)?.free ?? 0) <= 0);
-      if (hasUnavailableHour) {
-        setError('That court is already booked or unavailable for the selected time. Pick another slot.');
-        return;
-      }
+      // NOTE: we deliberately do NOT pre-check `getVenueAvailability` here. That
+      // endpoint treats the pricing-grid overrides as the venue's schedule — a
+      // date with no overrides reads as "closed" (every hour free: 0) — so it
+      // would false-positive "already booked" on any date the owner hasn't
+      // painted yet. The authoritative double-booking guard runs server-side in
+      // createVenueBooking (findSlotConflict → 409 SLOT_CONFLICT), surfaced below
+      // via mapBookingError; the Reserved/Maintenance grid overlap is caught above.
 
       // 1) The real reservation — server runs the same double-booking guard as the
       //    player checkout, so a conflict throws here before we paint anything.

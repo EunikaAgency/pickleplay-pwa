@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { optionalAuth, requireAuth } from '../../shared/middleware/auth.js';
 import {
-  createGame, getGame, joinGame, leaveGame, requestLeave, approveLeave, approveJoin, rejectJoin, toggleGameInterest, kickPlayer, listGames, updateGame, deleteGame,
+  createGame, getGame, joinGame, leaveGame, requestLeave, approveLeave, approveJoin, rejectJoin, cancelJoinRequest, toggleGameInterest, kickPlayer, listGames, updateGame, deleteGame,
   inviteToGame, declineInvite,
   listGameMessages, sendGameMessage,
 } from './games.controller.js';
@@ -24,6 +24,7 @@ gamesRoutes.post('/:id/approve-leave', requireAuth, approveLeave);  // host appr
 // can sidestep the gate by picking the other endpoint.
 gamesRoutes.post('/:id/approve-join', requireAuth, approveJoin);  // host admits a pending player
 gamesRoutes.post('/:id/reject-join', requireAuth, rejectJoin);    // host declines a pending player
+gamesRoutes.delete('/:id/join', requireAuth, cancelJoinRequest); // pending player withdraws their own request
 gamesRoutes.post('/:id/kick', requireAuth, kickPlayer);  // host removes a player
 gamesRoutes.post('/:id/invite', requireAuth, inviteToGame);    // participants invite players
 gamesRoutes.delete('/:id/invite', requireAuth, declineInvite); // decline an invite

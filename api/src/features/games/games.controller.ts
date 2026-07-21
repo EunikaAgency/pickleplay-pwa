@@ -359,7 +359,10 @@ export async function listGames(c: any) {
     .sort({ date: 1, createdAt: -1 })
     .limit(q.pageSize)
     .lean();
-  return c.json({ data: rows.map((r: any) => serialize(r)) });
+  // Pass the viewer so per-viewer fields (viewerPendingJoin, viewerLeaves) are
+  // computed on reads too — the mutation handlers already do this; the reads did
+  // not, so a pending player's state read false on every list/detail refetch.
+  return c.json({ data: rows.map((r: any) => serialize(r, user?.sub)) });
 }
 
 export async function createGame(c: any) {
@@ -442,7 +445,9 @@ export async function getGame(c: any) {
   }
   const row = await Game.findById(id).populate(POPULATE).lean();
   if (!row) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
-  return c.json({ data: serialize(row) });
+  // optionalAuth route: pass the viewer so viewerPendingJoin/viewerLeaves are
+  // correct on a fresh detail load (fixes the pending-join state vanishing on reload).
+  return c.json({ data: serialize(row, c.get('user')?.sub) });
 }
 
 /** A human label for a game, used in notification copy ("your <name> game"). */
@@ -819,6 +824,26 @@ export async function rejectJoin(c: any) {
   await notifyUser(userId, { type: 'game_join_rejected', title: 'Request declined', body: `The host declined your request to join ${gameLabel(game)}.`, icon: 'person_off', linkUrl: `/games/${String(game._id)}`, tag: `game-join-no-${String(game._id)}` });
   const populated = await Game.findById(id).populate(POPULATE).lean();
   return c.json({ data: serialize(populated, c.get('user')?.sub) });
+}
+
+/** A pending player withdraws their OWN join request (DELETE /:id/join). Mirrors
+ *  rejectJoin but the caller pulls their own id — no host check. A pending player
+ *  holds no seat, so this touches pendingJoinUserIds only: NO leaveLog write (that
+ *  would wrongly count toward the "left twice → 1h cooldown" in joinGame) and NO
+ *  capacity/status change. Idempotent-ish: 404 if the caller isn't pending. */
+export async function cancelJoinRequest(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const game = await Game.findById(id);
+  if (!game) return c.json({ error: { code: 'NOT_FOUND', message: 'Game not found' } }, 404);
+  const pend = ((game as any).pendingJoinUserIds ?? []) as any[];
+  if (!pend.some((p: any) => String(p) === user.sub)) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'You have no pending request on this game.' } }, 404);
+  }
+  (game as any).pendingJoinUserIds = pend.filter((p: any) => String(p) !== user.sub);
+  await game.save();
+  const populated = await Game.findById(id).populate(POPULATE).lean();
+  return c.json({ data: serialize(populated, user.sub) });
 }
 
 /** Host removes a player from the roster (can't kick yourself — use leave). */
