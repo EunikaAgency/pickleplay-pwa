@@ -284,3 +284,14 @@ export function userHasPermission(user: AppUser | null | undefined, permission: 
   if (!user) return false;
   return user.permissions.includes(permission);
 }
+
+/**
+ * The owner.* permissions an owner is allowed to toggle for a staff sub-account
+ * via the staff Access dropdown. Mirrors the api/ copy in shared/lib/permissions.ts.
+ */
+export const STAFF_GRANTABLE_PERMISSIONS: Array<{ key: string; label: string; icon: string }> = [
+  { key: 'owner.bookings.manage', label: 'Bookings', icon: 'event' },
+  { key: 'owner.pricing.manage', label: 'Pricing', icon: 'payments' },
+  { key: 'owner.analytics.view', label: 'Analytics', icon: 'bar_chart' },
+  { key: 'owner.venues.manage', label: 'Listing / Venues', icon: 'map' },
+];

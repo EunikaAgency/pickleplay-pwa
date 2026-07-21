@@ -409,7 +409,7 @@ export function listEndpoints(c: any) {
       name: 'Staff (owner sub-accounts)',
       endpoints: [
         { path: '/api/v1/staff', methods: ['GET', 'POST'], description: "Org-level staff accounts for the owner console. GET lists the owner's staff (admins may pass ?ownerUserId). POST creates a staff User (body { email, password, displayName, firstName?, lastName?, ownerUserId? (admins only) }) scoped via parentOwnerUserId — staff manage ALL of that owner's venues, bookings, and clubs but can't create staff or create/claim venues. Owner+admin only (owner.staff.manage)", auth: 'user' },
-        { path: '/api/v1/staff/:id', methods: ['PATCH', 'DELETE'], description: 'Manage one staff account (creating owner or admin). PATCH updates name / resets password / toggles isActive. DELETE removes the account outright (the login is deleted, not just disabled; scoped to staff sub-accounts only)', auth: 'user' },
+        { path: '/api/v1/staff/:id', methods: ['PATCH', 'DELETE'], description: 'Manage one staff account (creating owner or admin). PATCH updates name / resets password / toggles isActive / sets grantedPermissions (array of owner.* keys the staff member gets on top of base role — allowed values: owner.bookings.manage, owner.pricing.manage, owner.analytics.view, owner.venues.manage). DELETE removes the account outright (the login is deleted, not just disabled; scoped to staff sub-accounts only)', auth: 'user' },
       ],
     },
     {

@@ -312,3 +312,15 @@ export function effectiveOwnerId(
   if (user.parentOwnerId) return String(user.parentOwnerId);
   return user.sub ? String(user.sub) : null;
 }
+
+/**
+ * The owner.* permissions an owner is allowed to toggle for a staff sub-account
+ * via the staff Access dropdown. These are the only values accepted by
+ * PATCH /staff/:id's `grantedPermissions` field.
+ */
+export const STAFF_GRANTABLE_PERMISSIONS = [
+  'owner.bookings.manage',
+  'owner.pricing.manage',
+  'owner.analytics.view',
+  'owner.venues.manage',
+] as const;

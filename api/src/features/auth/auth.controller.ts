@@ -130,9 +130,13 @@ async function userManagesVenues(userId: any): Promise<boolean> {
 async function authUserPayload(user: any) {
   const roles = await getUserRoles(user);
   const livePlans = await livePartnerPlans(user._id);
+  // Staff sub-accounts can be granted extra permissions (e.g. pricing) by their
+  // creating owner. Those live on the User doc and are unioned in at auth time.
+  const grantedPermissions: string[] = (user as any).grantedPermissions ?? [];
   const permissions = [...new Set([
     ...resolveRolePermissions(roles),
     ...resolveSubscriptionPermissions(livePlans),
+    ...grantedPermissions,
   ])];
   // Build per-venue partner badges from venue-scoped UserRole grants (e.g.
   // "Coach at Quezon Smash Club"). These are what the app renders as role chips

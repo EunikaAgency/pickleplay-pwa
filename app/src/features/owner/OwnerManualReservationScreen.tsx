@@ -247,16 +247,23 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
     return set;
   }, [venueHours, date]);
 
-  // Courts with *every* open hour taken on the selected date — the picker greys
-  // these out and blocks selection, so the owner can't start a reservation on a
-  // court that has no room left that day. Needs the open-hours window to be known.
+  // Courts with *every bookable* open hour taken on the selected date — the
+  // picker greys these out and blocks selection, so the owner can't start a
+  // reservation on a court that has no room left that day. The last open hour is
+  // excluded from the check because the end-time picker (HourSelect, max=23:00)
+  // can never select an end time after the last open hour — that makes the last
+  // hour an unbookable start (start=23:00 would need end≥24:00 which the picker
+  // can't produce). Without this exclusion a full-day booking (00:00–23:00) on a
+  // 24h venue would leave hour 23 "free" in the map and keep the court lit.
   const fullyBookedCourtIds = useMemo(() => {
     const set = new Set<string>();
     if (!activeVenue || openHours.size === 0) return set;
+    const sorted = [...openHours].sort((a, b) => a - b);
+    const bookable = sorted.length > 1 ? sorted.slice(0, -1) : sorted; // drop last
     for (const c of courts) {
       const booked = bookedHoursForCourt(c.id, bookings, overrides, activeVenue.id, date);
       let full = true;
-      for (const h of openHours) if (!booked.has(h)) { full = false; break; }
+      for (const h of bookable) if (!booked.has(h)) { full = false; break; }
       if (full) set.add(c.id);
     }
     return set;

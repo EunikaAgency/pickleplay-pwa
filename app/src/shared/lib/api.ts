@@ -1267,6 +1267,8 @@ export interface StaffAccount {
   avatarUrl: string | null;
   isActive: boolean;
   parentOwnerUserId: string | null;
+  /** Permissions the creating owner has explicitly granted on top of the base staff-role set. */
+  grantedPermissions: string[];
   createdAt: string;
   lastLoginAt: string | null;
 }
@@ -1290,10 +1292,10 @@ export async function createStaffAccount(input: CreateStaffInput): Promise<Staff
   return request<StaffAccount>(STAFF_PREFIX, { method: 'POST', body: input, auth: true });
 }
 
-/** Update a staff account — rename, reset password, or activate/deactivate. */
+/** Update a staff account — rename, reset password, activate/deactivate, or set granted permissions. */
 export async function updateStaffAccount(
   staffId: string,
-  patch: { displayName?: string; firstName?: string; lastName?: string; password?: string; isActive?: boolean },
+  patch: { displayName?: string; firstName?: string; lastName?: string; password?: string; isActive?: boolean; grantedPermissions?: string[] },
 ): Promise<StaffAccount> {
   return request<StaffAccount>(`${STAFF_PREFIX}/${encodeURIComponent(staffId)}`, { method: 'PATCH', body: patch, auth: true });
 }

@@ -21,6 +21,14 @@ const createStaffSchema = z.object({
   ownerUserId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
 });
 
+/** Permissions an owner is allowed to toggle for a staff sub-account. */
+export const STAFF_GRANTABLE_PERMISSIONS = [
+  'owner.bookings.manage',
+  'owner.pricing.manage',
+  'owner.analytics.view',
+  'owner.venues.manage',
+] as const;
+
 const updateStaffSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
   firstName: z.string().max(50).optional(),
@@ -29,6 +37,10 @@ const updateStaffSchema = z.object({
   password: z.string().min(6).max(128).optional(),
   // Activate / deactivate. A deactivated staff member can't log in.
   isActive: z.boolean().optional(),
+  // Extra permissions the owner grants this staff member, on top of the base
+  // staff-role set. Only STAFF_GRANTABLE_PERMISSIONS are accepted; anything else
+  // is silently dropped. Pass an empty array to clear all grants.
+  grantedPermissions: z.array(z.string()).optional(),
 });
 
 const OBJECT_ID = /^[0-9a-fA-F]{24}$/;
@@ -43,6 +55,7 @@ function serializeStaff(u: any) {
     avatarUrl: u.avatarUrl ?? null,
     isActive: u.isActive !== false,
     parentOwnerUserId: u.parentOwnerUserId ?? null,
+    grantedPermissions: u.grantedPermissions ?? [],
     createdAt: u.createdAt,
     lastLoginAt: u.lastLoginAt ?? null,
   };
@@ -139,6 +152,11 @@ export async function updateStaff(c: any) {
   if (body.lastName !== undefined) staff.lastName = body.lastName || null;
   if (body.isActive !== undefined) staff.isActive = body.isActive;
   if (body.password !== undefined) staff.passwordHash = await bcrypt.hash(body.password, 12);
+  if (body.grantedPermissions !== undefined) {
+    // Only keep entries the owner is allowed to grant; silently drop unknowns.
+    const allowed = new Set<string>(STAFF_GRANTABLE_PERMISSIONS);
+    staff.grantedPermissions = (body.grantedPermissions as string[]).filter((p) => allowed.has(p));
+  }
   await staff.save();
   return c.json({ data: serializeStaff(staff.toObject()) });
 }

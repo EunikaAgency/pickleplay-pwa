@@ -111,7 +111,7 @@ function PendingRow({ row, onDone, notify, onOpen }: { row: OwnerBookingRow; onD
 // Inline v2.1 venue card (owner home only) — image/state badges, name/location,
 // court count, plus the optional business glance. Keeps OwnerVenuesScreen's
 // shared VenueCard untouched while the home dashboard wears the player design.
-function VenueGlanceCard({ venue, glance, onOpen }: { venue: ApiVenue; glance: Glance | null; onOpen: () => void }) {
+function VenueGlanceCard({ venue, glance, showRevenue, onOpen }: { venue: ApiVenue; glance: Glance | null; showRevenue: boolean; onOpen: () => void }) {
   const img = venueImage(venue);
   const state = venue.state || 'unclaimed';
   return (
@@ -136,7 +136,7 @@ function VenueGlanceCard({ venue, glance, onOpen }: { venue: ApiVenue; glance: G
             <>
               <span className="ohome-muted"><b className="tabular-nums">{glance.todayCount}</b> today</span>
               {glance.pendingCount > 0 && <span className="ohome-pending tabular-nums">{glance.pendingCount} pending</span>}
-              <span className="ohome-muted"><b className="tabular-nums">{money(glance.todayRevenue)}</b> today</span>
+              {showRevenue && <span className="ohome-muted"><b className="tabular-nums">{money(glance.todayRevenue)}</b> today</span>}
             </>
           )}
           <span className="ohome-venue-manage">Manage <Chevron /></span>
@@ -158,6 +158,9 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
   // The cross-venue report at /owner/reports is owner-only; staff work bookings
   // through the front desk, calendar, and per-venue inbox instead.
   const canReports = userHasPermission(user, 'owner.reports.view');
+  // Per-venue revenue is analytics-gated; staff no longer hold it (16 Jul meeting),
+  // so the glance card's "₱ today" is withheld from them.
+  const canAnalytics = userHasPermission(user, 'owner.analytics.view');
   const {
     venues, status, retry, combined, combinedRevenueDaily,
     monthBookings, structural, statsReady, glanceFor, pending, upcoming, removeBooking,
@@ -390,7 +393,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
             </div>
             <div className="ohome-venue-grid">
               {venues.slice(0, 6).map((v) => (
-                <VenueGlanceCard key={v.id || v.slug} venue={v} glance={glanceFor(v)} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
+                <VenueGlanceCard key={v.id || v.slug} venue={v} glance={glanceFor(v)} showRevenue={canAnalytics} onOpen={() => onNavigate('owner-venue', { id: v.slug || v.id })} />
               ))}
             </div>
           </section>

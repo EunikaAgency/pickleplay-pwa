@@ -1466,7 +1466,12 @@ export async function createSlotOverride(c: any) {
   const rawId = c.req.param('id');
   const venueId = await resolveVenueId(rawId);
   if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
-  if (!(await requireVenueManager(c, venueId))) return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner or staff can set slot pricing' } }, 403);
+  const role = await getVenueManagerRole(c, venueId);
+  if (!role) return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner or staff can set slot pricing' } }, 403);
+  // Staff must hold the explicit pricing permission (owners bypass).
+  if (role !== 'owner' && !hasPermission(c.get('user'), 'owner.pricing.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Staff need the Pricing permission to manage slot rates. Ask your owner to grant it.' } }, 403);
+  }
   const body = createSlotOverrideSchema.parse(await c.req.json());
   if (body.endTime <= body.startTime) return c.json({ error: { code: 'BAD_REQUEST', message: 'End time must be after the start time.' } }, 400);
   if (body.courtId) {
@@ -1484,7 +1489,11 @@ export async function deleteSlotOverride(c: any) {
   const id = c.req.param('id');
   const row = await SlotPriceOverride.findById(id);
   if (!row) return c.json({ error: { code: 'NOT_FOUND', message: 'Slot pricing not found' } }, 404);
-  if (!(await requireVenueManager(c, row.venueId.toString()))) return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner or staff can manage slot pricing' } }, 403);
+  const role = await getVenueManagerRole(c, row.venueId.toString());
+  if (!role) return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner or staff can manage slot pricing' } }, 403);
+  if (role !== 'owner' && !hasPermission(c.get('user'), 'owner.pricing.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Staff need the Pricing permission to manage slot rates. Ask your owner to grant it.' } }, 403);
+  }
   await SlotPriceOverride.findByIdAndDelete(id);
   return c.json({ data: { message: 'Slot pricing removed' } });
 }

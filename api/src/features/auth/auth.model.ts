@@ -33,6 +33,10 @@ export interface IUser {
   managedCoachId?: Types.ObjectId;
   /** For a staff sub-account: the owner who created it. Null/unset for everyone else. */
   parentOwnerUserId?: Types.ObjectId;
+  /** Permissions the creating owner has explicitly granted this staff member, on
+   *  top of the base staff-role permission set. Only meaningful on staff accounts.
+   *  These are unioned into the effective permission set at auth time. */
+  grantedPermissions?: string[];
   /** Set false to deactivate an account (a deactivated staff member can't log in). */
   isActive?: boolean;
   bio?: string;
@@ -104,8 +108,9 @@ const userSchema = new Schema({
   roleDefault:     { type: String, default: 'player' },
   coachId:         { type: Schema.Types.ObjectId },
   managedCoachId:  { type: Schema.Types.ObjectId },
-  parentOwnerUserId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
-  isActive:        { type: Boolean, default: true },
+  parentOwnerUserId:   { type: Schema.Types.ObjectId, ref: 'User', index: true },
+  grantedPermissions:  [{ type: String, maxlength: 50 }],
+  isActive:            { type: Boolean, default: true },
   bio:             String,
   isVerified:      { type: Boolean, default: false },
   privacySetting:  { type: String, default: 'public' },
