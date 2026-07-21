@@ -26,6 +26,18 @@ const bookingSchema = new Schema({
   paymentProofUrl:    String,
   // Deadline to pay once the owner approves a request-to-book (else it expires).
   paymentDueAt:       Date,
+  // When a `pending_approval` request auto-cancels because the owner never
+  // answered. Set at creation by `bookingDeadlines.computeApprovalDeadline`.
+  // NOT merely a display field: together with paymentDueAt it is the source of
+  // truth for whether this booking still occupies its slot — the occupancy
+  // queries compare it against `now` directly, so a lapsed request frees the
+  // court even if the sweeper never runs. Absent on rows predating the feature,
+  // which therefore never expire (see `blockingFilter`).
+  approvalDeadline:   Date,
+  // Which owner nudges have already gone out for this request ('50' | '80', at
+  // those fractions of the approval window). Claimed atomically before sending so
+  // restarts and multiple API instances can't double-notify.
+  remindersSent:      { type: [String], default: undefined },
   // Card captured at request time so paying after approval is one tap. Masked
   // only (brand + last4) — never the full PAN/CVC; a real gateway tokenises.
   savedCard:          { brand: { type: String, maxlength: 20 }, last4: { type: String, maxlength: 4 } },
@@ -78,6 +90,9 @@ const bookingSchema = new Schema({
 bookingSchema.index({ venueId: 1, date: 1 });
 bookingSchema.index({ userId: 1 });
 bookingSchema.index({ courtId: 1, date: 1, subUnitIndex: 1 });
+// Drives the expiry sweeper and the reminder pass, both of which query
+// outstanding requests by deadline.
+bookingSchema.index({ status: 1, approvalDeadline: 1 });
 
 export const Booking = model('Booking', bookingSchema);
 

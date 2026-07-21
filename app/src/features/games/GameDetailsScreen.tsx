@@ -46,6 +46,9 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const [decidingJoin, setDecidingJoin] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  // Paid Open Play: joining takes a seat the player is expected to pay for, so
+  // the fee is disclosed and confirmed before the seat is claimed.
+  const [feeConfirmOpen, setFeeConfirmOpen] = useState(false);
   // Set once the host deletes the lobby — keeps the post-delete success view up
   // (with the kept booking's id, for the refund/cancel hand-off) instead of
   // bouncing straight to the games list.
@@ -84,6 +87,9 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
   const participants = game?.participants ?? [];
   const isJoined = !!(game && me && participants.some((p) => p.id === me.id));
   const spotsLeft = game?.spotsLeft ?? 0;
+  // An organizer's Open Play can charge to join. 0/absent = free, which is what
+  // every player-hosted game is.
+  const entryFee = Number(game?.joinFee) > 0 ? Number(game?.joinFee) : null;
   const creatorId = game?.creatorId || game?.creator?.id;
   const isHost = !!(game && me && creatorId && me.id === creatorId);
   // The host can cancel (delete) their own game from inside the lobby — deleting
@@ -128,6 +134,15 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
     // enforces the re-join cooldown (leave twice → wait 1h) and returns a clear
     // message that lands in actionError.
     if (onRequireAuth && !onRequireAuth('join this game')) return;
+    // A seat in a paid Open Play costs money. Never claim it on a single tap —
+    // show what it costs and who collects it, and let the player back out.
+    if (entryFee != null) { setFeeConfirmOpen(true); return; }
+    void doJoin();
+  };
+
+  /** Confirmed the fee — close the sheet and take the seat. */
+  const confirmFeeAndJoin = () => {
+    setFeeConfirmOpen(false);
     void doJoin();
   };
 
@@ -627,8 +642,17 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
 
           <div className="sticky-cta">
             <div className="price">
-              <div className="eyebrow">{isJoined ? 'Your spot' : 'Open spots'}</div>
-              <div className="amount">{isJoined ? "You're in" : spotsLeft > 0 ? (game.bookingId ? 'Free' : spotsLeft) : 'Full'}</div>
+              <div className="eyebrow">{isJoined ? 'Your spot' : entryFee != null && spotsLeft > 0 ? 'Entrance fee' : 'Open spots'}</div>
+              {/* `Free` here means "the host already booked and paid for the court,
+                  so joining costs you nothing" — true until an organizer sets an
+                  entrance fee, which is what the joiner actually pays. */}
+              <div className="amount">
+                {isJoined ? "You're in"
+                  : spotsLeft <= 0 ? 'Full'
+                  : entryFee != null ? `₱${entryFee}`
+                  : game.bookingId ? 'Free'
+                  : spotsLeft}
+              </div>
             </div>
             {isHost ? (
               canManageGame ? (
@@ -758,6 +782,33 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </div>
             </div>
           </BottomSheet>
+
+          {entryFee != null && (
+          <BottomSheet open={feeConfirmOpen} onClose={() => setFeeConfirmOpen(false)} title="This Open Play has an entrance fee">
+            <div className="px-1 pb-1">
+              <div className="rounded-2xl bg-[var(--surface-2)] border-[0.5px] border-[var(--hairline)] px-4 py-3.5">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[13px] font-bold text-[var(--muted)]">Entrance fee</span>
+                  <span className="text-[22px] font-extrabold text-[var(--ink)]">₱{entryFee}</span>
+                </div>
+                <p className="text-[13px] font-semibold text-[var(--muted)] leading-snug mt-2">
+                  Paid per player{game.creator?.displayName ? ` to ${game.creator.displayName}` : ' to the organizer'} at
+                  the venue — not charged here. Taking a seat means you're committing to pay it.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <Button variant="outline" onClick={() => setFeeConfirmOpen(false)} disabled={joining}>Cancel</Button>
+                <Button onClick={confirmFeeAndJoin} disabled={joining}>
+                  {joining ? (
+                    <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Joining…</>
+                  ) : (
+                    `Got it — join`
+                  )}
+                </Button>
+              </div>
+            </div>
+          </BottomSheet>
+          )}
 
           <DuprExplainerSheet open={duprOpen} onClose={() => setDuprOpen(false)} />
 

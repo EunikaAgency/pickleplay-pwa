@@ -35,6 +35,8 @@ const NOTIF_TYPE_PREFIXES = [
   'chat', 'forum', 'message', 'alert', 'game_full', 'game_open',
   'venue_membership_invite', 'venue_membership_removed',
   'booking_pending_approval', 'booking_approved',
+  'booking_request_reminder', 'booking_request_expired', 'booking_rejected',
+  'booking_cancelled',
 ];
 function cleanPreview(body: string): string {
   let s = body;

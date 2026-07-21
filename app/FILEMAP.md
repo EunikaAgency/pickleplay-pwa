@@ -104,7 +104,12 @@ src/
                        #   OpenPlayBook (V3 — courtless per-session drop-in: date+time+party →
                        #   createBooking{bookingType:'open_play'} priced from venue.openPlayPrice →
                        #   checkout; reached from the court page "Join open play" CTA),
-                       #   bookingDisplay (status chips incl. awaiting_payment "Pay to confirm"),
+                       #   bookingDisplay (status chips incl. awaiting_payment "Pay to confirm";
+                       #     also the approval-deadline formatters — countdownLabel/deadlineLabel/
+                       #     deadlineUrgency, plus estimateApprovalDeadline, a MIRROR of the
+                       #     server's api/src/features/bookings/bookingDeadlines.ts used only
+                       #     pre-submit; both sides share one test fixture so they can't drift,
+                       #     and anything post-submit renders the server's approvalDeadline),
                        #   useVenueBookingContext (one keyed hook: getVenue→courts+viewerIsMember +
                        #   getHours + slot-overrides — replaces the old listCourts + getVenue-for-member;
                        #   BookCourt no longer pulls the whole directory on a deep-link), useBookingPricing
@@ -341,7 +346,10 @@ src/
                        # (GET/PATCH /api/v1/claims). Reuses the same API the web console uses.
 
   shared/              # cross-feature only (never import a feature from another feature)
-    components/ui/      # Icon, Avatar, Button, Card, Chip, BottomSheet, AuthPromptSheet,
+    components/ui/      # Icon, Avatar, Button, Card, Chip, StatusChip (one pill for every
+                        #   {label,className} descriptor — bookingDisplay's + organizerDisplay's;
+                        #   moved up from features/organizer/components/, which re-exports it),
+                        #   BottomSheet, AuthPromptSheet,
                         # AvatarCropper (circular photo crop via croppie; used by EditProfile),
                         # MapPinPicker (tap/drag-to-drop-pin Leaflet map; the new-venue form and
                         #   EditProfile reverse-geocode the pin to auto-fill the address),
@@ -375,6 +383,9 @@ src/
                         #   useDemandTracking (typed fire-and-forget demand-signal capture —
                         #    search, venue_view, booking_attempt/completed, checkout_started/
                         #    abandoned, booking_link_shared),
+                        #   useCountdown (ticking clock for deadline labels — 30s, and stops
+                        #    itself once the deadline passes; pairs with bookingDisplay's
+                        #    countdownLabel on the request-to-book countdowns),
                         #   useNotificationPolling (keeps the unread badge live: polls +
                         #    refreshes on focus/visibility while signed in — now a fallback),
                         #   useMessagePolling (polls unread message count for the sidebar/tab-bar
@@ -624,6 +635,7 @@ src/
 | Payment history / spend report (player) | `features/profile/PaymentHistoryScreen.tsx` (entry rows in `ProfileScreen.tsx` + `v2/ProfileScreenV2.tsx`); `listPayments` in `shared/lib/api.ts` → `GET /api/v1/payments` (self-scoped); `shared/components/ui/Chart.tsx` `BarChart`; gated by `player.payments.view` (`SCREEN_PERMISSIONS` in `App.tsx`) |
 | Direct messages / chat (realtime) | `features/messages/{ConversationsScreen,ChatScreen}.tsx`; messaging endpoints in `shared/lib/api.ts`; entry from `GameDetailsScreen` "Message organizer" + Profile → Messages; deep-link `/messages/:id` via `navigation.ts`; gated by `user.messages.send`. Realtime via `shared/hooks/useRealtimeStream.ts` + `shared/lib/realtimeBus.ts` (SSE `GET /api/v1/me/stream`) |
 | Live message badge (unread) | `shared/lib/messageStore.ts` + `shared/hooks/useMessagePolling.ts` (started in `App.tsx`); badge on `Sidebar.tsx` Messages button (`.side-tab-badge`), `TabBar.tsx` Messages tab (`.tab-unread-badge`), and `V2Chrome.tsx` V2TopNav Messages icon (`.v2c-notif-badge`) |
+| Request-to-book approval deadlines (player + owner countdowns) | Formatters in `features/bookings/bookingDisplay.ts`, ticking via `shared/hooks/useCountdown.ts`. Player: `CourtPicker` "Needs approval" chip, the review-step block + completion copy in `BookCourtScreen.tsx`, the live countdown in `MyBookingsScreen.tsx`. Owner: the chip in `features/owner/components/OwnerBookingRow.tsx` (reaches all four inbox surfaces), deadline-ascending sort in `hooks/useOwnerDashboard.ts`, window settings in `tabs/ListingEditorTab.tsx`. Server-side truth: `api/src/features/bookings/bookingDeadlines.ts` |
 | Realtime stream (chat + notifications) | `shared/hooks/useRealtimeStream.ts` (one EventSource, mounted in `App.tsx`) + `shared/lib/realtimeBus.ts` (in-app pub/sub); backed by API `GET /api/v1/me/stream` |
 | Live notification badge (unread) | `shared/lib/notificationStore.ts` + `shared/hooks/useNotificationPolling.ts` (started in `App.tsx`); `shared/components/ui/NotificationBadge.tsx` on the home bell + TabBar "You" tab |
 | Global search (courts/games/clubs/players) | `features/search/SearchScreen.tsx`; `crossSearch` in `shared/lib/api.ts` → `GET /api/v1/search?type=all`; gated by `player.search.use` |

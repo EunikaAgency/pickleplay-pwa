@@ -57,6 +57,16 @@ export function CourtPicker({ courts, value, onChange, priceFor, gridClassName =
             {meta && (
               <span className={`text-[11px] font-semibold ${sel ? 'text-white/70' : 'text-[var(--muted)]'}`}>{meta}</span>
             )}
+            {/* Whether this court confirms instantly or has to be requested is
+                the single most useful thing to know BEFORE choosing it — a
+                player picking here shouldn't discover it two steps later. */}
+            {court.approvalMode === 'manual' && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                sel ? 'bg-white/20 text-white' : 'bg-[var(--coral)]/15 text-[var(--coral)]'
+              }`}>
+                Needs approval
+              </span>
+            )}
           </button>
         );
       })}

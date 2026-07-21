@@ -337,6 +337,10 @@ the people involved.
 ## Decisions needed from you
 
 - **Default `approvalWindowHours`** — 24 assumed. Confirm.
+- **The 10% band floor** — a 3-hour-out booking gives the owner 18 minutes. Right call,
+  or should the urgent band have a 30-minute floor instead of 15?
+- **Per-court "auto-accept under N hours"** *(§2.2)* — worth building alongside, or leave
+  it until a venue complains?
 - **Hard hold vs soft hold** on `pending_approval` *(§3)* — affects the schema, so worth
   settling before step 1.
 - **`requireBookingApproval`** — wire it up to `'inherit'`, or delete the flag and its

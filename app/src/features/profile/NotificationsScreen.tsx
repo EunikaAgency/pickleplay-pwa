@@ -30,6 +30,10 @@ function bgForType(type?: string | null): IconBg {
     case 'venue_membership_removed':  return 'coral';
     case 'booking_pending_approval':  return 'coral';
     case 'booking_approved':          return 'lime';
+    case 'booking_request_reminder':  return 'coral';
+    case 'booking_request_expired':   return 'coral';
+    case 'booking_rejected':          return 'coral';
+    case 'booking_cancelled':         return 'coral';
     case 'friend_request':            return 'lime';
     case 'message':                   return 'blue';
     case 'alert':                     return 'coral';
@@ -105,6 +109,10 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
     onNavigate('owner-bookings', sp.get('status') ? { status: sp.get('status')! } : {});
     return true;
   }
+  // The player's own bookings. Every booking notification sent to a player
+  // (approved, declined, expired) points here, and none of them were routed —
+  // tapping one silently did nothing.
+  if (/^\/my-bookings/.test(linkUrl)) { onNavigate('my-bookings'); return true; }
   return false;
 }
 
@@ -512,7 +520,10 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
               // Already handled — fall through to render as a regular notification.
             }
 
-            const hasTarget = /^\/(games\/[0-9a-fA-F]{24}(\/chat)?|messages\/[0-9a-fA-F]{24}|clubs\/[a-z0-9-]+(\/posts\/[0-9a-fA-F]{24})?)$/.test(n.linkUrl || '');
+            // Must stay in step with `navigateFromLink` — this only controls the
+            // cursor, so when it lags behind, a row that DOES navigate renders as
+            // though it doesn't. Booking + friends links were missing here.
+            const hasTarget = /^\/(games\/[0-9a-fA-F]{24}(\/chat)?|messages\/[0-9a-fA-F]{24}|clubs\/[a-z0-9-]+(\/posts\/[0-9a-fA-F]{24})?|my-bookings|friends|owner\/(reports|bookings))(\?.*)?$/.test(n.linkUrl || '');
             return (
               <div key={n.id} className={`notif ${!n.isRead ? 'unread' : ''} flex items-start`}>
                 <button

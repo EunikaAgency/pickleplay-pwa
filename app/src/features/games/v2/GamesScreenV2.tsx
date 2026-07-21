@@ -937,6 +937,17 @@ function GameCard({ game, onClick, action, showVisibility, inviterName, children
           )}
         </div>
         {showVisibility && <div className="vis-indicator public">Open Play</div>}
+        {game.participants && game.participants.length > 0 && (
+          <div className="game-participant-avatars">
+            {game.participants.slice(0, 3).map((p, i) => (
+              <span key={p.id} className="game-participant-avatar" style={{ zIndex: 3 - i, marginLeft: i === 0 ? 0 : -8 }}>
+                {p.avatarUrl
+                  ? <img src={apiImageUrl(p.avatarUrl)} alt="" className="h-full w-full rounded-full object-cover" />
+                  : <span className="flex h-full w-full items-center justify-center rounded-full bg-[var(--ink-fill)] text-[8px] font-bold">{p.displayName?.[0] ?? '?'}</span>}
+              </span>
+            ))}
+          </div>
+        )}
         {isOpenPlayGame(game) ? (
           // Interest-based open play has no capacity — the bar tracks the host's
           // soft target when they set one, so momentum is visible either way.
@@ -1039,6 +1050,10 @@ function PlayCard({ item, onClick, located, featured }: { item: ScoredPlayItem; 
     && !!skillBlockReason(item.skillBand[0], item.skillBand[1], me.skillLevel, true);
   const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
   const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
+  // A real entrance fee gets its own chip, not just a number in the meta line —
+  // venues also label their court rate "Pay to Play" / "Per Player" there, so a
+  // player can't tell a genuine fee from marketing copy without this.
+  const entryFee = item.joinFee != null && item.joinFee > 0 ? item.joinFee : null;
   // Three states, not two: a measured distance; "unknown" when we know where the
   // user is but the venue has no coordinates; and nothing at all when location is
   // off — in which case the banner above already explains the absence.
@@ -1081,8 +1096,16 @@ function PlayCard({ item, onClick, located, featured }: { item: ScoredPlayItem; 
           {(meta || item.venueLoc) && <div className="game-meta-loc">{meta || item.venueLoc}</div>}
         </div>
 
-        {(restricted || skillIneligible || item.why.length > 0) && (
+        {(restricted || skillIneligible || entryFee != null || item.why.length > 0) && (
           <div className="flex gap-1.5 flex-wrap mt-1.5">
+            {/* Costs money to join. Uses the dark `--ink-fill` chip (the `.chip.active`
+                idiom) so it reads apart from the lime "why you'd like it" chips and
+                the coral "you can't play this" ones without leaving the palette. */}
+            {entryFee != null && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--ink-fill)] text-white">
+                ₱{entryFee} entry fee
+              </span>
+            )}
             {/* Leads the row: "can I even play this" outranks every "why you'd like it". */}
             {restricted && (
               <span

@@ -188,8 +188,18 @@ export function useOwnerDashboard(opts: { withBookings?: boolean; withGames?: bo
   }, [analytics]);
 
   const today = todayYMD();
+  // Sorted by how soon each request expires, not by when it's booked for. A
+  // request 3 hours out can lapse in 18 minutes while one booked for next month
+  // has a full day — so play date is the wrong urgency signal. Requests with no
+  // deadline (predating the feature) sort last; they never expire on their own.
   const pending = useMemo(
-    () => bookings.filter((b) => b.status === 'pending_approval').sort(byDateTime),
+    () => bookings
+      .filter((b) => b.status === 'pending_approval')
+      .sort((a, b) => {
+        const da = a.approvalDeadline ? new Date(a.approvalDeadline).getTime() : Infinity;
+        const db = b.approvalDeadline ? new Date(b.approvalDeadline).getTime() : Infinity;
+        return da === db ? byDateTime(a, b) : da - db;
+      }),
     [bookings],
   );
   const upcoming = useMemo(

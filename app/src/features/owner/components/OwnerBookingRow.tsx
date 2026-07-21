@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Avatar } from '../../../shared/components/ui/Avatar';
 import { startConversation, updateBookingStatus, type ApiBooking, type BookingStatus } from '../../../shared/lib/api';
-import { money, prettyDate, to12h, statusChip } from '../../bookings/bookingDisplay';
+import { countdownLabel, deadlineUrgency, money, prettyDate, to12h, statusChip } from '../../bookings/bookingDisplay';
+import { useCountdown } from '../../../shared/hooks/useCountdown';
+import { StatusChip } from '../../../shared/components/ui/StatusChip';
+import { Icon } from '../../../shared/components/ui/Icon';
 import type { Navigate } from '../../../shared/lib/navigation';
 
 function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'primary' | 'lime' | 'ghost'; onClick: () => void; busy: boolean }) {
@@ -35,6 +38,8 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
   const [error, setError] = useState<string | null>(null);
   const [messaging, setMessaging] = useState(false);
   const chip = statusChip(booking.status);
+  const now = useCountdown(booking.approvalDeadline);
+  const urgency = deadlineUrgency(booking.createdAt, booking.approvalDeadline, now);
 
   const act = async (status: BookingStatus) => {
     setBusy(true);
@@ -44,7 +49,15 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
       const updated = await updateBookingStatus(booking.venueId || '', booking.id, { status, cancellationReason });
       onChanged({ ...booking, ...updated });
     } catch (e) {
-      setError(e instanceof Error && /409|cancel/i.test(e.message) ? "Already cancelled — can't change." : "Couldn't update. Try again.");
+      // A request can lapse, or another player can take the slot, between this
+      // row rendering and the owner tapping Approve. Both come back as 409 with
+      // a message worth showing verbatim rather than flattening to "try again".
+      const msg = e instanceof Error ? e.message : '';
+      setError(
+        /expired|no longer free|REQUEST_EXPIRED|SLOT_CONFLICT/i.test(msg) ? msg
+          : /409|cancel/i.test(msg) ? "Already cancelled — can't change."
+            : "Couldn't update. Try again.",
+      );
       setBusy(false);
     }
   };
@@ -105,7 +118,20 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
         </div>
         <div className="flex sm:flex-col sm:items-end justify-between items-center gap-2 sm:gap-1 shrink-0">
           <div className="font-semibold text-[15px] text-[var(--ink)] tabular-nums">{isBlocked ? '—' : money(booking.amount)}</div>
-          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.className}`}>{chip.label}</span>
+          <StatusChip chip={chip} />
+          {/* How long is left to answer, colour-shifting as it runs down. An
+              unanswered request auto-cancels at the deadline and the slot goes
+              back on sale, so this is the row's most actionable fact. */}
+          {st === 'pending_approval' && booking.approvalDeadline && (
+            <span className={`shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+              urgency === 'urgent' ? 'bg-[var(--coral)]/15 text-[var(--coral)]'
+                : urgency === 'soon' ? 'bg-amber-100 text-amber-700'
+                  : 'bg-[var(--surface-2)] text-[var(--muted)]'
+            }`}>
+              <Icon name="timer" size={13} />
+              {countdownLabel(booking.approvalDeadline, 'to respond', now)}
+            </span>
+          )}
         </div>
       </div>
 

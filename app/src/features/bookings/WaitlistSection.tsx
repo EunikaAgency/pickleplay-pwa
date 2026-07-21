@@ -7,7 +7,7 @@ import {
   listMyWaitlist, leaveWaitlist, claimWaitlistSlot,
   type ApiWaitlistEntry,
 } from '../../shared/lib/api';
-import { prettyDate, to12h } from './bookingDisplay';
+import { countdownLabel, prettyDate, to12h } from './bookingDisplay';
 
 /** Status chip for a waitlist entry. */
 function waitlistChip(status: string | null | undefined): { label: string; className: string } {
@@ -27,18 +27,9 @@ function waitlistChip(status: string | null | undefined): { label: string; class
   }
 }
 
-/** How long until the claim window expires, in a human-readable form. */
-function claimWindowLabel(expiresAt: string | null | undefined): string {
-  if (!expiresAt) return '';
-  const d = new Date(expiresAt);
-  if (Number.isNaN(d.getTime())) return '';
-  const mins = Math.max(0, Math.round((d.getTime() - Date.now()) / 60_000));
-  if (mins === 0) return 'Expiring now';
-  if (mins < 60) return `${mins} min to claim`;
-  const hrs = Math.floor(mins / 60);
-  const rem = mins % 60;
-  return rem > 0 ? `${hrs}h ${rem}m to claim` : `${hrs}h to claim`;
-}
+/** How long until the claim window expires. Thin wrapper over the shared
+ *  countdown formatter, which the approval-deadline UI uses too. */
+const claimWindowLabel = (expiresAt: string | null | undefined) => countdownLabel(expiresAt, 'to claim');
 
 export function WaitlistSection() {
   const [entries, setEntries] = useState<ApiWaitlistEntry[]>([]);

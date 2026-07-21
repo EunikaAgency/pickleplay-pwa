@@ -9,7 +9,9 @@ import { useNotificationStore } from '../../shared/lib/notificationStore';
 import { firstNameOf, userHasPermission } from '../../shared/lib/permissions';
 import { updateBookingStatus } from '../../shared/lib/api';
 import { OwnerBookingDetailSheet } from './OwnerBookingDetailSheet';
-import { money, prettyDate, to12h } from '../bookings/bookingDisplay';
+import { countdownLabel, deadlineUrgency, money, prettyDate, to12h } from '../bookings/bookingDisplay';
+import { useCountdown } from '../../shared/hooks/useCountdown';
+import { Icon } from '../../shared/components/ui/Icon';
 import { pctChange } from './utils/ownerMetrics';
 import { getInitials } from '../../shared/lib/initials';
 import { locationLine, venueImage } from '../../shared/lib/venueDisplay';
@@ -61,14 +63,24 @@ const QA_TONES = ['ohome-qa-lime', 'ohome-qa-blue', 'ohome-qa-neutral', 'ohome-q
 // Tapping the card body opens the full detail sheet.
 function PendingRow({ row, onDone, notify, onOpen }: { row: OwnerBookingRow; onDone: (id: string) => void; notify: () => void; onOpen: (b: OwnerBookingRow) => void }) {
   const [busy, setBusy] = useState(false);
-  const act = async (e: React.MouseEvent, status: 'confirmed' | 'cancelled') => {
+  const [error, setError] = useState('');
+  const now = useCountdown(row.approvalDeadline);
+  const urgency = deadlineUrgency(row.createdAt, row.approvalDeadline, now);
+  // Approving means 'awaiting_payment', NOT 'confirmed' — this button used to
+  // send 'confirmed', which skipped the pay window entirely and marked the court
+  // booked without ever collecting. The same action in OwnerBookingRow always
+  // did this correctly; only this copy was wrong.
+  const act = async (e: React.MouseEvent, status: 'awaiting_payment' | 'cancelled') => {
     e.stopPropagation(); // don't open the detail sheet on button taps
     setBusy(true);
+    setError('');
     try {
       await updateBookingStatus(row.venueId || '', row.id, { status, cancellationReason: status === 'cancelled' ? 'Declined by venue' : undefined });
       onDone(row.id);
       notify();
-    } catch {
+    } catch (err) {
+      // A request can lapse, or its slot be resold, between render and tap.
+      setError(err instanceof Error ? err.message : 'Could not update that booking.');
       setBusy(false);
     }
   };
@@ -81,8 +93,15 @@ function PendingRow({ row, onDone, notify, onOpen }: { row: OwnerBookingRow; onD
         </div>
         <div className="ohome-row-amount tabular-nums">{money(row.amount)}</div>
       </div>
+      {row.approvalDeadline && (
+        <div className={`ohome-row-deadline ohome-deadline-${urgency ?? 'calm'}`}>
+          <Icon name="timer" size={14} />
+          <span>{countdownLabel(row.approvalDeadline, 'to respond', now)}</span>
+        </div>
+      )}
+      {error && <div className="ohome-row-error">{error}</div>}
       <div className="ohome-row-actions">
-        <button type="button" disabled={busy} onClick={(e) => act(e, 'confirmed')} className="ohome-btn-confirm">Confirm</button>
+        <button type="button" disabled={busy} onClick={(e) => act(e, 'awaiting_payment')} className="ohome-btn-confirm">Approve</button>
         <button type="button" disabled={busy} onClick={(e) => act(e, 'cancelled')} className="ohome-btn-decline">Decline</button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { V2ScreenChrome } from '../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../shared/components/ui/V2Skeleton';
-import { listClubs, joinClub, type ApiClub } from '../../shared/lib/api';
+import { listClubs, joinClub, apiImageUrl, type ApiClub } from '../../shared/lib/api';
 import { getInitials } from '../../shared/lib/initials';
 
 type Filter = 'all' | 'mine';
@@ -111,6 +111,21 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
         {c.visibility === 'public' && <span className="featured-tag open">Open</span>}
       </div>
       <div className="discover-card-meta">
+        {c.memberAvatars && c.memberAvatars.length > 0 && (
+          <span className="club-member-avatars">
+            {c.memberAvatars.slice(0, 3).map((ma, i) => (
+              <span
+                key={ma.id}
+                className="club-member-avatar"
+                style={{ zIndex: 3 - i, marginLeft: i === 0 ? 0 : -8 }}
+              >
+                {ma.avatarUrl
+                  ? <img src={apiImageUrl(ma.avatarUrl)} alt="" className="h-full w-full rounded-full object-cover" />
+                  : <span className="flex h-full w-full items-center justify-center rounded-full bg-[var(--ink-fill)] text-[8px] font-bold">{ma.displayName?.[0] ?? '?'}</span>}
+              </span>
+            ))}
+          </span>
+        )}
         <span>{c.memberCount} member{c.memberCount === 1 ? '' : 's'}</span>
         <span>{c.postCount} post{c.postCount === 1 ? '' : 's'}</span>
       </div>

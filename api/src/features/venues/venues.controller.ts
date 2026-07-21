@@ -4,7 +4,8 @@ import { Venue, VenueHour, Faq, HolidayClosure, VenueStaff, VenueMember, SlotPri
 import { VenuePricing } from '../payments/payments.model.js';
 import { VenueClaim } from './venue-management.model.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
-import { bookingApprovedReceipt, membershipReceipt } from '../../shared/lib/email-templates.js';
+import { bookingApprovedReceipt, bookingDeclinedReceipt, membershipReceipt } from '../../shared/lib/email-templates.js';
+import { computePaymentDueAt, playStartOf } from '../bookings/bookingDeadlines.js';
 import { resolveHourlyRate, perPlayerSurcharge } from '../bookings/pricing.js';
 import { toWebpUrl } from '../../shared/lib/webp.js';
 
@@ -113,6 +114,8 @@ export const updateVenueSchema = z.object({
   // pays, and how many hours they then have to pay before the hold expires.
   requireBookingApproval: z.boolean().optional(),
   bookingPayWindowHours: z.coerce.number().int().min(1).max(168).optional(),
+  // Ceiling on how long an unanswered request may hold a court.
+  approvalWindowHours: z.coerce.number().int().min(1).max(72).optional(),
   // Payment options offered at checkout (subset of full/deposit/pay_at_venue) +
   // the deposit size (% of total) when 'deposit' is offered.
   paymentOptions: z.array(z.enum(['full', 'deposit', 'pay_at_venue'])).optional(),
@@ -2134,14 +2137,54 @@ export async function updateBookingStatus(c: any) {
   if (!booking) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found for this venue' } }, 404);
   const { status, cancellationReason } = updateBookingStatusSchema.parse(await c.req.json());
   if (booking.status === 'cancelled') return c.json({ error: { code: 'CONFLICT', message: "Cannot update a booking with status 'cancelled'" } }, 409);
+
+  // Legal transitions. Cancelling is always allowed; the rest must follow the
+  // lifecycle. Without this an owner could push a request straight to 'paid',
+  // skipping the pay window and collecting nothing.
+  const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+    pending_approval: ['awaiting_payment', 'cancelled'],
+    awaiting_payment: ['confirmed', 'paid', 'cancelled'],
+    confirmed: ['paid', 'cancelled'],
+    paid: ['confirmed', 'cancelled'],
+  };
+  const legal = ALLOWED_TRANSITIONS[booking.status as string];
+  if (legal && !legal.includes(status)) {
+    return c.json({ error: { code: 'INVALID_TRANSITION', message: `Cannot move a booking from '${booking.status}' to '${status}'.` } }, 409);
+  }
+
   const update: Record<string, any> = { status };
   if (status === 'cancelled') { update.cancelledAt = new Date(); if (cancellationReason) update.cancellationReason = cancellationReason; }
-  // Approving a request-to-book: start the player's pay-window (per-venue length)
-  // so it can lazily expire if they don't pay in time.
+
+  // Approving a request-to-book. Two guards first, both consequences of expiry
+  // being decided by the deadline at query time: once a request lapses its slot
+  // is immediately back on sale, so a stale row sitting in this inbox must not be
+  // approvable — and the slot it wanted may already belong to someone else.
   if (status === 'awaiting_payment') {
+    const now = new Date();
+    if (booking.approvalDeadline && new Date(booking.approvalDeadline).getTime() < now.getTime()) {
+      return c.json({ error: { code: 'REQUEST_EXPIRED', message: 'This request expired and the slot was released. Ask the player to book again.' } }, 409);
+    }
+    const clash = await findSlotConflict(
+      {
+        venueId, courtId: booking.courtId ? String(booking.courtId) : null,
+        subUnitIndex: booking.subUnitIndex ?? null, date: booking.date,
+        startTime: booking.startTime || undefined, endTime: booking.endTime || undefined,
+      },
+      null, 0, false, String(booking._id),
+    );
+    if (clash) {
+      return c.json({ error: { code: 'SLOT_CONFLICT', message: `That slot is no longer free — ${clash}` } }, 409);
+    }
+
+    // Start the player's pay-window. Clamped to before play start: an unclamped
+    // `now + 24h` gave a booking approved at 5pm today for a 9am slot tomorrow a
+    // payment deadline eight hours after the court time had passed.
     const venue = await Venue.findById(venueId).select('bookingPayWindowHours displayName').lean<{ bookingPayWindowHours?: number; displayName?: string }>();
-    const hours = venue?.bookingPayWindowHours ?? 24;
-    update.paymentDueAt = new Date(Date.now() + hours * 3_600_000);
+    update.paymentDueAt = computePaymentDueAt({
+      now,
+      playStart: playStartOf(booking.date, booking.startTime),
+      payWindowHours: venue?.bookingPayWindowHours ?? 24,
+    });
   }
   const result = await Booking.findByIdAndUpdate(bookingId, update, { new: true }).lean();
 
@@ -2158,6 +2201,42 @@ export async function updateBookingStatus(c: any) {
       endTime: booking.endTime,
       note: 'Reserved',
     }).catch(() => { /* paint cleanup is best-effort */ });
+  }
+
+  // Tell the booker their request was turned down. Previously nothing was sent at
+  // all: a declined player found out by opening the app, or showed up anyway.
+  if (status === 'cancelled' && result && booking.status === 'pending_approval') {
+    const venue = await Venue.findById(venueId).select('displayName').lean<{ displayName?: string }>();
+    const venueName = venue?.displayName || 'The venue';
+    await notifyUser((result as any).userId, {
+      type: 'booking_rejected',
+      title: 'Booking request declined',
+      body: cancellationReason
+        ? `${venueName} declined your request: ${cancellationReason}`
+        : `${venueName} couldn't take your booking for ${fmtDate((result as any).date)}. You haven't been charged.`,
+      icon: 'calendar',
+      linkUrl: '/my-bookings',
+      tag: String((result as any)._id),
+    });
+
+    if (canEmail()) {
+      void (async () => {
+        try {
+          const u = await import('../auth/auth.model.js').then(m => m.User.findById((result as any).userId).select('email').lean<{ email?: string }>());
+          if (u?.email) {
+            const t = bookingDeclinedReceipt({
+              receipt: String((result as any)._id).slice(-8).toUpperCase(),
+              venue: venueName,
+              date: fmtDate((result as any).date),
+              start: fmtTime((result as any).startTime), end: fmtTime((result as any).endTime),
+              reason: cancellationReason || null,
+              browseUrl: 'https://pickleballer-pwa.eunika.xyz/nearby',
+            });
+            await sendEmail({ to: u.email, subject: `Booking request declined — ${venueName}`, body: t.text, html: t.html });
+          }
+        } catch { /* best-effort */ }
+      })();
+    }
   }
 
   // Tell the booker their request was approved and they need to pay to confirm.

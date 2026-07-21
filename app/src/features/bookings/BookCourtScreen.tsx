@@ -15,13 +15,14 @@ import {
   joinWaitlist, createGame,
   type ApiVenue, type AppSettings, type CheckoutCard, type GenderPolicy, type PaymentOption,
 } from '../../shared/lib/api';
+import { useAuthStore } from '../../shared/lib/authStore';
 import { useVenueBookingContext } from './useVenueBookingContext';
 import { useBookingPricing } from './useBookingPricing';
 import { mapBookingError } from './bookingErrors';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
-import { addHours, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
+import { addHours, deadlineLabel, estimateApprovalDeadline, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
 
 interface BookCourtScreenProps {
   venueId?: string;
@@ -175,6 +176,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [opTarget, setOpTarget] = useState(8);
   // Host-gated joining for this Open Play. Off unless the host asks for it.
   const [opRequiresApproval, setOpRequiresApproval] = useState(false);
+  // Entrance fee for this Open Play. Off = free (what every player gets). Only a
+  // live organizer subscriber can charge — the server enforces the same rule in
+  // createGame, so an unchecked box and a non-organizer both store 0.
+  const [opHasFee, setOpHasFee] = useState(false);
+  const [opJoinFee, setOpJoinFee] = useState('');
   // Public-game details (collected in step 1 when bookingMode === 'public_game').
   // Name/description reuse opName/opDesc (only one mode is active at a time).
   const [pgFormat, setPgFormat] = useState<GameFormat | null>(null);
@@ -197,7 +203,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ confirmed: boolean; bookingId: string | null; gameId?: string | null } | null>(null);
+  const [done, setDone] = useState<{ confirmed: boolean; bookingId: string | null; gameId?: string | null; approvalDeadline?: string | null } | null>(null);
 
   // Load the full venue directory only when the picker is on screen (no deep-linked
   // venue, or the user tapped "Change") and it hasn't loaded yet. A deep link
@@ -293,9 +299,21 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // control. NOTE: unrelated to `requiresApproval` below, which is the *venue*
   // approving the court booking. Same word, different thing.
   const approvalAllowed = settings?.allowPlayerApprovalLobbies ?? true;
-  // Per-court approval — a court set to 'manual' requires owner approval before the
-  // player pays; anything else confirms instantly.
-  const requiresApproval = selectedCourt?.approvalMode === 'manual';
+  // Charging an entrance fee is an organizer capability, gated on the live PAID
+  // subscription (not a role — organizer isn't one). Mirrors the server guard.
+  const canChargeFee = !!useAuthStore((s) => s.user)?.organizerSubscriptionActive;
+  // Per-court approval, with the venue default behind it: 'manual' always needs
+  // approval, 'auto' never does, and 'inherit' follows the venue's own setting.
+  // Mirrors the server's decision in bookings.controller's createBooking.
+  const requiresApproval = selectedCourt?.approvalMode === 'manual'
+    || (selectedCourt?.approvalMode !== 'auto' && !!selected?.requireBookingApproval);
+
+  // What the owner's deadline will be if this request is sent now. An estimate —
+  // the server stamps the real one — so it's only shown before submitting.
+  const estimatedDeadline = useMemo(
+    () => estimateApprovalDeadline(date, startTime, selected?.approvalWindowHours ?? 24),
+    [date, startTime, selected?.approvalWindowHours],
+  );
 
   // Payment options the venue offers (deposit / full / pay-at-venue). Only applied
   // on the instant-book path — approval venues always pay in full after the owner
@@ -524,6 +542,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         // promised 8. `targetPlayers` is legacy; new games don't write it.
         capacity: opTarget,
         requiresApproval: opRequiresApproval,
+        // 0 (free) unless the host ticked the fee box and typed an amount.
+        joinFee: opHasFee ? Number(opJoinFee) || 0 : 0,
         timeLabel: to12h(startTime),
         durationLabel: hours > 0 ? `${hours} hr` : undefined,
         date,
@@ -619,7 +639,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       // Request-to-book: no payment now — the owner approves, then the player
       // pays within the venue's window. Land on the "requested" confirmation.
       if (requiresApproval) {
-        setDone({ confirmed: false, bookingId: booking.id });
+        setDone({ confirmed: false, bookingId: booking.id, approvalDeadline: booking.approvalDeadline ?? null });
         trackBookingCompleted(selected.id, courtId || undefined);
         return;
       }
@@ -741,7 +761,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               : 'Your court is booked and your open play is live. Players can join the lobby now.')
             : done.confirmed
             ? 'Your court is booked. You can see it under My bookings.'
-            : 'Your request was sent and is awaiting venue approval.'
+            // The server's deadline, not the client estimate — this is the real
+            // one the request will actually be cancelled at.
+            : done.approvalDeadline
+              ? `Your request was sent. ${selected?.displayName || 'The venue'} has until ${deadlineLabel(done.approvalDeadline)} to respond. If they don't, it cancels automatically and you won't be charged.`
+              : 'Your request was sent and is awaiting venue approval.'
         }
         actions={[
           ...viewGameAction,
@@ -1177,6 +1201,40 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 </div>
               )}
 
+              {/* Entrance fee — organizers only. Unchecked is free, which is what
+                  every non-organizer host gets (the control isn't rendered for
+                  them, and the server stores 0 regardless). */}
+              {canChargeFee && (
+                <div className="field mt-4">
+                  <div className="lbl">Entrance fee</div>
+                  <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] px-4 py-3.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
+                      checked={opHasFee}
+                      onChange={(e) => setOpHasFee(e.target.checked)}
+                    />
+                    <span>
+                      <span className="block text-[14px] font-bold text-[var(--ink)]">Charge an entrance fee</span>
+                      <span className="block text-[12px] font-semibold text-[var(--muted)] mt-0.5">
+                        Leave this off and joining is free. You collect the fee yourself at the venue — PickleBallers takes no cut of it.
+                      </span>
+                    </span>
+                  </label>
+                  {opHasFee && (
+                    <input
+                      className="control mt-2"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      placeholder={`Fee per player (${currency === 'PHP' ? '₱' : ''})`}
+                      value={opJoinFee}
+                      onChange={(e) => setOpJoinFee(e.target.value)}
+                    />
+                  )}
+                </div>
+              )}
+
               <div className="field mt-4">
                 <div className="lbl">Game name (optional)</div>
                 <input
@@ -1551,6 +1609,28 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             </div>
           </div>
         </div>
+
+        {/* This court needs the owner to accept before anything is charged. Said
+            here, on the review step, rather than only at checkout — and with a
+            real clock time, because "within 24 hours" is forgettable in a way
+            that "6:00 PM today" isn't. The estimate mirrors the server formula;
+            the authoritative deadline comes back on the created booking. */}
+        {requiresApproval && (
+          <div className="rounded-2xl border border-[var(--coral)]/30 bg-[var(--coral)]/8 p-4 flex gap-3">
+            <Icon name="schedule" size={20} className="text-[var(--coral)] shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <div className="font-heading font-semibold text-[14px] text-[var(--ink)]">This court needs owner approval</div>
+              <div className="t-sm mt-1">
+                Your card won't be charged yet — we'll hold your slot while
+                {' '}{selected.displayName} reviews it.
+              </div>
+              <div className="t-sm mt-1.5">
+                They have until <strong className="text-[var(--ink)]">{deadlineLabel(estimatedDeadline)}</strong> to
+                respond. If they don't, your request is cancelled automatically and you'll be notified straight away.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Payment option — only when the venue offers more than full-pay (instant-book). */}
         {paymentChoices.length > 1 && (

@@ -5,8 +5,10 @@ import { Payment } from '../payments/payments.model.js';
 import { recordDemand } from '../demand/demand.controller.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
-import { bookingConfirmedReceipt, bookingRequestedReceipt, cancellationReceipt } from '../../shared/lib/email-templates.js';
+import { bookingConfirmedReceipt, bookingRequestedReceipt, bookingRequestExpiredReceipt, cancellationReceipt } from '../../shared/lib/email-templates.js';
+import { User } from '../auth/auth.model.js';
 import { resolveHourlyRate, perPlayerSurcharge, OCCUPANCY_BLOCK_NOTES } from './pricing.js';
+import { blockingFilter, computeApprovalDeadline, deadlineLabel, isBlocking, playStartOf } from './bookingDeadlines.js';
 
 function canEmail() { return isGmailConfigured() && hasValidTokens(); }
 
@@ -149,9 +151,13 @@ export function courtBlocksAsBookings(blocks: { startTime: string; endTime: stri
  * Court-scoped maintenance blocks join it (they occupy exactly the court they
  * name); venue-wide ones are a closure, see `venueWideClosedHours`.
  */
-export async function activeBookingsForDate(venueId: string, date: string) {
+export async function activeBookingsForDate(venueId: string, date: string, excludeBookingId?: string | null) {
   const [bookings, blocks] = await Promise.all([
-    Booking.find({ venueId, date, status: { $ne: 'cancelled' } })
+    Booking.find({
+      venueId, date,
+      ...blockingFilter(new Date()),
+      ...(excludeBookingId ? { _id: { $ne: excludeBookingId } } : {}),
+    })
       .select('startTime endTime courtId subUnitIndex')
       .lean<{ startTime?: string | null; endTime?: string | null; courtId?: any; subUnitIndex?: number | null }[]>(),
     maintenanceBlocksForDate(venueId, date),
@@ -164,9 +170,12 @@ export async function activeBookingsForDate(venueId: string, date: string) {
 // to show the player, or null when the slot is free. `turnoverMinutes` is the
 // chosen court's optional buffer: the new window also clashes when it falls within
 // that gap of an existing booking on the same court (back-to-back too tight).
+// `excludeBookingId` omits one booking from the occupancy set — used when
+// re-checking a booking against the slot it already holds (approving a pending
+// request), so it doesn't collide with itself.
 export async function findSlotConflict(body: {
   venueId: string; courtId?: string | null; subUnitIndex?: number | null; date: string; startTime?: string; endTime?: string;
-}, userId?: string | null, turnoverMinutes = 0, isSplittable = false): Promise<string | null> {
+}, userId?: string | null, turnoverMinutes = 0, isSplittable = false, excludeBookingId?: string | null): Promise<string | null> {
   // Can only reason about clashes when the request specifies a time window.
   if (!body.startTime || !body.endTime) return null;
   if (body.endTime <= body.startTime) return 'End time must be after the start time.';
@@ -195,7 +204,8 @@ export async function findSlotConflict(body: {
   if (userId) {
     const ownClash = await Booking.findOne({
       userId, venueId: body.venueId, courtId: body.courtId, date: body.date,
-      status: { $ne: 'cancelled' },
+      ...blockingFilter(new Date()),
+      ...(excludeBookingId ? { _id: { $ne: excludeBookingId } } : {}),
       startTime: { $ne: null, $lt: body.endTime },
       endTime: { $ne: null, $gt: body.startTime },
     }).lean();
@@ -214,7 +224,9 @@ export async function findSlotConflict(body: {
     const buffer = Math.max(0, turnoverMinutes || 0);
     const courtClashFilter: Record<string, any> = {
       venueId: body.venueId, date: body.date, courtId: body.courtId,
-      status: { $ne: 'cancelled' }, startTime: { $ne: null }, endTime: { $ne: null },
+      ...blockingFilter(new Date()),
+      ...(excludeBookingId ? { _id: { $ne: excludeBookingId } } : {}),
+      startTime: { $ne: null }, endTime: { $ne: null },
     };
     // When booking a specific sub-unit, it only clashes with bookings on the same
     // sub-unit OR whole-court bookings (subUnitIndex null/undefined) on that court.
@@ -261,7 +273,10 @@ export async function findSlotConflict(body: {
   const capacity = body.subUnitIndex != null
     ? await resolveEffectiveCapacity(body.venueId)
     : await resolveVenueCapacity(body.venueId);
-  const free = freeCourtsByHour(await activeBookingsForDate(body.venueId, body.date), capacity);
+  // Excluding the booking under test matters when re-checking one that already
+  // holds this slot (approval): counting it would make it clash with itself and
+  // a one-court venue could never approve anything.
+  const free = freeCourtsByHour(await activeBookingsForDate(body.venueId, body.date, excludeBookingId), capacity);
   return wanted.some((h) => (free[h] ?? 0) <= 0)
     ? 'All courts at this venue are booked for an overlapping time. Please pick another slot.'
     : null;
@@ -337,20 +352,183 @@ function num(v: string | number | undefined | null): number | null {
 const cancelSchema = z.object({ cancellationReason: z.string().optional() });
 
 /**
- * Lazily expire approved bookings whose pay-window has lapsed: flip them to
- * 'cancelled' (freeing the slot) and reflect that in the rows being returned.
- * Run on read so an unpaid request doesn't linger as a hold forever — there's no
- * scheduler, so "expiry" happens the next time anyone lists those bookings.
+ * Tell both sides a booking lapsed. The player is the one who needs this most —
+ * before it existed, a request that quietly died looked identical to one still
+ * being considered. The owner gets it too, because a slot silently going back on
+ * sale is something they should know about.
+ *
+ * Best-effort throughout: `notifyUser` never throws, and the email is fire-and-
+ * forget. An expiry must never fail because a mail server was down.
+ */
+async function notifyBookingExpired(booking: any, reason: string): Promise<void> {
+  // Which of the two expiries this was: the owner never answered, or the player
+  // never paid. Only the first is the owner's fault, and only it warrants email.
+  const unanswered = reason === EXPIRY_REASON.pending_approval;
+  try {
+    const venue = await Venue.findById(booking.venueId).select('displayName ownerUserId').lean<{ displayName?: string; ownerUserId?: any }>();
+    const venueName = venue?.displayName || 'The venue';
+
+    await notifyUser(booking.userId, {
+      type: 'booking_request_expired',
+      title: unanswered ? 'Booking request expired' : 'Booking released',
+      body: unanswered
+        ? `${venueName} didn't respond in time, so your request for ${fmtDate(booking.date)} was cancelled. You haven't been charged.`
+        : `Your unpaid booking at ${venueName} for ${fmtDate(booking.date)} was released.`,
+      icon: 'calendar',
+      linkUrl: '/my-bookings',
+      tag: String(booking._id),
+    });
+
+    // Only worth telling the owner about the case they caused.
+    if (unanswered && venue?.ownerUserId) {
+      await notifyUser(venue.ownerUserId, {
+        type: 'booking_request_expired',
+        title: 'Request expired unanswered',
+        body: `A booking request for ${fmtDate(booking.date)} expired before you responded. The slot is back on sale.`,
+        icon: 'calendar',
+        linkUrl: '/owner/bookings',
+        tag: String(booking._id),
+      });
+    }
+
+    if (unanswered && canEmail()) {
+      const u = await User.findById(booking.userId).select('email').lean<{ email?: string }>();
+      if (u?.email) {
+        const t = bookingRequestExpiredReceipt({
+          receipt: String(booking._id).slice(-8).toUpperCase(),
+          venue: venueName,
+          date: fmtDate(booking.date),
+          start: fmtTime(booking.startTime), end: fmtTime(booking.endTime),
+          browseUrl: 'https://pickleballer-pwa.eunika.xyz/nearby',
+        });
+        await sendEmail({ to: u.email, subject: `Booking request expired — ${venueName}`, body: t.text, html: t.html });
+      }
+    }
+  } catch { /* notifications are best-effort; the cancellation already stands */ }
+}
+
+/** Why a booking expired — distinct strings so reports can tell an unanswered
+ *  request apart from an unpaid one. */
+const EXPIRY_REASON: Record<string, string> = {
+  pending_approval: 'Owner did not respond in time',
+  awaiting_payment: 'Payment window expired',
+};
+
+/**
+ * Cancel bookings whose deadline has passed, and notify both sides.
+ *
+ * This does NOT decide whether a slot is free — `blockingFilter` already does
+ * that at query time, so a lapsed booking has stopped holding its court before
+ * this ever runs. What this adds is the durable record and the notifications.
+ *
+ * Every row is claimed with a status-guarded `findOneAndUpdate`: the guard IS
+ * the lock. Whichever caller gets there first — a player's My Bookings read, the
+ * sweeper on instance A, the sweeper on instance B — exactly one sees a non-null
+ * result, so exactly one set of notifications goes out. No jobs collection, no
+ * lease, no state to lose across a restart.
+ */
+async function cancelExpired(rows: any[]): Promise<number> {
+  let cancelled = 0;
+  for (const r of rows) {
+    const reason = EXPIRY_REASON[r.status as string];
+    if (!reason) continue;
+    const claimed = await Booking.findOneAndUpdate(
+      { _id: r._id, status: r.status },
+      { status: 'cancelled', cancellationReason: reason, cancelledAt: new Date() },
+      { new: true },
+    ).lean();
+    if (!claimed) continue;   // someone else got here first
+    cancelled++;
+    // Mutate the caller's copy so a list read reflects the change it triggered.
+    r.status = 'cancelled';
+    r.cancellationReason = reason;
+    void notifyBookingExpired(claimed, reason);
+  }
+  return cancelled;
+}
+
+/**
+ * Lazily expire overdue bookings among rows we happen to have just read.
+ *
+ * Kept because it makes a list reflect reality in the same request that surfaced
+ * it, not because correctness depends on it — the sweeper below is the reliable
+ * path, and the occupancy queries don't need either.
  */
 export async function expireOverdueBookings(rows: any[]): Promise<void> {
-  const now = Date.now();
-  const overdue = rows.filter((r) => r.status === 'awaiting_payment' && r.paymentDueAt && new Date(r.paymentDueAt).getTime() < now);
-  if (!overdue.length) return;
-  await Booking.updateMany(
-    { _id: { $in: overdue.map((r) => r._id) } },
-    { status: 'cancelled', cancellationReason: 'Payment window expired', cancelledAt: new Date() },
-  );
-  for (const r of overdue) { r.status = 'cancelled'; r.cancellationReason = 'Payment window expired'; }
+  const now = new Date();
+  const overdue = rows.filter((r) => !isBlocking(r, now) && r.status !== 'cancelled');
+  if (overdue.length) await cancelExpired(overdue);
+}
+
+/**
+ * Scheduled sweep: cancel every booking whose deadline has passed, anywhere in
+ * the collection — not just rows someone happened to load. Registered from
+ * `index.ts` via `everyMinutes`.
+ */
+export async function sweepExpiredBookings(): Promise<string | void> {
+  const now = new Date();
+  const overdue = await Booking.find({
+    $or: [
+      { status: 'pending_approval', approvalDeadline: { $ne: null, $lt: now } },
+      { status: 'awaiting_payment', paymentDueAt: { $ne: null, $lt: now } },
+    ],
+  }).limit(200).lean();   // bound a pathological run; real batches are single digits
+  const n = overdue.length ? await cancelExpired(overdue) : 0;
+  const reminded = await sendApprovalReminders(now);
+  const parts = [n && `expired ${n}`, reminded && `nudged ${reminded}`].filter(Boolean);
+  return parts.length ? parts.join(', ') : undefined;
+}
+
+/**
+ * Nudge owners at 50% and 80% of a request's window.
+ *
+ * Thresholds are computed in memory from `createdAt` rather than stored as two
+ * more date fields: the outstanding-request set is an inbox, so it stays small,
+ * and two extra indexed fields would buy nothing at this size.
+ *
+ * Each reminder is claimed with `$addToSet` before it is sent, the same idiom
+ * `cancelExpired` uses. That is what makes this safe across restarts and across
+ * multiple API instances — the claim, not the send, is the thing that races.
+ */
+async function sendApprovalReminders(now: Date): Promise<number> {
+  const pending = await Booking.find({
+    status: 'pending_approval',
+    approvalDeadline: { $ne: null, $gt: now },
+  }).limit(200).lean();
+  if (!pending.length) return 0;
+
+  let sent = 0;
+  for (const b of pending) {
+    const start = new Date((b as any).createdAt).getTime();
+    const end = new Date((b as any).approvalDeadline).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+    const elapsed = (now.getTime() - start) / (end - start);
+    const mark = elapsed >= 0.8 ? '80' : elapsed >= 0.5 ? '50' : null;
+    if (!mark) continue;
+
+    const claimed = await Booking.findOneAndUpdate(
+      { _id: (b as any)._id, status: 'pending_approval', remindersSent: { $ne: mark } },
+      { $addToSet: { remindersSent: mark } },
+      { new: true },
+    ).lean();
+    if (!claimed) continue;
+
+    const venue = await Venue.findById((b as any).venueId).select('displayName ownerUserId').lean<{ displayName?: string; ownerUserId?: any }>();
+    if (!venue?.ownerUserId) continue;
+    const deadline = new Date((b as any).approvalDeadline);
+    await notifyUser(venue.ownerUserId, {
+      type: 'booking_request_reminder',
+      title: mark === '80' ? 'Final reminder — booking request' : 'Booking request waiting',
+      body: `A request for ${fmtDate((b as any).date)} expires at ${deadlineLabel(deadline, now)}. Approve or decline it before then.`,
+      icon: 'calendar',
+      linkUrl: '/owner/bookings?status=pending_approval',
+      // Same tag as the request itself, so the 80% push REPLACES the 50% one on
+      // the lock screen rather than stacking a second nag beside it.
+      tag: String((b as any)._id),
+    });
+    sent++;
+  }
+  return sent;
 }
 
 export async function listBookings(c: any) {
@@ -475,13 +653,28 @@ export async function createBooking(c: any) {
     return c.json({ error: { code: 'SLOT_CONFLICT', message: conflictMessage } }, 409);
   }
 
-  // Per-court approval — a court set to 'manual' requires owner approval before
-  // the player pays; anything else (including 'auto' and 'inherit') confirms instantly.
-  const requiresApproval = court?.approvalMode === 'manual';
+  // Venue drives pricing, member discount, per-player surcharge, owner
+  // notification — and the approval decision below, so it must be loaded first.
+  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold requireBookingApproval approvalWindowHours').lean<{ displayName?: string; ownerUserId?: any; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number; requireBookingApproval?: boolean; approvalWindowHours?: number }>();
 
-  // Venue still needed for pricing, member discount, per-player surcharge,
-  // and owner notification — just no longer for the approval decision.
-  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean<{ displayName?: string; ownerUserId?: any; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number }>();
+  // Per-court approval, with the venue default behind it. 'manual' always requires
+  // approval and 'auto' never does; 'inherit' (the court default) follows the
+  // venue's `requireBookingApproval` — which is what that flag has always been
+  // documented to mean, but was never actually read here.
+  const requiresApproval = court?.approvalMode === 'manual'
+    || (court?.approvalMode !== 'auto' && !!venue?.requireBookingApproval);
+
+  // How long the owner has to answer before the request auto-cancels and the slot
+  // goes back on sale. Stamped now, not derived on read: the occupancy queries must
+  // be able to settle "does this still hold the court?" from the booking row alone,
+  // without joining the venue on the hottest read path in the app.
+  const approvalDeadline = requiresApproval
+    ? computeApprovalDeadline({
+      now: new Date(),
+      playStart: playStartOf(body.date, body.startTime),
+      approvalWindowHours: venue?.approvalWindowHours ?? 24,
+    })
+    : null;
 
   // ── Pricing validation (hard) — skip for blocked slots and open-play ──
   let pricing: { rate: number; baseRate: number; source: string; memberApplied: boolean; memberDiscountPercent: number; overrideId?: string } | null = null;
@@ -590,6 +783,7 @@ export async function createBooking(c: any) {
     amount: typeof body.amount === 'number' ? body.amount : parseFloat(body.amount),
     paymentMethod: body.paymentMethod || null,
     status: requiresApproval ? 'pending_approval' : 'confirmed',
+    approvalDeadline,
     // Capture the card on the request so paying after approval is one tap.
     savedCard: requiresApproval && body.card ? { brand: body.card.brand, last4: body.card.last4 } : undefined,
     // Equipment rental add-on (V2).
@@ -611,15 +805,18 @@ export async function createBooking(c: any) {
     memberDiscountPercent: pricing?.memberDiscountPercent ?? null,
   });
 
-  // Notify the venue owner when a booking requires their approval.
+  // Notify the venue owner when a booking requires their approval. The deadline
+  // goes in the body: "respond soon" is ignorable, an actual time is not.
   if (requiresApproval && venue?.ownerUserId) {
     const bookerName = (user as any).name || (user as any).email || 'A player';
     void notifyUser(venue.ownerUserId, {
       type: 'booking_pending_approval',
       title: 'New booking request',
-      body: `${bookerName} requested to book at ${venue.displayName || 'your venue'}.`,
+      body: `${bookerName} requested to book at ${venue.displayName || 'your venue'}.`
+        + (approvalDeadline ? ` Respond by ${deadlineLabel(approvalDeadline)} or it cancels automatically.` : ''),
       icon: 'calendar',
       linkUrl: '/owner/bookings?status=pending_approval',
+      tag: String(result._id),
     });
   }
 

@@ -4,7 +4,7 @@ import type { TabId } from '../../lib/navigation';
 import { useAuthStore } from '../../lib/authStore';
 import { useMessageStore } from '../../lib/messageStore';
 import { userHasPermission } from '../../lib/permissions';
-import { ROLE_META, primaryRole } from '../../lib/roleDisplay';
+import { ROLE_META, displayRole } from '../../lib/roleDisplay';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -120,10 +120,10 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
   const footSub = !currentUser
     ? 'Browsing as guest'
     : isStaff
-      ? ROLE_META[primaryRole(currentUser)].label
+      ? ROLE_META[displayRole(currentUser)].label
       : currentUser.skillLevel != null
         ? `DUPR ${currentUser.skillLevel}`
-        : currentUser.skillLevelLabel ?? ROLE_META[primaryRole(currentUser)].label;
+        : currentUser.skillLevelLabel ?? ROLE_META[displayRole(currentUser)].label;
   return (
     <aside className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-brand">

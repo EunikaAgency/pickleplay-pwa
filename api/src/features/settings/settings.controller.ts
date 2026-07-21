@@ -10,6 +10,8 @@ import {
   bookingConfirmedReceipt,
   bookingRequestedReceipt,
   bookingApprovedReceipt,
+  bookingDeclinedReceipt,
+  bookingRequestExpiredReceipt,
   paymentReceipt,
   cancellationReceipt,
   membershipReceipt,
@@ -176,6 +178,8 @@ const TEMPLATE_KEYS = [
   'booking-confirmed',
   'booking-requested',
   'booking-approved',
+  'booking-declined',
+  'booking-request-expired',
   'payment-receipt',
   'cancellation',
   'membership',
@@ -242,6 +246,25 @@ function buildSample(key: TemplateKey): { subject: string; html: string; text: s
         payUrl: 'https://pickleballer-pwa.eunika.xyz/bookings/TEST003/pay',
       });
       return { subject: '[TEST] Booking approved — RCPT-TEST-003', ...r };
+    }
+    case 'booking-declined': {
+      const d = new Date(now.getTime() + 7 * 86400000);
+      const r = bookingDeclinedReceipt({
+        receipt: 'RCPT-TEST-004', venue: 'The Dink Lab', court: 'Court A',
+        date: fmt(d), start: fmtTime(d), end: fmtTime(new Date(d.getTime() + 3600000)),
+        reason: 'Court closed for a league fixture',
+        browseUrl: 'https://pickleballer-pwa.eunika.xyz/nearby',
+      });
+      return { subject: '[TEST] Booking request declined — RCPT-TEST-004', ...r };
+    }
+    case 'booking-request-expired': {
+      const d = new Date(now.getTime() + 2 * 86400000);
+      const r = bookingRequestExpiredReceipt({
+        receipt: 'RCPT-TEST-005', venue: 'The Dink Lab', court: 'Court B',
+        date: fmt(d), start: fmtTime(d), end: fmtTime(new Date(d.getTime() + 3600000)),
+        browseUrl: 'https://pickleballer-pwa.eunika.xyz/nearby',
+      });
+      return { subject: '[TEST] Booking request expired — RCPT-TEST-005', ...r };
     }
     case 'payment-receipt': {
       const r = paymentReceipt({

@@ -98,7 +98,7 @@ export function FindCoachScreen({ onNavigate, onBack }: FindCoachScreenProps) {
         )}
 
         {!loading && !failed && visible.length > 0 && (
-          <ul className="flex flex-col gap-2.5">
+          <ul className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
             {visible.map((coach) => {
               const photo = apiImageUrl(coach.avatarUrl || coach.imageUrl);
               return (
@@ -106,7 +106,7 @@ export function FindCoachScreen({ onNavigate, onBack }: FindCoachScreenProps) {
                   <button
                     type="button"
                     onClick={() => onNavigate('coach-detail', { id: coach.slug || coach.id })}
-                    className="flex w-full items-center gap-3.5 rounded-2xl border border-[var(--hairline)] bg-[var(--surface)] p-3.5 text-left"
+                    className="flex w-full items-center gap-3 rounded-2xl border-2 border-gray-300 bg-[var(--surface)] p-3 text-left shadow-sm"
                   >
                     <span className="avatar flex-none h-14 w-14 overflow-hidden rounded-full">
                       {photo
@@ -115,30 +115,20 @@ export function FindCoachScreen({ onNavigate, onBack }: FindCoachScreenProps) {
                     </span>
 
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate font-heading text-[15px] font-extrabold">{coach.displayName}</span>
+                      <span className="flex items-center gap-1">
+                        <span className="truncate font-heading text-[12.5px] font-extrabold">{coach.displayName}</span>
                         {coach.isVerified && (
-                          <span className="flex-none text-[var(--primary)]" title="Verified"><Icon name="verified" size={15} /></span>
+                          <span className="flex-none text-[var(--primary)]" title="Verified"><Icon name="verified" size={11} /></span>
                         )}
                       </span>
                       {coach.specialty && (
-                        <span className="block truncate text-[12.5px] text-[var(--muted)]">{coach.specialty}</span>
+                        <span className="block truncate text-[10.5px] text-[var(--muted)]">{coach.specialty}</span>
                       )}
-                      <span className="mt-1 flex items-center gap-2.5 text-[12px] text-[var(--muted)]">
-                        {!!coach.rating && (
-                          <span className="flex items-center gap-0.5">
-                            <Icon name="star" size={13} />
-                            {coach.rating.toFixed(1)}
-                            {!!coach.reviewCount && <span className="opacity-70">({coach.reviewCount})</span>}
-                          </span>
-                        )}
-                        {coachLocation(coach) && <span className="truncate">{coachLocation(coach)}</span>}
-                      </span>
+                      <span className="font-heading text-[12px] font-extrabold">{coachRate(coach)}</span>
                     </span>
 
-                    <span className="flex-none text-right">
-                      <span className="block font-heading text-[14px] font-extrabold">{coachRate(coach)}</span>
-                      <span className="block text-[11px] text-[var(--muted)]">per hour</span>
+                    <span className="flex-none self-center rounded-full bg-[var(--primary)] px-2.5 py-0.5 text-[10px] font-bold text-white">
+                      Hire
                     </span>
                   </button>
                 </li>

@@ -61,6 +61,14 @@ export const ALL_PERMISSIONS = [
 export type Permission = (typeof ALL_PERMISSIONS)[number];
 export type Role = 'admin' | 'moderator' | 'owner' | 'staff' | 'organizer' | 'coach' | 'player';
 
+// Coach / organiser capabilities. These are NOT account roles any more: every
+// partner is a `player` whose partner surfaces are unlocked by a live PAID
+// subscription (SUBSCRIPTION_PERMISSIONS below). The legacy role entries in
+// ROLE_PERMISSIONS stay so per-venue partner grants and the API's role
+// catalogue keep resolving to the same set. Keep in sync with api/'s copy.
+const COACH_PERMISSIONS: Permission[] = ['coach.access', 'coach.profile.manage', 'coach.venues.view', 'coach.applications.manage'];
+const ORGANIZER_PERMISSIONS: Permission[] = ['organizer.access', 'organizer.games.manage', 'organizer.events.manage', 'organizer.tournaments.manage', 'organizer.brackets.manage'];
+
 const PLAYER_PERMISSIONS: Permission[] = [
   'player.dashboard.access',
   'player.games.create',
@@ -86,7 +94,7 @@ const PLAYER_PERMISSIONS: Permission[] = [
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   player: PLAYER_PERMISSIONS,
-  coach: [...PLAYER_PERMISSIONS, 'coach.access', 'coach.profile.manage', 'coach.venues.view', 'coach.applications.manage'],
+  coach: [...PLAYER_PERMISSIONS, ...COACH_PERMISSIONS],
   owner: [
     ...PLAYER_PERMISSIONS,
     'owner.access',
@@ -136,14 +144,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.inventory.archive',
     'owner.inventory.export',
   ],
-  organizer: [
-    ...PLAYER_PERMISSIONS,
-    'organizer.access',
-    'organizer.games.manage',
-    'organizer.events.manage',
-    'organizer.tournaments.manage',
-    'organizer.brackets.manage',
-  ],
+  organizer: [...PLAYER_PERMISSIONS, ...ORGANIZER_PERMISSIONS],
   moderator: ['admin.access', 'admin.moderation.manage', 'admin.reports.view', 'player.clubs.create', 'player.clubs.join', 'player.clubs.post', 'player.clubs.react', 'player.clubs.chat'],
   admin: [...ALL_PERMISSIONS],
 };
@@ -255,6 +256,26 @@ export function resolveRolePermissions(roles: Array<Role | string | null | undef
     for (const permission of ROLE_PERMISSIONS[normalizeRole(role)]) {
       permissions.add(permission);
     }
+  }
+  return [...permissions];
+}
+
+/**
+ * What a LIVE partner subscription unlocks, on top of the account's role. This
+ * is now the only way a user holds `coach.*` / `organizer.*` — subscribing buys
+ * the capability, letting the term lapse takes it away, and no role changes
+ * hands either way. Mirrors api/'s SUBSCRIPTION_PERMISSIONS.
+ */
+export const SUBSCRIPTION_PERMISSIONS: Record<'coach' | 'organizer', Permission[]> = {
+  coach: COACH_PERMISSIONS,
+  organizer: ORGANIZER_PERMISSIONS,
+};
+
+/** Permissions granted by the plans a user is currently subscribed to. */
+export function resolveSubscriptionPermissions(plans: Iterable<'coach' | 'organizer'>): Permission[] {
+  const permissions = new Set<Permission>();
+  for (const plan of plans) {
+    for (const permission of SUBSCRIPTION_PERMISSIONS[plan] ?? []) permissions.add(permission);
   }
   return [...permissions];
 }

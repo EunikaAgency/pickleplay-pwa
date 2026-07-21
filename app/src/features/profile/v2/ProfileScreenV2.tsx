@@ -4,7 +4,7 @@ import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { Icon } from '../../../shared/components/ui/Icon';
 import { useAuthStore } from '../../../shared/lib/authStore';
 import { userHasPermission } from '../../../shared/lib/permissions';
-import { ROLE_META, primaryRole } from '../../../shared/lib/roleDisplay';
+import { ROLE_META, primaryRole, displayRole } from '../../../shared/lib/roleDisplay';
 import { getInitials } from '../../../shared/lib/initials';
 import { getSettings, listBookings, listGames, listMyTournaments, getMyOpenPlay, type ApiBooking, type ApiGame } from '../../../shared/lib/api';
 import { CoachPromoSheet } from '../CoachPromoSheet';
@@ -133,7 +133,9 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   const level = user?.skillLevelLabel || (user?.skillLevel != null ? `${user.skillLevel.toFixed(1)} DUPR` : null);
   const location = [user?.city, user?.province].filter(Boolean).join(', ');
   const role = user ? primaryRole(user) : 'player';
-  const roleMeta = user ? ROLE_META[role] : null;
+  // The pill shows the subscription-aware name ("Organizer" once the plan is
+  // live); `role` stays the account role so the stats block below is unchanged.
+  const roleMeta = user ? ROLE_META[displayRole(user)] : null;
   // Games/Wins/Losses, win rate, activity & recent games are player-performance
   // stats — they only make sense for people who actually play (players, and
   // coaches who also play). Organizers run the community instead, so they get a

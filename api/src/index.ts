@@ -15,6 +15,8 @@ import { requestQueue } from './shared/middleware/queue.js';
 import routesRouter from './routes/index.js';
 import { connectDb } from './shared/db/index.js';
 import { loadRolePermissionsCache, seedSystemRoles } from './features/roles/roles.controller.js';
+import { everyMinutes } from './shared/lib/scheduler.js';
+import { sweepExpiredBookings } from './features/bookings/bookings.controller.js';
 
 const app = new Hono();
 
@@ -176,6 +178,15 @@ if (process.env.NODE_ENV !== 'test') {
       console.log(`⚡ Pickleballers API listening on :${port}`);
       console.log(`   Health check: http://localhost:${port}/health`);
       serve({ fetch: app.fetch, port });
+
+      // ── Booking expiry sweep ──
+      // Cancels requests the owner never answered and holds the player never
+      // paid for, and nudges owners at 50%/80% of their window. Note this is
+      // cleanup, not correctness: `blockingFilter` already frees a lapsed slot
+      // at query time, so a court is never held hostage to this job running.
+      // 2 minutes, not 5: a short-notice request can have an 18-minute window,
+      // and a 5-minute tick would deliver its half-way nudge a third late.
+      everyMinutes('booking-sweep', sweepExpiredBookings, 2);
 
       // ── Automated dynamic pricing cron ──
       // Runs once every 24h at ~3am local time. Scans all opted-in venues,

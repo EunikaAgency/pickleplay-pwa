@@ -170,6 +170,11 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
     (venue.paymentOptions ?? ['full']).filter((o): o is PaymentOption => o === 'full' || o === 'deposit' || o === 'pay_at_venue'),
   );
   const [depositPercent, setDepositPercent] = useState<string>(str(venue.depositPercent ?? 50));
+  // Booking policy. These three existed on the model but had no owner UI at all,
+  // so a venue could never actually change them.
+  const [requireApproval, setRequireApproval] = useState<boolean>(!!venue.requireBookingApproval);
+  const [approvalWindow, setApprovalWindow] = useState<string>(str(venue.approvalWindowHours ?? 24));
+  const [payWindow, setPayWindow] = useState<string>(str(venue.bookingPayWindowHours ?? 24));
   const togglePaymentOption = (opt: PaymentOption) => {
     setStatus('idle');
     setPaymentOptions((prev) => (prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]));
@@ -268,6 +273,9 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         cancellationWindowHours: Number(cancelWindow) || 24,
         refundPercent: Number(refundPct) ?? 100,
         noShowFee: Number(noShowFee) || 0,
+        requireBookingApproval: requireApproval,
+        approvalWindowHours: Number(approvalWindow) || 24,
+        bookingPayWindowHours: Number(payWindow) || 24,
       });
       setStatus('saved');
       reload();
@@ -307,6 +315,73 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
               {Number(venue.courtCount) || 0} {Number(venue.courtCount) === 1 ? 'court' : 'courts'} · managed on the Courts tab
             </div>
           </div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Booking policy" icon="schedule" description="Whether you accept each booking yourself, and how long each side has to act.">
+        <div className="space-y-3.5">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={requireApproval}
+              onChange={(e) => { setStatus('idle'); setRequireApproval(e.target.checked); }}
+              className="mt-1 h-4 w-4 accent-[var(--primary)]"
+            />
+            <span className="min-w-0">
+              <span className="block font-semibold text-[14px] text-[var(--ink)]">Approve each booking myself</span>
+              <span className="t-sm">
+                Players request instead of booking instantly, and nothing is charged until you accept.
+                Individual courts can override this on the Courts tab.
+              </span>
+            </span>
+          </label>
+
+          {requireApproval && (
+            <>
+              <div className="field p-0!">
+                <label className="lbl">Respond within</label>
+                <div className="t-sm mb-2">
+                  The longest an unanswered request holds a court. It's a ceiling, not a fixed
+                  window — short-notice bookings expire sooner, because a player booking three
+                  hours out can't wait a day to find out. Miss it and the request cancels itself
+                  and the slot goes back on sale.
+                </div>
+                <FormSelect
+                  label=""
+                  value={approvalWindow}
+                  onChange={(e) => { setStatus('idle'); setApprovalWindow(e.target.value); }}
+                  options={[
+                    { value: '2', label: '2 hours' },
+                    { value: '6', label: '6 hours' },
+                    { value: '12', label: '12 hours' },
+                    { value: '24', label: '24 hours (default)' },
+                    { value: '48', label: '48 hours' },
+                    { value: '72', label: '72 hours' },
+                  ]}
+                />
+              </div>
+
+              <div className="field p-0!">
+                <label className="lbl">Player pays within</label>
+                <div className="t-sm mb-2">
+                  Once you approve, how long the player has to pay before the hold is released.
+                  Always cut short if the game starts sooner.
+                </div>
+                <FormSelect
+                  label=""
+                  value={payWindow}
+                  onChange={(e) => { setStatus('idle'); setPayWindow(e.target.value); }}
+                  options={[
+                    { value: '1', label: '1 hour' },
+                    { value: '12', label: '12 hours' },
+                    { value: '24', label: '24 hours (default)' },
+                    { value: '48', label: '48 hours' },
+                    { value: '72', label: '72 hours' },
+                  ]}
+                />
+              </div>
+            </>
+          )}
         </div>
       </CollapsibleSection>
 

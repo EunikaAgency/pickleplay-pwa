@@ -120,6 +120,87 @@ export interface StatusChip {
   className: string;
 }
 
+/* ─── Deadlines ────────────────────────────────────────────────────────────
+ *
+ * A request-to-book auto-cancels if the venue owner doesn't answer in time.
+ * These render that deadline; the server owns the arithmetic
+ * (`api/src/features/bookings/bookingDeadlines.ts`).
+ */
+
+/** "18 min left" / "2h 15m left" / "Expiring now". Pass `now` from
+ *  `useCountdown` to keep it live.
+ *
+ *  Generalised from the waitlist's `claimWindowLabel` — same job, one formatter. */
+export function countdownLabel(target: string | Date | null | undefined, suffix = 'left', now: number = Date.now()): string {
+  if (!target) return '';
+  const t = target instanceof Date ? target.getTime() : new Date(target).getTime();
+  if (Number.isNaN(t)) return '';
+  const mins = Math.max(0, Math.round((t - now) / 60_000));
+  if (mins === 0) return 'Expiring now';
+  if (mins < 60) return `${mins} min ${suffix}`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  return rem > 0 ? `${hrs}h ${rem}m ${suffix}` : `${hrs}h ${suffix}`;
+}
+
+/** "6:00 PM today" / "9:30 AM tomorrow" / "Sat 6:00 PM" — an absolute deadline
+ *  the player can actually plan around. Mirrors the server's `deadlineLabel`. */
+export function deadlineLabel(target: string | Date | null | undefined, now: number = Date.now()): string {
+  if (!target) return '';
+  const d = target instanceof Date ? target : new Date(target);
+  if (Number.isNaN(d.getTime())) return '';
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const dayDiff = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date(now).setHours(0, 0, 0, 0)) / 86_400_000);
+  if (dayDiff === 0) return `${time} today`;
+  if (dayDiff === 1) return `${time} tomorrow`;
+  return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${time}`;
+}
+
+/** How urgent a pending request is, as a fraction of its window still to run.
+ *  Drives the owner chip's green → amber → red states. */
+export function deadlineUrgency(
+  createdAt: string | Date | null | undefined,
+  deadline: string | Date | null | undefined,
+  now: number = Date.now(),
+): 'calm' | 'soon' | 'urgent' | null {
+  if (!createdAt || !deadline) return null;
+  const start = new Date(createdAt).getTime();
+  const end = new Date(deadline).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null;
+  const remaining = (end - now) / (end - start);
+  if (remaining <= 0.1) return 'urgent';
+  if (remaining <= 0.25) return 'soon';
+  return 'calm';
+}
+
+/** Client-side estimate of the approval deadline, for the review step — which
+ *  re-renders on every time change and so can't round-trip to the server.
+ *
+ *  MUST mirror `api/src/features/bookings/bookingDeadlines.ts`. Both sides are
+ *  pinned to the same table of cases (see the tests on each side); if you change
+ *  one, change the other. This is only ever an estimate — once the booking
+ *  exists, always render the server's `approvalDeadline` instead. */
+export function estimateApprovalDeadline(
+  date: string,
+  startTime: string | null | undefined,
+  approvalWindowHours = 24,
+  now: number = Date.now(),
+): Date {
+  const HOUR = 3_600_000;
+  const playMs = date && startTime ? new Date(`${date}T${startTime}:00`).getTime() : NaN;
+  const caps = [now + Math.max(1, approvalWindowHours) * HOUR];
+  if (!Number.isNaN(playMs) && playMs > now) {
+    const lead = playMs - now;
+    const share = lead > 48 * HOUR ? 0.5 : lead >= 12 * HOUR ? 0.25 : 0.1;
+    caps.push(now + lead * share);
+    caps.push(playMs - 30 * 60_000);
+  }
+  let deadline = Math.min(...caps);
+  deadline = Math.max(deadline, now + 15 * 60_000);
+  if (!Number.isNaN(playMs) && playMs > now) deadline = Math.min(deadline, playMs);
+  return new Date(deadline);
+}
+
 /** A booking's lifecycle phase by clock time (cancelled/completed are "done").
  *  Drives the My-bookings filter (Upcoming / Ongoing / Completed). */
 export type BookingPhase = 'upcoming' | 'ongoing' | 'completed';

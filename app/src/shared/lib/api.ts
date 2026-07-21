@@ -5,7 +5,7 @@
 // live on different subdomains, so set VITE_API_BASE_URL to the API origin
 // (e.g. https://pickleballer-api.eunika.xyz) — CORS already allows the PWA host.
 
-import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, type AppUser, type Gender, type PrivacySetting, type UserPreferences } from './permissions';
+import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, resolveSubscriptionPermissions, type AppUser, type Gender, type PrivacySetting, type UserPreferences } from './permissions';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const AUTH_PREFIX = '/api/v1/auth';
@@ -295,7 +295,16 @@ export function toAppUser(api: ApiUser): AppUser {
     organizerSubscriptionActive: !!api.organizerSubscriptionActive,
     roleDefault: normalizeRole(api.roleDefault ?? api.role),
     roles,
-    permissions: resolveRolePermissions(roles),
+    // Role permissions PLUS whatever the user's live partner subscriptions
+    // unlock — coach/organizer are no longer roles, so a subscribed partner is a
+    // plain `player` and would otherwise resolve to zero partner permissions.
+    permissions: [...new Set([
+      ...resolveRolePermissions(roles),
+      ...resolveSubscriptionPermissions([
+        ...(api.coachSubscriptionActive ? ['coach' as const] : []),
+        ...(api.organizerSubscriptionActive ? ['organizer' as const] : []),
+      ]),
+    ])],
     partnerRoles: api.partnerRoles ?? [],
   };
 }
@@ -511,6 +520,10 @@ export interface ApiVenue {
   requireBookingApproval?: boolean | null;
   /** Hours the player has to pay once the owner approves (request-to-book). */
   bookingPayWindowHours?: number | null;
+  /** Ceiling on how long an unanswered request may hold a court. A ceiling, not
+   *  a fixed window — short-notice bookings expire much sooner (the owner only
+   *  gets a share of the time until play). Default 24. */
+  approvalWindowHours?: number | null;
   /** Payment options offered at checkout (subset of full/deposit/pay_at_venue). Empty/unset → full only. */
   paymentOptions?: PaymentOption[] | null;
   /** Deposit size as a % of the total, when 'deposit' is offered. */
@@ -1701,6 +1714,9 @@ export interface ApiGame {
   pendingLeaveCount?: number | null;
   /** Host-gated joining: a join becomes a request the host must approve. */
   requiresApproval?: boolean;
+  /** Open Play entrance fee per player, in pesos. 0 = free to join. Only a live
+   *  organizer subscriber's game ever carries one; they collect it at the venue. */
+  joinFee?: number | null;
   /** Players who asked to join and are waiting on the host. They hold no seat, so
    *  they're absent from `participants` and don't reduce `spotsLeft`. Deliberately
    *  non-empty even on a full lobby — that's the waiting list. */
@@ -1776,6 +1792,9 @@ export interface CreateGamePayload {
   /** Host-gated joining: joins become requests the host approves. Defaults false.
    *  Forced false server-side when the admin switch is off. */
   requiresApproval?: boolean;
+  /** Open Play entrance fee per player. 0 = free. Only a live organizer
+   *  subscriber can store a non-zero value — the server forces 0 otherwise. */
+  joinFee?: number;
   visibility: 'public' | 'invite';
   /** The host's court reservation (created + paid via the booking flow) to link. */
   bookingId?: string;
@@ -2365,6 +2384,8 @@ export interface ApiFriendProfile {
   skillLevelLabel: string | null;
   /** For friend suggestions: how many friends you share (friend-of-friend tier). */
   mutualCount?: number;
+  /** Up to 3 mutual friends for the Facebook-style avatar stack. */
+  mutualFriends?: { id: string; displayName: string; avatarUrl: string | null }[];
 }
 
 export interface ApiFriend {
@@ -2492,6 +2513,8 @@ export interface ApiClub {
   /** True when the viewer is an assigned club staff (moderator). */
   isStaff?: boolean;
   joinRequestStatus: string | null;
+  /** Up to 3 member avatars for the Facebook-style stack in Discover cards. */
+  memberAvatars?: { id: string; displayName: string; avatarUrl: string | null }[];
 }
 
 export interface ApiClubStaff {
@@ -2946,6 +2969,9 @@ export interface ApiBooking {
   paymentMethod?: string | null;
   /** Deadline to pay once the owner approves a request-to-book (else it expires). */
   paymentDueAt?: string | null;
+  /** When an unanswered request-to-book auto-cancels and the slot goes back on
+   *  sale. Absent on instant-book bookings and on rows predating the feature. */
+  approvalDeadline?: string | null;
   /** Masked card captured at request time (so paying after approval is one tap). */
   savedCard?: { brand?: string | null; last4?: string | null } | null;
   cancellationReason?: string | null;
@@ -3011,7 +3037,9 @@ export async function listBookings(params: { status?: string } = {}): Promise<Ap
   return env.data ?? [];
 }
 
-/** Create a booking. Auto-confirmed on creation — no venue-owner approval step. */
+/** Create a booking. Instant-book courts come back 'confirmed'; courts needing
+ *  owner approval come back 'pending_approval' with an `approvalDeadline` after
+ *  which the request auto-cancels and the slot is released. */
 export async function createBooking(body: CreateBookingPayload): Promise<ApiBooking> {
   return request<ApiBooking>(BOOKINGS_PREFIX, { method: 'POST', body, auth: true });
 }

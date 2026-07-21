@@ -32,8 +32,10 @@ const TEST_ACCOUNTS: { label: string; email: string; password: string }[] = [
   { label: 'Player 2',    email: '389b0d83.fuentes@example.com',     password: 'password123' },
   { label: 'Owner 1',     email: 'ccdfa3b7.walker@example.com',      password: 'password123' },
   { label: 'Owner 2',     email: 'a15e6e3e.garrido@example.com',     password: 'password123' },
-  { label: 'Organizer 1', email: '556b9e79.matthews@example.com',    password: 'password123' },
-  { label: 'Organizer 2', email: '637fa51b.reyes@example.com',       password: 'password123' },
+  // Both are `player` accounts — their partner surfaces come from a live
+  // subscription (organizer / coach), not from a role.
+  { label: 'Organizer',   email: '556b9e79.matthews@example.com',    password: 'password123' },
+  { label: 'Coach',       email: '637fa51b.reyes@example.com',       password: 'password123' },
 ];
 
 /** Today as `YYYY-MM-DD` in the user's own timezone — the birthday input's

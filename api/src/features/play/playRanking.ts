@@ -82,6 +82,8 @@ export interface FeedGame {
   targetPlayers?: number | null;
   creator?: { displayName?: string } | null;
   creatorId?: string | null;
+  /** Open Play entrance fee in pesos (0 = free). Only an organizer's game carries one. */
+  joinFee?: number | null;
   visibility?: string | null;
   courtImage?: string | null;
   createdAt?: string | Date | null;
@@ -145,9 +147,10 @@ export interface PlayItem {
    * What it costs the VIEWER to join — not what the court costs.
    *
    * `0` is free, `>0` is a real fee, and `null` means there is no join-fee mechanism
-   * for this kind of listing at all. Player-hosted games are `null` today: the host
-   * already booked and paid for the court, and the app has no way to charge a joiner
-   * (§10 of the 8 July minutes is the decision that would change that).
+   * for this kind of listing at all. Open Play (session OR game) carries a number: a
+   * subscribed organizer can set an entrance fee on the game they host, collected at
+   * the venue. Other game kinds stay `null` — the host already booked and paid for
+   * the court, and there is nothing to charge a joiner for.
    *
    * This exists because `priceLabel` cannot answer the question. On a session it is
    * the join fee; on a game it is the VENUE's hourly rate — so a "Free / Paid" filter
@@ -219,9 +222,13 @@ export function gameToPlayItem(g: FeedGame): PlayItem {
       ? { mode: 'interest', count: g.interestedCount ?? g.interestedUsers?.length ?? 0, target: g.targetPlayers ?? null }
       : { mode: 'capacity', joined, cap },
     host: g.creator?.displayName ?? null,
-    priceLabel: v?.priceFromLabel ?? null,
-    // Null, not 0: there is no join fee to speak of on a game — see the field's note.
-    joinFee: null,
+    // An organizer's Open Play can charge to join, so that fee — what the VIEWER
+    // actually pays — outranks the venue's hourly rate on the card. Free games keep
+    // showing the court rate, exactly as before.
+    priceLabel: Number(g.joinFee) > 0 ? `₱${Number(g.joinFee)}` : (v?.priceFromLabel ?? null),
+    // Open Play has a real join-fee mechanism now (0 = free). Every other game kind
+    // still has none at all, which is `null` — see the field's note.
+    joinFee: g.gameType === 'open' ? Number(g.joinFee ?? 0) : null,
     visibility: (g.visibility === 'invite' ? 'invite' : 'public'),
     isRecurring: false,
     image: g.courtImage || v?.image || null,

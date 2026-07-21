@@ -225,6 +225,11 @@ const venueSchema = new Schema({
   requireBookingApproval: { type: Boolean, default: false },
   // Hours a player has to pay after the owner approves, before the hold expires.
   bookingPayWindowHours: { type: Number, default: 24 },
+  // Longest an unanswered request-to-book may hold a court before it auto-cancels.
+  // A ceiling, not a fixed window: short-notice bookings resolve much faster (see
+  // `bookings/bookingDeadlines.ts`), because the owner only ever gets a share of
+  // the time until play.
+  approvalWindowHours: { type: Number, default: 24, min: 1, max: 72 },
   // Which payment options the venue offers at checkout. Subset of
   // 'full' (pay the whole amount online), 'deposit' (pay a % now, the rest at the
   // venue), 'pay_at_venue' (reserve now, pay everything on arrival). Empty/unset →

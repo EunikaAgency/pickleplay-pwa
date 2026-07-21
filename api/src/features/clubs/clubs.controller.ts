@@ -145,7 +145,7 @@ function refPerson(p: any) {
     : { id: String(p), displayName: null, avatarUrl: null };
 }
 
-function serializeClub(c: any, viewer: { isMember?: boolean; isHost?: boolean; isStaff?: boolean; joinRequestStatus?: string | null } = {}) {
+function serializeClub(c: any, viewer: { isMember?: boolean; isHost?: boolean; isStaff?: boolean; joinRequestStatus?: string | null } = {}, memberAvatars?: { id: string; displayName: string; avatarUrl: string | null }[]) {
   const host = c.hostId ? refPerson(c.hostId) : null;
   return {
     id: String(c._id),
@@ -163,6 +163,7 @@ function serializeClub(c: any, viewer: { isMember?: boolean; isHost?: boolean; i
     isHost: !!viewer.isHost,
     isStaff: !!viewer.isStaff,
     joinRequestStatus: viewer.joinRequestStatus ?? null,
+    memberAvatars: memberAvatars?.length ? memberAvatars : undefined,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   };
@@ -264,6 +265,34 @@ export async function listClubs(c: any) {
     staffClubIds = new Set(staff.map((s: any) => String(s.clubId)));
   }
 
+  // Batch-load member avatars for the Facebook-style stack (up to 3 per club).
+  const memberAvatarsByClub = new Map<string, { id: string; displayName: string; avatarUrl: string | null }[]>();
+  if (rows.length) {
+    const clubIds = rows.map((r: any) => r._id);
+    const allMemberships = await ClubMembership.find({ clubId: { $in: clubIds } })
+      .select('clubId userId').lean();
+    // Group first 3 member userIds per club.
+    const memberIdsByClub = new Map<string, string[]>();
+    for (const m of allMemberships) {
+      const cid = String((m as any).clubId);
+      const arr = memberIdsByClub.get(cid) ?? [];
+      if (arr.length < 3) arr.push(String((m as any).userId));
+      memberIdsByClub.set(cid, arr);
+    }
+    // Batch-lookup user avatars.
+    const allMemberIds = [...new Set([...memberIdsByClub.values()].flat())];
+    const memberUsers = allMemberIds.length
+      ? await User.find({ _id: { $in: allMemberIds } }).select('displayName avatarUrl').lean()
+      : [];
+    const userById = new Map(memberUsers.map((u: any) => [String(u._id), u]));
+    for (const [cid, uids] of memberIdsByClub) {
+      memberAvatarsByClub.set(cid, uids
+        .map((uid) => userById.get(uid))
+        .filter(Boolean)
+        .map((u: any) => ({ id: String(u._id), displayName: u.displayName, avatarUrl: u.avatarUrl ?? null })));
+    }
+  }
+
   const data = rows.map((r: any) => {
     const cid = String(r._id);
     const isHost = isHostOf(r, user);
@@ -272,7 +301,7 @@ export async function listClubs(c: any) {
       isHost,
       isStaff: staffClubIds.has(cid),
       joinRequestStatus: pendingClubIds.has(cid) ? 'pending' : null,
-    });
+    }, memberAvatarsByClub.get(cid));
   });
 
   return c.json({ data, meta: { total: data.length, cursor: nextCursor(rows as any, hasMore) } });

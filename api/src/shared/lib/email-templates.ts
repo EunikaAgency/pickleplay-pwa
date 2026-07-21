@@ -261,6 +261,73 @@ export function bookingApprovedReceipt(opts: {
   return { html, text };
 }
 
+// ── Booking request declined by the venue ──────────────────────────
+//
+// Previously nothing was sent when an owner declined: the player found out by
+// opening the app, or turned up at a court they hadn't been given.
+
+export function bookingDeclinedReceipt(opts: {
+  receipt: string; venue: string; court?: string;
+  date: string; start: string; end: string;
+  reason?: string | null; browseUrl: string;
+}) {
+  const text = [
+    `BOOKING REQUEST DECLINED — #${opts.receipt}`,
+    `${opts.venue} · ${opts.date} · ${opts.start}–${opts.end}`,
+    ...(opts.reason ? [`Reason: ${opts.reason}`] : []),
+    'You have not been charged.',
+    `Find another court: ${opts.browseUrl}`,
+  ].join('\n');
+  const html = shell('Booking Request Declined', [
+    badge('Declined', '#f43f5e'),
+    heading('Your request was declined'),
+    para(`${opts.venue} wasn't able to take your booking${opts.reason ? `: <strong>${opts.reason}</strong>` : '.'}`),
+    para('<strong>You have not been charged.</strong>'),
+    card([
+      { label: 'Booking', value: `#${opts.receipt}` },
+      { label: 'Venue', value: opts.venue },
+      ...(opts.court ? [{ label: 'Court', value: opts.court }] : []),
+      { label: 'Date', value: opts.date },
+      { label: 'Time', value: `${opts.start} – ${opts.end}` },
+      ...(opts.reason ? [{ label: 'Reason', value: opts.reason }] : []),
+    ]),
+    btn('Find another court', opts.browseUrl),
+  ].join('\n'));
+  return { html, text };
+}
+
+// ── Request expired — the owner never answered ─────────────────────
+
+export function bookingRequestExpiredReceipt(opts: {
+  receipt: string; venue: string; court?: string;
+  date: string; start: string; end: string;
+  browseUrl: string;
+}) {
+  const text = [
+    `BOOKING REQUEST EXPIRED — #${opts.receipt}`,
+    `${opts.venue} · ${opts.date} · ${opts.start}–${opts.end}`,
+    "The venue didn't respond in time, so your request was cancelled automatically.",
+    'You have not been charged.',
+    `Find another court: ${opts.browseUrl}`,
+  ].join('\n');
+  const html = shell('Booking Request Expired', [
+    badge('Expired', '#f97316'),
+    heading('Your request expired'),
+    para(`${opts.venue} didn't respond in time, so your request was cancelled automatically and the slot released.`),
+    para('<strong>You have not been charged.</strong>'),
+    card([
+      { label: 'Booking', value: `#${opts.receipt}` },
+      { label: 'Venue', value: opts.venue },
+      ...(opts.court ? [{ label: 'Court', value: opts.court }] : []),
+      { label: 'Date', value: opts.date },
+      { label: 'Time', value: `${opts.start} – ${opts.end}` },
+    ]),
+    btn('Find another court', opts.browseUrl),
+    muted('Courts that confirm instantly are marked "Book instantly" in the app.'),
+  ].join('\n'));
+  return { html, text };
+}
+
 // ── Payment receipt ────────────────────────────────────────────────
 
 export function paymentReceipt(opts: {

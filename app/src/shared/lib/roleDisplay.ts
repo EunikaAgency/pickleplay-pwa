@@ -22,6 +22,23 @@ export function primaryRole(user: AppUser): Role {
   return ROLE_RANK.find((r) => roles.includes(r)) ?? 'player';
 }
 
+/** The role NAME to show on badges — `primaryRole` plus the partner plans the
+ *  user is actively paying for. Coach/organizer are no longer account roles
+ *  (see api's partner-roles-to-subscriptions), so a live subscription would
+ *  otherwise still read as "Player" on the profile pill and the sidebar.
+ *
+ *  Label-only: navigation, screens and gating all keep using `primaryRole` /
+ *  `userHasPermission`, so a subscriber's sidebar and functions are unchanged.
+ *  A ranked account role (admin/moderator/owner/staff) outranks a plan — their
+ *  badge shouldn't be demoted by buying a subscription. */
+export function displayRole(user: AppUser): Role {
+  const role = primaryRole(user);
+  if (role !== 'player') return role;
+  if (user.organizerSubscriptionActive) return 'organizer';
+  if (user.coachSubscriptionActive) return 'coach';
+  return role;
+}
+
 /** Per-venue partner badge chips — "Coach at Quezon Smash Club", "Organiser at
  *  Makati Sports Hub". Duplicates (same role + venue) are collapsed. */
 export function partnerBadges(user: AppUser): Array<{ role: string; venueName: string; color: string }> {

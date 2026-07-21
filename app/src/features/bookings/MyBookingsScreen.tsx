@@ -11,9 +11,37 @@ import type { Navigate } from '../../shared/lib/navigation';
 import {
   isCancellable, money, prettyDate, bookingPhase, bookingPhaseChip,
   timeRange, bookingDuration, to12h, paymentOptionLabel, type BookingPhase,
+  countdownLabel, deadlineLabel, deadlineUrgency,
 } from './bookingDisplay';
+import { useCountdown } from '../../shared/hooks/useCountdown';
 import { ModifyBookingSheet } from './ModifyBookingSheet';
 import { WaitlistSection } from './WaitlistSection';
+
+/** Live "waiting for the owner" line on a pending request.
+ *
+ *  Its own component so the ticking hook isn't called inside a `.map()`, and so
+ *  only the rows that actually have a deadline re-render on each tick. This is
+ *  the screen a waiting player keeps coming back to, so the countdown is the
+ *  point: before it, a request that had quietly died looked exactly like one
+ *  still under consideration. */
+function ApprovalCountdown({ booking }: { booking: ApiBooking }) {
+  const now = useCountdown(booking.approvalDeadline);
+  if (booking.status !== 'pending_approval' || !booking.approvalDeadline) return null;
+  const urgency = deadlineUrgency(booking.createdAt, booking.approvalDeadline, now);
+  const lapsed = new Date(booking.approvalDeadline).getTime() <= now;
+  return (
+    <div className={`mt-2.5 flex items-start gap-1.5 text-[12px] font-semibold ${
+      urgency === 'urgent' || lapsed ? 'text-[var(--coral)]' : 'text-[var(--muted)]'
+    }`}>
+      <Icon name="timer" size={14} className="shrink-0 mt-px" />
+      <span>
+        {lapsed
+          ? 'Expired — the slot was released. You have not been charged.'
+          : <>Waiting for the venue · <strong>{countdownLabel(booking.approvalDeadline, 'left', now)}</strong>. Cancels automatically at {deadlineLabel(booking.approvalDeadline, now)} if they don't respond.</>}
+      </span>
+    </div>
+  );
+}
 
 /** "Mon, Jun 23, 6:00 PM" — the pay-by deadline for an approved request. */
 function payByLabel(iso?: string | null): string {
@@ -267,6 +295,7 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
                             {chip.label}
                           </span>
                         </div>
+                        <ApprovalCountdown booking={b} />
                         <div className="mt-3 pt-3 border-t-[0.5px] border-[var(--hairline)] flex items-center justify-between">
                           <div className="font-heading font-bold text-[16px] text-[var(--ink)]">{money(b.amount)}</div>
                           <span className="text-[12px] font-bold text-[var(--muted)] flex items-center gap-1">

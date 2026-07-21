@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { Payment, OfficialReceipt, ReceiptCounter, Settlement, SettlementLineItem, OwnerPayoutMethod } from './payments.model.js';
 import { Booking } from '../bookings/bookings.model.js';
+import { isBlocking } from '../bookings/bookingDeadlines.js';
+import { expireOverdueBookings } from '../bookings/bookings.controller.js';
 import { Venue } from '../venues/venues.model.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
@@ -109,12 +111,15 @@ export async function checkout(c: any) {
   // (Instant-book bookings are already 'confirmed', so these checks no-op.)
   if (body.bookingId) {
     const existing = await Booking.findOne({ _id: body.bookingId, userId: user.sub })
-      .select('status paymentDueAt').lean<{ status?: string; paymentDueAt?: Date }>();
+      .select('status paymentDueAt approvalDeadline').lean<{ status?: string; paymentDueAt?: Date; approvalDeadline?: Date }>();
     if (existing?.status === 'pending_approval') {
       return c.json({ error: { code: 'AWAITING_APPROVAL', message: 'This booking is awaiting venue approval — you can pay once the owner accepts it.' } }, 409);
     }
-    if (existing?.status === 'awaiting_payment' && existing.paymentDueAt && new Date(existing.paymentDueAt).getTime() < Date.now()) {
-      await Booking.updateOne({ _id: body.bookingId }, { status: 'cancelled', cancellationReason: 'Payment window expired', cancelledAt: new Date() });
+    // Expiry is decided by the shared predicate and written by the shared
+    // cancel path, so this can't drift from the sweeper the way the inline copy
+    // that used to live here did.
+    if (existing && !isBlocking(existing, new Date())) {
+      await expireOverdueBookings([{ ...existing, _id: body.bookingId }]);
       return c.json({ error: { code: 'PAYMENT_EXPIRED', message: 'The payment window for this booking has expired. Please book again.' } }, 409);
     }
   }
@@ -125,11 +130,11 @@ export async function checkout(c: any) {
     status: testMode ? 'completed' : 'pending',
   });
 
-  // Bookings are auto-confirmed at creation (no owner approval step), so
-  // checkout no longer gates confirmation — it just records the payment. In
-  // test mode we also stamp the payment method onto the booking; live mode
-  // leaves the payment pending until a real gateway lands. Either way the
-  // booking is already 'confirmed'. Scope the booking to its owner.
+  // Instant-book bookings are already 'confirmed' at creation; approval-required
+  // ones reach here as 'awaiting_payment' once the owner has accepted. Checkout
+  // records the payment either way. In test mode we also stamp the payment method
+  // onto the booking; live mode leaves the payment pending until a real gateway
+  // lands. Scope the booking to its owner.
   let booking: any = null;
   if (body.bookingId) {
     booking = testMode

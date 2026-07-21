@@ -331,8 +331,10 @@ export async function suggestFriends(c: any) {
       status: 'accepted',
       $or: [{ requesterId: { $in: acceptedFriendIds } }, { recipientId: { $in: acceptedFriendIds } }],
     }).select('requesterId recipientId').lean();
-    // Count, per candidate, how many of my friends they're connected to.
+    // Count, per candidate, how many of my friends they're connected to, and
+    // capture the actual mutual friend IDs for the Facebook-style avatar stack.
     const mutual = new Map<string, number>();
+    const mutualFriendIds = new Map<string, string[]>(); // candidate → [friendId, …]
     for (const e of edges) {
       const a = String(e.requesterId);
       const b = String(e.recipientId);
@@ -342,8 +344,18 @@ export async function suggestFriends(c: any) {
       const cand = aFriend && !bFriend ? b : bFriend && !aFriend ? a : null;
       if (!cand || excludeIds.has(cand)) continue; // skips me + my friends/pending
       mutual.set(cand, (mutual.get(cand) ?? 0) + 1);
+      const friendId = aFriend ? a : b;
+      const existing = mutualFriendIds.get(cand) ?? [];
+      if (existing.length < 3) existing.push(friendId);
+      mutualFriendIds.set(cand, existing);
     }
     if (mutual.size) {
+      // Collect all mutual friend IDs referenced, batch their avatars.
+      const allMutualFriendIds = [...new Set([...mutualFriendIds.values()].flat())];
+      const mutualFriendUsers = allMutualFriendIds.length
+        ? await User.find({ _id: { $in: allMutualFriendIds } }).select('displayName avatarUrl').lean()
+        : [];
+      const friendUserById = new Map(mutualFriendUsers.map((u: any) => [String(u._id), u]));
       const rankedIds = [...mutual.entries()].sort((x, y) => y[1] - x[1]).slice(0, 20).map(([id]) => id);
       const users = await User.find({ _id: { $in: rankedIds }, roleDefault: { $in: FRIENDABLE_ROLES } })
         .select('displayName avatarUrl roleDefault bio skillLevel skillLevelLabel')
@@ -353,7 +365,14 @@ export async function suggestFriends(c: any) {
       fof = rankedIds
         .map((id) => byId.get(id))
         .filter(Boolean)
-        .map((u: any) => ({ ...u, _mutual: mutual.get(String(u._id)) ?? 0 }));
+        .map((u: any) => {
+          const mfIds = mutualFriendIds.get(String(u._id)) ?? [];
+          const mfAvatars = mfIds
+            .map((fid) => friendUserById.get(fid))
+            .filter(Boolean)
+            .map((fu: any) => ({ id: String(fu._id), displayName: fu.displayName, avatarUrl: fu.avatarUrl ?? null }));
+          return { ...u, _mutual: mutual.get(String(u._id)) ?? 0, _mutualFriends: mfAvatars };
+        });
     }
   }
 
@@ -437,6 +456,8 @@ export async function suggestFriends(c: any) {
       distanceKm: r._dist != null ? Math.round(r._dist * 10) / 10 : undefined,
       // Number of shared friends when this is a friend-of-friend suggestion.
       mutualCount: r._mutual != null ? r._mutual : undefined,
+      // Up to 3 mutual friends' avatars for the Facebook-style overlap display.
+      mutualFriends: r._mutualFriends?.length ? r._mutualFriends : undefined,
     })),
   });
 }

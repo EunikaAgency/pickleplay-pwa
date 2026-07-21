@@ -505,7 +505,26 @@ export function FriendsPanel({ chrome }: FriendsPanelProps) {
                       onOpen={() => openProfile(person.id)}
                       extra={
                         person.mutualCount != null && person.mutualCount > 0
-                          ? <span className="friend-dist">{person.mutualCount} mutual friend{person.mutualCount === 1 ? '' : 's'}</span>
+                          ? (
+                            <span className="friend-dist">
+                              {person.mutualFriends && person.mutualFriends.length > 0 && (
+                                <span className="friend-mutual-avatars">
+                                  {person.mutualFriends.slice(0, 3).map((mf, i) => (
+                                    <span
+                                      key={mf.id}
+                                      className="friend-mutual-avatar"
+                                      style={{ zIndex: 3 - i, marginLeft: i === 0 ? 0 : -8 }}
+                                    >
+                                      {mf.avatarUrl
+                                        ? <img src={apiImageUrl(mf.avatarUrl)} alt="" className="h-full w-full rounded-full object-cover" />
+                                        : <span className="flex h-full w-full items-center justify-center rounded-full bg-[var(--ink-fill)] text-[8px] font-bold">{mf.displayName?.[0] ?? '?'}</span>}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                              <span>{person.mutualCount} mutual friend{person.mutualCount === 1 ? '' : 's'}</span>
+                            </span>
+                          )
                           : person.distanceKm != null
                             ? <span className="friend-dist">{person.distanceKm} km away</span>
                             : undefined

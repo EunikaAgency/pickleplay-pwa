@@ -62,8 +62,20 @@ src/
                              #   = 'manual') lands 'pending_approval' (card saved, no
                              #   charge) → owner approves → 'awaiting_payment'
                              #   (+ paymentDueAt) → player pays → 'confirmed'; a court's
-                             #   approvalMode 'auto'/'manual' overrides the venue policy;
-                             #   expireOverdueBookings() lazily cancels overdue holds on read.
+                             #   approvalMode 'auto'/'manual' overrides the venue policy
+                             #   ('inherit' follows the venue's requireBookingApproval).
+                             #   bookingDeadlines.ts = PURE deadline math + the occupancy
+                             #   predicate (unit-tested in bookingDeadlines.test.ts, and
+                             #   against real Mongo in bookingOccupancy.test.ts). A request
+                             #   carries an approvalDeadline set at creation — min(venue
+                             #   approvalWindowHours, a share of the time until play that
+                             #   shrinks as the game nears, playStart−30m). Occupancy is
+                             #   settled by comparing that deadline at QUERY time via
+                             #   blockingFilter(), NOT by a sweeper rewriting status, so a
+                             #   lapsed request frees its court immediately; rows with no
+                             #   deadline (pre-feature) never expire. sweepExpiredBookings()
+                             #   is scheduled cleanup + owner nudges at 50%/80% of the
+                             #   window, and expireOverdueBookings() still runs on read.
                              #   Booking model also carries the payment breakdown
                              #   (serviceFeeAmount + paymentOption full|deposit|pay_at_venue +
                              #   amountPaid + balanceDue) and owner-entered fields
@@ -331,7 +343,11 @@ src/
                              #   fix-avatar-gender.ts (match avatar gender to name),
                              #   backfill-venue-court-images.ts (stock photos for
                              #     venues/courts missing a mainImageUrl),
-                             #   link-owner-venues.ts, download-images.ts, index.ts
+                             #   link-owner-venues.ts, download-images.ts, index.ts,
+                             #   expire-legacy-pending-bookings.ts (one-off: silently
+                             #     cancels request-to-book rows stranded before
+                             #     approvalDeadline existed, which would otherwise block
+                             #     their courts forever; --dry-run supported)
     lib/                     # framework-agnostic helpers: jwt.ts, permissions.ts,
                              #   geo.ts (haversineKm — the Play feed's proximity signal),
                              #   cursor.ts (compound createdAt|_id keyset pagination),
@@ -340,6 +356,11 @@ src/
                              #   also publishes notification.created to userEvents.ts),
                              #   userEvents.ts (in-process per-user realtime bus, channel
                              #   user:${id} — mirrors clubs.events.ts; drives GET /me/stream),
+                             #   scheduler.ts (everyMinutes(name, fn, mins) — the only job
+                             #   runner; in-process, runs once at boot, survives a throwing
+                             #   job, unref'd. Multi-instance safe only if the job itself is
+                             #   idempotent — the booking sweep uses status-guarded
+                             #   findOneAndUpdate rather than a lock),
                              #   client-ip.ts (trusted-proxy-aware caller IP: X-Forwarded-For
                              #   is honoured ONLY when the socket peer is in TRUSTED_PROXIES,
                              #   else the header is a free rate-limit bypass)
@@ -383,6 +404,7 @@ src/
 | Clubs / club feed / SSE realtime | `features/clubs/` (`clubs.controller.ts`, `clubs.model.ts`, `clubs.events.ts` = SSE bus); cursor in `shared/lib/cursor.ts` |
 | PickleFeed (global player newsfeed) | `features/feed/` (`feed.controller.ts`, `feed.model.ts`, `feed.routes.ts`) — Threads/Facebook-style global feed, cursor-paginated; post/like/comment/repost + photos (per-photo caption) + share cards (game/open-play/club, enriched server-side); **per-viewer personalization** via `FeedSignal` (interested→float+de-cluster / not_interested→mute), `FeedHiddenPost` (24h hide), `FeedReport` (moderation), `FeedNotifySub` (comment-notify subscribe); no SSE yet (MVP refreshes on action); e2e in `e2e/feed.sh` |
 | Per-user realtime (chat + notifs) | `shared/lib/userEvents.ts` (bus) + `GET /me/stream` in `features/interactions/`; published by `shared/lib/notify.ts` + `features/messages/` |
+| Booking expiry / "is this slot free?" | `features/bookings/bookingDeadlines.ts` (pure) — `blockingFilter()` is the single occupancy predicate, spread into the 3 conflict queries in `bookings.controller.ts`; change the windows in `approvalShare()`. The sweeper + reminders are `sweepExpiredBookings()`, scheduled from `index.ts` via `shared/lib/scheduler.ts` |
 | Bracket / seeding / advancement logic | `features/brackets/bracketEngine.ts` (pure, tested), then `brackets.controller.ts` |
 | Play tab Discover ranking / relevance weights | `features/play/playRanking.ts` (pure, 39 tests) — retune `RANK_WEIGHTS` here and every device picks it up with no app release; the feed itself is `play.controller.ts` |
 | Auth / tokens / gating | `shared/middleware/auth.ts`, `shared/lib/jwt.ts`, `features/auth/*` |
