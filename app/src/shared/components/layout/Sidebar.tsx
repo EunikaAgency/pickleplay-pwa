@@ -128,7 +128,7 @@ const ADMIN_SECTIONS: AdminSection[] = [
     label: 'Moderation',
     icon: 'gavel',
     items: [
-      { screenId: 'admin-moderation', icon: 'dashboard', label: 'Overview' },
+      { screenId: 'admin-moderation', icon: 'dashboard', label: 'All queues' },
       { screenId: 'admin-reviews', icon: 'rate_review', label: 'Reviews' },
       { screenId: 'admin-review-reports', icon: 'flag', label: 'Review reports' },
       { screenId: 'admin-post-reports', icon: 'report', label: 'Post reports' },
