@@ -651,14 +651,12 @@ function AppInner() {
         if (isOwner) return <OwnerHomeScreen onNavigate={navigate} />;
         return <HomeScreenV2 {...v2Chrome} />;
       case 'nearby':
-        // Owners get a local market map (their venues vs nearby competitors);
-        // players/guests get the normal discover-courts-near-me view.
-        if (userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
+        // Owners get a local market map; admins + players get the discover view.
+        if (isOwner && userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
         return <NearbyScreenV2 {...v2Chrome} intent={screen.params?.intent} />;
       case 'games':
-        // Owners get "Your courts" (games + bookings at their venues); players
-        // get the normal browse/join games view.
-        if (userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
+        // Owners get "Your courts"; admins + players get the browse/join view.
+        if (isOwner && userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
         return <GamesScreenV2 {...v2Chrome} initialSection={screen.params?.section} initialView={screen.params?.view} />;
       case 'booking':
         // Owner "Bookings" tab (ownerTabs in TabBar/Sidebar → /booking) — the
@@ -689,6 +687,8 @@ function AppInner() {
         if (!canSeeSocial) return <OwnerHomeScreen onNavigate={navigate} />;
         return <SocialScreen chrome={v2Chrome} tab="clubs" />;
       case 'profile':
+        // Admins don't have a profile tab — redirect to admin console.
+        if (isAdmin) return <AdminHubScreen onNavigate={navigate} onBack={goBack} />;
         // Owners get their own profile dashboard; everyone else uses the v2 profile.
         if (isOwner) return <OwnerProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
         return <ProfileScreenV2 {...v2Chrome} onLogout={handleLogout} />;
@@ -916,7 +916,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} adminActive={screen.id.startsWith('admin-')} onAdminNavigate={isAdmin ? (screenId: string) => { (navigate as (id: string) => void)(screenId); } : undefined} adminScreenId={screen.id.startsWith('admin-') ? screen.id : undefined} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} adminActive={screen.id.startsWith('admin-')} onAdminNavigate={isAdmin ? (screenId: string) => { (navigate as (id: string) => void)(screenId); } : undefined} adminScreenId={screen.id.startsWith('admin-') ? screen.id : undefined} onOpenNotifications={isLoggedIn ? () => navigate('notifications') : undefined} notificationsActive={screen.id === 'notifications'} onLogout={isAdmin ? handleLogout : undefined} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
       )}
 
       <main className="app-main">

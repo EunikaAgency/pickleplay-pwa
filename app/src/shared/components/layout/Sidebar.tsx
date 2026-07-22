@@ -4,6 +4,7 @@ import { Avatar } from '../ui/Avatar';
 import type { TabId } from '../../lib/navigation';
 import { useAuthStore } from '../../lib/authStore';
 import { useMessageStore } from '../../lib/messageStore';
+import { useNotificationStore } from '../../lib/notificationStore';
 import { userHasPermission } from '../../lib/permissions';
 import { ROLE_META, displayRole } from '../../lib/roleDisplay';
 
@@ -60,6 +61,12 @@ interface SidebarProps {
   onAdminNavigate?: (screenId: string) => void;
   /** The currently active admin screen id (for active-state highlighting). */
   adminScreenId?: string;
+  /** Open the notifications screen. */
+  onOpenNotifications?: () => void;
+  /** Whether the notifications screen is active. */
+  notificationsActive?: boolean;
+  /** Sign out. */
+  onLogout?: () => void;
 }
 
 interface SideTab {
@@ -197,9 +204,10 @@ function AdminSections({ onNavigate, activeScreenId }: { onNavigate: (screenId: 
   );
 }
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, adminActive = false, onAdminNavigate, adminScreenId }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, adminActive = false, onAdminNavigate, adminScreenId, onOpenNotifications, notificationsActive = false, onLogout }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
+  const unreadNotifs = useNotificationStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
   const visibleTabs = roleTabs
     .filter((t) => t.id !== 'tournaments' || showTournaments)
@@ -324,6 +332,25 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             )}
           </button>
         )}
+        {/* Notifications — shown for all logged-in users (replaces the Profile tab
+            for admins, who get it here instead). */}
+        {isLoggedIn && onOpenNotifications && (
+          <button
+            className={`side-tab ${notificationsActive ? 'active' : ''}`}
+            onClick={onOpenNotifications}
+            aria-current={notificationsActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name="notifications" size={20} />
+            </span>
+            Notifications
+            {unreadNotifs > 0 && (
+              <span className="side-tab-badge" aria-label={`${unreadNotifs} unread notifications`}>
+                {unreadNotifs > 99 ? '99+' : unreadNotifs}
+              </span>
+            )}
+          </button>
+        )}
         {/* Shop — owner only (admins don't run rental inventory) */}
         {isOwner && !isAdmin && onOpenShop && (
           <button
@@ -339,17 +366,20 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
         )}
         {/* ── Admin console — collapsible sections with header labels ── */}
         {isAdmin && onAdminNavigate && <AdminSections onNavigate={onAdminNavigate} activeScreenId={adminScreenId ?? ''} />}
-        {/* Profile — placed last (very bottom of the nav) for every role. */}
-        <button
-          className={`side-tab ${activeTab === 'profile' && !shopActive && !adminActive ? 'active' : ''}`}
-          onClick={() => onTabPress('profile')}
-          aria-current={activeTab === 'profile' && !shopActive && !adminActive ? 'page' : undefined}
-        >
-          <span className="ico">
-            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive && !adminActive ? 'user_fill' : 'user'} size={20} />
-          </span>
-          {isLoggedIn ? 'Profile' : 'Login'}
-        </button>
+        {/* Profile — non-admins get the tab; admins reach everything from the
+            sidebar sections above. */}
+        {!isAdmin && (
+          <button
+            className={`side-tab ${activeTab === 'profile' && !shopActive ? 'active' : ''}`}
+            onClick={() => onTabPress('profile')}
+            aria-current={activeTab === 'profile' && !shopActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive ? 'user_fill' : 'user'} size={20} />
+            </span>
+            {isLoggedIn ? 'Profile' : 'Login'}
+          </button>
+        )}
       </nav>
 
       {showCreate && (
@@ -366,6 +396,11 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
           <div className="name">{footName}</div>
           <div className="sub">{footSub}</div>
         </div>
+        {isAdmin && onLogout && (
+          <button type="button" onClick={onLogout} className="admin-item-icon" title="Sign out" style={{ marginLeft: 'auto', color: 'var(--muted)' }}>
+            <Icon name="logout" size={18} />
+          </button>
+        )}
       </div>
     </aside>
   );
