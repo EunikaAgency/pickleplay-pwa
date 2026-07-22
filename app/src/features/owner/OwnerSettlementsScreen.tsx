@@ -76,7 +76,7 @@ export function OwnerSettlementsScreen(props: OwnerSettlementsScreenProps) {
     return () => { alive = false; };
   }, [reloadKey]);
 
-  // Total unsenttled across all venues.
+  // Total unsettled across all venues (API field retains its legacy spelling).
   const totalUnsenttled = useMemo(() => balance.reduce((sum, b) => sum + (b.unsenttledNet || 0), 0), [balance]);
 
   const handleAddMethod = async () => {
@@ -120,7 +120,7 @@ export function OwnerSettlementsScreen(props: OwnerSettlementsScreenProps) {
             {balance.length > 0 && (
               <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 mb-5">
                 <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)] mb-3">
-                  Unsenttled balance
+                  Unsettled balance
                 </div>
                 <div className="font-heading font-bold text-[28px] text-[var(--ink)] tabular-nums">
                   {money(totalUnsenttled)}
@@ -147,7 +147,10 @@ export function OwnerSettlementsScreen(props: OwnerSettlementsScreenProps) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setShowAddMethod(true)}
+                  onClick={() => {
+                    setNewMethod((m) => ({ ...m, venueId: m.venueId || balance[0]?.venueId || '' }));
+                    setShowAddMethod(true);
+                  }}
                   className="text-[12px] font-bold text-[var(--primary)] flex items-center gap-1"
                 >
                   <Icon name="plus" size={14} /> Add
@@ -291,6 +294,17 @@ export function OwnerSettlementsScreen(props: OwnerSettlementsScreenProps) {
         }
       >
         <div className="px-5 flex flex-col gap-3">
+          <label className="block">
+            <span className="text-[12px] font-bold text-[var(--muted)] uppercase tracking-wide">Venue</span>
+            <select
+              value={newMethod.venueId}
+              onChange={(e) => setNewMethod((m) => ({ ...m, venueId: e.target.value }))}
+              className="mt-1 w-full h-10 rounded-lg border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--ink)]"
+            >
+              {balance.map((b) => <option key={b.venueId} value={b.venueId}>{b.venueName || 'Venue'}</option>)}
+            </select>
+          </label>
+
           {/* Method type */}
           <label className="block">
             <span className="text-[12px] font-bold text-[var(--muted)] uppercase tracking-wide">Method</span>

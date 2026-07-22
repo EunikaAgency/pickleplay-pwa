@@ -8,7 +8,7 @@ import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/g
 import { bookingConfirmedReceipt, bookingRequestedReceipt, bookingRequestExpiredReceipt, cancellationReceipt } from '../../shared/lib/email-templates.js';
 import { User } from '../auth/auth.model.js';
 import { resolveHourlyRate, perPlayerSurcharge, OCCUPANCY_BLOCK_NOTES } from './pricing.js';
-import { blockingFilter, computeApprovalDeadline, deadlineLabel, isBlocking, playStartOf } from './bookingDeadlines.js';
+import { blockingFilter, computeApprovalDeadline, computePaymentDueAt, deadlineLabel, isBlocking, playStartOf } from './bookingDeadlines.js';
 
 function canEmail() { return isGmailConfigured() && hasValidTokens(); }
 
@@ -607,11 +607,13 @@ export async function createBooking(c: any) {
   // player just pays the venue's per-session fee and is confirmed. Guard that the
   // venue actually offers open play before taking money.
   if (body.bookingType === 'open_play') {
-    const v = await Venue.findById(body.venueId).select('openPlayPrice').lean<{ openPlayPrice?: number }>();
+    const v = await Venue.findById(body.venueId).select('openPlayPrice bookingPayWindowHours').lean<{ openPlayPrice?: number; bookingPayWindowHours?: number }>();
     if (!v) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
     if (!(Number(v.openPlayPrice) > 0)) {
       return c.json({ error: { code: 'BAD_REQUEST', message: 'This venue does not offer open play.' } }, 400);
     }
+    const testMode = await (await import('../settings/settings.controller.js')).isPaymentTestMode();
+    const awaitsManualPayment = !testMode && body.paymentMethod !== 'pay_at_venue';
     const openPlay = await Booking.create({
       userId: user.sub, venueId: body.venueId, courtId: null, subUnitIndex: null,
       sessionId: body.sessionId || null, eventId: body.eventId || null, date: body.date,
@@ -619,7 +621,14 @@ export async function createBooking(c: any) {
       amount: typeof body.amount === 'number' ? body.amount : parseFloat(body.amount),
       paymentMethod: body.paymentMethod || null,
       bookingType: 'open_play',
-      status: 'confirmed',
+      status: awaitsManualPayment ? 'awaiting_payment' : 'confirmed',
+      paymentDueAt: awaitsManualPayment
+        ? computePaymentDueAt({
+          now: new Date(),
+          playStart: playStartOf(body.date, body.startTime),
+          payWindowHours: v.bookingPayWindowHours ?? 24,
+        })
+        : null,
     });
     return c.json({ data: { ...openPlay.toObject(), id: openPlay._id } }, 201);
   }
@@ -656,7 +665,7 @@ export async function createBooking(c: any) {
 
   // Venue drives pricing, member discount, per-player surcharge, owner
   // notification — and the approval decision below, so it must be loaded first.
-  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold requireBookingApproval approvalWindowHours').lean<{ displayName?: string; ownerUserId?: any; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number; requireBookingApproval?: boolean; approvalWindowHours?: number }>();
+  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold requireBookingApproval approvalWindowHours bookingPayWindowHours').lean<{ displayName?: string; ownerUserId?: any; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number; requireBookingApproval?: boolean; approvalWindowHours?: number; bookingPayWindowHours?: number }>();
 
   // Per-court approval, with the venue default behind it. 'manual' always requires
   // approval and 'auto' never does; 'inherit' (the court default) follows the
@@ -674,6 +683,22 @@ export async function createBooking(c: any) {
       now: new Date(),
       playStart: playStartOf(body.date, body.startTime),
       approvalWindowHours: venue?.approvalWindowHours ?? 24,
+    })
+    : null;
+
+  // Test mode behaves like an instant gateway. Launch live mode is manual GCash:
+  // an instant-book court is held as awaiting_payment until the venue confirms
+  // the transfer. Pay-at-venue is intentionally different — that venue policy
+  // reserves immediately and collects on arrival.
+  const testMode = await (await import('../settings/settings.controller.js')).isPaymentTestMode();
+  const awaitsManualPayment = !requiresApproval
+    && body.paymentMethod !== 'pay_at_venue'
+    && !testMode;
+  const paymentDueAt = awaitsManualPayment
+    ? computePaymentDueAt({
+      now: new Date(),
+      playStart: playStartOf(body.date, body.startTime),
+      payWindowHours: venue?.bookingPayWindowHours ?? 24,
     })
     : null;
 
@@ -788,8 +813,9 @@ export async function createBooking(c: any) {
     startTime: body.startTime || null, endTime: body.endTime || null, playerCount: body.playerCount,
     amount: typeof body.amount === 'number' ? body.amount : parseFloat(body.amount),
     paymentMethod: body.paymentMethod || null,
-    status: requiresApproval ? 'pending_approval' : 'confirmed',
+    status: requiresApproval ? 'pending_approval' : awaitsManualPayment ? 'awaiting_payment' : 'confirmed',
     approvalDeadline,
+    paymentDueAt,
     // Capture the card on the request so paying after approval is one tap.
     savedCard: requiresApproval && body.card ? { brand: body.card.brand, last4: body.card.last4 } : undefined,
     // Equipment rental add-on (V2).

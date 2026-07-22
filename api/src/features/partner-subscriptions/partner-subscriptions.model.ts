@@ -14,7 +14,7 @@ import { UserRole } from '../auth/auth.model.js';
  * venue-scoped UserRole rows the profile badges read.
  */
 export type PartnerPlan = 'coach' | 'organizer';
-export type PartnerSubscriptionStatus = 'active' | 'expired' | 'cancelled';
+export type PartnerSubscriptionStatus = 'pending' | 'active' | 'expired' | 'cancelled';
 
 export interface IPartnerSubscription {
   _id: Types.ObjectId;
@@ -23,8 +23,8 @@ export interface IPartnerSubscription {
   status: PartnerSubscriptionStatus;
   priceAmount: number;
   currency: string;
-  startedAt: Date;
-  expiresAt: Date;
+  startedAt?: Date;
+  expiresAt?: Date;
   autoRenew: boolean;
   /** Cancellation is scheduled, not immediate: the coach keeps access (and the
    *  role) until `expiresAt`, then lapses. */
@@ -39,11 +39,15 @@ export interface IPartnerSubscription {
 const partnerSubscriptionSchema = new Schema({
   userId:      { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   plan:        { type: String, enum: ['coach', 'organizer'], required: true },
-  status:      { type: String, enum: ['active', 'expired', 'cancelled'], default: 'active' },
+  status:      { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
   priceAmount: { type: Number, required: true },
   currency:    { type: String, default: 'PHP', maxlength: 10 },
-  startedAt:   { type: Date, default: () => new Date() },
-  expiresAt:   { type: Date, required: true },
+  // A live/manual payment creates a pending row first. The paid term starts only
+  // when that payment is verified, so these dates deliberately stay empty until
+  // activation instead of silently burning subscription time while GCash is
+  // being reconciled.
+  startedAt:   Date,
+  expiresAt:   Date,
   autoRenew:   { type: Boolean, default: false },
   cancelAtPeriodEnd: { type: Boolean, default: false },
   paymentId:   { type: Schema.Types.ObjectId, ref: 'Payment' },

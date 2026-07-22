@@ -112,6 +112,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     ...(canManage ? [{ key: 'recurring-open-play', icon: <CalendarIco />, label: 'Recurring Open Play', sub: 'Run the same session every week', onClick: () => onNavigate('organizer-open-play') } as Row] : []),
     { key: 'partners', icon: <UsersIco />, label: 'Partners', sub: 'Coaches & organisers at your venues', onClick: () => onNavigate('owner-partners'), className: 'sm:hidden' },
     ...(canReports || hasAnalyticsGrant ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
+    ...(canReports ? [{ key: 'settlements', icon: <TrendUp />, label: 'Settlements', sub: 'Payout balance, history & GCash details', onClick: () => onNavigate('owner-settlements') } as Row] : []),
     ...(canStaff ? [{ key: 'staff', icon: <UsersIco />, label: 'Staff', sub: 'Accounts that manage your venues, bookings & clubs', onClick: () => onNavigate('owner-staff') } as Row] : []),
     ...(canCreate ? [{ key: 'new-venue', icon: <Plus />, label: 'New venue', sub: 'List another court', onClick: () => onNavigate('owner-new-venue') } as Row] : []),
   ];

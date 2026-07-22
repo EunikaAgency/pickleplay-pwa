@@ -21,8 +21,9 @@ interface OpenPlayBookScreenProps {
 
 /**
  * V3 — open-play booking (Phase 1). A courtless, per-session drop-in: pick a date
- * + start time + party size, pay the venue's flat open-play fee (× party), and
- * the booking is confirmed instantly (no court reservation, no approval). Reuses
+ * + start time + party size and pay the venue's flat open-play fee (× party).
+ * Test mode confirms instantly; launch live mode waits for manual GCash
+ * confirmation. Reuses
  * the same createBooking → checkout path as the court flow; the booking lands in
  * My Bookings tagged "Open play". Gated by `player.bookings.create` in App.tsx.
  */
@@ -71,7 +72,6 @@ export function OpenPlayBookScreen({ venueId, onNavigate, onBack }: OpenPlayBook
 
   const submit = async () => {
     if (!venue || !offersOpenPlay) return;
-    if (!isTest && !card.number) { setError('Add your card to pay the session fee.'); return; }
     setSubmitting(true);
     setError(null);
     try {
@@ -83,7 +83,13 @@ export function OpenPlayBookScreen({ venueId, onNavigate, onBack }: OpenPlayBook
         playerCount: party,
         amount: total,
       });
-      const result = await checkout({ bookingId: booking.id, amount: total, currency, method: isTest ? 'test_card' : 'card', card });
+      const result = await checkout({
+        bookingId: booking.id,
+        amount: total,
+        currency,
+        method: isTest ? 'test_card' : 'gcash',
+        card: isTest ? card : undefined,
+      });
       setDone({ confirmed: result.booking?.status === 'confirmed' });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not complete your open-play booking. Please try again.');
@@ -111,7 +117,7 @@ export function OpenPlayBookScreen({ venueId, onNavigate, onBack }: OpenPlayBook
           title={done.confirmed ? "You're in for open play!" : 'Open play requested'}
           description={done.confirmed
             ? `${prettyDate(date)} at ${to12h(startTime)} · ${party} player${party === 1 ? '' : 's'} · ${money(total, currency)}`
-            : 'Your open-play session is being processed.'}
+            : 'Your open-play booking is held while the venue confirms your GCash payment.'}
           actions={[
             { label: 'View my bookings', onClick: () => onNavigate('my-bookings') },
             { label: 'Back to venue', variant: 'outline', onClick: onBack },
@@ -181,6 +187,7 @@ export function OpenPlayBookScreen({ venueId, onNavigate, onBack }: OpenPlayBook
               <div className="lbl">Payment</div>
               {isTest && <span className="chip text-[12px] font-bold text-[var(--lime-ink)]">TEST mode — no charge</span>}
             </div>
+            {isTest ? <>
             <div className="field p-0! mb-2">
               <label className="lbl">Card number</label>
               <input className="control" inputMode="numeric" value={card.number ?? ''} placeholder="4242 4242 4242 4242"
@@ -198,6 +205,11 @@ export function OpenPlayBookScreen({ venueId, onNavigate, onBack }: OpenPlayBook
                   onChange={(e) => setCard((c) => ({ ...c, cvc: e.target.value }))} />
               </div>
             </div>
+            </> : (
+              <div className="rounded-xl bg-[var(--primary-tint)] px-3 py-3 text-[13px] font-semibold text-[var(--ink-2)]">
+                Manual GCash — the booking stays pending until the venue confirms receipt.
+              </div>
+            )}
           </div>
 
           {/* Total + pay */}
@@ -208,7 +220,7 @@ export function OpenPlayBookScreen({ venueId, onNavigate, onBack }: OpenPlayBook
             </div>
             {error && <div className="t-sm text-[var(--coral)] font-bold text-center mb-2">{error}</div>}
             <Button fullWidth onClick={submit} disabled={submitting}>
-              {submitting ? 'Processing…' : `Pay & join — ${money(total, currency)}`}
+              {submitting ? 'Processing…' : `${isTest ? 'Pay & join' : 'Submit GCash payment'} — ${money(total, currency)}`}
             </Button>
           </div>
         </div>

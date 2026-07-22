@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Avatar } from '../../../shared/components/ui/Avatar';
-import { startConversation, updateBookingStatus, type ApiBooking, type BookingStatus } from '../../../shared/lib/api';
+import { startConversation, updateBookingStatus, verifyPayment, type ApiBooking, type BookingStatus } from '../../../shared/lib/api';
 import { countdownLabel, deadlineUrgency, money, prettyDate, to12h, statusChip } from '../../bookings/bookingDisplay';
 import { useCountdown } from '../../../shared/hooks/useCountdown';
 import { StatusChip } from '../../../shared/components/ui/StatusChip';
@@ -21,8 +21,7 @@ function ActionButton({ label, tone, onClick, busy }: { label: string; tone: 'pr
   );
 }
 
-// One booking row with status-aware Confirm / Cancel actions. Bookings arrive
-// already paid, so there's no "mark paid" step — the owner can only cancel.
+// One booking row with status-aware approve / mark-paid / cancel actions.
 // `showVenue` tags the row with its venue name (the cross-venue inbox uses it).
 // Shared by BookingsInboxTab (per-venue) and OwnerBookingsScreen (all venues).
 export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOpen, onNavigate }: {
@@ -58,6 +57,20 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
           : /409|cancel/i.test(msg) ? "Already cancelled — can't change."
             : "Couldn't update. Try again.",
       );
+      setBusy(false);
+    }
+  };
+
+  const markPaid = async () => {
+    if (!booking.paymentId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await verifyPayment(booking.paymentId, 'completed', 'Manual GCash payment confirmed by venue');
+      onChanged({ ...booking, status: 'confirmed', paymentStatus: 'completed', paymentMethod: 'gcash' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't mark this payment paid.");
+    } finally {
       setBusy(false);
     }
   };
@@ -138,6 +151,9 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
       {canManage && st !== 'cancelled' && (
         <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
           {st === 'pending_approval' && <ActionButton label="Approve" tone="primary" busy={busy} onClick={() => act('awaiting_payment')} />}
+          {st === 'awaiting_payment' && booking.paymentId && booking.paymentStatus === 'pending' && (
+            <ActionButton label="Mark GCash paid" tone="primary" busy={busy} onClick={markPaid} />
+          )}
           {!isManual && !isBlocked && booking.userId && (
             <ActionButton label="Message" tone="lime" busy={messaging} onClick={messagePlayer} />
           )}

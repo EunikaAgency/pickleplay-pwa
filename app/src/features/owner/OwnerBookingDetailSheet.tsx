@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Avatar } from '../../shared/components/ui/Avatar';
-import { startConversation, updateBookingStatus, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
+import { startConversation, updateBookingStatus, verifyPayment, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
 import { money, prettyDate, to12h, hoursBetween, bookingDuration, statusChip, paymentOptionLabel, bookingSourceLabel } from '../bookings/bookingDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
@@ -71,6 +71,21 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
     }
   };
 
+  const markPaid = async () => {
+    if (!booking?.paymentId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await verifyPayment(booking.paymentId, 'completed', 'Manual GCash payment confirmed by venue');
+      onChanged({ ...booking, status: 'confirmed', paymentStatus: 'completed', paymentMethod: 'gcash' });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't mark this payment paid.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const messagePlayer = async () => {
     if (!b?.userId || messaging || !onNavigate) return;
     setMessaging(true);
@@ -123,6 +138,11 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
           {st === 'pending_approval' && (
             <button type="button" disabled={busy} onClick={() => act('awaiting_payment')} className="obook-btn obook-btn-confirm">
               Approve
+            </button>
+          )}
+          {st === 'awaiting_payment' && b.paymentId && b.paymentStatus === 'pending' && (
+            <button type="button" disabled={busy} onClick={() => void markPaid()} className="obook-btn obook-btn-confirm">
+              Mark GCash paid
             </button>
           )}
           <button type="button" disabled={busy} onClick={() => act('cancelled')}

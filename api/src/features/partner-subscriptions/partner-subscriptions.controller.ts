@@ -43,13 +43,13 @@ function subscriptionPayload(s: any) {
     status: s.status,
     priceAmount: s.priceAmount,
     currency: s.currency,
-    startedAt: s.startedAt,
-    expiresAt: s.expiresAt,
+    startedAt: s.startedAt ?? null,
+    expiresAt: s.expiresAt ?? null,
     autoRenew: s.autoRenew,
     cancelAtPeriodEnd: !!s.cancelAtPeriodEnd,
     cancelledAt: s.cancelledAt ?? null,
     // Derived so clients never have to compare clocks themselves.
-    isActive: s.status === 'active' && new Date(s.expiresAt).getTime() > Date.now(),
+    isActive: s.status === 'active' && !!s.expiresAt && new Date(s.expiresAt).getTime() > Date.now(),
   };
 }
 
@@ -106,11 +106,24 @@ export async function subscribe(c: any) {
   }
 
   await expireLapsedSubscriptions(tokenUser.sub);
-  const live = await PartnerSubscription.findOne({
-    userId: tokenUser.sub, plan, status: 'active', expiresAt: { $gt: new Date() },
+  const existing = await PartnerSubscription.findOne({
+    userId: tokenUser.sub,
+    plan,
+    $or: [
+      { status: 'pending' },
+      { status: 'active', expiresAt: { $gt: new Date() } },
+    ],
   }).lean();
-  if (live) {
-    return c.json({ error: { code: 'ALREADY_SUBSCRIBED', message: `You already have an active ${plan} subscription.` } }, 409);
+  if (existing) {
+    const pending = existing.status === 'pending';
+    return c.json({
+      error: {
+        code: pending ? 'PAYMENT_PENDING' : 'ALREADY_SUBSCRIBED',
+        message: pending
+          ? `Your ${plan} subscription payment is already awaiting confirmation.`
+          : `You already have an active ${plan} subscription.`,
+      },
+    }, 409);
   }
 
   const pricing = await getPartnerSubscriptionPricing();
@@ -128,26 +141,28 @@ export async function subscribe(c: any) {
     }
   }
 
-  const startedAt = new Date();
-  const expiresAt = new Date(startedAt.getTime() + pricing.durationDays * 24 * 60 * 60 * 1000);
+  const startedAt = testMode ? new Date() : undefined;
+  const expiresAt = startedAt
+    ? new Date(startedAt.getTime() + pricing.durationDays * 24 * 60 * 60 * 1000)
+    : undefined;
 
   const sub = await PartnerSubscription.create({
-    userId: tokenUser.sub, plan, status: 'active',
+    userId: tokenUser.sub, plan, status: testMode ? 'active' : 'pending',
     priceAmount, currency: pricing.currency,
     startedAt, expiresAt, autoRenew: body.autoRenew ?? false,
   });
 
-  // Mirrors the booking flow: in test mode the charge completes immediately; in
-  // live mode the Payment stays 'pending' until a real gateway lands, and the
-  // subscription is honoured meanwhile (same as bookings, which auto-confirm).
+  // Test mode completes immediately. Launch live mode is manual GCash: the
+  // payment and subscription both remain pending until an admin reconciles the
+  // transfer through verifyPayment. A pending term grants no partner capability.
   const payment = await Payment.create({
     userId: tokenUser.sub,
     purpose: 'partner_subscription',
     subscriptionId: sub._id,
     amount: priceAmount,
     currency: pricing.currency,
-    method: testMode ? 'test_card' : null,
-    provider: testMode ? 'test' : null,
+    method: testMode ? 'test_card' : 'gcash',
+    provider: testMode ? 'test' : 'manual',
     status: testMode ? 'completed' : 'pending',
   });
   sub.set('paymentId', payment._id);
@@ -195,7 +210,8 @@ export async function resumeSubscription(c: any) {
   const tokenUser = c.get('user');
   const sub = await PartnerSubscription.findOne({ _id: c.req.param('id'), userId: tokenUser.sub });
   if (!sub) return c.json({ error: { code: 'NOT_FOUND', message: 'Subscription not found' } }, 404);
-  if (sub.get('status') !== 'active' || new Date(sub.get('expiresAt')).getTime() <= Date.now()) {
+  const expiresAt = sub.get('expiresAt');
+  if (sub.get('status') !== 'active' || !expiresAt || new Date(expiresAt).getTime() <= Date.now()) {
     return c.json({ error: { code: 'CONFLICT', message: 'This subscription has already ended.' } }, 409);
   }
   if (!sub.get('cancelAtPeriodEnd')) {

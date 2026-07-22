@@ -4,7 +4,9 @@ import { Booking } from '../bookings/bookings.model.js';
 import { isBlocking } from '../bookings/bookingDeadlines.js';
 import { expireOverdueBookings } from '../bookings/bookings.controller.js';
 import { Venue } from '../venues/venues.model.js';
-import { hasPermission } from '../../shared/lib/permissions.js';
+import { PartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
+import { getPartnerSubscriptionPricing } from '../settings/settings.controller.js';
+import { effectiveOwnerId, hasPermission } from '../../shared/lib/permissions.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { paymentReceipt } from '../../shared/lib/email-templates.js';
 
@@ -126,7 +128,11 @@ export async function checkout(c: any) {
 
   const payment = await Payment.create({
     bookingId: body.bookingId || null, userId: user.sub, amount, currency: body.currency,
-    method: body.method || (testMode ? 'test_card' : null), provider: testMode ? 'test' : null,
+    // Live launch payments are reconciled manually through GCash. Keeping this
+    // behind paymentTestMode means a future gateway can feed the same completion
+    // path without changing booking/subscription activation.
+    method: testMode ? (body.method || 'test_card') : 'gcash',
+    provider: testMode ? 'test' : 'manual',
     status: testMode ? 'completed' : 'pending',
   });
 
@@ -186,17 +192,73 @@ export async function checkout(c: any) {
 
 export async function verifyPayment(c: any) {
   const user = c.get('user');
-  if (!hasPermission(user, 'admin.bookings.manage')) return c.json({ error: { code: 'FORBIDDEN', message: 'Payment verification permission required' } }, 403);
   const id = c.req.param('id');
   const body = verifySchema.parse(await c.req.json());
-  const result = await Payment.findByIdAndUpdate(id, { status: body.status, notes: body.notes || null }, { new: true }).lean();
-  if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
-  if (body.status === 'completed' && result.bookingId) {
-    await Booking.findByIdAndUpdate(result.bookingId, { status: 'confirmed', paymentMethod: result.method || undefined });
-    // Auto-generate a draft receipt when a booking is confirmed via payment.
-    void generateDraftReceipt(String(result.bookingId)).catch(() => {});
+  const payment = await Payment.findById(id).lean();
+  if (!payment) return c.json({ error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
+
+  const isAdmin = hasPermission(user, 'admin.bookings.manage');
+  const canManageBookings = hasPermission(user, 'owner.bookings.manage');
+  let booking: any = null;
+  if (payment.bookingId) {
+    booking = await Booking.findById(payment.bookingId).lean();
   }
-  return c.json({ data: { ...result, id: result._id } });
+
+  // Admins reconcile platform-level charges. Owners/staff may reconcile only a
+  // booking at a venue owned by their effective owner — holding the permission
+  // alone must never expose another venue's money, and it must never activate a
+  // platform partner subscription.
+  if (!isAdmin) {
+    if (!canManageBookings || !booking) {
+      return c.json({ error: { code: 'FORBIDDEN', message: 'Payment verification permission required' } }, 403);
+    }
+    const managesVenue = await Venue.exists({
+      _id: booking.venueId,
+      ownerUserId: effectiveOwnerId(user),
+    });
+    if (!managesVenue) {
+      return c.json({ error: { code: 'FORBIDDEN', message: 'You can only verify payments for your venues' } }, 403);
+    }
+  }
+
+  if (body.status === 'completed' && booking) {
+    if (booking.status === 'awaiting_payment' && !isBlocking(booking, new Date())) {
+      await expireOverdueBookings([booking]);
+      return c.json({ error: { code: 'PAYMENT_EXPIRED', message: 'The payment window expired and the slot was released.' } }, 409);
+    }
+    if (!['awaiting_payment', 'confirmed', 'paid'].includes(booking.status)) {
+      return c.json({ error: { code: 'BOOKING_NOT_PAYABLE', message: 'This booking can no longer be marked paid.' } }, 409);
+    }
+  }
+
+  const result = await Payment.findByIdAndUpdate(
+    id,
+    { status: body.status, notes: body.notes || null },
+    { new: true },
+  ).lean();
+
+  if (body.status === 'completed' && result!.bookingId) {
+    await Booking.findOneAndUpdate(
+      { _id: result!.bookingId, status: { $in: ['awaiting_payment', 'confirmed', 'paid'] } },
+      { status: 'confirmed', paymentMethod: result!.method || undefined },
+    );
+    // Auto-generate a draft receipt when a booking is confirmed via payment.
+    void generateReceiptForBooking(String(result!.bookingId)).catch(() => {});
+  }
+
+  if (body.status === 'completed' && result!.purpose === 'partner_subscription' && result!.subscriptionId) {
+    // Only an admin reaches this branch (owners are rejected above). Start the
+    // paid term now — never at request time — so manual reconciliation doesn't
+    // consume part of the subscription period.
+    const pricing = await getPartnerSubscriptionPricing();
+    const startedAt = new Date();
+    const expiresAt = new Date(startedAt.getTime() + pricing.durationDays * 24 * 60 * 60 * 1000);
+    await PartnerSubscription.findOneAndUpdate(
+      { _id: result!.subscriptionId, status: 'pending' },
+      { status: 'active', startedAt, expiresAt },
+    );
+  }
+  return c.json({ data: { ...result, id: result!._id } });
 }
 
 /* ─── Official receipts ────────────────────────────────────────── */
@@ -352,19 +414,24 @@ let settlementSeq = 0;
 // POST /admin/settlements/generate — admin generates a settlement for a venue + period.
 export async function generateSettlement(c: any) {
   const user = c.get('user');
-  if (!hasPermission(user, 'admin.finance.manage')) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin finance permission required' } }, 403);
+  if (!hasPermission(user, 'admin.bookings.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin booking/payment permission required' } }, 403);
   }
   const body = generateSettlementSchema.parse(await c.req.json());
   const venue = await Venue.findById(body.venueId).select('ownerUserId').lean<{ ownerUserId?: any }>();
   if (!venue) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
 
-  const bookings = await Booking.find({
+  const periodBookings = await Booking.find({
     venueId: body.venueId,
     status: 'confirmed',
     date: { $gte: body.periodStart, $lte: body.periodEnd },
     bookingType: { $nin: ['blocked', 'manual'] },
   }).lean();
+  const existingLineItems = periodBookings.length
+    ? await SettlementLineItem.find({ bookingId: { $in: periodBookings.map((b) => b._id) } }).select('bookingId').lean()
+    : [];
+  const settledBookingIds = new Set((existingLineItems as any[]).map((item) => String(item.bookingId)));
+  const bookings = periodBookings.filter((booking) => !settledBookingIds.has(String(booking._id)));
 
   const grossRevenue = bookings.reduce((sum, b: any) => sum + (b.amount || 0), 0);
   const platformFees = bookings.reduce((sum, b: any) => sum + (b.serviceFeeAmount || 0), 0);
@@ -403,8 +470,8 @@ export async function generateSettlement(c: any) {
 // GET /admin/settlements — admin lists settlements.
 export async function listSettlements(c: any) {
   const user = c.get('user');
-  if (!hasPermission(user, 'admin.finance.manage')) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin finance permission required' } }, 403);
+  if (!hasPermission(user, 'admin.bookings.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin booking/payment permission required' } }, 403);
   }
   const rows = await Settlement.find().sort({ createdAt: -1 }).populate('venueId', 'displayName').lean();
   return c.json({
@@ -435,8 +502,8 @@ const updateSettlementSchema = z.object({
 
 export async function updateSettlement(c: any) {
   const user = c.get('user');
-  if (!hasPermission(user, 'admin.finance.manage')) {
-    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin finance permission required' } }, 403);
+  if (!hasPermission(user, 'admin.bookings.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Admin booking/payment permission required' } }, 403);
   }
   const s = await Settlement.findById(c.req.param('id'));
   if (!s) return c.json({ error: { code: 'NOT_FOUND', message: 'Settlement not found' } }, 404);
@@ -475,25 +542,47 @@ export async function listOwnerSettlements(c: any) {
 // GET /owner/settlements/balance — current pending payout balance.
 export async function getOwnerBalance(c: any) {
   const user = c.get('user');
-  // Sum of confirmed bookings not yet settled, minus platform fees.
+  // Return one row per owned venue — this is the contract the owner app renders.
+  // Scope at the query (not after loading every platform booking), and exclude
+  // bookings already attached to any settlement line item so "unsettled" does
+  // not grow forever after payouts are generated.
+  const venues = await Venue.find({ ownerUserId: user.sub }).select('_id displayName').lean();
+  if (!venues.length) return c.json({ data: [] });
+  const venueIds = venues.map((v) => v._id);
   const confirmed = await Booking.find({
+    venueId: { $in: venueIds },
     status: 'confirmed',
     bookingType: { $nin: ['blocked', 'manual'] },
-  }).select('venueId amount serviceFeeAmount').lean();
+  }).select('_id venueId amount serviceFeeAmount').lean();
+  const settled = confirmed.length
+    ? await SettlementLineItem.find({ bookingId: { $in: confirmed.map((b) => b._id) } }).select('bookingId').lean()
+    : [];
+  const settledIds = new Set((settled as any[]).map((r) => String(r.bookingId)));
 
-  // Get the user's venue IDs.
-  const venues = await Venue.find({ ownerUserId: user.sub }).select('_id').lean();
-  const venueIds = new Set(venues.map((v) => String(v._id)));
-
-  let gross = 0;
-  let fees = 0;
+  const byVenue = new Map<string, { gross: number; fees: number; count: number }>();
   for (const b of confirmed as any[]) {
-    if (venueIds.has(String(b.venueId))) {
-      gross += b.amount || 0;
-      fees += b.serviceFeeAmount || 0;
-    }
+    if (settledIds.has(String(b._id))) continue;
+    const key = String(b.venueId);
+    const row = byVenue.get(key) ?? { gross: 0, fees: 0, count: 0 };
+    row.gross += Number(b.amount) || 0;
+    row.fees += Number(b.serviceFeeAmount) || 0;
+    row.count += 1;
+    byVenue.set(key, row);
   }
-  return c.json({ data: { grossRevenue: gross, platformFees: fees, netPayout: Math.round((gross - fees) * 100) / 100 } });
+
+  return c.json({
+    data: venues.map((venue: any) => {
+      const totals = byVenue.get(String(venue._id)) ?? { gross: 0, fees: 0, count: 0 };
+      return {
+        venueId: String(venue._id),
+        venueName: venue.displayName ?? null,
+        unsenttledRevenue: Math.round(totals.gross * 100) / 100,
+        unsenttledFees: Math.round(totals.fees * 100) / 100,
+        unsenttledNet: Math.round((totals.gross - totals.fees) * 100) / 100,
+        bookingCount: totals.count,
+      };
+    }),
+  });
 }
 
 // GET /owner/payout-methods — owner's saved payout methods.

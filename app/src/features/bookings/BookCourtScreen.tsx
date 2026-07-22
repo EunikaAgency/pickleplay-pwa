@@ -196,7 +196,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [card, setCard] = useState<CheckoutCard>({ number: '', expiry: '', cvc: '' });
-  const [cardTouched, setCardTouched] = useState(false);
 
   // Lifecycle.
   const [error, setError] = useState<string | null>(null);
@@ -204,7 +203,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ confirmed: boolean; bookingId: string | null; gameId?: string | null; approvalDeadline?: string | null } | null>(null);
+  const [done, setDone] = useState<{ confirmed: boolean; paymentPending?: boolean; bookingId: string | null; gameId?: string | null; approvalDeadline?: string | null } | null>(null);
 
   // Load the full venue directory only when the picker is on screen (no deep-linked
   // venue, or the user tapped "Change") and it hasn't loaded yet. A deep link
@@ -595,17 +594,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
-    // Approval venues need a card on file (charged after approval); enforce it
-    // up front in live mode (test mode pre-fills the demo card). Pay-at-venue
-    // charges nothing now, so it never needs a card.
-    if (requiresApproval && !isTest && !card.number) {
-      setError('Add your card — the venue charges it after they approve your request.');
-      return;
-    }
-    if (!requiresApproval && !payAtVenue && !isTest && !card.number) {
-      setError('Enter your card details to pay.');
-      return;
-    }
+    // Test mode uses the pre-filled demo card. Live launch mode is manual GCash,
+    // so no card credentials are collected or stored.
     setSubmitting(true);
     setError(null);
     // Demand signal: a player is attempting to book this venue.
@@ -625,9 +615,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         paymentOption: requiresApproval ? 'full' : paymentOption,
         amountPaid: requiresApproval ? 0 : amountDueNow,
         balanceDue: requiresApproval ? 0 : balanceDue,
-        paymentMethod: payAtVenue ? 'pay_at_venue' : isTest ? 'test_card' : 'card',
+        paymentMethod: payAtVenue ? 'pay_at_venue' : isTest ? 'test_card' : 'gcash',
         // Save the card on the request so paying after approval is one tap.
-        card: requiresApproval ? maskCard(card) : undefined,
+        card: requiresApproval && isTest ? maskCard(card) : undefined,
         // Equipment rental add-on (V2).
         hasEquipmentRental: includeEquipment,
         equipmentRentalAmount: includeEquipment ? (Number(selected?.equipmentRentalPrice) ?? 0) : 0,
@@ -656,8 +646,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         bookingId: booking.id,
         amount: amountDueNow,
         currency,
-        method: isTest ? 'test_card' : 'card',
-        card,
+        method: isTest ? 'test_card' : 'gcash',
+        card: isTest ? card : undefined,
       });
       const confirmed = result.booking?.status === 'confirmed';
       const bookingId = result.booking?.id ?? booking.id;
@@ -666,7 +656,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         const game = await createGameForMode(bookingId);
         gameId = game?.id ?? null;
       }
-      setDone({ confirmed, bookingId, gameId });
+      setDone({ confirmed, paymentPending: !confirmed, bookingId, gameId });
       trackBookingCompleted(selected.id, courtId || undefined);
     } catch (e) {
       // Map known server error codes to friendly copy; a slot/price change bounces
@@ -753,6 +743,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         title={
           gameDone ? (isPublic ? 'Game created!' : 'Open play created!')
             : done.confirmed ? 'Booking confirmed!'
+            : done.paymentPending ? 'GCash payment pending'
             : 'Booking requested'
         }
         description={
@@ -762,6 +753,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               : 'Your court is booked and your open play is live. Players can join the lobby now.')
             : done.confirmed
             ? 'Your court is booked. You can see it under My bookings.'
+            : done.paymentPending
+              ? `Your court is being held while ${selected?.displayName || 'the venue'} confirms your GCash payment. You can track it under My bookings.`
             // The server's deadline, not the client estimate — this is the real
             // one the request will actually be cancelled at.
             : done.approvalDeadline
@@ -780,7 +773,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   }
 
   const setCardField = (k: keyof CheckoutCard, v: string) => {
-    setCardTouched(true);
     setCard((c) => ({ ...c, [k]: v }));
   };
 
@@ -1636,8 +1628,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               <div className="min-w-0">
                 <div className="font-heading font-semibold text-[14px] text-[var(--ink)]">This court needs owner approval</div>
                 <div className="t-sm mt-1">
-                  Your card won't be charged yet — we'll hold your slot while
-                  {' '}{selected.displayName} reviews it.
+                  {isTest
+                    ? <>Your card won't be charged yet — we'll hold your slot while {selected.displayName} reviews it.</>
+                    : <>No payment is due yet — we'll hold your slot while {selected.displayName} reviews it. If approved, pay by GCash for the venue to confirm.</>}
                 </div>
                 <div className="t-sm mt-1.5">
                   They have until <strong className="text-[var(--ink)]">{deadlineLabel(estimatedDeadline)}</strong> to
@@ -1724,6 +1717,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               </div>
             </div>
           )}
+          {!isTest && !payAtVenue && (
+            <div className="field">
+              <div className="rounded-2xl bg-[var(--primary-tint)] border-[0.5px] border-[var(--primary)] px-4 py-3 flex items-start gap-3">
+                <Icon name="payments" size={20} className="mt-0.5 shrink-0 text-[var(--primary)]" />
+                <div>
+                  <div className="text-[14px] font-bold text-[var(--ink)]">Manual GCash</div>
+                  <div className="text-[12px] font-semibold text-[var(--ink-2)]">
+                    Your booking stays pending until the venue confirms receipt. The court is held until the payment deadline shown in My bookings.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="field">
             <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 mb-4">
@@ -1745,7 +1751,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               )}
             </div>
 
-            {!payAtVenue && (
+            {!payAtVenue && isTest && (
               <>
                 <div className="lbl">Card number</div>
                 <input
@@ -1772,9 +1778,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                     aria-label="Card CVC"
                   />
                 </div>
-                {!isTest && cardTouched && !card.number && (
-                  <div className="text-[12px] text-[var(--coral)] font-semibold mt-2">Enter your card details to pay.</div>
-                )}
               </>
             )}
           </div>
@@ -1792,7 +1795,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             ) : payAtVenue ? (
               <><Icon name="calendar" size={16} /> Reserve court</>
             ) : (
-              <><Icon name="lock" size={16} /> Pay {money(amountDueNow, currency)}</>
+              <><Icon name={isTest ? 'lock' : 'payments'} size={16} /> {isTest ? 'Pay' : 'Submit GCash payment'} {money(amountDueNow, currency)}</>
             )
           ) : step === 0 && availabilityPending ? (
             <><span className="inline-flex animate-spin"><Icon name="spinner" size={16} /></span> Checking availability…</>

@@ -176,7 +176,7 @@ export function OwnerHomeScreen({ onNavigate }: OwnerHomeScreenProps) {
     { icon: 'storefront', label: 'My venues', onPress: () => onNavigate('owner-venues') },
     ...(canBookings ? [{ icon: 'frontdesk', label: 'Front desk', onPress: () => onNavigate('owner-front-desk', {}) }] : []),
     ...(canReports ? [{ icon: 'calendar', label: 'Bookings', onPress: () => onNavigate('owner-bookings', {}) }] : []),
-    // { icon: 'settlements', label: 'Settlements', onPress: () => onNavigate('owner-settlements') },
+    ...(canReports ? [{ icon: 'settlements', label: 'Settlements', onPress: () => onNavigate('owner-settlements') }] : []),
     // ...(userHasPermission(user, 'owner.venues.create') ? [{ icon: 'plus', label: 'New venue', onPress: () => onNavigate('owner-new-venue') }] : []),
   ];
 

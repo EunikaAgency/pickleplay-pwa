@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { Types } from 'mongoose';
 import { Venue, VenueHour, Faq, HolidayClosure, VenueStaff, VenueMember, SlotPriceOverride, Court, SubscriptionPlan, SubscriptionPlanVersion, VenueSubscription } from './venues.model.js';
-import { VenuePricing } from '../payments/payments.model.js';
+import { Payment, VenuePricing } from '../payments/payments.model.js';
 import { VenueClaim } from './venue-management.model.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { bookingApprovedReceipt, bookingDeclinedReceipt, membershipReceipt } from '../../shared/lib/email-templates.js';
@@ -1576,6 +1576,18 @@ export async function getVenueBookings(c: any) {
     // the most recently *created* bookings are the ones kept.
     .sort({ _id: -1 }).limit(200).lean();
   await expireOverdueBookings(rows);
+  // Owners need the pending Payment id to perform the launch manual-GCash
+  // "mark paid" action. Keep it on the owner-only bookings response rather than
+  // widening the player's self-scoped payments list.
+  const payments = await Payment.find({ bookingId: { $in: rows.map((r: any) => r._id) } })
+    .select('bookingId status method')
+    .sort({ _id: -1 })
+    .lean();
+  const paymentByBooking = new Map<string, any>();
+  for (const p of payments as any[]) {
+    const key = String(p.bookingId);
+    if (!paymentByBooking.has(key)) paymentByBooking.set(key, p);
+  }
   // For game-type bookings, attach the linked game's type/visibility/title so the
   // owner calendar can label them (e.g. "Doubles game · public"). One batched
   // query keyed by the game's bookingId → booking._id.
@@ -1589,6 +1601,7 @@ export async function getVenueBookings(c: any) {
   }
   return c.json({ data: rows.map((r: any) => {
     const g = r.bookingType === 'game' ? gameByBooking.get(String(r._id)) : undefined;
+    const payment = paymentByBooking.get(String(r._id));
     return {
       ...r,
       id: r._id,
@@ -1612,6 +1625,8 @@ export async function getVenueBookings(c: any) {
       gameTitle: g?.title,
       // Competitive format for a public game (bracketing / round_robin / mini_tournament).
       gameFormat: g?.format,
+      paymentId: payment?._id ?? null,
+      paymentStatus: payment?.status ?? null,
     };
   }) });
 }

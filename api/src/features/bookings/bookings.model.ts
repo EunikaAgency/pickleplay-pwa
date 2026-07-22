@@ -18,8 +18,9 @@ const bookingSchema = new Schema({
   playerCount:        { type: Number, default: 1 },
   amount:             { type: Number, required: true },
   // 'pending_approval' (awaiting owner) → 'awaiting_payment' (approved; pay before
-  // paymentDueAt) → 'confirmed' (paid) | 'cancelled'. Instant-book venues skip
-  // straight to 'confirmed' at creation.
+  // paymentDueAt) → 'confirmed' (paid) | 'cancelled'. In live/manual-GCash mode,
+  // instant-book venues also use awaiting_payment; test mode and pay-at-venue
+  // bookings can still confirm at creation.
   status:             { type: String, default: 'pending_approval' },
   referenceCode:      { type: String, maxlength: 50 },
   paymentMethod:      { type: String, maxlength: 50 },

@@ -76,6 +76,7 @@ const PLAN_UI = {
 
 /** Chip copy + colour for a row in the subscription history. */
 function historyChip(s: PartnerSubscription): { label: string; color: string } {
+  if (s.status === 'pending') return { label: 'Payment pending', color: 'var(--amber, #F59E0B)' };
   if (s.isActive && s.cancelAtPeriodEnd) return { label: 'Ending', color: 'var(--amber, #F59E0B)' };
   if (s.isActive) return { label: 'Active', color: 'var(--primary)' };
   if (s.status === 'expired') return { label: 'Expired', color: 'var(--muted)' };
@@ -161,7 +162,15 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
     setBusy(true);
     setError(null);
     try {
-      await subscribeToPartnerPlan(plan, { card });
+      const created = await subscribeToPartnerPlan(plan, {
+        card: settings?.paymentTestMode ? card : undefined,
+      });
+      if (created.status === 'pending') {
+        setPayOpen(false);
+        reload();
+        setToast('GCash payment submitted — your plan activates after confirmation.');
+        return;
+      }
       // Subscribing grants the global coach/organizer role — re-read /me so
       // permission gates (and the profile badge) pick it up without a re-login.
       await restore();
@@ -192,7 +201,9 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
       const updated = await cancelPartnerSubscription(sub.id);
       setConfirmOpen(false);
       reload();
-      setToast(`Cancelled. ${ui.stay} until ${fmtDate(updated.expiresAt)}.`);
+      setToast(updated.expiresAt
+        ? `Cancelled. ${ui.stay} until ${fmtDate(updated.expiresAt)}.`
+        : 'Subscription cancelled.');
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not cancel. Please try again.');
     } finally {
@@ -222,6 +233,8 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
   const days = state?.pricing.durationDays ?? 30;
   const addressComplete = state?.addressComplete ?? true;
   const history = state?.subscriptions ?? [];
+  const pending = history.find((s) => s.plan === plan && s.status === 'pending') ?? null;
+  const isTestPayment = settings?.paymentTestMode ?? false;
 
   return (
     <div className="scroll pb-[120px]">
@@ -240,7 +253,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
 
       {!loading && !loadError && state && (
         <div className="px-5 pt-4">
-          {/* Status card — active, ending, or the pitch. */}
+          {/* Status card — active, awaiting manual payment, or the pitch. */}
           {active ? (
             ending ? (
               <div className="rounded-2xl border border-[var(--coral)] bg-[var(--coral-soft)] p-4">
@@ -249,7 +262,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                   <span className="font-heading text-[16px] font-extrabold">Subscription ending</span>
                 </div>
                 <p className="mt-1.5 text-[13px] text-[var(--muted)]">
-                  {ui.stay} until <strong>{fmtDate(active.expiresAt)}</strong>. {ui.endingTail}
+                  {ui.stay} until <strong>{active.expiresAt ? fmtDate(active.expiresAt) : 'the end of the term'}</strong>. {ui.endingTail}
                 </p>
               </div>
             ) : (
@@ -259,10 +272,20 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                   <span className="font-heading text-[16px] font-extrabold">{ui.activeTitle}</span>
                 </div>
                 <p className="mt-1.5 text-[13px] text-[var(--muted)]">
-                  Renews {fmtDate(active.expiresAt)} · {peso(active.priceAmount)} / {days} days
+                  Renews {active.expiresAt ? fmtDate(active.expiresAt) : 'after activation'} · {peso(active.priceAmount)} / {days} days
                 </p>
               </div>
             )
+          ) : pending ? (
+            <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+              <div className="flex items-center gap-2">
+                <Icon name="schedule" size={20} />
+                <span className="font-heading text-[16px] font-extrabold">GCash payment pending</span>
+              </div>
+              <p className="mt-1.5 text-[13px] text-[var(--muted)]">
+                Your {plan} tools stay locked until the platform confirms the {peso(pending.priceAmount)} transfer. Your {days}-day term starts on confirmation.
+              </p>
+            </div>
           ) : (
             <div className="rounded-2xl bg-[var(--ink-fill,var(--navy,#1A2138))] p-5 text-white">
               <div className="font-heading text-[22px] font-extrabold leading-tight">
@@ -292,7 +315,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
           </div>
 
           {/* The address gate. Shown before the user wastes a tap on Subscribe. */}
-          {!active && !addressComplete && (
+          {!active && !pending && !addressComplete && (
             <button
               type="button"
               onClick={() => onNavigate('edit-profile')}
@@ -402,7 +425,9 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                           {s.plan} · {peso(s.priceAmount)}
                         </span>
                         <span className="block text-[12px] text-[var(--muted)]">
-                          {fmtDate(s.startedAt)} – {fmtDate(s.expiresAt)}
+                          {s.status === 'pending'
+                            ? 'Awaiting manual GCash confirmation'
+                            : `${s.startedAt ? fmtDate(s.startedAt) : '—'} – ${s.expiresAt ? fmtDate(s.expiresAt) : '—'}`}
                         </span>
                       </span>
                       <span
@@ -433,6 +458,10 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                 Cancel subscription
               </Button>
             )
+          ) : pending ? (
+            <Button fullWidth disabled>
+              GCash payment awaiting confirmation
+            </Button>
           ) : (
             <Button
               fullWidth
@@ -445,8 +474,8 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
         </div>
       )}
 
-      {/* Payment step — card credentials are collected here before the
-          subscription is created (mirrors booking checkout). */}
+      {/* Test mode uses the demo card. Live launch mode records a manual GCash
+          payment request which an admin later confirms. */}
       <BottomSheet
         open={payOpen}
         onClose={() => { if (!busy) { setPayOpen(false); setError(null); } }}
@@ -460,13 +489,13 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
             <Button
               fullWidth
               onClick={() => void doSubscribe()}
-              disabled={
-                busy || !card.name?.trim() || !card.number?.trim() || !card.expiry?.trim() || !card.cvc?.trim()
+              disabled={busy || (isTestPayment && (
+                !card.name?.trim() || !card.number?.trim() || !card.expiry?.trim() || !card.cvc?.trim()
                 || !card.billingAddress1?.trim() || !card.billingCity?.trim()
                 || !card.billingProvince?.trim() || !card.billingZip?.trim()
-              }
+              ))}
             >
-              {busy ? 'Processing…' : `Pay & subscribe · ${peso(price)}`}
+              {busy ? 'Processing…' : isTestPayment ? `Pay & subscribe · ${peso(price)}` : `Submit GCash payment · ${peso(price)}`}
             </Button>
             <Button variant="ghost" fullWidth onClick={() => { setPayOpen(false); setError(null); }} disabled={busy}>
               Cancel
@@ -475,11 +504,11 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
         }
       >
         <div className="subscribe-pay px-5 pb-4">
+          {isTestPayment ? (
+            <>
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[13px] font-bold text-[var(--muted)]">Card details</span>
-            {settings?.paymentTestMode && (
-              <span className="chip text-[12px] font-bold text-[var(--lime-ink)]">TEST mode — no charge</span>
-            )}
+            <span className="chip text-[12px] font-bold text-[var(--lime-ink)]">TEST mode — no charge</span>
           </div>
           <div className="field p-0! mb-2">
             <label className="lbl">Cardholder name</label>
@@ -550,6 +579,20 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
               onChange={(e) => setCard((c) => ({ ...c, billingProvince: e.target.value }))}
             />
           </div>
+            </>
+          ) : (
+            <div className="rounded-2xl border border-[var(--primary)]/30 bg-[var(--primary-tint)] p-4">
+              <div className="flex items-center gap-2 font-heading text-[16px] font-extrabold">
+                <Icon name="payments" size={20} /> Manual GCash
+              </div>
+              <p className="mt-2 text-[13px] leading-relaxed text-[var(--ink-2)]">
+                Submit the payment request after sending {peso(price)} through the launch GCash process. Your subscription stays pending and grants no partner access until the platform confirms receipt.
+              </p>
+              <p className="mt-2 text-[12px] font-semibold text-[var(--muted)]">
+                Your {days}-day term starts only when the payment is confirmed.
+              </p>
+            </div>
+          )}
           {error && (
             <div role="alert" className="mt-3 rounded-xl bg-[var(--coral-soft)] px-3 py-2.5 text-[13px] font-semibold text-[var(--coral)]">
               {error}
@@ -581,7 +624,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
               <span className="mt-0.5 flex-none text-[var(--primary)]"><Icon name="check_circle" size={18} /></span>
               <span className="text-[13.5px] leading-snug">
                 You keep {ui.keepVerb} until{' '}
-                <strong>{active ? fmtDate(active.expiresAt) : 'the end of your term'}</strong> — you already paid for it.
+                <strong>{active?.expiresAt ? fmtDate(active.expiresAt) : 'the end of your term'}</strong> — you already paid for it.
               </span>
             </li>
             <li className="flex items-start gap-2.5">

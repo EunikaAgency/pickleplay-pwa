@@ -178,7 +178,7 @@ export async function listSubscriptions(c: any) {
 }
 
 const listPartnerSubscriptionsQuery = z.object({
-  status: z.enum(['all', 'active', 'expired', 'cancelled']).optional().default('all'),
+  status: z.enum(['all', 'pending', 'active', 'expired', 'cancelled']).optional().default('all'),
   plan: z.enum(['coach', 'organizer']).optional(),
   search: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(500).optional().default(200),
@@ -217,6 +217,7 @@ export async function listPartnerSubscriptions(c: any) {
     const u = s.userId && typeof s.userId === 'object' ? s.userId : null;
     return {
       id: String(s._id),
+      paymentId: s.paymentId ? String(s.paymentId) : null,
       plan: s.plan,
       status: s.status,
       priceAmount: s.priceAmount,

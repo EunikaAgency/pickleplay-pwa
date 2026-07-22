@@ -2988,6 +2988,9 @@ export interface ApiBooking {
   // paymentDueAt) | 'confirmed' | 'paid' | 'cancelled'.
   status?: string | null;
   paymentMethod?: string | null;
+  /** Latest checkout payment on owner booking responses; used for manual GCash reconciliation. */
+  paymentId?: string | null;
+  paymentStatus?: string | null;
   /** Deadline to pay once the owner approves a request-to-book (else it expires). */
   paymentDueAt?: string | null;
   /** When an unanswered request-to-book auto-cancels and the slot goes back on
@@ -3272,6 +3275,18 @@ export interface ApiPayment {
   status?: string | null;          // 'pending' | 'completed' | 'failed' | 'refunded'
   notes?: string | null;
   createdAt?: string | null;
+}
+
+/** Owner/admin reconciliation primitive. Owners are server-scoped to bookings
+ * at their own venues; only admins can activate partner-subscription payments. */
+export async function verifyPayment(
+  id: string,
+  status: 'completed' | 'failed' | 'refunded' = 'completed',
+  notes?: string,
+): Promise<ApiPayment> {
+  return request<ApiPayment>(`${PAYMENTS_PREFIX}/${encodeURIComponent(id)}/verify`, {
+    method: 'POST', body: { status, notes }, auth: true,
+  });
 }
 
 /** The current user's payments, newest first (optionally filtered by status). */
@@ -4237,7 +4252,7 @@ export interface ApiSettlement {
 }
 
 export interface ApiOwnerBalance {
-  venueId?: string | null;
+  venueId: string;
   venueName?: string | null;
   unsenttledRevenue: number;
   unsenttledFees: number;
@@ -4563,7 +4578,7 @@ export async function exportRentalInventoryCsv(filters?: RentalInventoryFilters)
 /* ─── Partner subscriptions (paid coach / organizer plans) ──────── */
 
 export type PartnerPlan = 'coach' | 'organizer';
-export type PartnerSubscriptionStatus = 'active' | 'expired' | 'cancelled';
+export type PartnerSubscriptionStatus = 'pending' | 'active' | 'expired' | 'cancelled';
 
 export interface PartnerSubscription {
   id: string;
@@ -4571,8 +4586,8 @@ export interface PartnerSubscription {
   status: PartnerSubscriptionStatus;
   priceAmount: number;
   currency: string;
-  startedAt: string;
-  expiresAt: string;
+  startedAt: string | null;
+  expiresAt: string | null;
   autoRenew: boolean;
   /** Cancellation is scheduled: access runs until `expiresAt`, then lapses. */
   cancelAtPeriodEnd: boolean;
