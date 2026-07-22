@@ -49,6 +49,11 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
   const [rowError, setRowError] = useState('');
   const [accessOpen, setAccessOpen] = useState<string | null>(null);
   const [savingAccess, setSavingAccess] = useState(false);
+  // Draft of the grantable permissions checked in the open Access panel. The
+  // checkboxes edit this draft only; nothing persists until the owner presses
+  // Save (was a toggle-on-click pill before).
+  const [accessDraft, setAccessDraft] = useState<string[]>([]);
+  const [accessSaved, setAccessSaved] = useState(false);
 
   // Load on mount, when the management gate flips (auth restore), or when Retry
   // bumps reloadKey. State is set only inside async callbacks — never
@@ -120,15 +125,32 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
     }
   };
 
-  const onToggleAccess = async (m: StaffAccount, permKey: string) => {
+  // Open/close the Access panel for a row, seeding the checkbox draft from the
+  // staff member's currently-granted permissions.
+  const openAccess = (m: StaffAccount) => {
+    const next = accessOpen === m.id ? null : m.id;
+    setAccessOpen(next);
+    setResetFor(null);
+    setRowError('');
+    setAccessSaved(false);
+    if (next) setAccessDraft([...(m.grantedPermissions ?? [])]);
+  };
+
+  // Tick/untick a grantable permission in the draft (no persistence yet).
+  const toggleDraft = (permKey: string) => {
+    setAccessSaved(false);
+    setAccessDraft((cur) => (cur.includes(permKey) ? cur.filter((k) => k !== permKey) : [...cur, permKey]));
+  };
+
+  // Persist the checkbox draft for this staff member.
+  const onSaveAccess = async (m: StaffAccount) => {
     setSavingAccess(true);
     setRowError('');
-    const current = new Set(m.grantedPermissions ?? []);
-    if (current.has(permKey)) current.delete(permKey); else current.add(permKey);
-    const next = [...current];
     try {
-      const updated = await updateStaffAccount(m.id, { grantedPermissions: next });
+      const updated = await updateStaffAccount(m.id, { grantedPermissions: accessDraft });
       setStaff((s) => s.map((x) => (x.id === m.id ? { ...x, grantedPermissions: updated.grantedPermissions } : x)));
+      setAccessDraft([...(updated.grantedPermissions ?? [])]);
+      setAccessSaved(true);
     } catch {
       setRowError("Couldn't update access. Try again.");
     } finally {
@@ -263,7 +285,7 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                     <div className="flex items-center gap-2 mt-2 pl-[46px]">
                       <button
                         type="button"
-                        onClick={() => { setAccessOpen(accessOpen === m.id ? null : m.id); setResetFor(null); setRowError(''); }}
+                        onClick={() => openAccess(m)}
                         className="text-[12px] font-bold text-[var(--primary)] hover:underline"
                       >
                         Access
@@ -316,46 +338,62 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                       <div className="space-y-0.5">
                         {STAFF_GRANTABLE_PERMISSIONS.map((perm) => {
                           const isDefault = !['owner.pricing.manage', 'owner.analytics.view'].includes(perm.key);
-                          const isGranted = isDefault || (m.grantedPermissions ?? []).includes(perm.key);
+                          const isChecked = accessDraft.includes(perm.key);
+                          if (isDefault) {
+                            return (
+                              <div
+                                key={perm.key}
+                                className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg"
+                              >
+                                <Icon name={perm.icon} size={17} className="text-[var(--muted)] shrink-0" />
+                                <span className="text-[13px] font-medium text-[var(--ink)] flex-1 min-w-0">
+                                  {perm.label}
+                                </span>
+                                <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] shrink-0">
+                                  Included
+                                </span>
+                              </div>
+                            );
+                          }
                           return (
-                            <div
+                            <label
                               key={perm.key}
-                              className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg"
+                              className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg cursor-pointer hover:bg-[var(--surface-2)]"
                             >
                               <Icon name={perm.icon} size={17} className="text-[var(--muted)] shrink-0" />
                               <span className="text-[13px] font-medium text-[var(--ink)] flex-1 min-w-0">
                                 {perm.label}
                               </span>
-                              {isDefault ? (
-                                <span className="text-[11px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--ink-2)] shrink-0">
-                                  Included
-                                </span>
-                              ) : isGranted ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleAccess(m, perm.key)}
-                                  disabled={savingAccess}
-                                  className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full bg-[var(--primary)] text-white shrink-0 hover:bg-[var(--primary-hover)] disabled:opacity-50 transition-colors"
-                                >
-                                  Granted
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => onToggleAccess(m, perm.key)}
-                                  disabled={savingAccess}
-                                  className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted)] shrink-0 hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-50 transition-colors"
-                                >
-                                  Grant
-                                </button>
-                              )}
-                            </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleDraft(perm.key)}
+                                disabled={savingAccess}
+                                className="w-[18px] h-[18px] accent-[var(--primary)] shrink-0 disabled:opacity-50"
+                              />
+                            </label>
                           );
                         })}
                       </div>
-                      {savingAccess && (
-                        <div className="t-xs text-[var(--muted)] mt-1.5">Saving…</div>
-                      )}
+                      {(() => {
+                        const cur = new Set(m.grantedPermissions ?? []);
+                        const dirty = cur.size !== accessDraft.length || accessDraft.some((k) => !cur.has(k));
+                        return (
+                          <div className="flex items-center gap-2 mt-2">
+                            <button
+                              type="button"
+                              onClick={() => onSaveAccess(m)}
+                              disabled={savingAccess || !dirty}
+                              className="h-9 px-4 rounded-lg bg-[var(--primary)] text-white font-bold text-[13px] disabled:opacity-60"
+                            >
+                              {savingAccess ? 'Saving…' : 'Save access'}
+                            </button>
+                            {accessSaved && !dirty && (
+                              <span className="t-xs text-[var(--primary)] font-bold">Saved ✓</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
