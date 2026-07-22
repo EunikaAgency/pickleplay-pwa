@@ -298,7 +298,7 @@
         <div class="lane-tag">Task C · Ivan</div>
         <h2>Player discovery &amp; app reliability</h2>
         <p class="grouped"><b>Grouped:</b> the player-facing browse / map / join surfaces + the account &amp; error-handling that spans them.</p>
-        <p class="status-line"><b>Status 22 Jul:</b> 4 of 7 done ✓ — map clustering shipped &amp; deployed; "Book Court" nav consolidated (code-complete); Open-Play invite→Game-endpoint bug removed; silent-failure errors now surfaced (deploy pending).</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 5 of 7 done ✓ — map clustering shipped &amp; deployed; "Book Court" nav consolidated (code-complete); Open-Play invite→Game-endpoint bug removed; silent-failure errors now surfaced (deploy pending); email-verification flow shipped &amp; deployed.</p>
       </div>
       <div class="lane-body">
 
@@ -330,11 +330,11 @@
           <div class="shipped">removed — the broken invite affordance is gone from the Open-Play session screen; sharing still works via <code>ShareLobbySheet</code>. Orphaned <code>InvitePlayersSheet.tsx</code> deleted; tsc clean.</div>
         </div>
 
-        <div class="task">
-          <h3>Player-created game shows a price the joiner doesn't pay<span class="src">[20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Player-created game shows a price the joiner doesn't pay<span class="src">[20Jul]</span></h3>
           <p>Reads like ₱350 to join — live-demo hazard.</p>
           <div class="fix"><b>Fix</b> Hide/zero it for joiners, or label as the host's court cost.</div>
-          <div class="rel">same games/Open Play feed</div>
+          <div class="shipped">hidden — a game's <code>priceLabel</code> is the venue's court-cost (in real data free-text like "Pay to Play"/"Per Player"), never the joiner's fee, so the Play-feed card no longer shows it; only a venue <b>session</b> shows a price. A real host entry fee still shows as its own chip (<code>joinFee &gt; 0</code>). Verified in the running PWA via Playwright (48 cards, zero court-cost labels, 0 console errors); <code>GameDetailsScreen</code> was already correct. tsc clean; deploy pending.</div>
         </div>
 
         <div class="task is-done">
@@ -344,11 +344,11 @@
           <div class="shipped">code-complete — club join + "load more" now show an error <code>Toast</code> on failure (was a silent optimistic rollback); onboarding save reports success and, on failure, keeps the user on-screen with a retry / "continue anyway" notice instead of dropping their skill tier &amp; address silently. Open-Play cancel already surfaced its error inline (report was stale). Shared <code>Toast</code> gained an error tone; tsc + lint clean. Deploy pending.</div>
         </div>
 
-        <div class="task">
-          <h3>No email-verification flow in the app<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>No email-verification flow in the app<span class="src">[21Jul-new]</span></h3>
           <p>Backend supports it; client never calls it — typo'd emails break password reset.</p>
           <div class="fix"><b>Fix</b> Wire the verify-email call + gate reset on it.</div>
-          <div class="rel">account/onboarding, pairs with silent-failure fixes</div>
+          <div class="shipped">shipped &amp; deployed — <code>register</code> + <code>resend-verification</code> now send a real verify email (Gmail was already configured); new <code>/verify-email</code> deep-link screen + a resend nudge banner for signed-in unverified users; <code>isVerified</code> plumbed through the app. Verified end-to-end on prod (register → email → verify → <code>isVerified:true</code>, single-use token). Reset-gate deliberately left off — blocking reset on unverified would lock out legit users; catching the typo at signup is the real fix. tsc + lint clean.</div>
         </div>
 
       </div>
