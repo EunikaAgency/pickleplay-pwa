@@ -164,6 +164,13 @@ export default defineConfig({
     port: 9000,
     host: '0.0.0.0',
     allowedHosts: ['pickleballer-pwa.eunika.xyz', 'pickleplay-pwa.eunika.xyz', '.eunika.xyz'],
+    // This host serves the live PWA from Vite, but the app directory also
+    // contains large agent/report trees that are never application modules.
+    // Watching them exhausts Linux inotify handles and crashes the origin with
+    // ENOSPC/Cloudflare 502. Keep HMR on source/config files only.
+    watch: {
+      ignored: ['**/.agents/**', '**/.claude/**', '**/report/**', '**/dist/**'],
+    },
     proxy: {
       '/api': 'http://localhost:9002',
     },
