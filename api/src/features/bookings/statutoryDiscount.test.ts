@@ -12,6 +12,7 @@ import { OfficialReceipt, Payment, ReceiptCounter, Settlement, SettlementLineIte
 import { AppSettings } from '../settings/settings.model.js';
 import { Venue, VenueHour, SlotPriceOverride } from '../venues/venues.model.js';
 import { createVenueBooking } from '../venues/venues.controller.js';
+import { User } from '../auth/auth.model.js';
 
 let mongod: MongoMemoryServer;
 
@@ -53,6 +54,7 @@ beforeEach(async () => {
     VenueHour.deleteMany({}),
     SlotPriceOverride.deleteMany({}),
     AppSettings.deleteMany({}),
+    User.deleteMany({}),
   ]);
   await AppSettings.create({ key: 'global', paymentTestMode: true, serviceFeePercent: 7 });
 });
@@ -161,7 +163,37 @@ describe('server-authoritative statutory discount', () => {
     });
   });
 
-  it('requires the statutory ID number', async () => {
+  it('uses the statutory ID saved on the signed-in profile', async () => {
+    const venue = await makeVenue();
+    const player = await User.create({
+      email: 'senior-profile@example.com',
+      displayName: 'Senior Profile',
+      birthday: '1950-11-20',
+      seniorCitizenIdNumber: 'OSCA-PROFILE-123',
+    });
+    const c = ctx({
+      user: { sub: String(player._id), email: player.email },
+      body: {
+        venueId: String(venue._id),
+        date: '2026-12-03',
+        startTime: '10:00',
+        endTime: '11:00',
+        amount: 400,
+        customerCategory: 'senior',
+        paymentOption: 'full',
+      },
+    });
+
+    await createBooking(c);
+    expect(c._responses[0]?.status).toBe(201);
+    expect(await Booking.findById(c._responses[0]?.payload.data.id).lean()).toMatchObject({
+      customerCategory: 'senior',
+      discountIdNumber: 'OSCA-PROFILE-123',
+      discountAmount: 100,
+    });
+  });
+
+  it('directs a discounted player without a saved ID to Edit Profile', async () => {
     const venue = await makeVenue();
     const c = ctx({
       user: { sub: String(new Types.ObjectId()) },
@@ -175,7 +207,11 @@ describe('server-authoritative statutory discount', () => {
       },
     });
 
-    await expect(createBooking(c)).rejects.toThrow(/ID number is required/i);
+    await createBooking(c);
+    expect(c._responses[0]).toMatchObject({
+      status: 400,
+      payload: { error: { code: 'PROFILE_DISCOUNT_ID_REQUIRED' } },
+    });
     expect(await Booking.countDocuments()).toBe(0);
   });
 

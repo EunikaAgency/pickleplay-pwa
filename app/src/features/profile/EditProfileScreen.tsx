@@ -14,6 +14,7 @@ import { ApiError, reverseGeocode, uploadAvatar } from '../../shared/lib/api';
 import { getCurrentLocation, homeCoords } from '../../shared/lib/geo';
 import { genderOptions, userHasPermission, type Gender } from '../../shared/lib/permissions';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { isSeniorOnDate } from '../bookings/bookingDisplay';
 
 interface EditProfileScreenProps {
   onBack: () => void;
@@ -84,6 +85,8 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       // validator below holds the save until they pick one.
       gender: (currentUser?.gender ?? '') as Gender | '',
       birthday: currentUser?.birthday ?? '',
+      seniorCitizenIdNumber: currentUser?.seniorCitizenIdNumber ?? '',
+      pwdIdNumber: currentUser?.pwdIdNumber ?? '',
       bio: currentUser?.bio ?? '',
       address1: currentUser?.address1 ?? '',
       address2: currentUser?.address2 ?? '',
@@ -105,6 +108,12 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         if (value < '1900-01-01') return 'Enter a valid birthday.';
         return undefined;
       },
+      seniorCitizenIdNumber: (v, all) => {
+        const value = (v as string).trim();
+        if (isSeniorOnDate(all.birthday as string, TODAY) && !value) return 'Senior Citizen ID is required to claim the discount.';
+        return value.length > 80 ? 'Use 80 characters or fewer.' : undefined;
+      },
+      pwdIdNumber: (v) => (v as string).trim().length > 80 ? 'Use 80 characters or fewer.' : undefined,
     },
   });
 
@@ -197,6 +206,8 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         gender: form.values.gender as Gender,
         // Sent even when blank — '' is how the server clears a birthday.
         birthday: form.values.birthday,
+        seniorCitizenIdNumber: form.values.seniorCitizenIdNumber.trim(),
+        pwdIdNumber: form.values.pwdIdNumber.trim(),
         bio: form.values.bio.trim(),
         address1: form.values.address1.trim(),
         address2: form.values.address2.trim(),
@@ -319,6 +330,33 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             error={form.touched.birthday ? form.errors.birthday : undefined}
             max={TODAY}
             hint="Used for age-based divisions and events."
+          />
+        </div>
+
+        {isSeniorOnDate(form.values.birthday, TODAY) && (
+          <div className="field">
+            <FormField
+              label="Senior Citizen ID number"
+              value={form.values.seniorCitizenIdNumber}
+              onChange={(e) => form.setField('seniorCitizenIdNumber', e.target.value)}
+              onBlur={() => form.setTouched('seniorCitizenIdNumber')}
+              error={form.touched.seniorCitizenIdNumber ? form.errors.seniorCitizenIdNumber : undefined}
+              placeholder="OSCA Senior Citizen ID"
+              hint="Saved to your profile and applied automatically when you book."
+              required
+            />
+          </div>
+        )}
+
+        <div className="field">
+          <FormField
+            label="PWD ID number"
+            value={form.values.pwdIdNumber}
+            onChange={(e) => form.setField('pwdIdNumber', e.target.value)}
+            onBlur={() => form.setTouched('pwdIdNumber')}
+            error={form.touched.pwdIdNumber ? form.errors.pwdIdNumber : undefined}
+            placeholder="PWD ID (optional)"
+            hint="Save this once to use the PWD discount during booking."
           />
         </div>
 

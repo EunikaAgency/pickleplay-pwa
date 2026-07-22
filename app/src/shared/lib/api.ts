@@ -227,6 +227,8 @@ export interface ApiUser {
   bio?: string | null;
   gender?: string | null;
   birthday?: string | null;
+  seniorCitizenIdNumber?: string | null;
+  pwdIdNumber?: string | null;
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
@@ -292,6 +294,8 @@ export function toAppUser(api: ApiUser): AppUser {
     bio: api.bio ?? undefined,
     gender: normalizeGender(api.gender),
     birthday: api.birthday ?? undefined,
+    seniorCitizenIdNumber: api.seniorCitizenIdNumber ?? undefined,
+    pwdIdNumber: api.pwdIdNumber ?? undefined,
     address1: api.address1 ?? undefined,
     address2: api.address2 ?? undefined,
     city: api.city ?? undefined,
@@ -437,6 +441,10 @@ export interface ProfileUpdate {
   gender?: Gender;
   /** `YYYY-MM-DD`; an empty string clears it. */
   birthday?: string;
+  /** Empty string clears the saved ID. */
+  seniorCitizenIdNumber?: string;
+  /** Empty string clears the saved ID. */
+  pwdIdNumber?: string;
   address1?: string;
   address2?: string;
   city?: string;

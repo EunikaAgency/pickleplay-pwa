@@ -200,7 +200,11 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const profileIsSenior = isSeniorOnDate(currentUser?.birthday, date);
   const discountCategoryTouched = useRef(false);
   const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>(() => profileIsSenior ? 'senior' : 'none');
-  const [discountIdNumber, setDiscountIdNumber] = useState('');
+  const discountIdNumber = customerCategory === 'senior'
+    ? currentUser?.seniorCitizenIdNumber?.trim() ?? ''
+    : customerCategory === 'pwd'
+      ? currentUser?.pwdIdNumber?.trim() ?? ''
+      : '';
 
   // Cached auth can hydrate after this screen's first render. Select Senior once
   // the profile arrives, but never undo a category the player chose themselves.
@@ -606,7 +610,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
     if (customerCategory !== 'none' && !discountIdNumber.trim()) {
-      setError('Enter the Senior Citizen/PWD ID number.');
+      setError(`Add your ${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number in Edit Profile before booking.`);
       return;
     }
     // Test mode uses the pre-filled demo card. Live launch mode is manual GCash,
@@ -690,7 +694,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
     if (step === 0) {
       if (!selected) { setError('Please choose a venue.'); return; }
       if (customerCategory !== 'none' && !discountIdNumber.trim()) {
-        setError('Enter the Senior Citizen/PWD ID number.');
+        setError(`Add your ${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number in Edit Profile before booking.`);
         return;
       }
       if (courts.length > 0 && !courtId) { setError('Please choose a court.'); return; }
@@ -1029,20 +1033,17 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               ))}
             </div>
             {customerCategory !== 'none' && (
-              <>
-                {profileIsSenior && customerCategory === 'senior' && (
-                  <div className="mt-2 text-[12px] font-semibold text-[var(--lime-ink)]">
-                    Senior selected automatically from your profile birthday.
-                  </div>
+              <div className={`mt-2 rounded-xl px-3 py-2.5 text-[12px] font-semibold ${discountIdNumber ? 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' : 'bg-[var(--coral-soft)] text-[var(--coral)]'}`}>
+                {discountIdNumber ? (
+                  <span><Icon name="check" size={14} className="inline mr-1" /> Using the {customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID saved in your profile.</span>
+                ) : (
+                  <span>
+                    Save your {customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID in{' '}
+                    <button type="button" className="underline font-bold" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
+                    {' '}to claim this discount.
+                  </span>
                 )}
-                <input
-                  className="inp mt-2"
-                  value={discountIdNumber}
-                  onChange={(e) => setDiscountIdNumber(e.target.value)}
-                  placeholder={`${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number`}
-                  maxLength={80}
-                />
-              </>
+              </div>
             )}
           </div>
 

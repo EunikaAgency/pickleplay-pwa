@@ -343,10 +343,6 @@ const createSchema = z.object({
     daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).max(7),
     weeks: z.number().int().min(1).max(12),
   }).optional(),
-}).superRefine((body, ctx) => {
-  if (body.customerCategory !== 'none' && !body.discountIdNumber) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior/PWD ID number is required.' });
-  }
 });
 
 /** Coerce a "string | number | undefined" money input to a number, or null. */
@@ -602,6 +598,29 @@ async function generateRecurringOccurrences(
 export async function createBooking(c: any) {
   const user = c.get('user');
   const body = createSchema.parse(await c.req.json());
+
+  // Statutory IDs belong to the player's profile, not the checkout form. New
+  // clients send the saved value for compatibility, while the server resolves
+  // it authoritatively from the signed-in account. The body fallback keeps older
+  // app builds usable during rollout.
+  let resolvedDiscountIdNumber = body.discountIdNumber?.trim() || null;
+  if (body.customerCategory !== 'none') {
+    const profile = await User.findById(user.sub)
+      .select('+seniorCitizenIdNumber +pwdIdNumber')
+      .lean<{ seniorCitizenIdNumber?: string; pwdIdNumber?: string }>();
+    const savedId = body.customerCategory === 'senior'
+      ? profile?.seniorCitizenIdNumber
+      : profile?.pwdIdNumber;
+    resolvedDiscountIdNumber = savedId?.trim() || resolvedDiscountIdNumber;
+    if (!resolvedDiscountIdNumber) {
+      return c.json({
+        error: {
+          code: 'PROFILE_DISCOUNT_ID_REQUIRED',
+          message: `Add your ${body.customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number in Edit Profile before booking.`,
+        },
+      }, 400);
+    }
+  }
 
   // Reject past-time bookings (covers the create-a-game flow too — it books here).
   if (isPastSlot(body.date, body.startTime)) {
@@ -869,7 +888,7 @@ export async function createBooking(c: any) {
     customerCategory: body.customerCategory,
     discountPercent,
     discountAmount,
-    discountIdNumber: body.customerCategory === 'none' ? null : body.discountIdNumber,
+    discountIdNumber: body.customerCategory === 'none' ? null : resolvedDiscountIdNumber,
     preDiscountSubtotal,
   });
 
