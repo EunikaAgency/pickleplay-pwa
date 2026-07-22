@@ -514,31 +514,27 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
               {locStatus === 'locating' ? 'Locating…' : 'Near me'}
             </button>
           )}
-        </div>
-
-        {/* Fullscreen toggle — expands the map to fill the frame over the tab bar */}
-        {!mapFullscreen && (
-          <button type="button" className="map-fullscreen" onClick={() => setMapFullscreen(true)} aria-label="Expand map to full screen">
+          {canLocate && (
+            <button type="button" className="map-icon-btn" onClick={recenter} disabled={locStatus === 'locating'} aria-label="Re-center map">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" /><line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" /><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /></svg>
+            </button>
+          )}
+          <button type="button" className="map-icon-btn" onClick={() => setMapFullscreen(true)} aria-label="Full screen">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
           </button>
-        )}
-
-        {/* Re-center — always bumps focusNonce, both sheet states */}
-        {canLocate && (
-          <button type="button" className="map-recenter" onClick={recenter} disabled={locStatus === 'locating'} aria-label="Re-center map on my location">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="7" />
-              <line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" />
-              <line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" />
-              <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
-            </svg>
-          </button>
-        )}
+        </div>
 
         {/* Fullscreen exit — sits on top of the fixed map layer */}
         {mapFullscreen && (
           <button type="button" className="map-fullscreen-exit" onClick={() => setMapFullscreen(false)} aria-label="Exit full-screen map">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        )}
+
+        {/* Fullscreen-only re-center — search-float is hidden in fullscreen */}
+        {mapFullscreen && canLocate && (
+          <button type="button" className="map-recenter-fs" onClick={recenter} disabled={locStatus === 'locating'} aria-label="Re-center map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="7" /><line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" /><line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" /><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" /></svg>
           </button>
         )}
 
