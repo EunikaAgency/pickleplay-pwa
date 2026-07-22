@@ -47,7 +47,7 @@ const SECTIONS: { label: string; items: SectionItem[] }[] = [
   {
     label: 'System',
     items: [
-      { screen: 'admin-settings', icon: 'settings', label: 'Settings', description: 'Payments + email monitoring', permission: 'admin.settings.manage' },
+      { screen: 'admin-settings', icon: 'settings', label: 'Settings', description: 'Payments, partner subscriptions, email monitoring', permission: 'admin.settings.manage' },
       { screen: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions', description: 'What each role can do', permission: 'admin.settings.manage' },
     ],
   },
