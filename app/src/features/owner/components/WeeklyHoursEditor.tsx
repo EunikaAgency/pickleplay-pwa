@@ -108,7 +108,7 @@ const tInput = (bad: boolean) =>
 
 /** Open the native time picker when any part of the field is clicked. */
 function openPicker(e: React.MouseEvent<HTMLInputElement>) {
-  (e.currentTarget as any).showPicker?.();
+  (e.currentTarget as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
 }
 
 export function WeeklyHoursEditor({ courtId, hidePricing }: WeeklyHoursEditorProps) {

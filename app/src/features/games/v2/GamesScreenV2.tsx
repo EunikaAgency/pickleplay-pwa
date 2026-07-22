@@ -764,7 +764,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               hero={sort === 'best'}
               unfilteredCount={discoverUnfiltered}
               emptyText="No events available yet. Book a court and host one."
-              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
+              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }}
               narrowedByControls={q.length > 0 || activeFilterCount > 0}
               onClearControls={clearDiscoverControls}
               located={userLoc != null}
@@ -785,7 +785,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           )}
           {!loading && section === 'games' && view === 'manage' && (
             gamesManage.length === 0
-              ? <Empty text="Plays you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
+              ? <Empty text="Plays you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }} />
               : gamesManageFiltered.length === 0
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesManageFiltered.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
@@ -798,7 +798,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               hero={sort === 'best'}
               unfilteredCount={discoverUnfiltered}
               emptyText="No open plays available yet. Book a court and publish one."
-              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
+              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }}
               narrowedByControls={q.length > 0 || activeFilterCount > 0}
               onClearControls={clearDiscoverControls}
               located={userLoc != null}
@@ -1158,7 +1158,7 @@ function OpenPlayJoined({ games, sessions, onNavigate, onLeave, busyId, emptyWit
 function OpenPlayManage({ games, bookings, mineGames, onNavigate, onDelete, onTogglePublish, busyId, emptyWithData, unfilteredCount }: { games: ApiGame[]; bookings: ApiBooking[]; mineGames: ApiGame[]; onNavigate: V2ScreenChrome['onNavigate']; onDelete: (g: ApiGame) => void; onTogglePublish: (b: ApiBooking) => void; busyId: string | null; emptyWithData: string; unfilteredCount: number }) {
   const totalItems = games.length + bookings.length;
   if (unfilteredCount > 0 && totalItems === 0) return <Empty text={emptyWithData} />;
-  if (!unfilteredCount) return <Empty text="Open Play sessions you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />;
+  if (!unfilteredCount) return <Empty text="Open Play sessions you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }} />;
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcomingBookings = bookings.filter((b) => !b.date || b.date >= todayStr);
