@@ -112,6 +112,7 @@
   @media (max-width: 720px) { .dgrid { grid-template-columns: 1fr; } }
   .dgrid .task { border-top: 1px solid var(--line); }
   .blocked-pill { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--laneB); background: var(--laneB-soft); padding: 2px 6px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+  .blocked-left { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: #9a97ff; padding: 2px 7px; border-radius: 5px; margin-right: 7px; vertical-align: middle; }
   .rel::before { content: "\2194  "; }
 
   /* Done-status overlay (Task C · Ivan) */
@@ -264,7 +265,7 @@
         </div>
 
         <div class="task">
-          <h3>New tournaments dead-end at <code>draft</code><span class="src">[21Jul-new]</span></h3>
+          <h3><span class="blocked-left">Blocked</span>New tournaments dead-end at <code>draft</code><span class="src">[21Jul-new]</span></h3>
           <p>No venue field on create; no approval side, so it never reaches <code>approved</code> and registration can't open.</p>
           <div class="fix"><b>Fix</b> Add a venue picker + approval step so draft → approved works.</div>
           <div class="rel">unblocks the hidden Tournaments menu below</div>
@@ -287,7 +288,7 @@
         </div>
 
         <div class="task">
-          <h3>No earnings visibility / real collection<span class="src">[21Jul-new]</span></h3>
+          <h3><span class="blocked-left">Blocked</span>No earnings visibility / real collection<span class="src">[21Jul-new]</span></h3>
           <p>"Paid" is a manual toggle — no charge, receipt, or earnings screen; no coach-booking manage/pay/complete.</p>
           <div class="fix"><b>Fix</b> Earnings screen + booking-manage + mark-complete <em>(sync w/ Kenneth on payment)</em>.</div>
           <div class="rel">the payout end of the coach/organizer journey</div>

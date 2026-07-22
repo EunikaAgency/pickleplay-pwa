@@ -287,9 +287,11 @@ export function ProfileScreenV2(props: ProfileV2Props) {
               <div className="stat-col"><span className="stat-col-number games">{orgMetrics ? orgMetrics.players : '—'}</span><span className="stat-col-label">Players</span></div>
             </div>
           )}
-          <div style={{ marginTop: 16 }}>
-            <button className="edit-profile-btn" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
-          </div>
+          {showPartnerSections && (
+            <div style={{ marginTop: 16 }}>
+              <button className="edit-profile-btn" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
+            </div>
+          )}
         </div>
       </div>
 
