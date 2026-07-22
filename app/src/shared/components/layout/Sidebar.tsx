@@ -214,7 +214,9 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
     .filter((t) => t.id !== 'social' || showSocial)
     // Admins don't run venues, so drop the owner "Venues" (nearby) tab — which
     // also carries the Calendar/Pricing/Reservation/Partners owner sub-items.
-    .filter((t) => t.id !== 'nearby' || !isAdmin);
+    // They also don't need Play or Profile — the admin console covers everything.
+    .filter((t) => t.id !== 'nearby' || !isAdmin)
+    .filter((t) => t.id !== 'games' || !isAdmin);
   const showOwnerCalendar = userHasPermission(currentUser, 'owner.access') && onOpenCalendar;
   const showOwnerPricing = userHasPermission(currentUser, 'owner.pricing.manage') && onOpenPricing;
   const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;

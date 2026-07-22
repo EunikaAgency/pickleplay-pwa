@@ -988,52 +988,60 @@ export async function cancelBooking(c: any) {
     } catch { /* best-effort */ }
   })();
 
+  // Notify the player, the owner, and refund status (best-effort, fire-and-forget).
+  // Runs independently of email — push + in-app notifications always fire.
+  void (async () => {
+    try {
+      // Wait a tick for refund to process
+      await new Promise(r => setTimeout(r, 500));
+      const v = await Venue.findById((result as any).venueId).select('displayName ownerUserId').lean<{ displayName?: string; ownerUserId?: any }>();
+      const venueName = v?.displayName || 'the venue';
+      const when = `${fmtDate((result as any).date)}${(result as any).startTime ? ` at ${fmtTime((result as any).startTime)}` : ''}`;
+
+      void notifyUser((result as any).userId, {
+        type: 'booking_cancelled',
+        title: 'Booking cancelled',
+        body: `Your booking at ${venueName} on ${when} was cancelled.${refundQuote.refund > 0 ? ` ₱${refundQuote.refund.toFixed(2)} will be refunded.` : ''}`,
+        icon: 'calendar',
+        linkUrl: '/my-bookings',
+        tag: String((result as any)._id),
+      });
+
+      if (v?.ownerUserId) {
+        void notifyUser(v.ownerUserId, {
+          type: 'booking_cancelled',
+          title: 'Booking cancelled by player',
+          body: `A booking at ${venueName} on ${when} was cancelled by the player. The slot is back on sale.`,
+          icon: 'calendar',
+          linkUrl: '/owner/bookings',
+          tag: String((result as any)._id),
+        });
+      }
+
+      if (refundQuote.refund > 0) {
+        void notifyUser((result as any).userId, {
+          type: 'booking_refunded',
+          title: 'Refund processed',
+          body: `₱${refundQuote.refund.toFixed(2)} has been refunded for your cancelled booking at ${venueName}.${refundStatus.includes('business days') ? ' It may take 5–10 business days to appear.' : ''}`,
+          icon: 'payments',
+          linkUrl: '/my-bookings',
+          tag: `refund-${String((result as any)._id)}`,
+        });
+      }
+    } catch { /* notifications are best-effort */ }
+  })();
+
   // Send cancellation email (best-effort).
   if (canEmail()) {
     const ue = (c.get('user') as any)?.email;
     if (ue) {
       void (async () => {
         try {
-          // Wait a tick for refund to process
+          // Wait a tick for refund to process (separate from the notif tick above —
+          // both fire-and-forget, so worst case the DB lookup runs twice. Fine.)
           await new Promise(r => setTimeout(r, 500));
-          const v = await Venue.findById((result as any).venueId).select('displayName ownerUserId').lean<{ displayName?: string; ownerUserId?: any }>();
+          const v = await Venue.findById((result as any).venueId).select('displayName').lean<{ displayName?: string }>();
           const venueName = v?.displayName || 'the venue';
-          const when = `${fmtDate((result as any).date)}${(result as any).startTime ? ` at ${fmtTime((result as any).startTime)}` : ''}`;
-
-          // Notify the player their cancellation went through.
-          void notifyUser((result as any).userId, {
-            type: 'booking_cancelled',
-            title: 'Booking cancelled',
-            body: `Your booking at ${venueName} on ${when} was cancelled.${refundQuote.refund > 0 ? ` ₱${refundQuote.refund.toFixed(2)} will be refunded.` : ''}`,
-            icon: 'calendar',
-            linkUrl: '/my-bookings',
-            tag: String((result as any)._id),
-          });
-
-          // Notify the owner a slot is back on sale.
-          if (v?.ownerUserId) {
-            void notifyUser(v.ownerUserId, {
-              type: 'booking_cancelled',
-              title: 'Booking cancelled by player',
-              body: `A booking at ${venueName} on ${when} was cancelled by the player. The slot is back on sale.`,
-              icon: 'calendar',
-              linkUrl: '/owner/bookings',
-              tag: String((result as any)._id),
-            });
-          }
-
-          // Refund notification — tell the player what they're getting back.
-          if (refundQuote.refund > 0) {
-            void notifyUser((result as any).userId, {
-              type: 'booking_refunded',
-              title: 'Refund processed',
-              body: `₱${refundQuote.refund.toFixed(2)} has been refunded for your cancelled booking at ${venueName}.${refundStatus.includes('business days') ? ' It may take 5–10 business days to appear.' : ''}`,
-              icon: 'payments',
-              linkUrl: '/my-bookings',
-              tag: `refund-${String((result as any)._id)}`,
-            });
-          }
-
           const t = cancellationReceipt({
             receipt: String((result as any)._id).slice(-8).toUpperCase(),
             venue: venueName,

@@ -6489,3 +6489,19 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 }
 .ad-item:hover { background: var(--bg-app); }
 .ad-item.active { background: var(--ink); color: #fff; }
+
+/* Floating hamburger trigger — shown on admin screens that don't use V2Shell
+   (which has its own hamburger in V2TopNav). Anchored top-left below the
+   sticky ScreenHeader. */
+.admin-drawer-fab {
+  position: fixed; top: 16px; left: 16px; z-index: 199;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 12px rgba(0,0,0,.1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.admin-drawer-fab:hover { background: var(--bg-app); }
+.admin-drawer-fab:active { transform: scale(.95); }

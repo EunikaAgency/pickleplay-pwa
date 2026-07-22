@@ -953,6 +953,7 @@ function AppInner() {
       {isAdmin && (
         <AdminDrawer
           open={drawerOpen}
+          onOpen={() => setDrawerOpen(true)}
           onClose={() => setDrawerOpen(false)}
           onNavigate={(screenId) => (navigate as (id: string) => void)(screenId)}
           activeScreenId={screen.id}

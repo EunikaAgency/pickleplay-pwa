@@ -7,6 +7,7 @@ import type { ScreenId } from '../../shared/lib/navigation';
 interface AdminDrawerProps {
   open: boolean;
   onClose: () => void;
+  onOpen: () => void;
   onNavigate: (screenId: ScreenId) => void;
   activeScreenId?: string;
 }
@@ -60,7 +61,7 @@ const ADMIN_SECTIONS: AdminSection[] = [
  * over a dark backdrop — giving admins navigation parity with the desktop
  * Sidebar without the phone-style bottom tab bar.
  */
-export function AdminDrawer({ open, onClose, onNavigate, activeScreenId = '' }: AdminDrawerProps) {
+export function AdminDrawer({ open, onClose, onOpen, onNavigate, activeScreenId = '' }: AdminDrawerProps) {
   const user = useAuthStore((s) => s.user);
   const name = user?.displayName ?? 'Admin';
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -74,7 +75,24 @@ export function AdminDrawer({ open, onClose, onNavigate, activeScreenId = '' }: 
     onClose();
   }
 
-  if (!open) return null;
+  if (!open) {
+    // Floating hamburger trigger — shown on admin screens that don't use
+    // V2Shell (which has its own hamburger in V2TopNav). Positioned below
+    // the sticky ScreenHeader back button so it never overlaps it.
+    return (
+      <button
+        className="admin-drawer-fab"
+        onClick={onOpen}
+        aria-label="Open admin menu"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="18" x2="20" y2="18" />
+        </svg>
+      </button>
+    );
+  }
 
   return (
     <>
