@@ -527,8 +527,11 @@ export function ProfileScreenV2(props: ProfileV2Props) {
 
         {/* SETTINGS — inlined here so the player sees every action on one screen
             (no drilling into a separate Settings page). */}
-        <div className="content-section">
-          <h2 className="section-title">Appearance</h2>
+        {/* Appearance — theme switcher. Shown only to community members; admins and
+            moderators manage the platform, not their profile look. */}
+        {showPartnerSections && (
+          <div className="content-section">
+            <h2 className="section-title">Appearance</h2>
           <ul className="settings-list">
             <li
               className="settings-item"
@@ -575,11 +578,15 @@ export function ProfileScreenV2(props: ProfileV2Props) {
             )}
           </ul>
         </div>
+        )}
 
         <div className="content-section">
           <h2 className="section-title">Account</h2>
           <ul className="settings-list">
-            <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('edit-profile')}>
+            {/* Edit Profile — community members manage their player profile; admins
+                and moderators don't have a player-facing profile to edit. */}
+            {showPartnerSections && (
+              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('edit-profile')}>
               <div className="settings-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
               </div>
@@ -589,6 +596,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
               </div>
               <Chevron />
             </li>
+            )}
 
             {userHasPermission(user, 'user.messages.send') && (
               <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('messages')}>
