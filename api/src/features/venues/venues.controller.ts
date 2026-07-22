@@ -995,6 +995,25 @@ export async function deleteVenue(c: any) {
   if (!(await requireVenueRealOwner(c, venueId))) {
     return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner can delete this venue' } }, 403);
   }
+
+  // Block deletion if the venue has upcoming confirmed or pending-approval bookings.
+  // The venue stays archived (deletedAt) so past data survives in reports and
+  // analytics — we just prevent removing a venue that still has active court time.
+  const today = new Date().toISOString().slice(0, 10);
+  const activeBookings = await Booking.countDocuments({
+    venueId,
+    date: { $gte: today },
+    status: { $in: ['confirmed', 'pending_approval', 'awaiting_payment'] },
+  }).limit(1).lean();
+  if (activeBookings > 0) {
+    return c.json({
+      error: {
+        code: 'HAS_UPCOMING_BOOKINGS',
+        message: 'This venue still has upcoming bookings. Cancel or resolve them first, then try again.',
+      },
+    }, 409);
+  }
+
   const user = c.get('user');
   await Venue.findByIdAndUpdate(venueId, { deletedAt: new Date(), deletedByUserId: user.sub });
   return c.json({ data: { id: venueId, deleted: true } });
