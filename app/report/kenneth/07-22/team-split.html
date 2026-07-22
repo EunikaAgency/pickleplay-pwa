@@ -179,20 +179,23 @@
         <div class="lane-tag">Task A · Jambik</div>
         <h2>Venue ops &amp; booking lifecycle</h2>
         <p class="grouped"><b>Grouped:</b> everything on the owner/venue screens + the money &amp; booking-lifecycle that flows from them.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 2 of 7 done ✓ — orphaned owner tools surfaced (Closures tab + per-court Hours); search-before-create on new venues.</p>
       </div>
       <div class="lane-body">
 
-        <div class="task">
-          <h3>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3>
           <p><code>WeeklyHoursEditor</code>, <code>ClosuresEditorTab</code>, <code>SlotPricingTab</code>, <code>BookingsInboxTab</code> — built, unreachable.</p>
           <div class="fix"><b>Fix</b> Mount them as tabs in <code>OwnerVenueScreen</code>.</div>
+          <div class="shipped">code-complete &amp; live (PWA dev-server HMR) — verified all 4 were truly orphaned, but the fix wasn't "4 tabs". <code>ClosuresEditorTab</code> → new <b>Closures</b> tab on <code>OwnerVenueScreen</code>; <code>WeeklyHoursEditor</code> (takes a <code>courtId</code>, not a venue) → per-court <b>Hours</b> sub-tab inside the Courts tab. <code>SlotPricingTab</code> + <code>BookingsInboxTab</code> left unmounted — duplicates of the already-reachable <code>OwnerPricingScreen</code> / <code>OwnerBookingsScreen</code>. Matches the architecture already documented in FILEMAP. tsc + eslint clean.</div>
           <div class="rel">same screen as venue-create &amp; staff testing</div>
         </div>
 
-        <div class="task">
-          <h3>"Search-before-create" for new venues<span class="src">[17-21Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>"Search-before-create" for new venues<span class="src">[17-21Jul]</span></h3>
           <p>No name lookup before <code>createVenue</code> — dupes possible. <code>ClaimVenueScreen</code> already searches.</p>
           <div class="fix"><b>Fix</b> Reuse ClaimVenueScreen's search; block create on a match.</div>
+          <div class="shipped">code-complete &amp; live (PWA dev-server HMR) — <code>OwnerNewVenueScreen.tsx</code> now runs ClaimVenueScreen's debounced <code>listVenues({ search, state:'unclaimed', excludePendingClaims:true })</code> as you type the venue name; matches show under the field with a <b>Claim</b> shortcut, an <b>exact</b> name match disables Create + hard-blocks submit (near matches are advisory only). tsc + eslint clean; roadmap updated.</div>
           <div class="rel">touches OwnerNewVenueScreen (same owner flow)</div>
         </div>
 
@@ -295,7 +298,7 @@
         <div class="lane-tag">Task C · Ivan</div>
         <h2>Player discovery &amp; app reliability</h2>
         <p class="grouped"><b>Grouped:</b> the player-facing browse / map / join surfaces + the account &amp; error-handling that spans them.</p>
-        <p class="status-line"><b>Status 22 Jul:</b> 2 of 7 done ✓ — map clustering shipped &amp; deployed; "Book Court" nav consolidated (code-complete, deploy pending).</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 4 of 7 done ✓ — map clustering shipped &amp; deployed; "Book Court" nav consolidated (code-complete); Open-Play invite→Game-endpoint bug removed; silent-failure errors now surfaced (deploy pending).</p>
       </div>
       <div class="lane-body">
 
@@ -320,11 +323,11 @@
           <div class="rel">same Open Play / Events feed as below</div>
         </div>
 
-        <div class="task">
-          <h3>Open-Play invite posts to the Game endpoint<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Open-Play invite posts to the Game endpoint<span class="src">[21Jul-new]</span></h3>
           <p>Session invite calls <code>inviteToGame</code> with a session id (<code>OpenPlayDetailScreen.tsx:403</code>).</p>
           <div class="fix"><b>Fix</b> Remove it or repoint to the session-invite endpoint.</div>
-          <div class="rel">Open Play surface, next to filters &amp; price</div>
+          <div class="shipped">removed — the broken invite affordance is gone from the Open-Play session screen; sharing still works via <code>ShareLobbySheet</code>. Orphaned <code>InvitePlayersSheet.tsx</code> deleted; tsc clean.</div>
         </div>
 
         <div class="task">
@@ -334,11 +337,11 @@
           <div class="rel">same games/Open Play feed</div>
         </div>
 
-        <div class="task">
-          <h3>Silent failures swallow errors<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Silent failures swallow errors<span class="src">[21Jul-new]</span></h3>
           <p>Club join (<code>ClubsPanel.tsx:75</code>), onboarding save (<code>OnboardingScreen.tsx:59</code>), open-play cancel fail with no feedback.</p>
           <div class="fix"><b>Fix</b> Catch → error toast + keep the failed state on screen.</div>
-          <div class="rel">onboarding + open-play, shared with items above</div>
+          <div class="shipped">code-complete — club join + "load more" now show an error <code>Toast</code> on failure (was a silent optimistic rollback); onboarding save reports success and, on failure, keeps the user on-screen with a retry / "continue anyway" notice instead of dropping their skill tier &amp; address silently. Open-Play cancel already surfaced its error inline (report was stale). Shared <code>Toast</code> gained an error tone; tsc + lint clean. Deploy pending.</div>
         </div>
 
         <div class="task">
