@@ -2085,6 +2085,7 @@
   flex-direction: column;
   width: var(--sidebar-w);
   flex-shrink: 0;
+  overflow: hidden;
   /* Brand-tinted panel so it separates from the white content area. */
   background: linear-gradient(180deg, #dfe4fb 0%, #cdd4f2 100%);
   border-right: 0.5px solid var(--hairline);
@@ -2227,11 +2228,12 @@
 }
 .sidebar .admin-item.active .admin-item-icon { opacity: 1; }
 
-/* The nav holds tabs + admin sections — it must shrink and scroll when content
-   overflows (especially with all admin sections expanded). Scrollbar is hidden but
-   scroll still works (touchpad, wheel, keyboard). */
+/* The nav holds tabs + admin sections. It takes all available space (flex:1
+   absorbs what the spacer would otherwise claim) and scrolls when content
+   overflows — the sidebar-spacer shrinks to 0 first, then the nav scrolls.
+   Tabs never compress because they have flex-shrink:0. */
 .sidebar nav {
-  flex-shrink: 1;
+  flex: 1;
   overflow-y: auto;
   min-height: 0;
   scrollbar-width: none;
