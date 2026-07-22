@@ -36,7 +36,6 @@ const SECTIONS: { label: string; items: SectionItem[] }[] = [
   {
     label: 'Moderation',
     items: [
-      { screen: 'admin-moderation', icon: 'gavel', label: 'Queue overview', description: 'Open items across every queue', permission: 'admin.moderation.manage' },
       { screen: 'admin-reviews', icon: 'rate_review', label: 'Reviews', description: 'Reviews awaiting moderation', permission: 'admin.moderation.manage' },
       { screen: 'admin-review-reports', icon: 'flag', label: 'Review reports', description: 'User-flagged reviews', permission: 'admin.moderation.manage' },
       { screen: 'admin-post-reports', icon: 'report', label: 'Post reports', description: 'User-flagged PickleFeed posts', permission: 'admin.moderation.manage' },
