@@ -222,7 +222,9 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
           </ul>
         </div>
 
-        {/* APPEARANCE — collapsible Theme row (matches the player profile) */}
+        {/* APPEARANCE — collapsible Theme row (matches the player profile).
+            Hidden for admins (their console has no per-device theme control). */}
+        {!isAdmin && (
         <div className="content-section">
           <h2 className="section-title">Appearance</h2>
           <ul className="settings-list">
@@ -251,6 +253,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
             )}
           </ul>
         </div>
+        )}
 
         {/* LOG OUT */}
         <div className="content-section">
