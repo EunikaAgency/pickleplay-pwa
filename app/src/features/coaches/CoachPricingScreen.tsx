@@ -37,6 +37,17 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
   const [noProfile, setNoProfile] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // ── Profile fields ──
+  const [specialty, setSpecialty] = useState('');
+  const [cityPrimary, setCityPrimary] = useState('');
+  const [experienceYears, setExperienceYears] = useState('');
+  const [bio, setBio] = useState('');
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [langInput, setLangInput] = useState('');
+  const [certInput, setCertInput] = useState('');
+
+  // ── Rate fields ──
   const [globalPrivate, setGlobalPrivate] = useState('');
   const [globalGroup, setGlobalGroup] = useState('');
   // Per-venue private rate, keyed by venue id. Blank = bill the global rate.
@@ -54,6 +65,14 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
       .then((c) => {
         if (!alive) return;
         setCoach(c);
+        // Profile
+        setSpecialty(c.specialty ?? '');
+        setCityPrimary(c.cityPrimary ?? '');
+        setExperienceYears(c.experienceYears != null ? String(c.experienceYears) : '');
+        setBio(c.bio ?? '');
+        setLanguages(c.languages ?? []);
+        setCertifications(c.certifications ?? []);
+        // Rates
         setGlobalPrivate(c.pricePrivatePerHour != null ? String(c.pricePrivatePerHour) : '');
         setGlobalGroup(c.priceGroupPerPlayer != null ? String(c.priceGroupPerPlayer) : '');
         const map: Record<string, string> = {};
@@ -81,8 +100,23 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
   const sym = currencySymbol(currency);
   const globalRate = toAmount(globalPrivate);
 
+  const invalidExp = experienceYears.trim() !== ''
+    && (!Number.isFinite(Number(experienceYears)) || Number(experienceYears) < 0 || Number(experienceYears) > 80);
+
   const anyInvalid = invalid(globalPrivate) || invalid(globalGroup)
-    || Object.values(venueRates).some(invalid);
+    || Object.values(venueRates).some(invalid) || invalidExp;
+
+  // ── Chip helpers ──
+  function addLang() {
+    const v = langInput.trim();
+    if (v && !languages.includes(v)) { setLanguages((p) => [...p, v]); setLangInput(''); }
+  }
+  function removeLang(idx: number) { setLanguages((p) => p.filter((_, i) => i !== idx)); }
+  function addCert() {
+    const v = certInput.trim();
+    if (v && !certifications.includes(v)) { setCertifications((p) => [...p, v]); setCertInput(''); }
+  }
+  function removeCert(idx: number) { setCertifications((p) => p.filter((_, i) => i !== idx)); }
 
   async function save() {
     if (anyInvalid || saving) return;
@@ -94,19 +128,29 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
         .map(([venueId, raw]) => ({ venueId, pricePrivatePerHour: toAmount(raw) }))
         .filter((r) => r.pricePrivatePerHour != null);
       const updated = await updateMyCoach({
+        // Profile fields — sent on every save alongside rates.
+        specialty: specialty.trim() || null,
+        cityPrimary: cityPrimary.trim() || null,
+        experienceYears: experienceYears.trim() ? Number(experienceYears) : null,
+        bio: bio.trim() || null,
+        languages: languages.length ? languages : undefined,
+        certifications: certifications.length ? certifications : undefined,
+        // Rates
         pricePrivatePerHour: toAmount(globalPrivate),
         priceGroupPerPlayer: toAmount(globalGroup),
         venueRates: rates,
       });
       setCoach(updated);
-      setToast('Rates saved');
+      setToast('Saved');
       setTimeout(() => setToast(''), 2200);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your rates. Try again.');
+      setError(e instanceof Error ? e.message : 'Could not save. Try again.');
     } finally {
       setSaving(false);
     }
   }
+
+  const publicSlug = coach?.slug || coach?.id || '';
 
   return (
     <div className="scroll pb-[120px]">
@@ -119,7 +163,7 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
 
         {!loading && failed && (
           <ErrorState
-            title="Couldn't load your rates"
+            title="Couldn't load your coach profile"
             message="Check your connection and try again."
             onRetry={retry}
           />
@@ -129,15 +173,143 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
           <EmptyState
             icon="storefront"
             title="No coach profile yet"
-            description="Your coach profile is created once a venue owner approves you as a coach there. Open a court and apply — then you can set your rates here."
+            description="Your coach profile is created once a venue owner approves you as a coach there. Open a court and apply — then you can set your profile and rates here."
             action={{ label: 'Coach at a venue', onPress: () => onNavigate('nearby') }}
           />
         )}
 
         {!loading && !failed && !noProfile && coach && (
           <>
-            {/* ── Global rates ─────────────────────────────────────── */}
+            {/* ── Public profile ─────────────────────────────────────── */}
             <section>
+              <div className="flex items-center justify-between">
+                <h2 className="font-heading text-[15px] font-extrabold">Public profile</h2>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('coach-detail', { id: publicSlug })}
+                  className="flex items-center gap-1 text-[13px] font-bold text-[var(--primary)]"
+                >
+                  <span>View public page</span>
+                  <Icon name="open_in_new" size={15} />
+                </button>
+              </div>
+              <p className="mt-1 text-[12.5px] text-[var(--muted)]">
+                Everything here appears on your public coach card at <code className="text-[12px]">/coaches/{publicSlug}</code>.
+              </p>
+
+              <label className="mt-3.5 block">
+                <span className="text-[13px] font-bold">Headline</span>
+                <input
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  maxLength={100}
+                  placeholder="e.g. Pickleball coach · DUPR 5.0"
+                  aria-label="Headline — what you coach"
+                  className="mt-1.5 block w-full rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] px-3.5 py-3 text-[14px] outline-none placeholder:text-[var(--muted)]"
+                />
+                <span className="mt-0.5 block text-[12px] text-[var(--muted)]">Shown below your name on your public card.</span>
+              </label>
+
+              <label className="mt-3 block">
+                <span className="text-[13px] font-bold">City</span>
+                <input
+                  value={cityPrimary}
+                  onChange={(e) => setCityPrimary(e.target.value)}
+                  maxLength={100}
+                  placeholder="e.g. Makati"
+                  aria-label="City where you coach"
+                  className="mt-1.5 block w-full rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] px-3.5 py-3 text-[14px] outline-none placeholder:text-[var(--muted)]"
+                />
+              </label>
+
+              <label className="mt-3 block">
+                <span className="text-[13px] font-bold">Experience</span>
+                <span className="mt-1.5 flex items-center gap-2 rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] px-3.5 py-3">
+                  <input
+                    value={experienceYears}
+                    onChange={(e) => setExperienceYears(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="0"
+                    aria-label="Years of coaching experience"
+                    className="flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
+                  />
+                  <span className="text-[12px] text-[var(--muted)]">years</span>
+                </span>
+                {invalidExp && (
+                  <span className="mt-0.5 block text-[12px] font-semibold text-[var(--coral)]">Enter a number 0–80, or leave it blank.</span>
+                )}
+              </label>
+
+              <label className="mt-3 block">
+                <span className="text-[13px] font-bold">Bio</span>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  maxLength={5000}
+                  rows={3}
+                  placeholder="Tell players about your coaching philosophy, background, and what to expect in a session…"
+                  aria-label="Bio"
+                  className="mt-1.5 block w-full rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] px-3.5 py-3 text-[14px] outline-none placeholder:text-[var(--muted)] resize-none"
+                />
+              </label>
+
+              {/* Languages */}
+              <div className="mt-3">
+                <span className="text-[13px] font-bold">Languages</span>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {languages.map((l, i) => (
+                    <span key={`${l}-${i}`} className="inline-flex items-center gap-1 rounded-full border border-[var(--hairline)] bg-[var(--surface)] px-2.5 py-1.5 text-[13px] font-semibold">
+                      {l}
+                      <button type="button" onClick={() => removeLang(i)} aria-label={`Remove ${l}`} className="text-[var(--muted)] hover:text-[var(--coral)]">
+                        <Icon name="close" size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <span className="mt-1.5 flex items-center gap-2 rounded-xl border border-dashed border-[var(--hairline)] px-3 py-2.5">
+                  <input
+                    value={langInput}
+                    onChange={(e) => setLangInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLang(); } }}
+                    maxLength={50}
+                    placeholder="Add a language…"
+                    aria-label="Add a language"
+                    className="flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
+                  />
+                  <button type="button" onClick={addLang} disabled={!langInput.trim()} className="text-[13px] font-bold text-[var(--primary)] disabled:opacity-40">Add</button>
+                </span>
+              </div>
+
+              {/* Certifications */}
+              <div className="mt-3">
+                <span className="text-[13px] font-bold">Certifications</span>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {certifications.map((c, i) => (
+                    <span key={`${c}-${i}`} className="inline-flex items-center gap-1 rounded-full border border-[var(--hairline)] bg-[var(--surface)] px-2.5 py-1.5 text-[13px] font-semibold">
+                      {c}
+                      <button type="button" onClick={() => removeCert(i)} aria-label={`Remove ${c}`} className="text-[var(--muted)] hover:text-[var(--coral)]">
+                        <Icon name="close" size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <span className="mt-1.5 flex items-center gap-2 rounded-xl border border-dashed border-[var(--hairline)] px-3 py-2.5">
+                  <input
+                    value={certInput}
+                    onChange={(e) => setCertInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCert(); } }}
+                    maxLength={100}
+                    placeholder="Add a certification…"
+                    aria-label="Add a certification"
+                    className="flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--muted)]"
+                  />
+                  <button type="button" onClick={addCert} disabled={!certInput.trim()} className="text-[13px] font-bold text-[var(--primary)] disabled:opacity-40">Add</button>
+                </span>
+              </div>
+            </section>
+
+            {/* ── Global rates ─────────────────────────────────────── */}
+            <section className="mt-7">
               <h2 className="font-heading text-[15px] font-extrabold">Standard rates</h2>
               <p className="mt-1 text-[12.5px] text-[var(--muted)]">
                 What you charge by default. This is the rate players see on your card in Find Coach.
@@ -264,7 +436,7 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
             disabled={saving || anyInvalid}
             className="submit-btn w-full disabled:opacity-50"
           >
-            {saving ? 'Saving…' : 'Save rates'}
+            {saving ? 'Saving…' : 'Save all changes'}
           </button>
         </div>
       )}

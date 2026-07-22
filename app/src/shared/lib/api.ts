@@ -4722,10 +4722,15 @@ export async function createMyCoach(body: {
   return request<ApiCoachDetail>('/api/v1/coaches', { method: 'POST', body, auth: true });
 }
 
-/** Update the signed-in user's own coach profile. `venueRates` is sent whole —
- *  a venue left out of the list is cleared back to the global rate. */
+/** Update the signed-in user's own coach profile. The public `/coaches/:slug`
+ *  card reads the same document, so profile edits show up there immediately.
+ *  `venueRates` is sent whole — a venue left out is cleared back to the global rate. */
 export async function updateMyCoach(body: {
-  displayName?: string; specialty?: string | null; bio?: string | null;
+  displayName?: string; coachRoleLabel?: string | null; specialty?: string | null; bio?: string | null;
+  experienceYears?: number | null;
+  cityPrimary?: string | null;
+  languages?: string[];
+  certifications?: string[];
   pricePrivatePerHour?: number | null;
   priceGroupPerPlayer?: number | null;
   priceCurrency?: string | null;
