@@ -7,8 +7,8 @@ import mongoose, { Types } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { createBooking } from './bookings.controller.js';
 import { Booking } from './bookings.model.js';
-import { checkout, generateReceiptForBooking } from '../payments/payments.controller.js';
-import { OfficialReceipt, Payment, ReceiptCounter } from '../payments/payments.model.js';
+import { checkout, generateReceiptForBooking, generateSettlement } from '../payments/payments.controller.js';
+import { OfficialReceipt, Payment, ReceiptCounter, Settlement, SettlementLineItem } from '../payments/payments.model.js';
 import { AppSettings } from '../settings/settings.model.js';
 import { Venue, VenueHour, SlotPriceOverride } from '../venues/venues.model.js';
 import { createVenueBooking } from '../venues/venues.controller.js';
@@ -47,6 +47,8 @@ beforeEach(async () => {
     Payment.deleteMany({}),
     OfficialReceipt.deleteMany({}),
     ReceiptCounter.deleteMany({}),
+    Settlement.deleteMany({}),
+    SettlementLineItem.deleteMany({}),
     Venue.deleteMany({}),
     VenueHour.deleteMany({}),
     SlotPriceOverride.deleteMany({}),
@@ -225,6 +227,45 @@ describe('server-authoritative statutory discount', () => {
       discountIdNumber: 'PWD-WALKIN-1',
       vatExempt: true,
       vatAmount: 0,
+    });
+  });
+
+  it('settles discounted revenue with the fee from the original subtotal', async () => {
+    const ownerId = new Types.ObjectId();
+    const venue = await makeVenue({ ownerUserId: ownerId });
+    const booking = await Booking.create({
+      userId: new Types.ObjectId(),
+      venueId: venue._id,
+      date: '2026-12-05',
+      startTime: '10:00',
+      endTime: '11:00',
+      status: 'confirmed',
+      amount: 400,
+      preDiscountSubtotal: 500,
+      serviceFeeAmount: 35,
+      customerCategory: 'senior',
+      discountPercent: 20,
+      discountAmount: 100,
+      discountIdNumber: 'SC-SETTLE-1',
+    });
+    const c = ctx({
+      user: { sub: String(new Types.ObjectId()), permissions: ['admin.bookings.manage'] },
+      body: {
+        venueId: String(venue._id),
+        periodStart: '2026-12-01',
+        periodEnd: '2026-12-31',
+      },
+    });
+
+    await generateSettlement(c);
+    expect(c._responses[0]).toMatchObject({
+      status: 201,
+      payload: { data: { totalBookings: 1, netPayout: 365 } },
+    });
+    expect(await SettlementLineItem.findOne({ bookingId: booking._id }).lean()).toMatchObject({
+      amount: 400,
+      serviceFee: 35,
+      discountAmount: 100,
     });
   });
 });
