@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Button } from '../../shared/components/ui/Button';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
@@ -7,7 +7,7 @@ import { useForm } from '../../shared/hooks/useForm';
 import { OwnerSection } from './components/OwnerSection';
 import { MapPinPicker } from '../../shared/components/ui/MapPinPicker';
 import { AddressAutocomplete } from '../../shared/components/forms/AddressAutocomplete';
-import { createVenue, fetchCities, reverseGeocode, ApiError, type ApiCity, type GeocodeSuggestion } from '../../shared/lib/api';
+import { createVenue, fetchCities, listVenues, reverseGeocode, ApiError, type ApiCity, type ApiVenue, type GeocodeSuggestion } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -29,6 +29,14 @@ export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenP
   // A point to fly the map to after the owner picks an address suggestion (the
   // map only recenters on a new flyTo target, not on lat/lng prop changes).
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null);
+  // Duplicate guard: as the owner types a venue name, search the directory for a
+  // matching UNCLAIMED listing so they claim it instead of creating a duplicate.
+  // Mirrors ClaimVenueScreen's debounced, request-id-guarded search.
+  const [dupes, setDupes] = useState<ApiVenue[]>([]);
+  const [dupeStatus, setDupeStatus] = useState<'idle' | 'loading'>('idle');
+  const dupeReqId = useRef(0);
+  // Latest exact-name match — read by onSubmit to hard-block a duplicate create.
+  const exactDupeRef = useRef<ApiVenue | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +74,12 @@ export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenP
     },
     onSubmit: async (vals) => {
       setErrMsg('');
+      // Hard-block a duplicate: an unclaimed venue with this exact name already
+      // exists — the owner should claim it, not create a second copy.
+      if (exactDupeRef.current) {
+        setErrMsg(`A venue named “${exactDupeRef.current.displayName}” is already in our directory. Claim it instead of creating a duplicate.`);
+        return;
+      }
       // Only send filled fields; the API treats empty strings as unset.
       const body: Record<string, string> = {};
       for (const [k, v] of Object.entries(vals)) {
@@ -92,6 +106,36 @@ export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenP
     value: form.values[k],
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => form.setField(k, e.target.value),
   });
+
+  // Debounced duplicate lookup on the venue name (≥2 chars). Scoped to unclaimed,
+  // no-pending-claim listings — exactly what ClaimVenueScreen searches — since
+  // those are the rows an owner would accidentally recreate.
+  useEffect(() => {
+    const q = form.values.displayName.trim();
+    const id = ++dupeReqId.current;
+    // All state updates happen inside the timer (never synchronously in the effect
+    // body) — mirrors ClaimVenueScreen and satisfies react-hooks/set-state-in-effect.
+    const t = setTimeout(() => {
+      if (id !== dupeReqId.current) return;
+      if (q.length < 2) { setDupes([]); setDupeStatus('idle'); return; }
+      setDupeStatus('loading');
+      listVenues({ search: q, state: 'unclaimed', excludePendingClaims: true, pageSize: 6 })
+        .then((page) => { if (id === dupeReqId.current) { setDupes(page.items); setDupeStatus('idle'); } })
+        .catch(() => { if (id === dupeReqId.current) { setDupes([]); setDupeStatus('idle'); } });
+    }, q.length < 2 ? 0 : 350);
+    return () => clearTimeout(t);
+  }, [form.values.displayName]);
+
+  // Case/space-insensitive name match. An exact hit blocks the create (claim it);
+  // near matches are shown as an advisory list but don't block.
+  const normName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const nameQuery = form.values.displayName.trim();
+  const exactDupe = nameQuery.length >= 2
+    ? (dupes.find((v) => normName(v.displayName || '') === normName(nameQuery)) ?? null)
+    : null;
+  // Keep the ref current for onSubmit's block check (updating a ref during render
+  // is disallowed; an effect is the supported "latest value" pattern).
+  useEffect(() => { exactDupeRef.current = exactDupe; });
 
   // Match a reverse-geocoded place name to one of our seeded cities. Nominatim
   // and our list spell the same place a few ways ("Bacoor" / "City of Bacoor"),
@@ -196,6 +240,45 @@ export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenP
               onBlur={() => form.setTouched('displayName')}
               error={form.touched.displayName ? form.errors.displayName : undefined}
             />
+            {dupeStatus === 'loading' && dupes.length === 0 && nameQuery.length >= 2 && (
+              <p className="t-sm text-[var(--muted)]">Checking our directory for existing venues…</p>
+            )}
+            {nameQuery.length >= 2 && dupes.length > 0 && (
+              <div className={`rounded-xl px-3.5 py-3 ${exactDupe ? 'bg-[var(--coral)]/10 border border-[var(--coral)]/30' : 'bg-[var(--primary-tint)]'}`}>
+                <div className="flex items-start gap-2">
+                  <Icon name={exactDupe ? 'warning' : 'info'} size={16} className={`shrink-0 mt-0.5 ${exactDupe ? 'text-[var(--coral)]' : 'text-[var(--primary)]'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-[var(--ink)]">
+                      {exactDupe ? 'This venue is already in our directory' : 'Similar venues already exist'}
+                    </p>
+                    <p className="t-sm mt-0.5">
+                      {exactDupe
+                        ? 'Claim it instead of creating a duplicate — you keep its reviews, photos and history.'
+                        : 'If one of these is yours, claim it instead of creating a duplicate.'}
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {dupes.slice(0, 4).map((v) => {
+                        const loc = v as { area?: string | null; city?: string | null };
+                        const locLabel = loc.area || loc.city || '';
+                        return (
+                        <li key={v.slug || v.id || v.displayName} className="flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate text-[13px] text-[var(--ink)]">
+                            {v.displayName}
+                            {locLabel ? <span className="text-[var(--muted)]"> · {locLabel}</span> : null}
+                          </span>
+                          {canClaim && (
+                            <button type="button" onClick={() => onNavigate('claim-venue')} className="shrink-0 text-[12.5px] font-bold text-[var(--primary)]">
+                              Claim
+                            </button>
+                          )}
+                        </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
             <FormField label="One-line summary" placeholder="A short hook shown in search results" maxLength={255} {...bind('oneLineSummary')} />
             <div className="field p-0!">
               <label className="lbl">Description</label>
@@ -287,7 +370,12 @@ export function OwnerNewVenueScreen({ onNavigate, onBack }: OwnerNewVenueScreenP
         </OwnerSection>
 
         {errMsg && <div className="t-sm text-[var(--coral)] font-bold text-center">{errMsg}</div>}
-        <Button type="submit" fullWidth disabled={form.isSubmitting}>
+        {exactDupe && !errMsg && (
+          <div className="t-sm text-[var(--coral)] font-bold text-center">
+            A venue named “{exactDupe.displayName}” already exists — claim it above, or use a different name.
+          </div>
+        )}
+        <Button type="submit" fullWidth disabled={form.isSubmitting || !!exactDupe}>
           {form.isSubmitting ? 'Creating…' : 'Create venue'}
         </Button>
       </form>
