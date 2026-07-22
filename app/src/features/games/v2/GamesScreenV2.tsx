@@ -1063,15 +1063,12 @@ function PlayCard({ item, onClick, located, featured }: { item: ScoredPlayItem; 
   const entryFee = item.joinFee != null && item.joinFee > 0 ? item.joinFee : null;
   // `priceLabel` is a true per-player price only on a venue SESSION. On a player-
   // hosted game it is never what the joiner pays: with an entry fee it's that fee
-  // (already surfaced by the chip below, so it's dropped here), and with none it's
-  // the venue's hourly court rate the host already covered — shown prefixed as the
-  // host's court cost so it can't be misread as a price to join. See
+  // (surfaced as the chip below), and with none it's the venue's court-cost LABEL —
+  // usually free-text like "Pay to Play" / "Per Player", not even a clean price — so
+  // it reads as a cost to join a game that's actually free. A game therefore shows
+  // no price in the meta line at all; only a session's priceLabel is shown. See
   // PlayItem.joinFee in api.ts.
-  const priceMeta = item.kind === 'session'
-    ? item.priceLabel
-    : entryFee != null
-      ? null
-      : item.priceLabel ? `Court ${item.priceLabel}` : null;
+  const priceMeta = item.kind === 'session' ? item.priceLabel : null;
   const meta = [item.skillLabel, priceMeta, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // Three states, not two: a measured distance; "unknown" when we know where the
   // user is but the venue has no coordinates; and nothing at all when location is
