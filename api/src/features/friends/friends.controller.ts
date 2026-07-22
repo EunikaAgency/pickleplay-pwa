@@ -310,7 +310,8 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 }
 
 /** GET /friends/suggestions — show suggested friendable users.
- *  Priority: nearby (when lat/lng passed) → shared games/clubs → random. */
+ *  Priority: friends-of-friends → nearby (when lat/lng passed) → shared games/clubs → random.
+ *  Excludes the current user, existing friends, and anyone holding an admin/owner/staff role. */
 export async function suggestFriends(c: any) {
   const user = c.get('user');
   const latRaw = c.req.query('lat');
@@ -331,6 +332,10 @@ export async function suggestFriends(c: any) {
     excludeIds.add(String(r.recipientId));
   }
   excludeIds.add(user.sub);
+
+  // Also exclude anyone with an admin/owner/staff UserRole grant.
+  const nonFriendable = await getNonFriendableIds();
+  for (const id of nonFriendable) excludeIds.add(id);
 
   const baseFilter: Record<string, any> = {
     _id: { $nin: [...excludeIds] },
