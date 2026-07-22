@@ -115,7 +115,11 @@ export type Screen =
   | { id: 'admin-review-reports' }
   | { id: 'admin-venue-approvals' }
   | { id: 'admin-suggested-edits' }
-  | { id: 'admin-settings' }
+  // The former umbrella "Settings" screen was split into three sibling System
+  // screens (each renders one section of AdminSettingsScreen).
+  | { id: 'admin-payments' }
+  | { id: 'admin-partner-subscriptions' }
+  | { id: 'admin-email-monitoring' }
   | { id: 'admin-feature-flags' }
   | { id: 'admin-roles' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
@@ -244,7 +248,9 @@ export function pathFromScreen(screen: Screen): string {
     case 'admin-review-reports': return '/admin/moderation/review-reports';
     case 'admin-venue-approvals': return '/admin/moderation/venue-approvals';
     case 'admin-suggested-edits': return '/admin/moderation/suggested-edits';
-    case 'admin-settings': return '/admin/settings';
+    case 'admin-payments': return '/admin/payments';
+    case 'admin-partner-subscriptions': return '/admin/partner-subscriptions';
+    case 'admin-email-monitoring': return '/admin/email-monitoring';
     case 'admin-feature-flags': return '/admin/feature-flags';
     case 'admin-roles': return '/admin/roles';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
@@ -407,7 +413,11 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'coaches') return { id: 'admin-coaches' };
       if (b === 'bookings') return { id: 'admin-bookings' };
       if (b === 'games') return { id: 'admin-games' };
-      if (b === 'settings') return { id: 'admin-settings' };
+      if (b === 'payments') return { id: 'admin-payments' };
+      if (b === 'partner-subscriptions') return { id: 'admin-partner-subscriptions' };
+      if (b === 'email-monitoring') return { id: 'admin-email-monitoring' };
+      // Legacy `/admin/settings` → the first split screen (Payments).
+      if (b === 'settings') return { id: 'admin-payments' };
       if (b === 'feature-flags') return { id: 'admin-feature-flags' };
       if (b === 'roles') return { id: 'admin-roles' };
       if (b === 'claims') return { id: 'admin-claims' };

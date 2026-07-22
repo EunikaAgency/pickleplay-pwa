@@ -212,7 +212,9 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'admin-post-reports': 'admin.moderation.manage',
   'admin-venue-approvals': 'admin.moderation.manage',
   'admin-suggested-edits': 'admin.moderation.manage',
-  'admin-settings': 'admin.settings.manage',
+  'admin-payments': 'admin.settings.manage',
+  'admin-partner-subscriptions': 'admin.settings.manage',
+  'admin-email-monitoring': 'admin.settings.manage',
   'admin-feature-flags': 'admin.settings.manage',
   'admin-roles': 'admin.settings.manage',
   'open-play-book': 'player.bookings.create',
@@ -892,8 +894,12 @@ function AppInner() {
         return <AdminVenueApprovalsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-suggested-edits':
         return <AdminSuggestedEditsScreen onNavigate={navigate} onBack={goBack} />;
-      case 'admin-settings':
-        return <AdminSettingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-payments':
+        return <AdminSettingsScreen section="payments" onBack={goBack} />;
+      case 'admin-partner-subscriptions':
+        return <AdminSettingsScreen section="subscriptions" onBack={goBack} />;
+      case 'admin-email-monitoring':
+        return <AdminSettingsScreen section="email" onBack={goBack} />;
       case 'admin-feature-flags':
         return <AdminFeatureFlagsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-roles':

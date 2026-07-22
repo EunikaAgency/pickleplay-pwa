@@ -10,12 +10,20 @@ import {
   getSettings, updateSettings, ApiError,
   type AppSettings, type PartnerPlanTier,
 } from '../../shared/lib/api';
-import type { Navigate } from '../../shared/lib/navigation';
+/** Which settings surface to render. Each is a standalone sibling screen in the
+ *  admin console's System section — there is no umbrella "Settings" screen. */
+export type AdminSettingsSection = 'payments' | 'subscriptions' | 'email';
 
 interface AdminSettingsScreenProps {
-  onNavigate: Navigate;
+  section: AdminSettingsSection;
   onBack: () => void;
 }
+
+const SECTION_META: Record<AdminSettingsSection, { title: string; subtitle: string }> = {
+  payments: { title: 'Payments', subtitle: 'Test mode, fees, and pricing mode.' },
+  subscriptions: { title: 'Partner subscriptions', subtitle: 'Coach & organizer pricing and plan tiers.' },
+  email: { title: 'Email monitoring', subtitle: 'BCC copies of transactional emails for oversight.' },
+};
 
 const peso = (n: number) => `₱${n.toLocaleString('en-PH')}`;
 
@@ -67,7 +75,7 @@ function TierChip({ tier, onEdit, onRemove }: { tier: PartnerPlanTier; onEdit: (
  * pricing mode, partner subscription prices + configurable term tiers per role,
  * email BCC, and a link to Feature Flags. Gated by `admin.settings.manage`.
  */
-export function AdminSettingsScreen({ onNavigate, onBack }: AdminSettingsScreenProps) {
+export function AdminSettingsScreen({ section, onBack }: AdminSettingsScreenProps) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loadState, setLoadState] = useState<'loading' | 'idle' | 'error'>('loading');
   const [saving, setSaving] = useState<string | null>(null);
@@ -184,8 +192,8 @@ export function AdminSettingsScreen({ onNavigate, onBack }: AdminSettingsScreenP
     <ScreenHeader
       onBack={onBack}
       eyebrow="Admin console"
-      title="Settings"
-      subtitle="Control how the app behaves for everyone."
+      title={SECTION_META[section].title}
+      subtitle={SECTION_META[section].subtitle}
       className="sticky top-0 z-20 -mx-5 px-5 bg-[var(--bg)] border-b-[0.5px] border-[var(--hairline)]"
       action={(
         <button type="button" onClick={() => void load()} aria-label="Refresh" className="text-[var(--muted)]" disabled={saving !== null}>
@@ -209,6 +217,7 @@ export function AdminSettingsScreen({ onNavigate, onBack }: AdminSettingsScreenP
       <div className="space-y-5 pt-4">
 
         {/* ── Payments ──────────────────────────────────────────────── */}
+        {section === 'payments' && (
         <section className="rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="flex items-center gap-2 font-heading text-[16px] font-extrabold text-[var(--ink)] mb-3">
             <Icon name="payments" size={18} /> Payments
@@ -227,8 +236,10 @@ export function AdminSettingsScreen({ onNavigate, onBack }: AdminSettingsScreenP
               onClick={() => openFee('pricing_mode', settings.pricingMode ?? 'start')} />
           </div>
         </section>
+        )}
 
         {/* ── Partner subscriptions ─────────────────────────────────── */}
+        {section === 'subscriptions' && (
         <section className="rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="flex items-center gap-2 font-heading text-[16px] font-extrabold text-[var(--ink)] mb-3">
             <Icon name="card_membership" size={18} /> Partner subscriptions
@@ -278,8 +289,10 @@ export function AdminSettingsScreen({ onNavigate, onBack }: AdminSettingsScreenP
             <p className="mt-2 text-[11px] text-[var(--muted)]">When tiers exist, subscribers can pick a term at checkout.</p>
           </div>
         </section>
+        )}
 
         {/* ── Email monitoring ─────────────────────────────────────── */}
+        {section === 'email' && (
         <section className="rounded-2xl bg-white p-4 shadow-sm">
           <h2 className="flex items-center gap-2 font-heading text-[16px] font-extrabold text-[var(--ink)] mb-3">
             <Icon name="mail" size={18} /> Email monitoring
@@ -289,20 +302,7 @@ export function AdminSettingsScreen({ onNavigate, onBack }: AdminSettingsScreenP
             pill={settings.emailBccEnabled ? { label: 'On', color: 'var(--lime-ink)' } : { label: 'Off', color: 'var(--muted)' }}
             onClick={() => { setBccForm({ enabled: settings.emailBccEnabled ?? false, address: settings.emailBccAddress ?? 'info@eunika.agency' }); setBccOpen(true); }} />
         </section>
-
-        {/* ── Player capabilities ──────────────────────────────────── */}
-        <section className="rounded-2xl bg-white p-4 shadow-sm">
-          <h2 className="flex items-center gap-2 font-heading text-[16px] font-extrabold text-[var(--ink)] mb-2">
-            <Icon name="toggle_on" size={18} /> Player capabilities
-          </h2>
-          <p className="text-[12px] text-[var(--muted)] mb-3">
-            Non-organizer events and approval-gated lobbies live on the Feature Flags screen.
-          </p>
-          <button type="button" onClick={() => onNavigate('admin-feature-flags')}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-[var(--hairline)] px-4 py-2 text-[13px] font-bold text-[var(--ink)]">
-            <Icon name="arrow_forward" size={16} /> Open feature flags
-          </button>
-        </section>
+        )}
       </div>
 
       {/* ── Fee / Price numeric editor ─────────────────────────────── */}
