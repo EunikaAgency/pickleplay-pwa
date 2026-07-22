@@ -3657,6 +3657,8 @@ export interface AppSettings {
     organizer: number;
     durationDays: number;
     currency: string;
+    coachTiers: PartnerPlanTier[];
+    organizerTiers: PartnerPlanTier[];
   };
 }
 
@@ -3666,7 +3668,7 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 /** Admin-only: update app settings. */
-export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress' | 'pricingMode' | 'allowNonOrganizerEvents' | 'allowPlayerApprovalLobbies'>>): Promise<AppSettings> {
+export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress' | 'pricingMode' | 'allowNonOrganizerEvents' | 'allowPlayerApprovalLobbies'>> & { coachPlanTiers?: PartnerPlanTier[]; organizerPlanTiers?: PartnerPlanTier[] }): Promise<AppSettings> {
   return request<AppSettings>('/api/v1/settings', { method: 'PATCH', body: patch, auth: true });
 }
 
@@ -4816,10 +4818,19 @@ export interface PartnerSubscriptionState {
   /** The live coach subscription, or null. */
   coach: PartnerSubscription | null;
   organizer: PartnerSubscription | null;
-  pricing: { coach: number; organizer: number; durationDays: number; currency: string };
+  pricing: { coach: number; organizer: number; durationDays: number; currency: string; coachTiers: PartnerPlanTier[]; organizerTiers: PartnerPlanTier[] };
   /** False when the profile is missing address fields required to subscribe. */
   addressComplete: boolean;
   missingAddressFields: string[];
+}
+
+/** A selectable term tier configured via AdminSettings. */
+export interface PartnerPlanTier {
+  key: string;
+  label: string;
+  durationDays: number;
+  price: number;
+  enabled: boolean;
 }
 
 /** The signed-in user's coach/organizer subscription state + current pricing. */
@@ -4828,15 +4839,17 @@ export async function getMyPartnerSubscriptions(): Promise<PartnerSubscriptionSt
 }
 
 /** Buy a term. The `card` is collected at the payment step and gated on the
- *  demo card in test mode (never stored/charged). Throws ApiError
- *  `ADDRESS_REQUIRED` (400) when the profile address is incomplete,
- *  `CARD_DECLINED` (402) on a bad test card, or `ALREADY_SUBSCRIBED` (409). */
+ *  demo card in test mode (never stored/charged). When the admin has configured
+ *  selectable tiers for this plan, pass `tierKey` to choose one — otherwise the
+ *  base plan price + `partnerSubscriptionDays` apply.
+ *  Throws ApiError `ADDRESS_REQUIRED` (400), `CARD_DECLINED` (402),
+ *  `INVALID_TIER` (400), or `ALREADY_SUBSCRIBED` (409). */
 export async function subscribeToPartnerPlan(
   plan: PartnerPlan,
-  opts?: { autoRenew?: boolean; card?: CheckoutCard },
+  opts?: { autoRenew?: boolean; tierKey?: string; card?: CheckoutCard },
 ): Promise<PartnerSubscription> {
   return request<PartnerSubscription>('/api/v1/partner-subscriptions', {
-    method: 'POST', body: { plan, autoRenew: opts?.autoRenew, card: opts?.card }, auth: true,
+    method: 'POST', body: { plan, autoRenew: opts?.autoRenew, tierKey: opts?.tierKey, card: opts?.card }, auth: true,
   });
 }
 

@@ -61,6 +61,10 @@ interface SidebarProps {
   /** Admins aren't venue owners — they don't manage venues/pricing/reservations/
    *  calendar/partners/shop, so those owner-console items are hidden for them. */
   isAdmin?: boolean;
+  /** Open the admin console hub (shown instead of individual moderation links). */
+  onOpenAdmin?: () => void;
+  /** Whether the admin console screen is active. */
+  adminActive?: boolean;
 }
 
 interface SideTab {
@@ -99,7 +103,7 @@ const organizerTabs: SideTab[] = [
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, onOpenPostReports, postReportsActive = false, onOpenClaims, claimsActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, onOpenPostReports, postReportsActive = false, onOpenClaims, claimsActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, onOpenAdmin, adminActive = false }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
@@ -239,6 +243,20 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             Shop/Rental
           </button>
         )}
+        {/* Admin console — admins get a dedicated hub instead of (or in addition to)
+            the individual moderation links, which stay for non-admin moderators. */}
+        {isAdmin && onOpenAdmin && (
+          <button
+            className={`side-tab ${adminActive ? 'active' : ''}`}
+            onClick={onOpenAdmin}
+            aria-current={adminActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name="admin_panel_settings" size={20} />
+            </span>
+            Admin console
+          </button>
+        )}
         {/* Moderation — admins/moderators review reported posts + venue claims. */}
         {onOpenPostReports && (
           <button
@@ -268,12 +286,12 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             owner Shop screen the dedicated Shop item above is the active one, so
             don't also light up Profile (Shop maps to the profile tab). */}
         <button
-          className={`side-tab ${activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive ? 'active' : ''}`}
+          className={`side-tab ${activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive && !adminActive ? 'active' : ''}`}
           onClick={() => onTabPress('profile')}
-          aria-current={activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive ? 'page' : undefined}
+          aria-current={activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive && !adminActive ? 'page' : undefined}
         >
           <span className="ico">
-            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive ? 'user_fill' : 'user'} size={20} />
+            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive && !adminActive ? 'user_fill' : 'user'} size={20} />
           </span>
           {isLoggedIn ? 'Profile' : 'Login'}
         </button>

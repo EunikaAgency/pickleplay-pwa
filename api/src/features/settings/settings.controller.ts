@@ -67,10 +67,31 @@ export async function getPlayerCapabilities(): Promise<{
   };
 }
 
+/** A selectable term tier for a partner plan, as configured by the admin. */
+export interface PartnerPlanTier {
+  key: string;
+  label: string;
+  durationDays: number;
+  price: number;
+  enabled: boolean;
+}
+
+const shapeTiers = (raw: unknown): PartnerPlanTier[] =>
+  Array.isArray(raw)
+    ? raw.map((t: any) => ({
+        key: String(t.key), label: String(t.label),
+        durationDays: Number(t.durationDays), price: Number(t.price),
+        enabled: t.enabled !== false,
+      }))
+    : [];
+
 /** Price + term of the coach/organizer partner subscriptions. Imported by the
- *  partner-subscriptions controller so the price is never hard-coded twice. */
+ *  partner-subscriptions controller so the price is never hard-coded twice.
+ *  `coachTiers`/`organizerTiers` include disabled tiers — purchase paths must
+ *  filter on `enabled` (the admin editor is the reader that wants them all). */
 export async function getPartnerSubscriptionPricing(): Promise<{
   coach: number; organizer: number; durationDays: number; currency: string;
+  coachTiers: PartnerPlanTier[]; organizerTiers: PartnerPlanTier[];
 }> {
   const s = await getSingleton();
   return {
@@ -78,6 +99,8 @@ export async function getPartnerSubscriptionPricing(): Promise<{
     organizer: s?.organizerSubscriptionPrice ?? 999,
     durationDays: s?.partnerSubscriptionDays ?? 30,
     currency: 'PHP',
+    coachTiers: shapeTiers((s as any)?.coachPlanTiers),
+    organizerTiers: shapeTiers((s as any)?.organizerPlanTiers),
   };
 }
 
@@ -86,6 +109,7 @@ function publicShape(s: {
   emailBccEnabled?: boolean;
   emailBccAddress?: string; pricingMode?: string; coachSubscriptionPrice?: number;
   organizerSubscriptionPrice?: number; partnerSubscriptionDays?: number;
+  coachPlanTiers?: unknown; organizerPlanTiers?: unknown;
   allowNonOrganizerEvents?: boolean; allowPlayerApprovalLobbies?: boolean;
 } | null) {
   return {
@@ -102,11 +126,16 @@ function publicShape(s: {
     allowNonOrganizerEvents: s?.allowNonOrganizerEvents ?? true,
     allowPlayerApprovalLobbies: s?.allowPlayerApprovalLobbies ?? true,
     // Public so the subscribe screen can render the price before committing.
+    // Tiers include `enabled` so the admin editor can read its full config off
+    // this same endpoint; subscriber UIs filter to enabled (and the subscribe
+    // endpoint re-checks server-side, so a crafted client gains nothing).
     partnerSubscription: {
       coach: s?.coachSubscriptionPrice ?? 499,
       organizer: s?.organizerSubscriptionPrice ?? 999,
       durationDays: s?.partnerSubscriptionDays ?? 30,
       currency: 'PHP',
+      coachTiers: shapeTiers(s?.coachPlanTiers),
+      organizerTiers: shapeTiers(s?.organizerPlanTiers),
     },
   };
 }
@@ -126,6 +155,14 @@ export async function getSettings(c: any) {
   return c.json({ data: publicShape(s) });
 }
 
+const tierSchema = z.object({
+  key: z.string().min(1).max(40),
+  label: z.string().min(1).max(60),
+  durationDays: z.number().int().min(1).max(3650),
+  price: z.number().min(0),
+  enabled: z.boolean().optional(),
+});
+
 const updateSchema = z.object({
   paymentTestMode: z.boolean().optional(),
   serviceFeePercent: z.number().min(0).max(100).optional(),
@@ -136,6 +173,8 @@ const updateSchema = z.object({
   coachSubscriptionPrice: z.number().min(0).optional(),
   organizerSubscriptionPrice: z.number().min(0).optional(),
   partnerSubscriptionDays: z.number().int().min(1).max(3650).optional(),
+  coachPlanTiers: z.array(tierSchema).optional(),
+  organizerPlanTiers: z.array(tierSchema).optional(),
   allowNonOrganizerEvents: z.boolean().optional(),
   allowPlayerApprovalLobbies: z.boolean().optional(),
 });
@@ -159,6 +198,8 @@ export async function updateSettings(c: any) {
   if (body.partnerSubscriptionDays !== undefined) update.partnerSubscriptionDays = body.partnerSubscriptionDays;
   if (body.allowNonOrganizerEvents !== undefined) update.allowNonOrganizerEvents = body.allowNonOrganizerEvents;
   if (body.allowPlayerApprovalLobbies !== undefined) update.allowPlayerApprovalLobbies = body.allowPlayerApprovalLobbies;
+  if (body.coachPlanTiers !== undefined) update.coachPlanTiers = body.coachPlanTiers;
+  if (body.organizerPlanTiers !== undefined) update.organizerPlanTiers = body.organizerPlanTiers;
   const s = await AppSettings.findOneAndUpdate(
     { key: 'global' },
     update,

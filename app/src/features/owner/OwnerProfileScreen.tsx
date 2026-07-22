@@ -73,6 +73,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   const canNotifs = userHasPermission(user, 'owner.notifications.view');
   const isOrganizer = userHasPermission(user, 'organizer.access');
   const canModerate = userHasPermission(user, 'admin.moderation.manage');
+  const canSettings = userHasPermission(user, 'admin.settings.manage');
   // Admins aren't venue owners — they don't manage venues/shop/calendar/
   // reservations/partners, so the whole owner "Manage" section is hidden.
   const isAdmin = userHasPermission(user, 'admin.access');
@@ -122,6 +123,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     ...(isOrganizer ? [{ key: 'organize', icon: <Trophy />, label: 'Organizer console', sub: 'Tournaments & open play', onClick: () => onNavigate('organizer-hub') } as Row] : []),
     ...(canModerate ? [{ key: 'claims', icon: <Shield />, label: 'Venue claims', sub: 'Review ownership claims', onClick: () => onNavigate('admin-claims') } as Row] : []),
     ...(canModerate ? [{ key: 'post-reports', icon: <Flag />, label: 'Post reports', sub: 'Review reported posts', onClick: () => onNavigate('admin-post-reports') } as Row] : []),
+    ...(canSettings ? [{ key: 'app-settings', icon: <SettingsIco />, label: 'App settings', sub: 'Payment mode, fees & subscription pricing', onClick: () => onNavigate('admin-settings') } as Row] : []),
     { key: 'settings', icon: <SettingsIco />, label: 'Settings', sub: 'Privacy & preferences', onClick: () => onNavigate('settings') },
   ];
 

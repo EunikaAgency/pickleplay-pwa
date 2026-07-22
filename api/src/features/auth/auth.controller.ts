@@ -224,7 +224,7 @@ async function authUserPayload(user: any) {
   };
 }
 
-async function tokenPayloadFor(user: any) {
+export async function tokenPayloadFor(user: any) {
   const roles = await getUserRoles(user);
   // Partner permissions ride in the token too, so every requirePermission check
   // sees them without a DB read — the term is re-checked on each refresh.

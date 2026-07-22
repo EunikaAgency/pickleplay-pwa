@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { User } from '../auth/auth.model.js';
+import { tokenPayloadFor } from '../auth/auth.controller.js';
+import { signAccessToken, signRefreshToken } from '../../shared/lib/jwt.js';
 import { Payment } from '../payments/payments.model.js';
 import { isPaymentTestMode, getPartnerSubscriptionPricing } from '../settings/settings.controller.js';
 import {
@@ -9,6 +11,11 @@ import {
 const subscribeSchema = z.object({
   plan: z.enum(['coach', 'organizer']),
   autoRenew: z.boolean().optional(),
+  // When the admin has configured selectable term tiers for this plan (e.g.
+  // Monthly vs Quarterly), the client sends the tier's `key` so the price
+  // and duration are server-authoritative. Absent → use the base plan price
+  // + `partnerSubscriptionDays`.
+  tierKey: z.string().max(40).optional(),
   // Card credentials the client collects at the payment step. Never stored or
   // charged — in test mode they gate on the demo card exactly like booking
   // checkout; in live mode the Payment stays pending until a gateway lands.
@@ -114,7 +121,15 @@ export async function subscribe(c: any) {
   }
 
   const pricing = await getPartnerSubscriptionPricing();
-  const priceAmount = plan === 'coach' ? pricing.coach : pricing.organizer;
+
+  // Resolve price + duration from an enabled tier, or fall back to the base plan.
+  const tiers = plan === 'coach' ? pricing.coachTiers : pricing.organizerTiers;
+  const matchedTier = body.tierKey ? tiers.find((t) => t.key === body.tierKey && t.enabled) : null;
+  if (body.tierKey && !matchedTier) {
+    return c.json({ error: { code: 'INVALID_TIER', message: `The tier "${body.tierKey}" is not available for the ${plan} plan.` } }, 400);
+  }
+  const priceAmount = matchedTier ? matchedTier.price : (plan === 'coach' ? pricing.coach : pricing.organizer);
+  const durationDays = matchedTier ? matchedTier.durationDays : pricing.durationDays;
   const testMode = await isPaymentTestMode();
 
   // Demo card gate — same behaviour as booking checkout: in test mode the card
@@ -129,7 +144,7 @@ export async function subscribe(c: any) {
   }
 
   const startedAt = new Date();
-  const expiresAt = new Date(startedAt.getTime() + pricing.durationDays * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
 
   const sub = await PartnerSubscription.create({
     userId: tokenUser.sub, plan, status: 'active',
@@ -153,11 +168,23 @@ export async function subscribe(c: any) {
   sub.set('paymentId', payment._id);
   await sub.save();
 
-  // No role changes hands: the subscriber stays a `player`, and the live term is
-  // what carries `coach.*` / `organizer.*` (SUBSCRIPTION_PERMISSIONS, resolved
-  // into /me and the access token). Re-login (or refresh) to pick them up.
+  // The subscriber stays a `player` — the live term is what carries `coach.*` /
+  // `organizer.*` (SUBSCRIPTION_PERMISSIONS). Issue a fresh access token so the
+  // new permissions take effect immediately without a manual re-login.
+  const freshUser = await User.findById(tokenUser.sub).lean();
+  const newPayload = await tokenPayloadFor(freshUser);
+  const [newAccessToken, newRefreshToken] = await Promise.all([
+    signAccessToken(newPayload), signRefreshToken(newPayload),
+  ]);
 
-  return c.json({ data: { ...subscriptionPayload(sub), paymentId: payment._id } }, 201);
+  return c.json({
+    data: {
+      ...subscriptionPayload(sub),
+      paymentId: payment._id,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    },
+  }, 201);
 }
 
 /**

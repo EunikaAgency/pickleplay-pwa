@@ -59,8 +59,24 @@ import { OwnerCalendarScreen } from './features/owner/OwnerCalendarScreen';
 import { OwnerPartnersScreen } from './features/owner/OwnerPartnersScreen';
 import { OwnerVenuesScreenV2 } from './features/owner/OwnerVenuesScreenV2';
 import { MembersScreen } from './features/profile/MembersScreen';
+import { AdminAnalyticsScreen } from './features/admin/AdminAnalyticsScreen';
+import { AdminBookingsScreen } from './features/admin/AdminBookingsScreen';
 import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
+import { AdminCoachesScreen } from './features/admin/AdminCoachesScreen';
+import { AdminFeatureFlagsScreen } from './features/admin/AdminFeatureFlagsScreen';
+import { AdminGamesScreen } from './features/admin/AdminGamesScreen';
+import { AdminHubScreen } from './features/admin/AdminHubScreen';
+import { AdminModerationScreen } from './features/admin/AdminModerationScreen';
+import { AdminOwnersScreen } from './features/admin/AdminOwnersScreen';
 import { AdminPostReportsScreen } from './features/admin/AdminPostReportsScreen';
+import { AdminReviewReportsScreen } from './features/admin/AdminReviewReportsScreen';
+import { AdminReviewsScreen } from './features/admin/AdminReviewsScreen';
+import { AdminRolesScreen } from './features/admin/AdminRolesScreen';
+import { AdminSettingsScreen } from './features/admin/AdminSettingsScreen';
+import { AdminSuggestedEditsScreen } from './features/admin/AdminSuggestedEditsScreen';
+import { AdminUsersScreen } from './features/admin/AdminUsersScreen';
+import { AdminVenueApprovalsScreen } from './features/admin/AdminVenueApprovalsScreen';
+import { AdminVenuesScreen } from './features/admin/AdminVenuesScreen';
 import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
 import PlanPdfsPage from './features/plan-pdfs/PlanPdfsPage';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
@@ -182,8 +198,24 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'organizer-rosters': 'organizer.events.manage',
   'organizer-roster': 'organizer.events.manage',
   'organizer-venue-requests': 'organizer.tournaments.manage',
+  'admin-hub': 'admin.access',
+  'admin-users': 'admin.users.manage',
+  'admin-venues': 'admin.venues.manage',
+  'admin-owners': 'admin.venues.manage',
+  'admin-coaches': 'admin.users.manage',
+  'admin-bookings': 'admin.bookings.manage',
+  'admin-games': 'admin.access',
+  'admin-moderation': 'admin.moderation.manage',
+  'admin-reviews': 'admin.moderation.manage',
+  'admin-review-reports': 'admin.moderation.manage',
   'admin-claims': 'admin.moderation.manage',
   'admin-post-reports': 'admin.moderation.manage',
+  'admin-venue-approvals': 'admin.moderation.manage',
+  'admin-suggested-edits': 'admin.moderation.manage',
+  'admin-analytics': 'admin.reports.view',
+  'admin-settings': 'admin.settings.manage',
+  'admin-feature-flags': 'admin.settings.manage',
+  'admin-roles': 'admin.settings.manage',
   'open-play-book': 'player.bookings.create',
   'owner-shop': 'owner.access',
   'owner-venues-v2': 'owner.access',
@@ -233,6 +265,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-staff': 'manage your staff',
   'owner-settlements': 'see your settlements',
   'owner-subscription-plans': 'manage subscription plans',
+  'admin-hub': 'open the admin console',
   'admin-claims': 'review venue claims',
   'admin-post-reports': 'review reported posts',
   'open-play-book': 'join open play',
@@ -525,7 +558,7 @@ function AppInner() {
   // The standalone Tournament tab stays hidden, but tournament detail routes are
   // allowed because Games > Discover now uses tournaments as structured games.
   const canOpenTournaments = !isOwner && !isAdmin;
-  const canSeeTournaments = false;
+  const canSeeTournaments = true;
   // Staff are a delegated work account — they run the owner's courts, they don't
   // host games from the console. Role-based, not permission-based: staff hold the
   // player capabilities (player.games.create etc.) like every other role, so the
@@ -825,10 +858,43 @@ function AppInner() {
         return <RosterDetailScreen key={screen.params.id} rosterId={screen.params.id} onBack={goBack} />;
       case 'organizer-venue-requests':
         return <VenueRequestsScreen tournamentId={screen.params?.tournamentId} onNavigate={navigate} onBack={goBack} />;
+      // ── Admin console ──────────────────────────────────────
+      case 'admin-hub':
+        return <AdminHubScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-users':
+        return <AdminUsersScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-venues':
+        return <AdminVenuesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-owners':
+        return <AdminOwnersScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-coaches':
+        return <AdminCoachesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-bookings':
+        return <AdminBookingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-games':
+        return <AdminGamesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-moderation':
+        return <AdminModerationScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-reviews':
+        return <AdminReviewsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-review-reports':
+        return <AdminReviewReportsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-claims':
         return <AdminClaimsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-post-reports':
         return <AdminPostReportsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-venue-approvals':
+        return <AdminVenueApprovalsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-suggested-edits':
+        return <AdminSuggestedEditsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-analytics':
+        return <AdminAnalyticsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-settings':
+        return <AdminSettingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-feature-flags':
+        return <AdminFeatureFlagsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-roles':
+        return <AdminRolesScreen onNavigate={navigate} onBack={goBack} />;
       case 'open-play-book':
         return <OpenPlayBookScreen key={screen.params.venueId} venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'plan-pdfs':
@@ -848,7 +914,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} onOpenPostReports={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-post-reports') : undefined} postReportsActive={screen.id === 'admin-post-reports'} onOpenClaims={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-claims') : undefined} claimsActive={screen.id === 'admin-claims'} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} onOpenAdmin={isAdmin ? () => navigate('admin-hub') : undefined} adminActive={screen.id.startsWith('admin-')} onOpenPostReports={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-post-reports') : undefined} postReportsActive={screen.id === 'admin-post-reports'} onOpenClaims={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-claims') : undefined} claimsActive={screen.id === 'admin-claims'} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
       )}
 
       <main className="app-main">
