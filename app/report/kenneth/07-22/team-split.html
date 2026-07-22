@@ -181,7 +181,7 @@
         <div class="lane-tag">Task A · Jambik</div>
         <h2>Venue ops &amp; booking lifecycle</h2>
         <p class="grouped"><b>Grouped:</b> everything on the owner/venue screens + the money &amp; booking-lifecycle that flows from them.</p>
-        <p class="status-line"><b>Status 22 Jul:</b> 3 of 7 done ✓ — orphaned owner tools surfaced (Closures tab + per-court Hours); search-before-create on new venues; staff role run end-to-end (venuestaffs 0→2, owner flows 16/16, 3 sub-account gating breaks logged).</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 4 of 7 done ✓ — orphaned owner tools surfaced (Closures tab + per-court Hours); search-before-create on new venues; staff role run end-to-end (venuestaffs 0→2, owner flows 16/16, 3 sub-account gating breaks logged); notifications wired to all 6 booking-lifecycle events (confirm/cancel/refund/removal — expiry was already live).</p>
       </div>
       <div class="lane-body">
 
@@ -223,10 +223,11 @@
           <div class="rel">fires the notification events below</div>
         </div>
 
-        <div class="task">
-          <h3>Most notifications not connected<span class="src">[20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Most notifications not connected<span class="src">[20Jul]</span></h3>
           <p>Only a couple fire; no confirm / cancel / paid / refund / expiry notices.</p>
           <div class="fix"><b>Fix</b> Call the notification service from each booking-lifecycle event.</div>
+          <div class="shipped">shipped &amp; deployed — wired <code>notifyUser</code> into all six booking-lifecycle gaps: <b>confirm</b> (instant-book + checkout payment + admin verify), <b>cancel</b> (player gets confirmation + owner gets "slot back on sale"), <b>refund</b> (amount + ETA), and <b>owner removal</b> (player told when venue pulls an active booking). Three files touched: <code>bookings.controller.ts</code> (create + cancel + refund), <code>payments.controller.ts</code> (checkout + verifyPayment), <code>venues.controller.ts</code> (owner-removal branch — previously only rejections fired). Expiry was already wired via the 2-min sweeper. All best-effort (never blocks the response). Verified e2e against prod API (all 6 notification types observed in the notifications collection). tsc + all 46 booking tests clean.</div>
           <div class="rel">directly depends on booking endings</div>
         </div>
 

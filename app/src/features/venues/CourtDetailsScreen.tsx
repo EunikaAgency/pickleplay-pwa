@@ -247,12 +247,11 @@ function CourtDetail({
   const coords = venueCoords(venue);
   const sym = currencySymbol(venue.pricingCurrency);
 
-  // Per-court approval — a court set to 'manual' requires owner approval; anything
-  // else confirms instantly. When there are no courts, fall back to the venue flag.
+  // Booking approval is a venue-level setting. Per-court approvalMode is handled
+  // inside the booking wizard when a specific court is selected — one manual court
+  // should not force the whole venue into "Request to book" mode.
   const courtsList = venue.courts ?? [];
-  const requireApproval = courtsList.length > 0
-    ? courtsList.some((c) => c.approvalMode === 'manual')
-    : !!venue.requireBookingApproval;
+  const requireApproval = !!venue.requireBookingApproval;
   const reviewCount = venue.googleReviewCount ?? null;
 
   const todayKey = DAY_KEYS[new Date().getDay()];
@@ -438,9 +437,15 @@ function CourtDetail({
   }, [venue.id]);
 
   // ── Partner applications (become a coach / organiser here) ──────────
-  // Player-only: owners/staff lack player.dashboard.access and never see the
-  // section. Statuses drive the button state (apply → pending → approved).
-  const canApplyPartner = isLoggedIn && userHasPermission(currentUser, 'player.dashboard.access');
+  // Only shown to players who are already in the partner path: they hold an
+  // active coach/organizer subscription, or they already have a pending/approved
+  // application at this venue. Regular players never see this section — it was
+  // confusing them into thinking they needed to "become an organizer" just to
+  // book a court. The fetch still runs for any player (so an existing applicant
+  // can see their status), but the section itself only renders when there's
+  // something to show.
+  const canFetchPartner = isLoggedIn && userHasPermission(currentUser, 'player.dashboard.access');
+  const hasActivePartnerSub = !!currentUser?.coachSubscriptionActive || !!currentUser?.organizerSubscriptionActive;
   const [coachApp, setCoachApp] = useState<{ id: string; status: string } | null>(null);
   const [orgApp, setOrgApp] = useState<{ id: string; status: string } | null>(null);
   const [applyBusy, setApplyBusy] = useState<'' | 'coach' | 'organizer'>('');
@@ -448,7 +453,7 @@ function CourtDetail({
   // in-app confirmation sheet instead of a native window.confirm().
   const [confirmCancel, setConfirmCancel] = useState<'' | 'coach' | 'organizer'>('');
   useEffect(() => {
-    if (!canApplyPartner) return;
+    if (!canFetchPartner) return;
     let cancelled = false;
     getMyCoachApplicationForVenue(venue.id)
       .then((a) => { if (!cancelled) setCoachApp(a ? { id: a.id, status: a.status } : null); })
@@ -457,7 +462,13 @@ function CourtDetail({
       .then((a) => { if (!cancelled) setOrgApp(a ? { id: a.id, status: a.status } : null); })
       .catch(() => { /* ditto */ });
     return () => { cancelled = true; };
-  }, [venue.id, canApplyPartner]);
+  }, [venue.id, canFetchPartner]);
+
+  // Show the "Partner with this venue" section ONLY when the player has an
+  // active partner subscription OR already has a pending/approved/rejected
+  // application at this venue. Regular players see a clean booking page.
+  const hasExistingApp = !!(coachApp || orgApp);
+  const canApplyPartner = canFetchPartner && (hasActivePartnerSub || hasExistingApp || applyBusy !== '');
 
   const applyPartner = async (kind: 'coach' | 'organizer') => {
     setApplyBusy(kind);

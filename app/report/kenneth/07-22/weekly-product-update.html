@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -36,6 +36,12 @@
     section{margin-top:34px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:12px}.section-head h2{margin:0;font-size:22px;letter-spacing:-.02em}.section-head p{max-width:64ch;margin:3px 0 0;color:var(--muted);font-size:13px}
     .outcomes{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.outcome{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:17px;box-shadow:var(--shadow)}
     .outcome .icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:18px}.outcome h3{margin:11px 0 5px;font-size:16px}.outcome p{margin:0;color:var(--ink-2);font-size:13.5px}
+    .demo-lede{max-width:78ch;margin:0 0 14px;color:var(--ink-2);font-size:14px}.demo-feature{overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+    .demo-hero{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(270px,.85fr);gap:0}.demo-copy{padding:22px}.demo-kicker{color:var(--accent);font:700 10.5px var(--mono);letter-spacing:.09em;text-transform:uppercase}.demo-copy h3{margin:7px 0 7px;font-size:24px;line-height:1.18;letter-spacing:-.02em}.demo-copy>p{margin:0;color:var(--ink-2);font-size:14px}
+    .change-box{padding:22px;background:var(--accent-soft);border-left:1px solid color-mix(in srgb,var(--accent) 30%,var(--line))}.change-row+ .change-row{margin-top:14px}.change-label{color:var(--muted);font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase}.change-text{margin-top:3px;color:var(--ink-2);font-size:13.5px}.change-text b{color:var(--ink)}
+    .demo-body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(270px,.85fr);gap:18px;padding:0 22px 22px}.demo-body h4{margin:18px 0 9px;font-size:14px}.demo-steps{margin:0;padding:0;list-style:none;counter-reset:steps}.demo-steps li{position:relative;min-height:30px;padding:5px 0 8px 38px;color:var(--ink-2);font-size:13.5px}.demo-steps li:before{counter-increment:steps;content:counter(steps);position:absolute;left:0;top:3px;display:grid;place-items:center;width:25px;height:25px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);color:var(--accent);font:700 11px var(--mono)}
+    .watch{align-self:start;margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2)}.watch h4{margin:0 0 7px}.watch ul{margin:0;padding-left:18px}.watch li{margin:5px 0;color:var(--ink-2);font-size:13px}.demo-tip{margin-top:11px;padding:10px 12px;border-radius:8px;background:var(--warn-soft);color:var(--ink-2);font-size:12px}.demo-tip b{color:var(--ink)}
+    .mini-demos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:11px}.mini-demo{border:1px solid var(--line);border-radius:11px;background:var(--surface);padding:0 15px;box-shadow:var(--shadow)}.mini-demo summary{display:flex;align-items:center;gap:9px;padding:14px 0;cursor:pointer;font-weight:680;font-size:14px;list-style:none}.mini-demo summary::-webkit-details-marker{display:none}.mini-demo summary:before{content:"+";display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:var(--surface-2);color:var(--accent);font-weight:700}.mini-demo[open] summary:before{content:"–"}.mini-demo .inside{padding:0 0 14px;color:var(--ink-2);font-size:13px}.mini-demo .inside b{color:var(--ink)}.mini-demo ol{margin:7px 0 0;padding-left:20px}.mini-demo li{margin:5px 0}
     .team{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.person{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px}.person .name{font-weight:720}.person .focus{margin-top:5px;color:var(--ink-2);font-size:13px}.person .date{margin-top:9px;color:var(--muted);font:10.5px var(--mono);text-transform:uppercase}
     .next-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.next-card{border:1px solid var(--line);border-left:3px solid var(--next);border-radius:10px;background:var(--surface);padding:14px 16px}.next-card h3{margin:0 0 4px;font-size:14.5px}.next-card p{margin:0;color:var(--ink-2);font-size:13px}
     .note{margin-top:12px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--warn) 30%,var(--line));border-radius:10px;background:var(--warn-soft);color:var(--ink-2);font-size:13px}.note b{color:var(--ink)}
@@ -47,7 +53,7 @@
     .item-title{flex:1;min-width:220px;font-weight:660;font-size:14.5px}.tag{border:1px solid var(--line);border-radius:5px;background:var(--surface-2);color:var(--muted);padding:2px 6px;font:10px var(--mono)}.item p{margin:6px 0 0;color:var(--ink-2);font-size:13px}
     .empty{display:none;padding:25px;text-align:center;color:var(--muted);border:1px dashed var(--line-strong);border-radius:12px}.legend{display:flex;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:12px}.legend span{display:inline-flex;align-items:center;gap:6px}.dot{width:8px;height:8px;border-radius:50%;background:var(--done)}.dot.advance{background:var(--advance)}
     footer{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}.print-only{display:none}
-    @media(max-width:780px){.stats,.team{grid-template-columns:repeat(2,1fr)}.outcomes,.next-grid{grid-template-columns:1fr}.theme{position:static;margin-top:15px}.section-head{display:block}.wrap{padding-top:24px}}
+    @media(max-width:780px){.stats,.team{grid-template-columns:repeat(2,1fr)}.outcomes,.next-grid,.demo-hero,.demo-body,.mini-demos{grid-template-columns:1fr}.change-box{border-left:0;border-top:1px solid color-mix(in srgb,var(--accent) 30%,var(--line))}.theme{position:static;margin-top:15px}.section-head{display:block}.wrap{padding-top:24px}}
     @media(max-width:460px){.stats{grid-template-columns:1fr 1fr}.stat{padding:12px}.stat .n{font-size:24px}.team{grid-template-columns:1fr}.controls{top:-1px}.search{min-width:100%}}
     @media print{body{background:#fff;color:#111}.wrap{max-width:none;padding:12mm}.theme,.controls{display:none!important}.item,.outcome,.stat,.person,.next-card{box-shadow:none;break-inside:avoid}.report-group{break-inside:avoid-page}.print-only{display:block}.item[hidden],.report-group[hidden]{display:block!important}section{margin-top:22px}}
   </style>
@@ -85,6 +91,90 @@
       <article class="outcome"><div class="icon">↗</div><h3>The website now leads people into the app</h3><p>Booking, login, registration, game creation, club creation, coach hiring, and major competition calls-to-action now point users toward the mobile experience.</p></article>
       <article class="outcome"><div class="icon">↻</div><h3>Mobile errors are recoverable</h3><p>Important screens now distinguish “nothing here” from “could not load,” show useful messages, restore failed optimistic actions, and give the user a retry path.</p></article>
       <article class="outcome"><div class="icon">⚙</div><h3>The server is safer under real-world pressure</h3><p>Concurrent game joins and roster changes are atomic, exact-slot booking collisions are guarded, malformed input receives clean errors, and venue deletion preserves history.</p></article>
+    </div>
+  </section>
+
+  <section id="demo-guide">
+    <div class="section-head"><div><h2>Demo the progress</h2><p>A presenter’s guide for showing how the product works now—not just listing completed tasks.</p></div></div>
+    <p class="demo-lede">For the client meeting, demonstrate a few complete journeys with prepared player and owner accounts. Start with the most important player-facing change below, then choose two or three shorter demos that match the meeting agenda.</p>
+
+    <article class="demo-feature">
+      <div class="demo-hero">
+        <div class="demo-copy">
+          <div class="demo-kicker">Primary client walkthrough · about 3 minutes</div>
+          <h3>Players can create their own events</h3>
+          <p>Show the full path from an ordinary player account to a published, joinable game on a booked court.</p>
+        </div>
+        <div class="change-box">
+          <div class="change-row"><div class="change-label">Before</div><div class="change-text">Creating a public event was treated as an organizer-only journey.</div></div>
+          <div class="change-row"><div class="change-label">Now</div><div class="change-text"><b>A regular player can book a court and publish an event</b> with a format, player cap, skill level, name, and optional approval-before-joining rule.</div></div>
+        </div>
+      </div>
+      <div class="demo-body">
+        <div>
+          <h4>Live demo steps</h4>
+          <ol class="demo-steps">
+            <li>Sign in using a normal <b>Player</b> test account—not an owner or organizer.</li>
+            <li>From Home, tap <b>Book Court</b>. Select an instant-book test venue so the demo does not pause for owner approval.</li>
+            <li>Under <b>Booking type</b>, choose <b>Events</b>, then select the court, date, and time.</li>
+            <li>Set the game format, player slots, skill level, and an easy-to-recognize name such as <b>Client Demo Event</b>.</li>
+            <li>Turn on <b>Approve players before they join</b> to demonstrate the new lobby control at the same time.</li>
+            <li>Review the summary and complete the test checkout.</li>
+            <li>On <b>Game created!</b>, tap <b>View your game</b>. Then use a second player account to find it in Games → Discover and request to join.</li>
+          </ol>
+        </div>
+        <aside class="watch">
+          <h4>What the client should notice</h4>
+          <ul>
+            <li>The creator is an ordinary player.</li>
+            <li>The court booking and public game are connected.</li>
+            <li>The event shows the chosen format, slots, skill, and name.</li>
+            <li>The second player can discover the event.</li>
+            <li>The join action becomes a request when approval is enabled.</li>
+            <li>The host can open and edit the published game afterward.</li>
+          </ul>
+          <div class="demo-tip"><b>Prepare before the call:</b> keep two test accounts signed in on separate devices or browser profiles, choose a venue with an available instant-book court, and use test payment details because production payments are not live yet.</div>
+        </aside>
+      </div>
+    </article>
+
+    <div class="mini-demos">
+      <details class="mini-demo">
+        <summary>Approval lobby: request, cancel, approve</summary>
+        <div class="inside"><b>What changed:</b> a player’s pending request now survives navigation and can be cancelled.
+          <ol><li>From the second player account, request to join the demo event.</li><li>Leave the screen and reopen it; show that it still says Requested.</li><li>Cancel the request, request again, then switch to the host account and approve it.</li><li>Show that the approved player receives the slot and lobby access.</li></ol>
+        </div>
+      </details>
+      <details class="mini-demo">
+        <summary>Booking approval deadlines and reminders</summary>
+        <div class="inside"><b>What changed:</b> approval requests now have a visible end point instead of holding a court forever.
+          <ol><li>Use a prepared request on a court that requires owner approval.</li><li>Show the player’s exact deadline and live countdown.</li><li>Open the owner booking view and show the same deadline, urgency order, and reminders.</li><li>Use a prepared expired example to show cancellation, no-charge wording, and the released slot.</li></ol>
+        </div>
+      </details>
+      <details class="mini-demo">
+        <summary>Owner manual reservation and full courts</summary>
+        <div class="inside"><b>What changed:</b> the front desk can understand unavailable hours before attempting a save.
+          <ol><li>Sign in as an owner and open Manual Reservation.</li><li>Select a date with existing bookings and maintenance blocks.</li><li>Show the Booked and Maintenance labels in the time picker.</li><li>Show a fully booked court disabled and marked Fully Booked.</li></ol>
+        </div>
+      </details>
+      <details class="mini-demo">
+        <summary>Individual staff access</summary>
+        <div class="inside"><b>What changed:</b> every staff member can receive a different level of access.
+          <ol><li>As the owner, open a staff member’s Access panel.</li><li>Toggle Pricing, Analytics, Bookings, and Venue Management separately, then save.</li><li>Sign in again as that staff member.</li><li>Show that permitted tools are available while restricted pricing or analytics actions remain blocked.</li></ol>
+        </div>
+      </details>
+      <details class="mini-demo">
+        <summary>Website-to-app journey</summary>
+        <div class="inside"><b>What changed:</b> public calls-to-action now lead directly to the PWA experience.
+          <ol><li>Open the public website in a signed-out browser.</li><li>Try Book a court, Create a Game, Create a Club, and Hire Coach.</li><li>Show that each action leads to the appropriate app login or app-first journey without the old dead-end page.</li></ol>
+        </div>
+      </details>
+      <details class="mini-demo">
+        <summary>Mobile failure and retry experience</summary>
+        <div class="inside"><b>What changed:</b> a temporary connection problem is no longer mistaken for an empty product.
+          <ol><li>Open Clubs or the social feed, then briefly disable the network before loading.</li><li>Show the friendly error and Retry action instead of No clubs or No posts.</li><li>Restore the connection and tap Retry to show the content load successfully.</li></ol>
+        </div>
+      </details>
     </div>
   </section>
 
