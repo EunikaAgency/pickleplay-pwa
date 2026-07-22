@@ -24,9 +24,9 @@
     "lint": "tsc --noEmit && eslint src/",
     "typecheck": "tsc --noEmit",
     "pm2": "pm2 start ecosystem.config.json",
-    "pm2:stop": "pm2 stop pickleballers-api",
-    "pm2:restart": "pm2 restart pickleballers-api",
-    "pm2:logs": "pm2 logs pickleballers-api",
+    "pm2:stop": "pm2 stop pickleballer-api",
+    "pm2:restart": "pm2 restart pickleballer-api",
+    "pm2:logs": "pm2 logs pickleballer-api",
     "pm2:save": "pm2 save",
     "pm2:startup": "pm2 startup"
   },
