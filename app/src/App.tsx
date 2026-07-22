@@ -159,7 +159,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   // /owner/reports — the cross-venue revenue/KPI report. Owner-only: staff hold
   // owner.bookings.manage (they work the front desk, calendar, and per-venue
   // inbox) but must not see the owner's business-wide numbers.
-  'owner-bookings': 'owner.reports.view',
+  'owner-bookings': ['owner.reports.view', 'owner.analytics.view'],
   'owner-front-desk': 'owner.bookings.manage',
   'owner-manual-reservation': 'owner.bookings.manage',
   // /owner/pricing — the rates players are charged. Owner-only, same reasoning as

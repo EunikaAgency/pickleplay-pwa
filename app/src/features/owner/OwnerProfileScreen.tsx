@@ -81,23 +81,22 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   // Staff land on this same console (they hold owner.access) — show their real
   // role on the badge, and label them "Venue staff" rather than "Venue owner".
   const role = user ? primaryRole(user) : 'owner';
-  // Staff normally see no revenue/bookings roll-up — but an owner can grant a
-  // staff member `owner.analytics.view` from the Access panel, which turns the
-  // "This month" KPI block on for them. `withAnalytics` is left to the hook's
-  // own permission gate (it only fetches when the viewer actually holds the
-  // permission), so a non-granted staff member still fans out zero requests.
+  // Staff see no revenue/bookings roll-up, so don't pay for it: both flags fan
+  // out one request per venue, and a staff member inherits their owner's whole
+  // portfolio (which can be hundreds of venues).
   const isStaff = role === 'staff';
+  // An owner can grant a staff member `owner.analytics.view` from the Access
+  // panel; that grant opens the Reports page for them (see the Reports row +
+  // the owner-bookings screen gate in App.tsx).
+  const hasAnalyticsGrant = userHasPermission(user, 'owner.analytics.view');
   const {
     canAnalytics, venues, combined, structural, statsReady, monthBookings, pending, status, retry,
-  } = useOwnerDashboard({ withBookings: canBookings && !isStaff });
+  } = useOwnerDashboard({ withBookings: canBookings && !isStaff, withAnalytics: !isStaff });
 
   const name = user?.displayName ?? 'Owner';
   const roleMeta = ROLE_META[role] ?? ROLE_META.owner;
   const roleNoun = role === 'staff' ? 'Venue staff' : 'Venue owner';
-  // Staff granted analytics don't fetch the per-venue bookings list (that's the
-  // owner's actionable inbox), so read the pending count from the analytics
-  // roll-up instead of the (unfetched) bookings array.
-  const pendingCount = canBookings && !isStaff ? pending.length : combined.pending;
+  const pendingCount = canBookings ? pending.length : combined.pending;
   const venueLine = venues.length > 0
     ? `${roleNoun} · ${venues.length} venue${venues.length === 1 ? '' : 's'}`
     : roleNoun;
@@ -112,7 +111,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     // same session every Tuesday had to re-create it by hand, week after week.
     ...(canManage ? [{ key: 'recurring-open-play', icon: <CalendarIco />, label: 'Recurring Open Play', sub: 'Run the same session every week', onClick: () => onNavigate('organizer-open-play') } as Row] : []),
     { key: 'partners', icon: <UsersIco />, label: 'Partners', sub: 'Coaches & organisers at your venues', onClick: () => onNavigate('owner-partners'), className: 'sm:hidden' },
-    ...(canReports ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
+    ...(canReports || hasAnalyticsGrant ? [{ key: 'reports', icon: <TrendUp />, label: 'Reports', sub: 'Revenue, KPIs & venue performance', onClick: () => onNavigate('owner-bookings', {}) } as Row] : []),
     ...(canStaff ? [{ key: 'staff', icon: <UsersIco />, label: 'Staff', sub: 'Accounts that manage your venues, bookings & clubs', onClick: () => onNavigate('owner-staff') } as Row] : []),
     ...(canCreate ? [{ key: 'new-venue', icon: <Plus />, label: 'New venue', sub: 'List another court', onClick: () => onNavigate('owner-new-venue') } as Row] : []),
   ];
@@ -188,10 +187,9 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
       </div>
 
       <div>
-        {/* BUSINESS KPIs — mirrors the player Activity grid. Shown to owners and
-            to any staff the owner granted `owner.analytics.view` (the Access
-            panel's "Analytics" toggle); `canAnalytics` already encodes that. */}
-        {canAnalytics && (
+        {/* BUSINESS KPIs — mirrors the player Activity grid. Hidden for staff:
+            the revenue/bookings roll-up is the owner's business, not theirs. */}
+        {canAnalytics && !isStaff && (
           <div className="content-section">
             <h2 className="section-title">This month</h2>
             <div className="activity-grid">
