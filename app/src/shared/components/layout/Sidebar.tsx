@@ -334,9 +334,9 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             )}
           </button>
         )}
-        {/* Notifications — shown for all logged-in users (replaces the Profile tab
-            for admins, who get it here instead). */}
-        {isLoggedIn && onOpenNotifications && (
+        {/* Notifications — admin-only sidebar item (Player/Owner/Organizer use the
+            header bell instead; admins don't have a Profile tab, so they get it here). */}
+        {isLoggedIn && onOpenNotifications && isAdmin && (
           <button
             className={`side-tab ${notificationsActive ? 'active' : ''}`}
             onClick={onOpenNotifications}
