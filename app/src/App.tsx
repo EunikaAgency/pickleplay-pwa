@@ -869,7 +869,7 @@ function AppInner() {
       <DemoStateControl />
 
       {/* Animated launch splash, on top of everything (waits for the CTA tap). */}
-      {showSplash && <SplashScreen onDone={dismissSplash} />}
+      {showSplash && <SplashScreen onDone={dismissSplash} auto />}
     </div>
   );
 }
