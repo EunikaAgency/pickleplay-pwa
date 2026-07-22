@@ -953,6 +953,9 @@ function AppInner() {
           onClose={() => setDrawerOpen(false)}
           onNavigate={(screenId) => (navigate as (id: string) => void)(screenId)}
           activeScreenId={screen.id}
+          onOpenSocial={canSeeSocial ? () => navigate('social') : undefined}
+          onOpenNotifications={isLoggedIn ? () => navigate('notifications') : undefined}
+          onLogout={isAdmin ? handleLogout : undefined}
         />
       )}
     </div>

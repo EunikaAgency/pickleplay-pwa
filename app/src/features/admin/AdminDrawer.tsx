@@ -10,6 +10,9 @@ interface AdminDrawerProps {
   onOpen: () => void;
   onNavigate: (screenId: ScreenId) => void;
   activeScreenId?: string;
+  onOpenSocial?: () => void;
+  onOpenNotifications?: () => void;
+  onLogout?: () => void;
 }
 
 type AdminSection = {
@@ -59,10 +62,11 @@ const ADMIN_SECTIONS: AdminSection[] = [
  * over a dark backdrop — giving admins navigation parity with the desktop
  * Sidebar without the phone-style bottom tab bar.
  */
-export function AdminDrawer({ open, onClose, onOpen, onNavigate, activeScreenId = '' }: AdminDrawerProps) {
+export function AdminDrawer({ open, onClose, onOpen, onNavigate, activeScreenId = '', onOpenSocial, onOpenNotifications, onLogout }: AdminDrawerProps) {
   const user = useAuthStore((s) => s.user);
   const name = user?.displayName ?? 'Admin';
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Sections start collapsed — matching the desktop sidebar.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Directory: true, Moderation: true, System: true });
 
   function toggle(label: string) {
     setCollapsed((c) => ({ ...c, [label]: !c[label] }));
@@ -128,6 +132,44 @@ export function AdminDrawer({ open, onClose, onOpen, onNavigate, activeScreenId 
           <Icon name="dashboard" size={18} />
           <span>Dashboard</span>
         </button>
+
+        {/* Social — matches the desktop sidebar's Social tab */}
+        {onOpenSocial && (
+          <button
+            type="button"
+            className={`admin-drawer-home ${activeScreenId === 'social' ? 'active' : ''}`}
+            onClick={() => { onOpenSocial(); onClose(); }}
+            aria-current={activeScreenId === 'social' ? 'page' : undefined}
+          >
+            <Icon name="groups" size={18} />
+            <span>Social</span>
+          </button>
+        )}
+
+        {/* Notifications — matches the desktop sidebar's Notifications button */}
+        {onOpenNotifications && (
+          <button
+            type="button"
+            className={`admin-drawer-home ${activeScreenId === 'notifications' ? 'active' : ''}`}
+            onClick={() => { onOpenNotifications(); onClose(); }}
+            aria-current={activeScreenId === 'notifications' ? 'page' : undefined}
+          >
+            <Icon name="notifications" size={18} />
+            <span>Notifications</span>
+          </button>
+        )}
+
+        {/* Logout — matches the desktop sidebar's footer logout */}
+        {onLogout && (
+          <button
+            type="button"
+            className="admin-drawer-home"
+            onClick={onLogout}
+          >
+            <Icon name="logout" size={18} />
+            <span>Log out</span>
+          </button>
+        )}
 
         {/* Section tree */}
         <nav className="admin-drawer-nav">
