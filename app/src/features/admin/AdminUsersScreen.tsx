@@ -70,11 +70,12 @@ export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
         <div className="space-y-3 pb-6">
           {filtered.map((u) => {
             const r = u.roleDefault || 'player';
+            const uid = u._id || u.id || '';
             return (
-              <AdminRow
-                key={u._id || u.id || u.email}
-                avatarUrl={u.avatarUrl || undefined}
-                icon="person"
+              <button key={u._id || u.id || u.email} type="button" className="w-full text-left" onClick={() => onNavigate('player-profile', { id: uid })}>
+                <AdminRow
+                  avatarUrl={u.avatarUrl || undefined}
+                  icon="person"
                 iconColor={ROLE_COLOR[r] || 'var(--muted)'}
                 title={
                   <span className="flex items-center gap-1">
@@ -90,6 +91,7 @@ export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
                   </div>
                 }
               />
+              </button>
             );
           })}
         </div>

@@ -99,10 +99,10 @@ export function AdminVenuesScreen({ onNavigate }: Props) {
             const s = venueState(v);
             const img = v.image || v.mainImageUrl;
             return (
-              <AdminRow
-                key={v.id}
-                avatarUrl={img ? apiImageUrl(img) : undefined}
-                icon="stadium"
+              <button key={v.id} type="button" className="w-full text-left" onClick={() => onNavigate('court-details', { slug: v.slug || v.id })}>
+                <AdminRow
+                  avatarUrl={img ? apiImageUrl(img) : undefined}
+                  icon="stadium"
                 title={
                   <span className="flex items-center gap-1">
                     {v.displayName}
@@ -120,6 +120,7 @@ export function AdminVenuesScreen({ onNavigate }: Props) {
                   </div>
                 }
               />
+              </button>
             );
           })}
         </div>
