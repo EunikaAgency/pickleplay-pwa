@@ -5,6 +5,7 @@ import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { Toast } from '../../shared/components/ui/Toast';
+import { Button } from '../../shared/components/ui/Button';
 import { ApiError, getMyCoach, updateMyCoach, type ApiCoachDetail } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 import { currencySymbol, money } from './coachDisplay';
@@ -426,14 +427,9 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
             )}
 
             <div className="mt-6 border-t border-[var(--hairline)] pt-4 pb-[calc(env(safe-area-inset-bottom)+14px)]">
-              <button
-                type="button"
-                onClick={save}
-                disabled={saving || anyInvalid}
-                className="submit-btn w-full disabled:opacity-50"
-              >
+              <Button fullWidth onClick={save} disabled={saving || anyInvalid}>
                 {saving ? 'Saving…' : 'Save all changes'}
-              </button>
+              </Button>
             </div>
           </>
         )}
