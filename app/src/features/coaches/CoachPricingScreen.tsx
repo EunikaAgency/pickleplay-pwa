@@ -424,22 +424,20 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
                 {error}
               </div>
             )}
+
+            <div className="mt-6 border-t border-[var(--hairline)] pt-4 pb-[calc(env(safe-area-inset-bottom)+14px)]">
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving || anyInvalid}
+                className="submit-btn w-full disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : 'Save all changes'}
+              </button>
+            </div>
           </>
         )}
       </div>
-
-      {!loading && !failed && !noProfile && coach && (
-        <div className="sticky bottom-0 z-20 -mx-5 border-t border-[var(--hairline)] bg-[var(--surface)] px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-3.5">
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving || anyInvalid}
-            className="submit-btn w-full disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save all changes'}
-          </button>
-        </div>
-      )}
 
       <Toast message={toast} show={!!toast} />
     </div>
