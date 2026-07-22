@@ -111,7 +111,7 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
   return (
     <div className="scroll pb-[120px]">
       <div className="sticky top-0 z-20 safe-top bg-[var(--surface)]">
-        <ScreenHeader onBack={onBack} eyebrow="Coaching" title="Your rates" />
+        <ScreenHeader onBack={onBack} eyebrow="Coaching" title="Coach Information" />
       </div>
 
       <div className="px-5 pt-4">

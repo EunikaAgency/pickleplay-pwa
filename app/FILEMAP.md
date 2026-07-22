@@ -174,7 +174,8 @@ src/
                        #   coaches holding a live subscription (listCoaches({subscribed:true})),
                        #   debounced server-side search; hides the viewer's OWN listing (you
                        #   can't book yourself — the API 400s SELF_BOOKING). CoachPricingScreen
-                       #   (`coach-pricing`, /coach/pricing) = where a coach sets their rates:
+                       #   (`coach-information`, /coach/information; /coach/pricing legacy alias) —
+                       #   titled "Coach Information", where a coach sets their rates:
                        #   standard private/group, plus a per-venue override per approved venue
                        #   (blank = bill the standard rate); saves via updateMyCoach. Reached
                        #   from CoachSubscribeScreen's partner tools. A coach profile is only

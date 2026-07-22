@@ -322,12 +322,12 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                 <>
                   <button
                     type="button"
-                    onClick={() => onNavigate('coach-pricing')}
+                    onClick={() => onNavigate('coach-information')}
                     className="flex items-center gap-3 rounded-xl border border-[var(--hairline)] bg-[var(--surface)] px-4 py-3.5 text-left"
                   >
                     <Icon name="payments" size={20} />
                     <span className="flex-1">
-                      <span className="block text-[14px] font-bold">Your rates</span>
+                      <span className="block text-[14px] font-bold">Coach Information</span>
                       <span className="block text-[12px] text-[var(--muted)]">Set your hourly rate — players see it on your card.</span>
                     </span>
                     <Icon name="chevron_right" size={20} />

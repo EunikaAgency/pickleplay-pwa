@@ -50,8 +50,8 @@ export type Screen =
   | { id: 'book-coach'; params: { id: string; serviceId?: string } }
   /** The signed-in coach's incoming session requests. */
   | { id: 'coach-bookings' }
-  /** The signed-in coach's own rates — standard, plus per-venue overrides. */
-  | { id: 'coach-pricing' }
+  /** The signed-in coach's info & rates — standard, plus per-venue overrides. */
+  | { id: 'coach-information' }
   /** Another player's public profile card (badge shows Coach / Organizer). */
   | { id: 'player-profile'; params: { id: string } }
   | { id: 'create-club' }
@@ -160,7 +160,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'payment-history': return '/payments';
     case 'coach-subscribe': return '/coach/subscribe';
     case 'coach-bookings': return '/coach/bookings';
-    case 'coach-pricing': return '/coach/pricing';
+    case 'coach-information': return '/coach/information';
     case 'find-coach': return '/coaches';
     case 'coach-detail': return `/coaches/${screen.params.id}`;
     case 'book-coach': return `/coaches/${screen.params.id}/book${q({ serviceId: screen.params.serviceId })}`;
@@ -303,7 +303,8 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'coach':
       if (b === 'subscribe') return { id: 'coach-subscribe' };
       if (b === 'bookings') return { id: 'coach-bookings' };
-      if (b === 'pricing') return { id: 'coach-pricing' };
+      // `/coach/pricing` kept as a legacy alias so old links still resolve.
+      if (b === 'information' || b === 'pricing') return { id: 'coach-information' };
       return { id: 'coach-subscribe' };
     case 'coaches':
       if (!b) return { id: 'find-coach' };
@@ -378,7 +379,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'booking-refund') return { id: 'my-bookings' };
   if (id === 'coach-detail' || id === 'book-coach') return { id: 'find-coach' };
   // The subscribe screen's real home is the Profile tab (Home only links to it).
-  if (id === 'coach-subscribe' || id === 'coach-bookings' || id === 'coach-pricing' || id === 'organizer-subscribe') return { id: 'profile' };
+  if (id === 'coach-subscribe' || id === 'coach-bookings' || id === 'coach-information' || id === 'organizer-subscribe') return { id: 'profile' };
   if (id === 'find-coach' || id === 'player-profile') return { id: 'home' };
   if (id === 'owner-venues-v2') return { id: 'home' };
   if (id === 'claim-venue') return { id: 'owner-venues' };
