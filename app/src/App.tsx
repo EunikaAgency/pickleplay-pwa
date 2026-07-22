@@ -558,7 +558,7 @@ function AppInner() {
   // The standalone Tournament tab stays hidden, but tournament detail routes are
   // allowed because Games > Discover now uses tournaments as structured games.
   const canOpenTournaments = !isOwner && !isAdmin;
-  const canSeeTournaments = true;
+  const canSeeTournaments = false;
   // Staff are a delegated work account — they run the owner's courts, they don't
   // host games from the console. Role-based, not permission-based: staff hold the
   // player capabilities (player.games.create etc.) like every other role, so the

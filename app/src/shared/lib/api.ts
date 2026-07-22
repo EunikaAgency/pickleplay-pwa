@@ -3640,6 +3640,8 @@ export interface AppSettings {
   paymentTestMode: boolean;
   /** Platform service-fee % charged to the player on top of the venue price (default 7). */
   serviceFeePercent: number;
+  /** Platform transaction-fee % charged per transaction (default 0). */
+  transactionFeePercent?: number;
   testCard: { number: string; expiry: string; cvc: string };
   /** BCC every transactional email to this address (admin toggle). */
   emailBccEnabled?: boolean;
