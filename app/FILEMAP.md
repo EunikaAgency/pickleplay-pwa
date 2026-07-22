@@ -46,7 +46,10 @@ src/
 
   features/<slice>/    # vertical slices; each owns its screens + slice-only UI (filter sheets)
     auth/              # LandingScreen, LoginScreen, OnboardingScreen, SplashScreen (+splash.css —
-                       #   animated launch intro, once-per-session overlay from App.tsx)
+                       #   animated launch intro, once-per-session overlay from App.tsx);
+                       #   Forgot/ResetPasswordScreen; VerifyEmailScreen (emailed-link deep
+                       #   target, /verify-email) + VerifyEmailBanner (App.tsx nudge for
+                       #   signed-in unverified users)
     home/              # v2/HomeScreenV2 — the only player home (App.tsx routes owners to
                        #   owner/OwnerHomeScreen instead). The legacy New/Classic home variants
                        #   + the floating design toggle were removed; v2.1 is the sole player design.

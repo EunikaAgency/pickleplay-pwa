@@ -209,6 +209,8 @@ export interface AppUser {
   lng?: number;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean;
+  /** Whether the user has confirmed ownership of their email via the verify link. */
+  isVerified?: boolean;
   /** Account preferences (notification toggles + display units + search radius). */
   preferences: UserPreferences;
   /** Profile visibility (public / friends / private). */

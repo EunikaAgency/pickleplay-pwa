@@ -3,6 +3,8 @@ import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { ForgotPasswordScreen } from './features/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './features/auth/ResetPasswordScreen';
+import { VerifyEmailScreen } from './features/auth/VerifyEmailScreen';
+import { VerifyEmailBanner } from './features/auth/VerifyEmailBanner';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
 import { SplashScreen } from './features/auth/SplashScreen';
 import { GameDetailsScreen } from './features/games/GameDetailsScreen';
@@ -367,7 +369,7 @@ function AppInner() {
     // Skip the splash on deep-link entry points (reset-password, forgot-password)
     // — the user clicked a link from an email, not a cold app launch.
     const path = window.location.pathname;
-    if (path.startsWith('/reset-password') || path.startsWith('/forgot-password')) return false;
+    if (path.startsWith('/reset-password') || path.startsWith('/forgot-password') || path.startsWith('/verify-email')) return false;
     // /plan-pdfs is a standalone public report viewer — no launch splash.
     if (path.startsWith('/plan-pdfs')) return false;
     try { return sessionStorage.getItem(SPLASH_KEY) !== '1'; } catch { return true; }
@@ -550,7 +552,7 @@ function AppInner() {
   const canShowCreate = true;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
-  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'plan-pdfs'].includes(screen.id);
+  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'verify-email', 'plan-pdfs'].includes(screen.id);
   // Guests get the full chrome while browsing — that's how they roam the app.
   // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
   // app's mobile TabBar (and the install prompt riding above it) are suppressed.
@@ -584,6 +586,9 @@ function AppInner() {
     }
     if (screen.id === 'reset-password') {
       return <ResetPasswordScreen onNavigate={navigate} onBack={goBack} token={screen.params.token} />;
+    }
+    if (screen.id === 'verify-email') {
+      return <VerifyEmailScreen onNavigate={navigate} onBack={goBack} token={screen.params?.token} />;
     }
 
     // While a stored session is validating, the role isn't known yet — hold a
@@ -846,7 +851,10 @@ function AppInner() {
         <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} onOpenPostReports={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-post-reports') : undefined} postReportsActive={screen.id === 'admin-post-reports'} onOpenClaims={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-claims') : undefined} claimsActive={screen.id === 'admin-claims'} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
       )}
 
-      <main className="app-main"><ErrorBoundary>{renderScreen()}</ErrorBoundary></main>
+      <main className="app-main">
+        {!hideChrome && isTabRoot && <VerifyEmailBanner onNavigate={navigate} />}
+        <ErrorBoundary>{renderScreen()}</ErrorBoundary>
+      </main>
 
       {showTabBar && (
         <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} isOrganizer={isOrganizer} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isAdmin={isAdmin} />

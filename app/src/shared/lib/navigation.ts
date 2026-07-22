@@ -3,6 +3,9 @@ export type Screen =
   | { id: 'login' }
   | { id: 'forgot-password' }
   | { id: 'reset-password'; params: { token: string } }
+  // Deep-link target for the emailed verify link; token is optional so the screen
+  // can also render as a "check your inbox / resend" surface without one.
+  | { id: 'verify-email'; params?: { token?: string } }
   | { id: 'onboarding' }
   | { id: 'home' }
   // `intent: 'lobby'` = the user came here to book a court so they can then host a
@@ -130,9 +133,15 @@ export function pathFromScreen(screen: Screen): string {
     case 'login': return '/login';
     case 'forgot-password': return '/forgot-password';
     case 'reset-password': return `/reset-password?token=${encodeURIComponent(screen.params.token)}`;
+    case 'verify-email': return `/verify-email${q({ token: screen.params?.token })}`;
     case 'onboarding': return '/onboarding';
     case 'nearby': return `/nearby${q({ intent: screen.params?.intent })}`;
-    case 'games': return `/games${q({ section: screen.params?.section, view: screen.params?.view })}`;
+    case 'games': {
+      // The Events section is internally 'games'; surface it in the URL as
+      // ?section=events (matches the tab label + the API's own section name).
+      const uiSection = screen.params?.section === 'games' ? 'events' : screen.params?.section;
+      return `/games${q({ section: uiSection, view: screen.params?.view })}`;
+    }
     case 'booking': return '/booking';
     case 'tournaments': return '/tournaments';
     case 'tournament': return `/tournaments/${screen.params.id}`;
@@ -232,6 +241,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'login': return { id: 'login' };
     case 'forgot-password': return { id: 'forgot-password' };
     case 'reset-password': return { id: 'reset-password', params: { token: sp.get('token') || '' } };
+    case 'verify-email': return { id: 'verify-email', params: opt(sp.get('token')) ? { token: sp.get('token')! } : undefined };
     case 'onboarding': return { id: 'onboarding' };
     case 'nearby':
       if (b) return { id: 'court-details', params: { id: b, intent: lobby, filterDate: opt(sp.get('filterDate')), filterStartHour: opt(sp.get('filterStartHour')) ? Number(sp.get('filterStartHour')) : undefined, filterEndHour: opt(sp.get('filterEndHour')) ? Number(sp.get('filterEndHour')) : undefined } };
@@ -248,9 +258,10 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
           id: 'games',
           params: {
             // A bare /games opens on OPEN PLAY (§3.3) — Events is opt-in via the
-            // tab or ?section=games. This used to be the other way round, which is
-            // why tapping Play greeted the player with tournaments.
-            section: section === 'games' ? 'games' : 'open-play',
+            // tab or ?section=events. ('games' stays accepted so old links and
+            // bookmarks still land on Events.) This used to be the other way round,
+            // which is why tapping Play greeted the player with tournaments.
+            section: section === 'events' || section === 'games' ? 'games' : 'open-play',
             view: view === 'joined' || view === 'invites' || view === 'manage' ? view : 'discover',
           },
         };

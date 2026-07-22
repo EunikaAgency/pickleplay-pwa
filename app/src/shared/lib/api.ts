@@ -237,6 +237,8 @@ export interface ApiUser {
   lng?: number | null;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean | null;
+  /** Whether the user has confirmed ownership of their email via the verify link. */
+  isVerified?: boolean | null;
   preferences?: UserPreferences | null;
   privacySetting?: string | null;
   /** Live paid partner subscriptions — NOT the same as holding the role. */
@@ -298,6 +300,7 @@ export function toAppUser(api: ApiUser): AppUser {
     lat: typeof api.lat === 'number' ? api.lat : undefined,
     lng: typeof api.lng === 'number' ? api.lng : undefined,
     hasOnboarded: api.hasOnboarded ?? false,
+    isVerified: !!api.isVerified,
     preferences: api.preferences ?? DEFAULT_PREFERENCES,
     privacySetting: normalizePrivacy(api.privacySetting),
     coachSubscriptionActive: !!api.coachSubscriptionActive,
@@ -482,6 +485,25 @@ export async function resetPassword(token: string, password: string): Promise<{ 
   return request<{ message: string }>(`${AUTH_PREFIX}/reset-password`, {
     method: 'POST',
     body: { token, password },
+  });
+}
+
+/** Confirm ownership of an email using the token from the verify link. Public —
+ *  the link arrives by email and is opened before (or without) a session. */
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${AUTH_PREFIX}/verify-email`, {
+    method: 'POST',
+    body: { token },
+  });
+}
+
+/** Re-issue the verification email for the signed-in user. In dev (no email
+ *  configured) the response carries the token inline so the flow is testable. */
+export async function resendVerification(): Promise<{ message: string; token?: string }> {
+  return request<{ message: string; token?: string }>(`${AUTH_PREFIX}/resend-verification`, {
+    method: 'POST',
+    body: {},
+    auth: true,
   });
 }
 
