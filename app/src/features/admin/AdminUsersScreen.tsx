@@ -9,7 +9,7 @@ interface Props {
   onBack: () => void;
 }
 
-type RoleFilter = 'all' | 'player' | 'coach';
+type RoleFilter = 'all' | 'player' | 'coach' | 'organizer';
 
 const ROLE_COLOR: Record<string, string> = {
   admin: 'var(--coral)',
@@ -24,9 +24,9 @@ function fullName(u: AdminUser): string {
 }
 
 /**
- * Admin console: the Players directory. Lists player + coach accounts (owners,
- * organizers, and admins have their own pages), searchable by name/email and
- * filterable by role. Gated by `admin.users.manage`.
+ * Admin console: the Players directory. Lists player, coach, and organizer
+ * accounts (owners and admins have their own pages), searchable by name/email
+ * and filterable by role. Gated by `admin.users.manage`.
  */
 export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -41,8 +41,8 @@ export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
     try {
       const rows = await listAdminUsers({ pageSize: 500 });
       if (id !== reqId.current) return;
-      // The Players directory lists members who play — players and coaches only.
-      setUsers(rows.filter((u) => ['player', 'coach'].includes(u.roleDefault || 'player')));
+      // The Players directory lists members who play — players, coaches, and organizers.
+      setUsers(rows.filter((u) => ['player', 'coach', 'organizer'].includes(u.roleDefault || 'player')));
       setState('idle');
     } catch {
       if (id === reqId.current) setState('error');
@@ -52,9 +52,9 @@ export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
   useEffect(() => { void load(); }, [load]);
 
   const counts = useMemo(() => {
-    const c = { player: 0, coach: 0 };
+    const c = { player: 0, coach: 0, organizer: 0 };
     for (const u of users) {
-      const r = (u.roleDefault || 'player') as 'player' | 'coach';
+      const r = (u.roleDefault || 'player') as 'player' | 'coach' | 'organizer';
       if (r in c) c[r] += 1;
     }
     return c;
@@ -73,7 +73,7 @@ export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
   }, [users, role, query]);
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Players" subtitle={`${filtered.length} of ${users.length} accounts · Player and coach accounts. Search by name or email, filter by role.`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Players" subtitle={`${filtered.length} of ${users.length} accounts · Player, coach, and organizer accounts. Search by name or email, filter by role.`} onRefresh={() => void load()}>
       <AdminSearch value={query} onChange={setQuery} placeholder="Search by name or email…" />
       <AdminFilters<RoleFilter>
         value={role}
@@ -82,6 +82,7 @@ export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
           { value: 'all', label: `All (${users.length})` },
           { value: 'player', label: `Players (${counts.player})` },
           { value: 'coach', label: `Coaches (${counts.coach})` },
+          { value: 'organizer', label: `Organizers (${counts.organizer})` },
         ]}
       />
       <AdminStates
