@@ -694,54 +694,49 @@
     }).join("");
   }
 
-  function buildSection(sec) {
-    const s = document.createElement("section");
-    s.dataset.section = sec.group;
-    s.dataset.area = sec.area;
-    s.innerHTML = `<div class="sec-head"><h2>${sec.group}</h2><span class="sub">${sec.sub}</span></div><div class="sec-rule"></div>`;
-    const grid = document.createElement("div"); grid.className = "grid";
-    sec.items.forEach(it => {
-      const el = document.createElement("article");
-      el.className = "task";
-      el.dataset.sev = it.sev;
-      el.dataset.area = sec.area;
-      el.dataset.date = sec.date;
-      el.dataset.status = it.status || "done";   // audit resolved everything → default done
-      el.dataset.sevfilter = (it.sev === "safe" || it.sev === "info" || it.sev === "task") ? "" : it.sev;
-      const st = it.status || "done";
-      // status/severity-aware badge + resolution-note label
-      let badge, fixLabel, fixCls;
-      if (it.sev === "safe")      { badge = ['fixed','✓ No change']; fixLabel = 'Verified:'; fixCls = 'fix'; }
-      else if (st === "ongoing")  { badge = ['prog','◐ In progress']; fixLabel = 'Doing:';    fixCls = 'fix plan'; }
-      else if (st === "pending")  { badge = ['todo','○ To do'];       fixLabel = 'Plan:';      fixCls = 'fix plan'; }
-      else                        { badge = ['fixed','✓ Fixed'];       fixLabel = 'Fixed:';     fixCls = 'fix'; }
-      el.innerHTML =
-        `<div class="task-top">` +
-          `<span class="chip">${SEV[it.sev]}</span>` +
-          `<span class="fid">${it.id}</span>` +
-          `<span class="title">${it.title}</span>` +
-          `<span class="src"><span class="tag area">${sec.area}</span><span class="tag ${badge[0]}">${badge[1]}</span></span>` +
-        `</div>` +
-        (it.body ? `<p class="body">${it.body}</p>` : "") +
-        (it.fix ? `<p class="${fixCls}"><b>${fixLabel}</b> ${it.fix}</p>` : "") +
-        (it.refs ? `<div class="refs">${refHtml(it.refs)}</div>` : "");
-      grid.appendChild(el);
-    });
-    s.appendChild(grid);
-    return s;
+  function buildCard(it, area, date) {
+    const el = document.createElement("article");
+    el.className = "task";
+    el.dataset.sev = it.sev;
+    el.dataset.area = area;
+    el.dataset.date = date;
+    el.dataset.status = it.status || "done";   // audit resolved everything → default done
+    el.dataset.sevfilter = (it.sev === "safe" || it.sev === "info" || it.sev === "task") ? "" : it.sev;
+    const st = it.status || "done";
+    // status/severity-aware badge + resolution-note label
+    let badge, fixLabel, fixCls;
+    if (it.sev === "safe")      { badge = ['fixed','✓ No change']; fixLabel = 'Verified:'; fixCls = 'fix'; }
+    else if (st === "ongoing")  { badge = ['prog','◐ In progress']; fixLabel = 'Doing:';    fixCls = 'fix plan'; }
+    else if (st === "pending")  { badge = ['todo','○ To do'];       fixLabel = 'Plan:';      fixCls = 'fix plan'; }
+    else                        { badge = ['fixed','✓ Fixed'];       fixLabel = 'Fixed:';     fixCls = 'fix'; }
+    el.innerHTML =
+      `<div class="task-top">` +
+        `<span class="chip">${SEV[it.sev]}</span>` +
+        `<span class="fid">${it.id}</span>` +
+        `<span class="title">${it.title}</span>` +
+        `<span class="src"><span class="tag area">${area}</span><span class="tag ${badge[0]}">${badge[1]}</span></span>` +
+      `</div>` +
+      (it.body ? `<p class="body">${it.body}</p>` : "") +
+      (it.fix ? `<p class="${fixCls}"><b>${fixLabel}</b> ${it.fix}</p>` : "") +
+      (it.refs ? `<div class="refs">${refHtml(it.refs)}</div>` : "");
+    return el;
   }
 
-  // group sections by date (order preserved: Jul 21 then Jul 22)
+  // consolidate by date: one collapsible card per date, all its tasks in a single flat list
   const dateOrder = [];
   const byDate = {};
-  DATA.forEach(sec => { if (!byDate[sec.date]) { byDate[sec.date] = []; dateOrder.push(sec.date); } byDate[sec.date].push(sec); });
+  DATA.forEach(sec => {
+    if (!byDate[sec.date]) { byDate[sec.date] = []; dateOrder.push(sec.date); }
+    sec.items.forEach(it => byDate[sec.date].push({ it, area: sec.area }));
+  });
 
   dateOrder.forEach(date => {
+    const rows = byDate[date];
     const g = document.createElement("div");
     g.className = "date-group";
     g.dataset.date = date;
-    const doneN = byDate[date].reduce((a, sec) => a + sec.items.filter(it => (it.status || "done") === "done").length, 0);
-    const openN = byDate[date].reduce((a, sec) => a + sec.items.filter(it => (it.status || "done") !== "done").length, 0);
+    const doneN = rows.filter(r => (r.it.status || "done") === "done").length;
+    const openN = rows.length - doneN;
     const dcount = openN > 0 ? `${doneN} done · ${openN} open` : `${doneN} resolved`;
 
     const head = document.createElement("button");
@@ -752,7 +747,9 @@
 
     const body = document.createElement("div");
     body.className = "date-body";
-    byDate[date].forEach(sec => body.appendChild(buildSection(sec)));
+    const grid = document.createElement("div"); grid.className = "grid";
+    rows.forEach(r => grid.appendChild(buildCard(r.it, r.area, date)));
+    body.appendChild(grid);
 
     head.addEventListener("click", () => {
       const collapsed = g.classList.toggle("collapsed");
@@ -766,7 +763,6 @@
 
   // ---- state ----
   const allTasks    = [...document.querySelectorAll("#board .task")];
-  const detailSecs  = [...document.querySelectorAll('#board section[data-section]')];
   const dateGroups  = [...document.querySelectorAll('#board .date-group')];
   const mtabs       = [...document.querySelectorAll(".mtab")];
   const buttons     = [...document.querySelectorAll(".filter")];
@@ -806,10 +802,6 @@
       const vis = t.dataset.status === status && matchFilter(t);
       t.style.display = vis ? "" : "none";
       if (vis) shown++;
-    });
-    detailSecs.forEach(s => {
-      const any = [...s.querySelectorAll(".task")].some(t => t.style.display !== "none");
-      s.style.display = any ? "" : "none";
     });
     dateGroups.forEach(g => {
       const any = [...g.querySelectorAll(".task")].some(t => t.style.display !== "none");
