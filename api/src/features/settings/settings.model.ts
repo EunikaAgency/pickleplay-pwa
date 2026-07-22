@@ -1,5 +1,18 @@
 import { Schema, model } from 'mongoose';
 
+// A selectable term option for a paid partner plan (e.g. Monthly / Quarterly /
+// Annual). Configured by the admin per role; an empty tier list means the role
+// sells only the single base plan (price + partnerSubscriptionDays below).
+const partnerPlanTierSchema = new Schema({
+  // Stable id the client sends back on subscribe (kebab-case, e.g. 'quarterly').
+  key:          { type: String, required: true, maxlength: 40 },
+  label:        { type: String, required: true, maxlength: 60 },
+  durationDays: { type: Number, required: true, min: 1, max: 3650 },
+  price:        { type: Number, required: true, min: 0 },
+  // Disabled tiers stay listed for the admin but can't be purchased.
+  enabled:      { type: Boolean, default: true },
+}, { _id: false });
+
 // Global, single-document app configuration. We keep one row keyed `global`
 // (a classic singleton) rather than a row-per-key table — there's currently
 // just one setting and reads happen on every checkout, so a single upserted
@@ -27,6 +40,10 @@ const appSettingsSchema = new Schema({
   coachSubscriptionPrice:     { type: Number, default: 499, min: 0 },
   organizerSubscriptionPrice: { type: Number, default: 999, min: 0 },
   partnerSubscriptionDays:    { type: Number, default: 30, min: 1, max: 3650 },
+  // Optional selectable term tiers per role (Monthly / Quarterly / …). Empty →
+  // the role sells only the single base plan above (the original behaviour).
+  coachPlanTiers:     { type: [partnerPlanTierSchema], default: [] },
+  organizerPlanTiers: { type: [partnerPlanTierSchema], default: [] },
   // Player-capability switches. Both ship ON — the decision was to launch the
   // capability and keep a kill switch, rather than gate it behind more discussion.
   // Turning either off is a hard gate: the server rejects the action and the app

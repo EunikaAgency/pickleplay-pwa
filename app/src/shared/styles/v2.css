@@ -6407,3 +6407,101 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
   background: var(--surface); border-top: 1px solid var(--border-subtle);
 }
 .pb-v2 .px-sticky-cta .px-btn { flex: 1; }
+
+/* ── Admin Drawer (mobile/tablet sidebar) ────────────────────────────── */
+
+.admin-drawer-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.45);
+  /* fade in */
+  animation: ad-fade-in 180ms ease both;
+}
+@keyframes ad-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.admin-drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 201;
+  width: min(300px, 82vw);
+  background: var(--surface);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  box-shadow: 4px 0 24px rgba(0,0,0,.15);
+  /* slide in */
+  animation: ad-slide-in 200ms ease both;
+}
+@keyframes ad-slide-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+
+.admin-drawer-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.admin-drawer-user { display: flex; align-items: center; gap: 12px; }
+.admin-drawer-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--blue); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; overflow: hidden; flex-shrink: 0;
+}
+.admin-drawer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.admin-drawer-name { font-weight: 700; font-size: 15px; color: var(--ink); }
+.admin-drawer-close {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--bg-app); color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer; flex-shrink: 0;
+}
+
+.admin-drawer-home {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; margin: 8px 12px;
+  border-radius: 10px; border: none; cursor: pointer;
+  background: transparent; color: var(--ink);
+  font-size: 15px; font-weight: 600;
+  transition: background 120ms;
+}
+.admin-drawer-home:hover { background: var(--bg-app); }
+.admin-drawer-home.active { background: var(--lime); color: var(--on-accent); }
+
+.admin-drawer-nav { flex: 1; padding: 0 12px 20px; }
+
+.ad-section { margin: 2px 0; }
+.ad-section-header {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 12px;
+  border: none; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--text-muted);
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  transition: color 120ms;
+}
+.ad-section-header:hover { color: var(--ink); }
+.ad-section-label { flex: 1; text-align: left; }
+.ad-section-chevron { flex-shrink: 0; transition: transform .2s ease; }
+.ad-section-chevron.collapsed { transform: rotate(-90deg); }
+
+.ad-section-items { padding: 2px 0 6px; }
+.ad-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 10px 12px 10px 36px;
+  border: none; border-radius: 10px; cursor: pointer;
+  background: transparent; color: var(--ink);
+  font-size: 14px; font-weight: 500;
+  transition: background 120ms;
+}
+.ad-item:hover { background: var(--bg-app); }
+.ad-item.active { background: var(--ink); color: #fff; }
+
+/* Floating hamburger trigger — shown on admin screens that don't use V2Shell
+   (which has its own hamburger in V2TopNav). Anchored top-left below the
+   sticky ScreenHeader. */
+.admin-drawer-fab {
+  position: fixed; top: 16px; left: 16px; z-index: 199;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 12px rgba(0,0,0,.1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 120ms;
+}
+.admin-drawer-fab:hover { background: var(--bg-app); }
+.admin-drawer-fab:active { transform: scale(.95); }

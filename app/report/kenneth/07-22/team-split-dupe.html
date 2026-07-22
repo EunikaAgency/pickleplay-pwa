@@ -149,28 +149,30 @@
     <h1>Launch Tasks — Kenneth's Status Overlay</h1>
     <p class="lede">
       Same grouping as the team split (A/B/C left untouched for reference). This copy overlays a
-      <b>status check on Kenneth's Task&nbsp;D</b> — the 10 launch-critical items — verified against the
-      live code, database, and commits on <b>22&nbsp;Jul</b>. Headline: <b>7 of 10 done</b>, 3 remaining.
+      <b>status check on Kenneth's Task&nbsp;D</b> — the 10 launch-critical items — verified against shipped
+      code plus the integrated commits, focused tests, and isolated production-build UI smoke test on
+      <b>22&nbsp;Jul</b>. Headline: <b>10 of 10 code-complete</b>; the final three await approved deployment.
       Source: <code>2026-07-21-open-tasks.md</code>.
     </p>
     <div class="meta">
       <span><b>Updated:</b> 22 Jul 2026</span>
       <span><b>Launch target:</b> end of July 2026</span>
-      <span><b>Overlay:</b> Task D done / to-do</span>
+      <span><b>Overlay:</b> Task D · 10/10 code-complete</span>
     </div>
   </header>
 
   <div class="stats">
-    <div class="stat done"><div class="n">7</div><div class="l">Task D · done</div></div>
-    <div class="stat left"><div class="n">3</div><div class="l">Task D · to do</div></div>
+    <div class="stat done"><div class="n">10</div><div class="l">Task D · code-complete</div></div>
+    <div class="stat done"><div class="n">0</div><div class="l">Task D · remaining</div></div>
     <div class="stat c"><div class="n">A·B·C</div><div class="l">others — unchanged</div></div>
     <div class="stat d"><div class="n">10</div><div class="l">Task D · Kenneth · total</div></div>
   </div>
 
   <p class="principle">
-    <b>Task D status (22 Jul):</b> the whole lobby chunk (join → cancel → edit), both booking-integrity fixes
-    (double-booking + expiry), the rejection work, and the staff-revenue gate are <b>done</b>. Remaining:
-    <b>payments real-mode</b>, <b>senior/PWD discount</b>, and <b>owner payouts</b>. A/B/C statuses not assessed here.
+    <b>Task D status (22 Jul):</b> all 10 Kenneth items are <b>code-complete</b>. The last three — manual-GCash
+    live mode, Senior/PWD pricing, and owner payouts — are integrated on <code>lc-launch-integration</code>,
+    covered by 55 combined API tests, and passed an isolated UI smoke test. They are not yet deployed;
+    production <code>paymentTestMode</code> remains unchanged. A/B/C statuses were not assessed here.
   </p>
 
   <!-- ============ GROUPS ============ -->
@@ -358,7 +360,7 @@
         <div class="lane-tag">Task D · Kenneth</div>
         <h2>Launch-critical — core join → book → pay</h2>
         <p class="grouped"><b>Grouped:</b> the must-ship bugs on the core journey — Kenneth's solo.</p>
-        <p class="status-line"><b>Status 22 Jul:</b> 7 of 10 done ✓ — remaining: payments, senior/PWD, payouts.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 10 of 10 code-complete ✓ — final three integrated and smoke-tested, deployment pending approval.</p>
       </div>
       <div class="lane-body">
 
@@ -404,18 +406,18 @@
           <div class="shipped">done (Kenneth) — <code>cancellationType</code> discriminator + notify + <code>rejection.test</code> (5 pass)</div>
         </div>
 
-        <div class="task">
-          <h3><span class="st todo">To do</span>Payments only work in test mode<span class="src">[20Jul]</span><span class="blocked-pill">blocked · payment</span></h3>
-          <p><code>paymentTestMode: true</code> — bookings hang "pending"; coach/organizer subs grant the role with no payment taken.</p>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Payments only work in test mode<span class="src">[20Jul]</span></h3>
+          <p>Production intentionally remains in test mode until deployment approval; the integrated live-mode launch path now uses manual GCash without granting unpaid bookings or partner roles.</p>
           <div class="fix"><b>Fix</b> Flip the flag once the gateway is decided; gate role grants on a real charge.</div>
-          <div class="rel"><code>subscribe()</code> still sets <code>status:'active'</code> unconditionally — not started; blocked on payment decision</div>
+          <div class="shipped">done in <code>lc-launch-integration</code> — unpaid subscriptions stay pending; owner-scoped Mark GCash paid confirms bookings and receipts; player/owner UI passed isolated smoke coverage and partner activation is test-covered</div>
         </div>
 
-        <div class="task">
-          <h3><span class="st todo">To do</span>Senior / PWD discount pricing<span class="src">[17Jul][20Jul]</span></h3>
-          <p>Still 0 discount fields across all 107 <code>venuepricings</code>. Legal-compliance item (20% PH).</p>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Senior / PWD discount pricing<span class="src">[17Jul][20Jul]</span></h3>
+          <p>The integrated flow now carries venue-configured Senior/PWD rates, customer category, ID, audit fields, VAT-exempt receipts, and discounted settlement math.</p>
           <div class="fix"><b>Fix</b> Add a customer-category concept to venue pricing + both booking flows.</div>
-          <div class="rel">not started — no <code>customerCategory</code> / discount field yet (0 in DB &amp; model)</div>
+          <div class="shipped">done in <code>lc-launch-integration</code> — 20% fallback with explicit 0 preserved; player + staff booking UIs; fee stays on pre-discount base; isolated smoke proved ₱500 → ₱400 + ₱35 fee and VAT-exempt receipts</div>
         </div>
 
         <div class="task is-done">
@@ -425,11 +427,11 @@
           <div class="shipped">done — analytics removed from the staff role + revenue tiles gated + guard test (team also added owner-grant opt-in)</div>
         </div>
 
-        <div class="task">
-          <h3><span class="st todo">To do</span>Owner payout details can't be entered<span class="src">[21Jul-new]</span></h3>
-          <p><code>OwnerSettlementsScreen</code> is fully built but unreachable — its only nav trigger is commented out.</p>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Owner payout details can't be entered<span class="src">[21Jul-new]</span></h3>
+          <p><code>OwnerSettlementsScreen</code> is now reachable from owner Home/Profile, renders per-venue balances, and saves venue-scoped payout methods including GCash.</p>
           <div class="fix"><b>Fix</b> Uncomment / add the entry (<code>OwnerHomeScreen.tsx:176</code>).</div>
-          <div class="rel">not started — settlements nav still commented at <code>OwnerHomeScreen.tsx:179</code>; balance-shape bug also open</div>
+          <div class="shipped">done in <code>lc-launch-integration</code> — balance-shape bug fixed, venue selector added, already-settled/manual/other-venue rows excluded; UI smoke showed the correct ₱365 payout balance and saved masked GCash details</div>
         </div>
 
       </div>
@@ -439,20 +441,22 @@
 
   <!-- ============ Blocked ============ -->
   <section class="block">
-    <div class="sec-title">Not assigned · blocked on client / business + decisions</div>
+    <div class="sec-title">External dependencies · not blockers for Kenneth's 10 launch tasks</div>
     <div class="note">
-      <b>Blocked (client/business):</b> bank/merchant/compliance reqs · the payment decision (who collects, when
-      the platform takes its cut) · latest venue <b>and court</b> spreadsheet (current one is empty, no real courts
-      to test) · competitive research docs · Marvin's UI direction.<br><br>
-      <b>Decisions needed (not code):</b> can venue staff see their venue's money? <em>(now shipped as owner-grantable)</em> ·
-      staff permission-levels scope · the meeting's 17 open questions (payment collection, commission timing, verification, refund/no-show, senior/PWD config).
+      <b>Kenneth lane:</b> no remaining code blocker. Manual GCash is the approved launch path; Senior/PWD is locked
+      at venue-absorbed 20% with the 7% fee on the pre-discount base and VAT-exempt receipts; staff revenue is gated;
+      owner payout entry is connected. Bank/merchant/compliance requirements remain future-gateway dependencies,
+      not blockers for the manual-GCash launch implementation.<br><br>
+      <b>Deployment boundary:</b> the last three items are complete on the isolated integration branch and have not
+      been pushed, merged into the shared live branch, deployed, or used to change production <code>paymentTestMode</code>.
+      A/B/C tasks and their external inputs remain outside this Kenneth-only status audit.
     </div>
   </section>
 
   <footer>
     Status overlay on <a href="team-split.html">team-split.html</a> ·
-    Task D verified against live code + DB + commits, 22 Jul 2026 ·
-    7 done / 3 to do · A·B·C unchanged from the split.
+    Task D verified against shipped code + integrated commits/tests + isolated UI smoke, 22 Jul 2026 ·
+    10/10 code-complete · deployment pending approval · A·B·C unchanged from the split.
   </footer>
 
 </div>

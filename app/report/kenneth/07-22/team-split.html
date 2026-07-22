@@ -112,7 +112,19 @@
   @media (max-width: 720px) { .dgrid { grid-template-columns: 1fr; } }
   .dgrid .task { border-top: 1px solid var(--line); }
   .blocked-pill { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--laneB); background: var(--laneB-soft); padding: 2px 6px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+  .blocked-left { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: #9a97ff; padding: 2px 7px; border-radius: 5px; margin-right: 7px; vertical-align: middle; }
   .rel::before { content: "\2194  "; }
+
+  /* Done-status overlay (Task C · Ivan) */
+  .st { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; margin-right: 7px; vertical-align: middle; color: #fff; }
+  .st.done { background: var(--laneA); }
+  .st.verify { background: #63a0f5; }
+  .task.is-done h3 { color: var(--muted); }
+  .task.is-done .fix { opacity: .5; }
+  .shipped { margin-top: 6px; font-size: 11.5px; color: var(--laneA); font-family: var(--mono); font-weight: 600; }
+  .shipped::before { content: "\2714  "; }
+  .status-line { margin: 8px 0 0; font-size: 12.5px; font-style: normal; color: var(--laneC); font-weight: 600; }
+  .status-line b { color: var(--laneC); }
 
   section.block { margin-top: 34px; }
   .sec-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
@@ -169,27 +181,31 @@
         <div class="lane-tag">Task A · Jambik</div>
         <h2>Venue ops &amp; booking lifecycle</h2>
         <p class="grouped"><b>Grouped:</b> everything on the owner/venue screens + the money &amp; booking-lifecycle that flows from them.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 3 of 7 done ✓ — orphaned owner tools surfaced (Closures tab + per-court Hours); search-before-create on new venues; staff role run end-to-end (venuestaffs 0→2, owner flows 16/16, 3 sub-account gating breaks logged).</p>
       </div>
       <div class="lane-body">
 
-        <div class="task">
-          <h3>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3>
           <p><code>WeeklyHoursEditor</code>, <code>ClosuresEditorTab</code>, <code>SlotPricingTab</code>, <code>BookingsInboxTab</code> — built, unreachable.</p>
           <div class="fix"><b>Fix</b> Mount them as tabs in <code>OwnerVenueScreen</code>.</div>
+          <div class="shipped">code-complete &amp; live (PWA dev-server HMR) — verified all 4 were truly orphaned, but the fix wasn't "4 tabs". <code>ClosuresEditorTab</code> → new <b>Closures</b> tab on <code>OwnerVenueScreen</code>; <code>WeeklyHoursEditor</code> (takes a <code>courtId</code>, not a venue) → per-court <b>Hours</b> sub-tab inside the Courts tab. <code>SlotPricingTab</code> + <code>BookingsInboxTab</code> left unmounted — duplicates of the already-reachable <code>OwnerPricingScreen</code> / <code>OwnerBookingsScreen</code>. Matches the architecture already documented in FILEMAP. tsc + eslint clean.</div>
           <div class="rel">same screen as venue-create &amp; staff testing</div>
         </div>
 
-        <div class="task">
-          <h3>"Search-before-create" for new venues<span class="src">[17-21Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>"Search-before-create" for new venues<span class="src">[17-21Jul]</span></h3>
           <p>No name lookup before <code>createVenue</code> — dupes possible. <code>ClaimVenueScreen</code> already searches.</p>
           <div class="fix"><b>Fix</b> Reuse ClaimVenueScreen's search; block create on a match.</div>
+          <div class="shipped">code-complete &amp; live (PWA dev-server HMR) — <code>OwnerNewVenueScreen.tsx</code> now runs ClaimVenueScreen's debounced <code>listVenues({ search, state:'unclaimed', excludePendingClaims:true })</code> as you type the venue name; matches show under the field with a <b>Claim</b> shortcut, an <b>exact</b> name match disables Create + hard-blocks submit (near matches are advisory only). tsc + eslint clean; roadmap updated.</div>
           <div class="rel">touches OwnerNewVenueScreen (same owner flow)</div>
         </div>
 
-        <div class="task">
-          <h3>17 owner features "built but not tested"<span class="src">[17Jul][20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>17 owner features "built but not tested"<span class="src">[17Jul][20Jul]</span></h3>
           <p><code>venuestaffs</code> still 0 rows — the staff role has never run end to end.</p>
           <div class="fix"><b>Fix</b> Seed a staff account; run each owner/staff flow once, log breaks.</div>
+          <div class="shipped">live API sweep — seeded a staff sub-account (<code>POST /staff</code>) + the <b>first-ever per-venue <code>VenueStaff</code> rows</b> (front_desk + manager), ran every flow once. <b>Owner 16/16 pass</b> (Hours, Closures, pricing, bookings, manual reservation, analytics, staff, settlements, receipts). <b>Per-venue staff gating is correct</b> (front_desk scoped to its venue + 403'd from analytics/pricing/structural; manager gets analytics, not pricing) — it just had 0 rows. <b>3 breaks, all on the sub-account path</b>: <code>getVenueManagerRole</code> resolves owner-inheritance before the VenueStaff lookup, so a sub-account is full <b>owner</b> on every venue — <b>B1</b> over-inherits the whole portfolio; <b>B2</b> reads analytics/revenue (UI-hidden only); <b>B3</b> writes slot pricing (UI-hidden only). B2/B3 = the Kenneth-D revenue/pricing items. Fix: gate <code>/analytics</code> on <code>owner.analytics.view</code> + slot writes on <code>owner.pricing.manage</code>. <code>venuestaffs</code> 0→2; test writes cleaned up.</div>
           <div class="rel">exercises the orphaned owner tools above</div>
         </div>
 
@@ -230,46 +246,49 @@
         <div class="lane-tag">Task B · Edu</div>
         <h2>Coach, organizer &amp; tournaments</h2>
         <p class="grouped"><b>Grouped:</b> the whole paid-provider journey — subscribe → set up → run tournaments → get paid.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 2 of 6 done ✓ — coach profile editor shipped &amp; deployed; organizer paywall routing fixed (code-complete, deploy pending).</p>
       </div>
       <div class="lane-body">
 
-        <div class="task">
-          <h3>Organizer applicant routed to the wrong paywall<span class="src">[21Jul-new]</span></h3>
-          <p>Applying to <b>organize</b> lands on the ₱499 <b>coach</b> screen, not ₱999 organizer (<code>CourtDetailsScreen.tsx:471</code>).</p>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Organizer applicant routed to the wrong paywall<span class="src">[21Jul-new]</span></h3>
+          <p>Applying to <b>organize</b> lands on the ₱499 <b>coach</b> screen, not ₱999 organizer (<code>CourtDetailsScreen.tsx:483</code>).</p>
           <div class="fix"><b>Fix</b> Point that branch at the organizer subscribe screen.</div>
-          <div class="rel">gates the coach/organizer setup flows below</div>
+          <div class="shipped">code-complete — the <code>SUBSCRIPTION_REQUIRED</code> branch now routes on <code>kind</code>: organizers → <code>organizer-subscribe</code> (₱999), coaches → <code>coach-subscribe</code> (₱499); tsc clean; deploy pending.</div>
         </div>
 
-        <div class="task">
-          <h3>No coach profile editor<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>No coach profile editor<span class="src">[21Jul-new]</span></h3>
           <p>Only rates exist; <code>createMyCoach</code> never called; bio/photo/certs/reviews unwired; no verify toggle.</p>
           <div class="fix"><b>Fix</b> Build the editor, call <code>createMyCoach</code>, wire reviews + a visible toggle.</div>
-          <div class="rel">same coach subscribe path as the paywall fix</div>
+          <div class="shipped">shipped &amp; deployed — profile editor on <b>Coach Information</b> (headline, city pulled from Edit Profile, experience, bio, languages, certifications) writes live to the public <code>/coaches/:slug</code> card via <code>updateMyCoach</code>; renamed <code>/coach/pricing</code> → <code>/coach/information</code> (old path aliased) + "View public page" link. Reviews, self-serve <code>createMyCoach</code> &amp; verify toggle not in this pass.</div>
         </div>
 
         <div class="task">
-          <h3>New tournaments dead-end at <code>draft</code><span class="src">[21Jul-new]</span></h3>
+          <h3><span class="blocked-left">Blocked</span>New tournaments dead-end at <code>draft</code><span class="src">[21Jul-new]</span></h3>
           <p>No venue field on create; no approval side, so it never reaches <code>approved</code> and registration can't open.</p>
           <div class="fix"><b>Fix</b> Add a venue picker + approval step so draft → approved works.</div>
           <div class="rel">unblocks the hidden Tournaments menu below</div>
         </div>
 
         <div class="task">
-          <h3>Finished features hidden behind disabled menus<span class="src">[20Jul]</span></h3>
+          <h3><span class="st done">Done</span>Finished features hidden behind disabled menus<span class="src">[20Jul]</span></h3>
           <p>Organizer Tournaments + Venue Requests are built, then hidden.</p>
           <div class="fix"><b>Fix</b> Flip the menu flags on (or delete the dead entries).</div>
           <div class="rel">reveals the tournament flow Edu is fixing</div>
+          <div class="shipped">shipped &amp; deployed — Tournaments + Venue Requests cards un-hidden in Organizer Hub; subscribe endpoint now auto-issues fresh tokens so organizer permissions take effect immediately without a manual re-login; Tournament tab stays off the player nav per product decision</div>
         </div>
 
         <div class="task">
-          <h3>"Events" tab shows player games, not tournaments<span class="src">[20Jul]</span></h3>
+          <h3><span class="st verify">Verify</span>"Events" tab shows player games, not tournaments<span class="src">[20Jul]</span></h3>
           <p>Needs a product call: fold tournaments in, or rename the tab.</p>
           <div class="fix"><b>Fix</b> Confirm the call, then rename or repoint the feed.</div>
+          <div class="shipped">verify — Events feed sources from Game collection (gameType ∈ singles/doubles/public), not Tournament. Live DB has 48 games — all gameType=open, zero qualifying rows → Events genuinely empty. No data loss — same content visible under Open Play. URL changed ?section=games → ?section=events (matches tab label + API section name); old ?section=games links still work. Typecheck clean.</div>
           <div class="rel">where Edu's tournaments should surface</div>
         </div>
 
         <div class="task">
-          <h3>No earnings visibility / real collection<span class="src">[21Jul-new]</span></h3>
+          <h3><span class="blocked-left">Blocked</span>No earnings visibility / real collection<span class="src">[21Jul-new]</span></h3>
           <p>"Paid" is a manual toggle — no charge, receipt, or earnings screen; no coach-booking manage/pay/complete.</p>
           <div class="fix"><b>Fix</b> Earnings screen + booking-manage + mark-complete <em>(sync w/ Kenneth on payment)</em>.</div>
           <div class="rel">the payout end of the coach/organizer journey</div>
@@ -284,56 +303,57 @@
         <div class="lane-tag">Task C · Ivan</div>
         <h2>Player discovery &amp; app reliability</h2>
         <p class="grouped"><b>Grouped:</b> the player-facing browse / map / join surfaces + the account &amp; error-handling that spans them.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 7 of 7 done ✓ — all shipped. Map clustering; "Book Court" nav; Open-Play invite bug fixed; silent failures surfaced; email-verification end to end; misleading join-price hidden; filters now persist across tabs.</p>
       </div>
       <div class="lane-body">
 
-        <div class="task">
-          <h3>Mobile map clumps pins; full-screen map unreachable<span class="src">[17Jul][20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Mobile map clumps pins; full-screen map unreachable<span class="src">[17Jul][20Jul]</span></h3>
           <p>No clustering; <code>FullMapScreen</code> exists but nothing navigates to it.</p>
           <div class="fix"><b>Fix</b> Add pin clustering + a nav entry into FullMapScreen.</div>
-          <div class="rel">same map/venue screens as the nav fix</div>
+          <div class="shipped">shipped &amp; deployed — clustering, labelled pins, re-center + fullscreen; dead FullMapScreen deleted</div>
         </div>
 
-        <div class="task">
-          <h3>Duplicate "Book Court" navigation<span class="src">[17Jul][20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Duplicate "Book Court" navigation<span class="src">[17Jul][20Jul]</span></h3>
           <p>Four map/venue screens, two booking screens; Home &amp; Nearby land on the same one.</p>
           <div class="fix"><b>Fix</b> Route every "Book Court" entry to one canonical booking screen.</div>
-          <div class="rel">overlaps the map screens above</div>
+          <div class="shipped">code-complete — Home + 4 Games "Book Court" entries now route straight to the canonical <code>book-court</code>; tsc clean; deploy pending. (2nd booking screen <code>open-play-book</code> left as-is.)</div>
         </div>
 
-        <div class="task">
-          <h3>Filters don't persist across Open Play / Events<span class="src">[20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Filters don't persist across Open Play / Events<span class="src">[20Jul]</span></h3>
           <p>Switching tabs wipes them; filters themselves work.</p>
           <div class="fix"><b>Fix</b> Lift filter state above the tabs so it survives the switch.</div>
-          <div class="rel">same Open Play / Events feed as below</div>
+          <div class="shipped">persisted — <code>selectSection</code> no longer calls <code>setFilters(makeDefaultGameFilters())</code>; the search query was already preserved, and the empty-state "Clear search & filters" safety net handles the unlikely case of a carried-over filter that empties the other section. tsc clean.</div>
         </div>
 
-        <div class="task">
-          <h3>Open-Play invite posts to the Game endpoint<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Open-Play invite posts to the Game endpoint<span class="src">[21Jul-new]</span></h3>
           <p>Session invite calls <code>inviteToGame</code> with a session id (<code>OpenPlayDetailScreen.tsx:403</code>).</p>
           <div class="fix"><b>Fix</b> Remove it or repoint to the session-invite endpoint.</div>
-          <div class="rel">Open Play surface, next to filters &amp; price</div>
+          <div class="shipped">removed — the broken invite affordance is gone from the Open-Play session screen; sharing still works via <code>ShareLobbySheet</code>. Orphaned <code>InvitePlayersSheet.tsx</code> deleted; tsc clean.</div>
         </div>
 
-        <div class="task">
-          <h3>Player-created game shows a price the joiner doesn't pay<span class="src">[20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Player-created game shows a price the joiner doesn't pay<span class="src">[20Jul]</span></h3>
           <p>Reads like ₱350 to join — live-demo hazard.</p>
           <div class="fix"><b>Fix</b> Hide/zero it for joiners, or label as the host's court cost.</div>
-          <div class="rel">same games/Open Play feed</div>
+          <div class="shipped">hidden — a game's <code>priceLabel</code> is the venue's court-cost (in real data free-text like "Pay to Play"/"Per Player"), never the joiner's fee, so the Play-feed card no longer shows it; only a venue <b>session</b> shows a price. A real host entry fee still shows as its own chip (<code>joinFee &gt; 0</code>). Verified in the running PWA via Playwright (48 cards, zero court-cost labels, 0 console errors); <code>GameDetailsScreen</code> was already correct. tsc clean; deploy pending.</div>
         </div>
 
-        <div class="task">
-          <h3>Silent failures swallow errors<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Silent failures swallow errors<span class="src">[21Jul-new]</span></h3>
           <p>Club join (<code>ClubsPanel.tsx:75</code>), onboarding save (<code>OnboardingScreen.tsx:59</code>), open-play cancel fail with no feedback.</p>
           <div class="fix"><b>Fix</b> Catch → error toast + keep the failed state on screen.</div>
-          <div class="rel">onboarding + open-play, shared with items above</div>
+          <div class="shipped">code-complete — club join + "load more" now show an error <code>Toast</code> on failure (was a silent optimistic rollback); onboarding save reports success and, on failure, keeps the user on-screen with a retry / "continue anyway" notice instead of dropping their skill tier &amp; address silently. Open-Play cancel already surfaced its error inline (report was stale). Shared <code>Toast</code> gained an error tone; tsc + lint clean. Deploy pending.</div>
         </div>
 
-        <div class="task">
-          <h3>No email-verification flow in the app<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>No email-verification flow in the app<span class="src">[21Jul-new]</span></h3>
           <p>Backend supports it; client never calls it — typo'd emails break password reset.</p>
           <div class="fix"><b>Fix</b> Wire the verify-email call + gate reset on it.</div>
-          <div class="rel">account/onboarding, pairs with silent-failure fixes</div>
+          <div class="shipped">shipped &amp; deployed — <code>register</code> + <code>resend-verification</code> now send a real verify email (Gmail was already configured); new <code>/verify-email</code> deep-link screen + a resend nudge banner for signed-in unverified users; <code>isVerified</code> plumbed through the app. Verified end-to-end on prod (register → email → verify → <code>isVerified:true</code>, single-use token). Reset-gate deliberately left off — blocking reset on unverified would lock out legit users; catching the typo at signup is the real fix. tsc + lint clean.</div>
         </div>
 
       </div>

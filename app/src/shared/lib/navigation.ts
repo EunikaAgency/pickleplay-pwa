@@ -3,6 +3,9 @@ export type Screen =
   | { id: 'login' }
   | { id: 'forgot-password' }
   | { id: 'reset-password'; params: { token: string } }
+  // Deep-link target for the emailed verify link; token is optional so the screen
+  // can also render as a "check your inbox / resend" surface without one.
+  | { id: 'verify-email'; params?: { token?: string } }
   | { id: 'onboarding' }
   | { id: 'home' }
   // `intent: 'lobby'` = the user came here to book a court so they can then host a
@@ -98,6 +101,24 @@ export type Screen =
   | { id: 'organizer-subscribe' }
   | { id: 'admin-claims' }
   | { id: 'admin-post-reports' }
+  // Admin console (port of the website's /admin/* dashboard). `admin-hub` is the
+  // mobile console home (KPIs + section nav); the rest are its leaf pages.
+  | { id: 'admin-hub' }
+  | { id: 'admin-users' }
+  | { id: 'admin-venues' }
+  | { id: 'admin-owners' }
+  | { id: 'admin-coaches' }
+  | { id: 'admin-bookings' }
+  | { id: 'admin-games' }
+  | { id: 'admin-moderation' }
+  | { id: 'admin-reviews' }
+  | { id: 'admin-review-reports' }
+  | { id: 'admin-venue-approvals' }
+  | { id: 'admin-suggested-edits' }
+  | { id: 'admin-analytics' }
+  | { id: 'admin-settings' }
+  | { id: 'admin-feature-flags' }
+  | { id: 'admin-roles' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
   | { id: 'open-play-book'; params: { venueId: string } }
   // Public plan-PDF viewer — lists the PDFs in the plan/ dir and previews them
@@ -130,9 +151,15 @@ export function pathFromScreen(screen: Screen): string {
     case 'login': return '/login';
     case 'forgot-password': return '/forgot-password';
     case 'reset-password': return `/reset-password?token=${encodeURIComponent(screen.params.token)}`;
+    case 'verify-email': return `/verify-email${q({ token: screen.params?.token })}`;
     case 'onboarding': return '/onboarding';
     case 'nearby': return `/nearby${q({ intent: screen.params?.intent })}`;
-    case 'games': return `/games${q({ section: screen.params?.section, view: screen.params?.view })}`;
+    case 'games': {
+      // The Events section is internally 'games'; surface it in the URL as
+      // ?section=events (matches the tab label + the API's own section name).
+      const uiSection = screen.params?.section === 'games' ? 'events' : screen.params?.section;
+      return `/games${q({ section: uiSection, view: screen.params?.view })}`;
+    }
     case 'booking': return '/booking';
     case 'tournaments': return '/tournaments';
     case 'tournament': return `/tournaments/${screen.params.id}`;
@@ -206,6 +233,22 @@ export function pathFromScreen(screen: Screen): string {
     case 'organizer-subscribe': return '/organizer/subscribe';
     case 'admin-claims': return '/admin/claims';
     case 'admin-post-reports': return '/admin/post-reports';
+    case 'admin-hub': return '/admin';
+    case 'admin-users': return '/admin/users';
+    case 'admin-venues': return '/admin/venues';
+    case 'admin-owners': return '/admin/owners';
+    case 'admin-coaches': return '/admin/coaches';
+    case 'admin-bookings': return '/admin/bookings';
+    case 'admin-games': return '/admin/games';
+    case 'admin-moderation': return '/admin/moderation';
+    case 'admin-reviews': return '/admin/moderation/reviews';
+    case 'admin-review-reports': return '/admin/moderation/review-reports';
+    case 'admin-venue-approvals': return '/admin/moderation/venue-approvals';
+    case 'admin-suggested-edits': return '/admin/moderation/suggested-edits';
+    case 'admin-analytics': return '/admin/analytics';
+    case 'admin-settings': return '/admin/settings';
+    case 'admin-feature-flags': return '/admin/feature-flags';
+    case 'admin-roles': return '/admin/roles';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
     case 'plan-pdfs': return '/plan-pdfs';
   }
@@ -232,6 +275,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'login': return { id: 'login' };
     case 'forgot-password': return { id: 'forgot-password' };
     case 'reset-password': return { id: 'reset-password', params: { token: sp.get('token') || '' } };
+    case 'verify-email': return { id: 'verify-email', params: opt(sp.get('token')) ? { token: sp.get('token')! } : undefined };
     case 'onboarding': return { id: 'onboarding' };
     case 'nearby':
       if (b) return { id: 'court-details', params: { id: b, intent: lobby, filterDate: opt(sp.get('filterDate')), filterStartHour: opt(sp.get('filterStartHour')) ? Number(sp.get('filterStartHour')) : undefined, filterEndHour: opt(sp.get('filterEndHour')) ? Number(sp.get('filterEndHour')) : undefined } };
@@ -248,9 +292,10 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
           id: 'games',
           params: {
             // A bare /games opens on OPEN PLAY (§3.3) — Events is opt-in via the
-            // tab or ?section=games. This used to be the other way round, which is
-            // why tapping Play greeted the player with tournaments.
-            section: section === 'games' ? 'games' : 'open-play',
+            // tab or ?section=events. ('games' stays accepted so old links and
+            // bookmarks still land on Events.) This used to be the other way round,
+            // which is why tapping Play greeted the player with tournaments.
+            section: section === 'events' || section === 'games' ? 'games' : 'open-play',
             view: view === 'joined' || view === 'invites' || view === 'manage' ? view : 'discover',
           },
         };
@@ -357,9 +402,29 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
     case 'shop': return { id: 'owner-shop' };
     case 'plan-pdfs': return { id: 'plan-pdfs' };
     case 'admin':
+      if (!b) return { id: 'admin-hub' };
+      if (b === 'users') return { id: 'admin-users' };
+      if (b === 'venues') return { id: 'admin-venues' };
+      if (b === 'owners') return { id: 'admin-owners' };
+      if (b === 'coaches') return { id: 'admin-coaches' };
+      if (b === 'bookings') return { id: 'admin-bookings' };
+      if (b === 'games') return { id: 'admin-games' };
+      if (b === 'analytics') return { id: 'admin-analytics' };
+      if (b === 'settings') return { id: 'admin-settings' };
+      if (b === 'feature-flags') return { id: 'admin-feature-flags' };
+      if (b === 'roles') return { id: 'admin-roles' };
       if (b === 'claims') return { id: 'admin-claims' };
       if (b === 'post-reports') return { id: 'admin-post-reports' };
-      return { id: 'home' };
+      if (b === 'moderation') {
+        if (c === 'reviews') return { id: 'admin-reviews' };
+        if (c === 'review-reports') return { id: 'admin-review-reports' };
+        if (c === 'post-reports') return { id: 'admin-post-reports' };
+        if (c === 'claims') return { id: 'admin-claims' };
+        if (c === 'venue-approvals') return { id: 'admin-venue-approvals' };
+        if (c === 'suggested-edits') return { id: 'admin-suggested-edits' };
+        return { id: 'admin-moderation' };
+      }
+      return { id: 'admin-hub' };
     default: return { id: 'home' };
   }
 }
@@ -394,8 +459,14 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'organizer-roster') return { id: 'organizer-rosters' };
   if (id === 'test-email') return { id: 'settings' };
   if (id.startsWith('organizer-')) return { id: 'organizer-hub' };
-  if (id === 'admin-claims') return { id: 'profile' };
-  if (id === 'admin-post-reports') return { id: 'profile' };
+  if (id === 'admin-hub') return { id: 'profile' };
+  if (id === 'admin-moderation') return { id: 'admin-hub' };
+  // The moderation leaf queues back out to the moderation overview.
+  if (id === 'admin-claims' || id === 'admin-post-reports' || id === 'admin-reviews'
+    || id === 'admin-review-reports' || id === 'admin-venue-approvals' || id === 'admin-suggested-edits') {
+    return { id: 'admin-moderation' };
+  }
+  if (id.startsWith('admin-')) return { id: 'admin-hub' };
   if (id === 'open-play-book') return { id: 'nearby' };
   if (id === 'plan-pdfs') return { id: 'home' };
   // Friends now lives in the Social tab, not behind Profile.

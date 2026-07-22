@@ -61,8 +61,11 @@ export function TabBar({ activeTab, onTabPress, isLoggedIn, isOwner = false, isO
   const items = roleTabs
     .filter((t) => t.id !== 'tournaments' || showTournaments)
     .filter((t) => t.id !== 'social' || showSocial)
-    // Admins don't run venues — drop the owner "Venues" (nearby) tab.
-    .filter((t) => t.id !== 'nearby' || !isAdmin);
+    // Admins don't run venues — drop the owner "Venues" (nearby) tab. They also
+    // don't need Play or Profile — the admin console covers everything.
+    .filter((t) => t.id !== 'nearby' || !isAdmin)
+    .filter((t) => t.id !== 'games' || !isAdmin)
+    .filter((t) => t.id !== 'profile' || !isAdmin);
   const unreadMessages = useMessageStore((s) => s.unread);
   return (
     <nav className={`tabbar${isOwner || isOrganizer ? ' tabbar--owner' : ''}`} aria-label="Primary navigation">

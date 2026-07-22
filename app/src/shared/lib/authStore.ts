@@ -46,8 +46,9 @@ interface AuthState {
   /**
    * Mark first-run onboarding as done on the account (so the user is never
    * re-onboarded), optionally saving the skill level and home place they picked.
-   * Best-effort: swallows errors so a transient failure never traps the user in
-   * onboarding.
+   * Resolves to `true` when the save landed, `false` on a transient failure —
+   * the caller decides whether to warn; it never throws, so it can't trap the
+   * user in onboarding.
    */
   completeOnboarding: (data?: {
     skillLevel?: number;
@@ -59,7 +60,7 @@ interface AuthState {
     address2?: string;
     lat?: number;
     lng?: number;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
 
   /** Best-effort server logout; always clears the local session. */
   logout: () => void;
@@ -135,9 +136,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await updateMe(patch);
       set({ user, isLoggedIn: true });
+      return true;
     } catch {
-      // Best-effort: don't block the user on a transient save failure — they'll
-      // simply be asked to onboard again on a future login.
+      // Don't block the user on a transient save failure — but report it so the
+      // caller can warn instead of silently dropping their skill level/address.
+      return false;
     }
   },
 

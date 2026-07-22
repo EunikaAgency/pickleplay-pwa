@@ -94,10 +94,11 @@ interface MapPin {
 // as bottom padding: the user lands in the *visible* strip above the list (so
 // their location stays in view while the list is open) and re-centres into the
 // larger visible area as the sheet collapses.
-function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, clusterRef, collapsed, sheetRef }: {
+function FrameMap({ userLoc, points, focusNonce, recenterNonce, nearestId, markerRefs, clusterRef, collapsed, sheetRef }: {
   userLoc: LatLng | null;
   points: [number, number][];
   focusNonce: number;
+  recenterNonce: number;
   nearestId: string | null;
   markerRefs: { current: Record<string, L.Marker> };
   clusterRef: { current: L.MarkerClusterGroup | null };
@@ -114,28 +115,37 @@ function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, clusterR
     return Math.max(0, mapBottom - sheet.getBoundingClientRect().top);
   }, [map, sheetRef]);
 
-  const frame = useCallback(() => {
+  const frame = useCallback((opts?: { tight?: boolean }) => {
     const covered = coveredPx();
     if (userLoc) {
-      const nearest = points
-        .map((p) => [p, haversineKm(userLoc, p)] as const)
-        .sort((a, b) => a[1] - b[1])
-        .slice(0, 4)
-        .map(([p]) => p);
-      // Start tight (~1.2km box) so a close cluster zooms right in; grow only to
-      // include the nearest courts.
-      let latSpan = 1.2 / 111;
-      let lngSpan = 1.2 / (111 * Math.cos((userLoc[0] * Math.PI) / 180));
-      for (const [lat, lng] of nearest) {
-        latSpan = Math.max(latSpan, Math.abs(lat - userLoc[0]));
-        lngSpan = Math.max(lngSpan, Math.abs(lng - userLoc[1]));
+      const cos = Math.cos((userLoc[0] * Math.PI) / 180);
+      // The dedicated re-center ("tight") frames a small fixed box on the user so
+      // it always zooms right in on them; the default frame starts ~1.2km and
+      // grows to include the nearest courts (keeps court context on first locate).
+      let latSpan: number;
+      let lngSpan: number;
+      if (opts?.tight) {
+        latSpan = 0.6 / 111;
+        lngSpan = 0.6 / (111 * cos);
+      } else {
+        const nearest = points
+          .map((p) => [p, haversineKm(userLoc, p)] as const)
+          .sort((a, b) => a[1] - b[1])
+          .slice(0, 4)
+          .map(([p]) => p);
+        latSpan = 1.2 / 111;
+        lngSpan = 1.2 / (111 * cos);
+        for (const [lat, lng] of nearest) {
+          latSpan = Math.max(latSpan, Math.abs(lat - userLoc[0]));
+          lngSpan = Math.max(lngSpan, Math.abs(lng - userLoc[1]));
+        }
       }
       map.fitBounds(
         [
           [userLoc[0] - latSpan, userLoc[1] - lngSpan],
           [userLoc[0] + latSpan, userLoc[1] + lngSpan],
         ],
-        { paddingTopLeft: [40, 40], paddingBottomRight: [40, 40 + covered], maxZoom: 16 },
+        { paddingTopLeft: [40, 40], paddingBottomRight: [40, 40 + covered], maxZoom: opts?.tight ? 17 : 16 },
       );
       // Surface the closest court only when it's declustered (on the map) and the
       // list is collapsed so an open popup isn't hidden. Deferred: fitBounds may
@@ -166,6 +176,10 @@ function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, clusterR
   const frameRef = useRef(frame);
   useEffect(() => { frameRef.current = frame; });
   useEffect(() => { frameRef.current(); }, [userLoc, points, focusNonce, nearestId]);
+
+  // The dedicated re-center button frames a tighter box on the user (zooms in more)
+  // than the default nearest-courts framing. Nonce starts at 0 so this no-ops on mount.
+  useEffect(() => { if (recenterNonce) frameRef.current({ tight: true }); }, [recenterNonce]);
 
   // The sheet height animates (300ms) when it expands/collapses; re-frame once it
   // settles so the user ends up centred in the new visible area.
@@ -217,6 +231,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   const [sheet, setSheet] = useState<SheetState>('expanded');
   // Bumped when the user taps "Near me" while already located, to re-centre the map.
   const [focusNonce, setFocusNonce] = useState(0);
+  const [recenterNonce, setRecenterNonce] = useState(0);
   // Live Leaflet markers, keyed by venue id, so FrameMap can pop the nearest one.
   const markerRefs = useRef<Record<string, L.Marker>>({});
   // Marker cluster group ref — FrameMap checks whether the nearest marker is
@@ -300,12 +315,12 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       .then((loc) => { setLiveLoc(loc); setLocStatus('on'); })
       .catch(() => setLocStatus('denied'));
   };
-  // Dedicated re-center: always bumps focusNonce regardless of sheet state, so
-  // the map re-frames on the user even when the sheet is expanded.
+  // Dedicated re-center: bumps recenterNonce regardless of sheet state, so the map
+  // re-frames on the user (a tighter, more zoomed-in box) even when the sheet is expanded.
   const recenter = () => {
     if (!canLocate) return;
     if (!userLoc) { locate(); return; }
-    setFocusNonce((n) => n + 1);
+    setRecenterNonce((n) => n + 1);
   };
 
   // Auto-locate once on mount. locStatus already starts 'locating' (above), so the
@@ -445,7 +460,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <FrameMap userLoc={userLoc} points={mapPoints} focusNonce={focusNonce} nearestId={nearestId} markerRefs={markerRefs} clusterRef={clusterRef} collapsed={collapsed} sheetRef={sheetRef} />
+            <FrameMap userLoc={userLoc} points={mapPoints} focusNonce={focusNonce} recenterNonce={recenterNonce} nearestId={nearestId} markerRefs={markerRefs} clusterRef={clusterRef} collapsed={collapsed} sheetRef={sheetRef} />
             <CollapseOnMapClick onCollapse={() => setSheet('collapsed')} />
             {userLoc && (
               <CircleMarker

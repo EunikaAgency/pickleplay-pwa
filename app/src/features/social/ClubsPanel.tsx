@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { V2ScreenChrome } from '../../shared/components/layout/V2Chrome';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
+import { Toast } from '../../shared/components/ui/Toast';
 import { V2Skeleton } from '../../shared/components/ui/V2Skeleton';
 import { listClubs, joinClub, apiImageUrl, type ApiClub } from '../../shared/lib/api';
 import { getInitials } from '../../shared/lib/initials';
@@ -26,6 +27,12 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [joined, setJoined] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState({ show: false, message: '' });
+
+  const showError = (message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 2500);
+  };
 
   // Debounce the search box so each keystroke doesn't fire a request.
   useEffect(() => {
@@ -59,7 +66,7 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
     setLoadingMore(true);
     listClubs({ search: debouncedQuery || undefined, cursor: allCursor })
       .then((page) => { setAll((prev) => [...prev, ...page.items]); setAllCursor(page.cursor); })
-      .catch(() => {})
+      .catch(() => showError("Couldn't load more clubs. Try again."))
       .finally(() => setLoadingMore(false));
   };
 
@@ -82,7 +89,12 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
           setMine((prev) => (prev.some((x) => x.id === c.id) ? prev : [joinedClub, ...prev]));
         }
       })
-      .catch(() => setJoined((prev) => { const n = new Set(prev); n.delete(c.id); return n; }));
+      .catch(() => {
+        // Roll the optimistic "Joined" chip back, and tell the user why — a
+        // silent revert reads as a broken button.
+        setJoined((prev) => { const n = new Set(prev); n.delete(c.id); return n; });
+        showError("Couldn't join that club. Please try again.");
+      });
   };
   const joinLabel = (c: ApiClub) => (joined.has(c.id) ? (c.visibility === 'private' ? 'Requested' : 'Joined') : 'Join');
 
@@ -220,6 +232,7 @@ export function ClubsPanel({ chrome, onFindPlayers }: ClubsPanelProps) {
         )}
 
         <div style={{ height: 20 }} />
+        <Toast message={toast.message} show={toast.show} tone="error" />
     </>
   );
 }

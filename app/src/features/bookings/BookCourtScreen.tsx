@@ -59,7 +59,7 @@ const DOW_DAYS: { dow: number; letter: string; name: string }[] = [
 ];
 
 const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; desc: string }[] = [
-  { value: 'public_game', label: 'Hosted game', icon: 'globe', desc: 'Book the court, then publish a game with set slots players can join.' },
+  { value: 'public_game', label: 'Events', icon: 'globe', desc: 'Book the court, then publish an event with set slots players can join.' },
   { value: 'open_play', label: 'Open play session', icon: 'groups', desc: 'Book the court for drop-in play — open to everyone, or private for your group.' },
 ];
 

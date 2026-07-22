@@ -237,6 +237,8 @@ export interface ApiUser {
   lng?: number | null;
   /** Whether the user has finished (or skipped) first-run onboarding. */
   hasOnboarded?: boolean | null;
+  /** Whether the user has confirmed ownership of their email via the verify link. */
+  isVerified?: boolean | null;
   preferences?: UserPreferences | null;
   privacySetting?: string | null;
   /** Live paid partner subscriptions — NOT the same as holding the role. */
@@ -298,6 +300,7 @@ export function toAppUser(api: ApiUser): AppUser {
     lat: typeof api.lat === 'number' ? api.lat : undefined,
     lng: typeof api.lng === 'number' ? api.lng : undefined,
     hasOnboarded: api.hasOnboarded ?? false,
+    isVerified: !!api.isVerified,
     preferences: api.preferences ?? DEFAULT_PREFERENCES,
     privacySetting: normalizePrivacy(api.privacySetting),
     coachSubscriptionActive: !!api.coachSubscriptionActive,
@@ -482,6 +485,25 @@ export async function resetPassword(token: string, password: string): Promise<{ 
   return request<{ message: string }>(`${AUTH_PREFIX}/reset-password`, {
     method: 'POST',
     body: { token, password },
+  });
+}
+
+/** Confirm ownership of an email using the token from the verify link. Public —
+ *  the link arrives by email and is opened before (or without) a session. */
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`${AUTH_PREFIX}/verify-email`, {
+    method: 'POST',
+    body: { token },
+  });
+}
+
+/** Re-issue the verification email for the signed-in user. In dev (no email
+ *  configured) the response carries the token inline so the flow is testable. */
+export async function resendVerification(): Promise<{ message: string; token?: string }> {
+  return request<{ message: string; token?: string }>(`${AUTH_PREFIX}/resend-verification`, {
+    method: 'POST',
+    body: {},
+    auth: true,
   });
 }
 
@@ -1420,6 +1442,213 @@ export async function listAdminFeedReports(status: 'pending' | 'resolved' | 'dis
 /** Admin: resolve or dismiss a reported post. Gated by `admin.moderation.manage`. */
 export async function resolveAdminFeedReport(id: string, status: 'resolved' | 'dismissed'): Promise<void> {
   await request(`/api/v1/admin/feed-reports/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status }, auth: true });
+}
+
+/* ─── Admin console ──────────────────────────────────────────────
+ * The mobile Admin console (a port of the website's `/admin/*` pages).
+ * Every call is `auth: true` and gated server-side by the matching admin.*
+ * permission; the app additionally gates each screen via SCREEN_PERMISSIONS.
+ * The endpoints are the same ones the website's admin dashboard uses.
+ */
+
+/** A directory account as the admin Players/Users list sees it. */
+export interface AdminUser {
+  _id?: string;
+  id?: string;
+  email?: string;
+  displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string | null;
+  roleDefault?: string;
+  isVerified?: boolean;
+  lastLoginAt?: string | null;
+  createdAt?: string | null;
+}
+
+/** Admin: list accounts. Defaults to a high pageSize so the directory loads whole. Gated by `admin.users.manage`. */
+export async function listAdminUsers(params?: { pageSize?: number; role?: string; search?: string }): Promise<AdminUser[]> {
+  const env = await rawRequest<AdminUser[]>(
+    `/api/v1/admin/users${toQuery({ pageSize: params?.pageSize ?? 500, role: params?.role, search: params?.search })}`,
+    { auth: true },
+  );
+  return env.data ?? [];
+}
+
+/** A venue owner + the venues they own (admin Owners list). */
+export interface AdminOwner {
+  id?: string;
+  _id?: string;
+  email?: string;
+  displayName?: string;
+  isVerified?: boolean;
+  createdAt?: string | null;
+  venues?: { id: string; name: string; slug: string }[];
+}
+
+/** Admin: list venue owners with their owned venues. Gated by `admin.venues.manage`. */
+export async function listAdminOwners(search?: string): Promise<AdminOwner[]> {
+  const env = await rawRequest<AdminOwner[]>(`/api/v1/admin/owners${toQuery({ search })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** A booking row in the admin Bookings report. */
+export interface AdminBooking {
+  _id?: string;
+  id?: string;
+  referenceCode?: string;
+  bookingType?: string;
+  date?: string;
+  startTime?: string;
+  endTime?: string;
+  venueName?: string;
+  venueId?: string;
+  userName?: string;
+  userId?: string;
+  playerCount?: number;
+  amount?: number;
+  status?: string;
+  /** 'owner_rejected' marks a cancelled row as a decline rather than a cancellation. */
+  cancellationType?: string;
+}
+
+/** Admin: list bookings across the platform. Gated by `admin.bookings.manage`. */
+export async function listAdminBookings(params?: { limit?: number; status?: string }): Promise<AdminBooking[]> {
+  const env = await rawRequest<AdminBooking[]>(
+    `/api/v1/bookings${toQuery({ limit: params?.limit ?? 500, status: params?.status })}`,
+    { auth: true },
+  );
+  return env.data ?? [];
+}
+
+/** A venue/coach review awaiting moderation (admin Reviews queue). */
+export interface AdminReview {
+  _id?: string;
+  id?: string;
+  rating?: number;
+  text?: string;
+  venueId?: string;
+  userId?: string;
+  status?: string;
+  createdAt?: string | null;
+}
+
+/** Admin: list reviews by moderation status. Gated by `admin.moderation.manage`. */
+export async function listAdminReviews(status: string = 'pending_moderation', limit = 100): Promise<AdminReview[]> {
+  const env = await rawRequest<AdminReview[]>(`/api/v1/admin/reviews${toQuery({ status, limit })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: approve/reject/hide a review. Gated by `admin.moderation.manage`. */
+export async function moderateAdminReview(id: string, status: 'approved' | 'rejected' | 'hidden'): Promise<void> {
+  await request(`/api/v1/admin/reviews/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status }, auth: true });
+}
+
+/** A user-flagged review awaiting triage (admin Review reports). */
+export interface AdminReviewReport {
+  _id?: string;
+  id?: string;
+  reason?: string;
+  details?: string;
+  reviewId?: string;
+  reporterUserId?: string;
+  createdAt?: string | null;
+}
+
+/** Admin: list open review reports. Gated by `admin.moderation.manage`. */
+export async function listAdminReviewReports(limit = 100): Promise<AdminReviewReport[]> {
+  const env = await rawRequest<AdminReviewReport[]>(`/api/v1/admin/reports${toQuery({ limit })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: resolve or dismiss a review report. Gated by `admin.moderation.manage`. */
+export async function resolveAdminReviewReport(id: string, status: 'resolved' | 'dismissed'): Promise<void> {
+  await request(`/api/v1/admin/reports/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status }, auth: true });
+}
+
+/** A user-submitted venue correction (admin Suggested edits). */
+export interface AdminSuggestedEdit {
+  _id?: string;
+  id?: string;
+  venueId?: string | { displayName?: string };
+  venueName?: string;
+  editType?: string;
+  payloadJson?: unknown;
+  suggestedByUserId?: string | { displayName?: string };
+  submitterName?: string;
+  status?: string;
+  createdAt?: string | null;
+}
+
+/** Admin: list suggested venue edits. Gated by `admin.moderation.manage`. */
+export async function listAdminSuggestedEdits(limit = 100): Promise<AdminSuggestedEdit[]> {
+  const env = await rawRequest<AdminSuggestedEdit[]>(`/api/v1/suggested-edits${toQuery({ limit })}`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: accept or reject a suggested edit. Gated by `admin.moderation.manage`. */
+export async function reviewSuggestedEdit(id: string, status: 'accepted' | 'rejected'): Promise<void> {
+  await request(`/api/v1/suggested-edits/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status }, auth: true });
+}
+
+/** An owner-submitted venue awaiting listing approval (admin Venue approvals). */
+export interface PendingVenue {
+  _id?: string;
+  id?: string;
+  displayName?: string;
+  oneLineSummary?: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  area?: string;
+  cityName?: string;
+  listingStatus?: 'pending' | 'published' | 'rejected';
+  createdAt?: string | null;
+}
+
+/** Admin: list venues awaiting approval. Gated by `admin.moderation.manage`. */
+export async function listPendingVenues(): Promise<PendingVenue[]> {
+  const env = await rawRequest<PendingVenue[]>('/api/v1/venue-approvals', { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: approve (publish) or reject a pending venue. Gated by `admin.moderation.manage`. */
+export async function reviewVenueApproval(id: string, status: 'approved' | 'rejected'): Promise<void> {
+  await request(`/api/v1/venue-approvals/${encodeURIComponent(id)}`, { method: 'PATCH', body: { status }, auth: true });
+}
+
+/** A role and its permission grant (admin Roles & permissions). */
+export interface AdminRole {
+  key: string;
+  label?: string;
+  description?: string;
+  permissions?: string[];
+  venues?: string[];
+  userCount?: number;
+}
+
+/** One entry in the code-defined permission catalogue. */
+export interface PermissionDef {
+  key: string;
+  label?: string;
+  description?: string;
+  group?: string;
+}
+
+/** Admin: list roles. Gated by `admin.settings.manage`. */
+export async function listAdminRoles(): Promise<AdminRole[]> {
+  const env = await rawRequest<AdminRole[]>('/api/v1/admin/roles', { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: the full permission catalogue (grouped by `group`). Gated by `admin.settings.manage`. */
+export async function listPermissionCatalogue(): Promise<PermissionDef[]> {
+  const env = await rawRequest<PermissionDef[]>('/api/v1/admin/permissions', { auth: true });
+  return env.data ?? [];
+}
+
+/** Admin: update a role's permissions (and, for coach, linked venues). Gated by `admin.settings.manage`. */
+export async function updateAdminRole(key: string, body: { permissions: string[]; venues?: string[] }): Promise<AdminRole> {
+  return request<AdminRole>(`/api/v1/admin/roles/${encodeURIComponent(key)}`, { method: 'PATCH', body, auth: true });
 }
 
 /* --- Create-form helpers -------------------------------------------------- */
@@ -3438,6 +3667,8 @@ export interface AppSettings {
   paymentTestMode: boolean;
   /** Platform service-fee % charged to the player on top of the venue price (default 7). */
   serviceFeePercent: number;
+  /** Platform transaction-fee % charged per transaction (default 0). */
+  transactionFeePercent?: number;
   testCard: { number: string; expiry: string; cvc: string };
   /** BCC every transactional email to this address (admin toggle). */
   emailBccEnabled?: boolean;
@@ -3455,6 +3686,8 @@ export interface AppSettings {
     organizer: number;
     durationDays: number;
     currency: string;
+    coachTiers: PartnerPlanTier[];
+    organizerTiers: PartnerPlanTier[];
   };
 }
 
@@ -3464,7 +3697,7 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 /** Admin-only: update app settings. */
-export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress' | 'pricingMode'>>): Promise<AppSettings> {
+export async function updateSettings(patch: Partial<Pick<AppSettings, 'paymentTestMode' | 'serviceFeePercent' | 'emailBccEnabled' | 'emailBccAddress' | 'pricingMode' | 'allowNonOrganizerEvents' | 'allowPlayerApprovalLobbies'>> & { coachPlanTiers?: PartnerPlanTier[]; organizerPlanTiers?: PartnerPlanTier[] }): Promise<AppSettings> {
   return request<AppSettings>('/api/v1/settings', { method: 'PATCH', body: patch, auth: true });
 }
 
@@ -4602,6 +4835,8 @@ export interface PartnerSubscription {
   status: PartnerSubscriptionStatus;
   priceAmount: number;
   currency: string;
+  tierKey: string | null;
+  durationDays: number | null;
   startedAt: string | null;
   expiresAt: string | null;
   autoRenew: boolean;
@@ -4618,10 +4853,19 @@ export interface PartnerSubscriptionState {
   /** The live coach subscription, or null. */
   coach: PartnerSubscription | null;
   organizer: PartnerSubscription | null;
-  pricing: { coach: number; organizer: number; durationDays: number; currency: string };
+  pricing: { coach: number; organizer: number; durationDays: number; currency: string; coachTiers: PartnerPlanTier[]; organizerTiers: PartnerPlanTier[] };
   /** False when the profile is missing address fields required to subscribe. */
   addressComplete: boolean;
   missingAddressFields: string[];
+}
+
+/** A selectable term tier configured via AdminSettings. */
+export interface PartnerPlanTier {
+  key: string;
+  label: string;
+  durationDays: number;
+  price: number;
+  enabled: boolean;
 }
 
 /** The signed-in user's coach/organizer subscription state + current pricing. */
@@ -4630,15 +4874,17 @@ export async function getMyPartnerSubscriptions(): Promise<PartnerSubscriptionSt
 }
 
 /** Buy a term. The `card` is collected at the payment step and gated on the
- *  demo card in test mode (never stored/charged). Throws ApiError
- *  `ADDRESS_REQUIRED` (400) when the profile address is incomplete,
- *  `CARD_DECLINED` (402) on a bad test card, or `ALREADY_SUBSCRIBED` (409). */
+ *  demo card in test mode (never stored/charged). When the admin has configured
+ *  selectable tiers for this plan, pass `tierKey` to choose one — otherwise the
+ *  base plan price + `partnerSubscriptionDays` apply.
+ *  Throws ApiError `ADDRESS_REQUIRED` (400), `CARD_DECLINED` (402),
+ *  `INVALID_TIER` (400), or `ALREADY_SUBSCRIBED` (409). */
 export async function subscribeToPartnerPlan(
   plan: PartnerPlan,
-  opts?: { autoRenew?: boolean; card?: CheckoutCard },
+  opts?: { autoRenew?: boolean; tierKey?: string; card?: CheckoutCard },
 ): Promise<PartnerSubscription> {
   return request<PartnerSubscription>('/api/v1/partner-subscriptions', {
-    method: 'POST', body: { plan, autoRenew: opts?.autoRenew, card: opts?.card }, auth: true,
+    method: 'POST', body: { plan, autoRenew: opts?.autoRenew, tierKey: opts?.tierKey, card: opts?.card }, auth: true,
   });
 }
 

@@ -480,7 +480,7 @@ function CourtDetail({
       // Applying is a paid capability (402). Send them to the subscribe screen
       // rather than failing silently — this is the intended upsell path.
       if (e instanceof ApiError && e.code === 'SUBSCRIPTION_REQUIRED') {
-        onNavigate('coach-subscribe');
+        onNavigate(kind === 'coach' ? 'coach-subscribe' : 'organizer-subscribe');
         return;
       }
       // V5: any other error (network, 500) — tell the user instead of a silent

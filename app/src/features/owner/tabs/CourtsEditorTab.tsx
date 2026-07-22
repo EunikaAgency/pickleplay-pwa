@@ -78,8 +78,8 @@ export function CourtRow({ court, onSaved, onDeleted, flat = false }: { court: O
   // In `flat` mode the editor is always open (no collapse header).
   const isOpen = flat || expanded;
   // Which tab of the expanded editor is showing. Defaults to the details form;
-  // the Hours tab mounts its editor lazily (see below).
-  const [tab, setTab] = useState<'info' | 'gallery'>('info');
+  // the Hours tab mounts each court's own weekly-hours editor lazily (see below).
+  const [tab, setTab] = useState<'info' | 'gallery' | 'hours'>('info');
   // The gallery photo currently open in the full-screen preview (null = closed).
   const [lightbox, setLightbox] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -252,6 +252,7 @@ export function CourtRow({ court, onSaved, onDeleted, flat = false }: { court: O
         options={[
           { value: 'info', label: 'Court Info' },
           { value: 'gallery', label: 'Gallery' },
+          { value: 'hours', label: 'Hours' },
         ]}
         value={tab}
         onChange={setTab}
@@ -469,6 +470,15 @@ export function CourtRow({ court, onSaved, onDeleted, flat = false }: { court: O
           </div>
         )}
         {photoStatus === 'error' && <div className="t-sm text-[var(--coral)] font-bold mt-2">{photoErr}</div>}
+      </div>
+      )}
+
+      {/* ── Hours ── this court's weekly open/close schedule + optional per-block
+          hour pricing. Each court owns its own hours (they inherit the venue
+          default until first saved); the editor has its own Save button. */}
+      {tab === 'hours' && (
+      <div className="field p-0!">
+        <WeeklyHoursEditor courtId={id} />
       </div>
       )}
 

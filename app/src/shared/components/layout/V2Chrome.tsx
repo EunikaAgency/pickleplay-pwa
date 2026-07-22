@@ -21,9 +21,12 @@ interface TopNavProps {
   isLoggedIn: boolean;
   onBack?: () => void;
   title?: string;
+  /** When true, a hamburger menu button replaces the left spacer on tab screens
+   *  (or sits beside the back arrow on detail screens). Tapping it fires this. */
+  onMenuToggle?: () => void;
 }
 
-export function V2TopNav({ onNavigate, isLoggedIn, onBack, title }: TopNavProps) {
+export function V2TopNav({ onNavigate, isLoggedIn, onBack, title, onMenuToggle }: TopNavProps) {
   const unread = useNotificationStore((s) => s.unread);
   const unreadMessages = useMessageStore((s) => s.unread);
   return (
@@ -33,6 +36,14 @@ export function V2TopNav({ onNavigate, isLoggedIn, onBack, title }: TopNavProps)
           <button className="v2c-iconbtn v2c-back" aria-label="Go back" onClick={onBack}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        ) : onMenuToggle ? (
+          <button className="v2c-iconbtn v2c-menu" aria-label="Open menu" onClick={onMenuToggle}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="18" x2="20" y2="18" />
             </svg>
           </button>
         ) : (
@@ -176,6 +187,8 @@ export interface V2ScreenChrome {
   /** When true, V2Shell suppresses its own bottom tab bar — used when the
    *  classic TabBar (owner/organizer) provides the mobile bottom nav instead. */
   suppressTabBar?: boolean;
+  /** Optional hamburger-menu toggle for the top nav (admin drawer). */
+  onMenuToggle?: () => void;
 }
 
 export interface V2ShellProps {
@@ -206,7 +219,7 @@ export function V2Shell({ screen, chrome, onBack, title, hideTabBar, hideFab, hi
   const back = hideBack ? undefined : (onBack ?? (chrome.canGoBack ? chrome.onBack : undefined));
   return (
     <div className={`pb-v2 ${screen}`}>
-      <V2TopNav onNavigate={chrome.onNavigate} isLoggedIn={chrome.isLoggedIn} onBack={back} title={title} />
+      <V2TopNav onNavigate={chrome.onNavigate} isLoggedIn={chrome.isLoggedIn} onBack={back} title={title} onMenuToggle={chrome.onMenuToggle} />
       <main>{children}</main>
       {!hideFab && !chrome.suppressTabBar && (chrome.inviteCount ?? 0) > 0 && <V2Fab onClick={chrome.onInvites} count={chrome.inviteCount} />}
       {!hideTabBar && !chrome.suppressTabBar && <V2TabBar activeTab={chrome.activeTab} onTabPress={chrome.onTabPress} tabIds={chrome.tabIds} />}

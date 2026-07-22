@@ -3,6 +3,8 @@ import { LandingScreen } from './features/auth/LandingScreen';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { ForgotPasswordScreen } from './features/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './features/auth/ResetPasswordScreen';
+import { VerifyEmailScreen } from './features/auth/VerifyEmailScreen';
+import { VerifyEmailBanner } from './features/auth/VerifyEmailBanner';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
 import { SplashScreen } from './features/auth/SplashScreen';
 import { GameDetailsScreen } from './features/games/GameDetailsScreen';
@@ -57,8 +59,25 @@ import { OwnerCalendarScreen } from './features/owner/OwnerCalendarScreen';
 import { OwnerPartnersScreen } from './features/owner/OwnerPartnersScreen';
 import { OwnerVenuesScreenV2 } from './features/owner/OwnerVenuesScreenV2';
 import { MembersScreen } from './features/profile/MembersScreen';
+import { AdminAnalyticsScreen } from './features/admin/AdminAnalyticsScreen';
+import { AdminBookingsScreen } from './features/admin/AdminBookingsScreen';
 import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
+import { AdminCoachesScreen } from './features/admin/AdminCoachesScreen';
+import { AdminFeatureFlagsScreen } from './features/admin/AdminFeatureFlagsScreen';
+import { AdminGamesScreen } from './features/admin/AdminGamesScreen';
+import { AdminHubScreen } from './features/admin/AdminHubScreen';
+import { AdminModerationScreen } from './features/admin/AdminModerationScreen';
+import { AdminOwnersScreen } from './features/admin/AdminOwnersScreen';
 import { AdminPostReportsScreen } from './features/admin/AdminPostReportsScreen';
+import { AdminReviewReportsScreen } from './features/admin/AdminReviewReportsScreen';
+import { AdminReviewsScreen } from './features/admin/AdminReviewsScreen';
+import { AdminRolesScreen } from './features/admin/AdminRolesScreen';
+import { AdminSettingsScreen } from './features/admin/AdminSettingsScreen';
+import { AdminSuggestedEditsScreen } from './features/admin/AdminSuggestedEditsScreen';
+import { AdminUsersScreen } from './features/admin/AdminUsersScreen';
+import { AdminVenueApprovalsScreen } from './features/admin/AdminVenueApprovalsScreen';
+import { AdminVenuesScreen } from './features/admin/AdminVenuesScreen';
+import { AdminDrawer } from './features/admin/AdminDrawer';
 import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
 import PlanPdfsPage from './features/plan-pdfs/PlanPdfsPage';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
@@ -180,8 +199,24 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'organizer-rosters': 'organizer.events.manage',
   'organizer-roster': 'organizer.events.manage',
   'organizer-venue-requests': 'organizer.tournaments.manage',
+  'admin-hub': 'admin.access',
+  'admin-users': 'admin.users.manage',
+  'admin-venues': 'admin.venues.manage',
+  'admin-owners': 'admin.venues.manage',
+  'admin-coaches': 'admin.users.manage',
+  'admin-bookings': 'admin.bookings.manage',
+  'admin-games': 'admin.access',
+  'admin-moderation': 'admin.moderation.manage',
+  'admin-reviews': 'admin.moderation.manage',
+  'admin-review-reports': 'admin.moderation.manage',
   'admin-claims': 'admin.moderation.manage',
   'admin-post-reports': 'admin.moderation.manage',
+  'admin-venue-approvals': 'admin.moderation.manage',
+  'admin-suggested-edits': 'admin.moderation.manage',
+  'admin-analytics': 'admin.reports.view',
+  'admin-settings': 'admin.settings.manage',
+  'admin-feature-flags': 'admin.settings.manage',
+  'admin-roles': 'admin.settings.manage',
   'open-play-book': 'player.bookings.create',
   'owner-shop': 'owner.access',
   'owner-venues-v2': 'owner.access',
@@ -231,6 +266,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-staff': 'manage your staff',
   'owner-settlements': 'see your settlements',
   'owner-subscription-plans': 'manage subscription plans',
+  'admin-hub': 'open the admin console',
   'admin-claims': 'review venue claims',
   'admin-post-reports': 'review reported posts',
   'open-play-book': 'join open play',
@@ -363,11 +399,14 @@ function AppInner() {
   // Animated launch splash — shown once per browser session on cold start, then
   // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
   // restore etc. run during the intro); the splash just sits on top.
+  // Admin sidebar drawer — toggled by the hamburger menu button in the top nav.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const [showSplash, setShowSplash] = useState(() => {
     // Skip the splash on deep-link entry points (reset-password, forgot-password)
     // — the user clicked a link from an email, not a cold app launch.
     const path = window.location.pathname;
-    if (path.startsWith('/reset-password') || path.startsWith('/forgot-password')) return false;
+    if (path.startsWith('/reset-password') || path.startsWith('/forgot-password') || path.startsWith('/verify-email')) return false;
     // /plan-pdfs is a standalone public report viewer — no launch splash.
     if (path.startsWith('/plan-pdfs')) return false;
     try { return sessionStorage.getItem(SPLASH_KEY) !== '1'; } catch { return true; }
@@ -494,7 +533,10 @@ function AppInner() {
   // v2.1 is the only player design, but it's player-side only: owners keep their
   // dedicated dashboards (Home/Nearby/Games) and the legacy v1 player screens for
   // Clubs/Profile/Settings/Create, so `playerV2` is simply "any non-owner".
-  const isOwner = userHasPermission(currentUser, 'owner.access');
+  const isAdmin = userHasPermission(currentUser, 'admin.access');
+  // An admin who also holds owner.* perms (dual-role account) should still route
+  // as admin — the admin console takes priority over the owner dashboard.
+  const isOwner = !isAdmin && userHasPermission(currentUser, 'owner.access');
   // Organizing is now a player-plus SUBSCRIPTION, not a primary role: a player who
   // subscribes to the organizer plan stays a player (player Home tab + player
   // chrome) and reaches the Organizer Console from the Profile tab
@@ -519,7 +561,6 @@ function AppInner() {
   // Tournaments are a player surface (browse + join/leave) — also for coaches and
   // organizers, who are players too. Owners and admins don't get the player
   // Tournament tab (organizers still manage tournaments from the organizer hub).
-  const isAdmin = userHasPermission(currentUser, 'admin.access');
   // The standalone Tournament tab stays hidden, but tournament detail routes are
   // allowed because Games > Discover now uses tournaments as structured games.
   const canOpenTournaments = !isOwner && !isAdmin;
@@ -550,7 +591,7 @@ function AppInner() {
   const canShowCreate = true;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
-  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'plan-pdfs'].includes(screen.id);
+  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'verify-email', 'plan-pdfs'].includes(screen.id);
   // Guests get the full chrome while browsing — that's how they roam the app.
   // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
   // app's mobile TabBar (and the install prompt riding above it) are suppressed.
@@ -565,7 +606,8 @@ function AppInner() {
     onCreate: handleCreate, onHost: handleHost, onInvites: handleInvites, isLoggedIn, requireAuth,
     onBack: goBack, canGoBack, inviteCount,
     tabIds: (canSeeTournaments ? [...tabScreens] : tabScreens.filter((t) => t !== 'tournaments')).filter((t) => t !== 'messages'),
-    suppressTabBar: isOrganizer,
+    suppressTabBar: isOrganizer || isAdmin,
+    onMenuToggle: isAdmin ? () => setDrawerOpen((v) => !v) : undefined,
   };
 
   const renderScreen = () => {
@@ -584,6 +626,9 @@ function AppInner() {
     }
     if (screen.id === 'reset-password') {
       return <ResetPasswordScreen onNavigate={navigate} onBack={goBack} token={screen.params.token} />;
+    }
+    if (screen.id === 'verify-email') {
+      return <VerifyEmailScreen onNavigate={navigate} onBack={goBack} token={screen.params?.token} />;
     }
 
     // While a stored session is validating, the role isn't known yet — hold a
@@ -604,21 +649,19 @@ function AppInner() {
     // screen call back through `navigate`/`requireAuth` to trigger the gate.
     switch (screen.id) {
       case 'home':
-        // Owners get their dashboard on the Home tab; everyone else — players and
-        // organizer/coach subscribers alike — gets the v2.1 player home. The
-        // Organizer Console lives on its own screen ('organizer-hub'), reached
-        // from the Profile tab, so subscribing never displaces the Home tab.
+        // Admins get the admin console overview on the Home tab — it shows live
+        // platform KPIs and section nav, which is their actual home. Owners get
+        // their venue dashboard. Everyone else gets the v2.1 player home.
+        if (isAdmin) return <AdminHubScreen onNavigate={navigate} onBack={goBack} />;
         if (isOwner) return <OwnerHomeScreen onNavigate={navigate} />;
         return <HomeScreenV2 {...v2Chrome} />;
       case 'nearby':
-        // Owners get a local market map (their venues vs nearby competitors);
-        // players/guests get the normal discover-courts-near-me view.
-        if (userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
+        // Owners get a local market map; admins + players get the discover view.
+        if (isOwner && userHasPermission(currentUser, 'owner.market.view')) return <OwnerNearbyScreen onNavigate={navigate} />;
         return <NearbyScreenV2 {...v2Chrome} intent={screen.params?.intent} />;
       case 'games':
-        // Owners get "Your courts" (games + bookings at their venues); players
-        // get the normal browse/join games view.
-        if (userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
+        // Owners get "Your courts"; admins + players get the browse/join view.
+        if (isOwner && userHasPermission(currentUser, 'owner.games.view')) return <OwnerGamesScreen onNavigate={navigate} />;
         return <GamesScreenV2 {...v2Chrome} initialSection={screen.params?.section} initialView={screen.params?.view} />;
       case 'booking':
         // Owner "Bookings" tab (ownerTabs in TabBar/Sidebar → /booking) — the
@@ -649,6 +692,8 @@ function AppInner() {
         if (!canSeeSocial) return <OwnerHomeScreen onNavigate={navigate} />;
         return <SocialScreen chrome={v2Chrome} tab="clubs" />;
       case 'profile':
+        // Admins don't have a profile tab — redirect to admin console.
+        if (isAdmin) return <AdminHubScreen onNavigate={navigate} onBack={goBack} />;
         // Owners get their own profile dashboard; everyone else uses the v2 profile.
         if (isOwner) return <OwnerProfileScreen onNavigate={navigate} onLogout={handleLogout} />;
         return <ProfileScreenV2 {...v2Chrome} onLogout={handleLogout} />;
@@ -820,10 +865,43 @@ function AppInner() {
         return <RosterDetailScreen key={screen.params.id} rosterId={screen.params.id} onBack={goBack} />;
       case 'organizer-venue-requests':
         return <VenueRequestsScreen tournamentId={screen.params?.tournamentId} onNavigate={navigate} onBack={goBack} />;
+      // ── Admin console ──────────────────────────────────────
+      case 'admin-hub':
+        return <AdminHubScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-users':
+        return <AdminUsersScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-venues':
+        return <AdminVenuesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-owners':
+        return <AdminOwnersScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-coaches':
+        return <AdminCoachesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-bookings':
+        return <AdminBookingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-games':
+        return <AdminGamesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-moderation':
+        return <AdminModerationScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-reviews':
+        return <AdminReviewsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-review-reports':
+        return <AdminReviewReportsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-claims':
         return <AdminClaimsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-post-reports':
         return <AdminPostReportsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-venue-approvals':
+        return <AdminVenueApprovalsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-suggested-edits':
+        return <AdminSuggestedEditsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-analytics':
+        return <AdminAnalyticsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-settings':
+        return <AdminSettingsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-feature-flags':
+        return <AdminFeatureFlagsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-roles':
+        return <AdminRolesScreen onNavigate={navigate} onBack={goBack} />;
       case 'open-play-book':
         return <OpenPlayBookScreen key={screen.params.venueId} venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'plan-pdfs':
@@ -843,10 +921,13 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} onOpenPostReports={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-post-reports') : undefined} postReportsActive={screen.id === 'admin-post-reports'} onOpenClaims={userHasPermission(currentUser, 'admin.moderation.manage') ? () => navigate('admin-claims') : undefined} claimsActive={screen.id === 'admin-claims'} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} adminActive={screen.id.startsWith('admin-')} onAdminNavigate={isAdmin ? (screenId: string) => { (navigate as (id: string) => void)(screenId); } : undefined} adminScreenId={screen.id.startsWith('admin-') ? screen.id : undefined} onOpenNotifications={isLoggedIn ? () => navigate('notifications') : undefined} notificationsActive={screen.id === 'notifications'} onLogout={isAdmin ? handleLogout : undefined} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
       )}
 
-      <main className="app-main"><ErrorBoundary>{renderScreen()}</ErrorBoundary></main>
+      <main className="app-main">
+        {!hideChrome && isTabRoot && <VerifyEmailBanner onNavigate={navigate} />}
+        <ErrorBoundary>{renderScreen()}</ErrorBoundary>
+      </main>
 
       {showTabBar && (
         <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} isOrganizer={isOrganizer} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isAdmin={isAdmin} />
@@ -867,6 +948,17 @@ function AppInner() {
 
       {/* Animated launch splash, on top of everything (waits for the CTA tap). */}
       {showSplash && <SplashScreen onDone={dismissSplash} auto />}
+
+      {/* Admin sidebar drawer — mobile/tablet navigation for admins (no bottom tab bar). */}
+      {isAdmin && (
+        <AdminDrawer
+          open={drawerOpen}
+          onOpen={() => setDrawerOpen(true)}
+          onClose={() => setDrawerOpen(false)}
+          onNavigate={(screenId) => (navigate as (id: string) => void)(screenId)}
+          activeScreenId={screen.id}
+        />
+      )}
     </div>
   );
 }

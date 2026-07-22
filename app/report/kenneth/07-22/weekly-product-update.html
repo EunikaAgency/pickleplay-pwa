@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>PickleBallers — Weekly Product Update · 17–22 July 2026</title>
+  <style>
+    :root {
+      --bg:#f4f6f8; --surface:#fff; --surface-2:#eef1f5; --ink:#191f28;
+      --ink-2:#454e5b; --muted:#6b7686; --line:#dde2e9; --line-strong:#cbd2dc;
+      --accent:#0d7d72; --accent-soft:#d9efec; --done:#1f9d57; --done-soft:#e2f5ea;
+      --advance:#2f6fd6; --advance-soft:#e4edfb; --next:#6d6af0; --next-soft:#ecebff;
+      --warn:#b16b08; --warn-soft:#fff0d6; --shadow:0 1px 2px rgba(20,28,40,.05),0 3px 12px rgba(20,28,40,.05);
+      --radius:12px; --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+      --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    }
+    :root[data-theme="dark"] {
+      --bg:#0e1218; --surface:#161c25; --surface-2:#1d2530; --ink:#e9edf3;
+      --ink-2:#b9c2ce; --muted:#8592a1; --line:#262f3b; --line-strong:#33404f;
+      --accent:#34b9ab; --accent-soft:#123c39; --done:#4dc684; --done-soft:#123626;
+      --advance:#63a0f5; --advance-soft:#172c4d; --next:#9a97ff; --next-soft:#29284e;
+      --warn:#e6a33f; --warn-soft:#3e2c12; --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+    button,input,select{font:inherit}.wrap{max-width:1080px;margin:0 auto;padding:34px 20px 80px}
+    header{position:relative;padding:4px 0 12px}.eyebrow{display:flex;align-items:center;gap:8px;color:var(--accent);font:650 11.5px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+    .eyebrow:before{content:"";width:24px;height:2px;background:var(--accent);border-radius:2px}h1{max-width:820px;margin:13px 0 12px;font-size:clamp(31px,5vw,52px);line-height:1.04;letter-spacing:-.035em;text-wrap:balance}
+    .lede{max-width:75ch;margin:0;color:var(--ink-2);font-size:16px}.meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:17px;color:var(--muted);font:12.5px var(--mono)}
+    .theme{position:absolute;right:0;top:0;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:7px 11px;cursor:pointer}
+    .hero{margin-top:22px;padding:22px;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:16px;background:linear-gradient(135deg,var(--surface),var(--accent-soft));box-shadow:var(--shadow)}
+    .hero-kicker{font:650 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}.hero h2{margin:7px 0 8px;font-size:clamp(20px,3vw,28px);line-height:1.2}.hero p{max-width:76ch;margin:0;color:var(--ink-2)}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 8px}.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px;box-shadow:var(--shadow)}
+    .stat .n{font-size:29px;font-weight:750;letter-spacing:-.03em;line-height:1}.stat .l{margin-top:7px;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}.stat.done .n{color:var(--done)}.stat.advance .n{color:var(--advance)}.stat.next .n{color:var(--next)}.stat.area .n{color:var(--accent)}
+    .progress{height:8px;margin:12px 0 0;border-radius:99px;background:var(--surface-2);overflow:hidden}.progress span{display:block;width:86.6%;height:100%;background:linear-gradient(90deg,var(--done),var(--accent));border-radius:inherit}
+    section{margin-top:34px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin-bottom:12px}.section-head h2{margin:0;font-size:22px;letter-spacing:-.02em}.section-head p{max-width:64ch;margin:3px 0 0;color:var(--muted);font-size:13px}
+    .outcomes{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}.outcome{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:17px;box-shadow:var(--shadow)}
+    .outcome .icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);font-size:18px}.outcome h3{margin:11px 0 5px;font-size:16px}.outcome p{margin:0;color:var(--ink-2);font-size:13.5px}
+    .team{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.person{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px}.person .name{font-weight:720}.person .focus{margin-top:5px;color:var(--ink-2);font-size:13px}.person .date{margin-top:9px;color:var(--muted);font:10.5px var(--mono);text-transform:uppercase}
+    .next-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.next-card{border:1px solid var(--line);border-left:3px solid var(--next);border-radius:10px;background:var(--surface);padding:14px 16px}.next-card h3{margin:0 0 4px;font-size:14.5px}.next-card p{margin:0;color:var(--ink-2);font-size:13px}
+    .note{margin-top:12px;padding:13px 15px;border:1px solid color-mix(in srgb,var(--warn) 30%,var(--line));border-radius:10px;background:var(--warn-soft);color:var(--ink-2);font-size:13px}.note b{color:var(--ink)}
+    .controls{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 18px;padding:12px 0;background:var(--bg);border-bottom:1px solid var(--line)}
+    .search{min-width:220px;flex:1;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);color:var(--ink);padding:9px 11px}.filter{border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);color:var(--ink-2);padding:7px 12px;cursor:pointer;font-size:13px}.filter[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}.count{color:var(--muted);font:11.5px var(--mono)}
+    .report-group{margin:25px 0}.group-head{display:flex;align-items:baseline;gap:10px;margin-bottom:9px}.group-head h3{margin:0;font-size:18px}.group-head span{color:var(--muted);font-size:12px}.items{display:flex;flex-direction:column;gap:8px}
+    .item{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--done);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}.item[data-state="advanced"]{border-left-color:var(--advance)}
+    .item-top{display:flex;flex-wrap:wrap;align-items:center;gap:7px}.badge{padding:3px 7px;border-radius:5px;background:var(--done-soft);color:var(--done);font:700 10px var(--mono);letter-spacing:.04em;text-transform:uppercase}.item[data-state="advanced"] .badge{background:var(--advance-soft);color:var(--advance)}
+    .item-title{flex:1;min-width:220px;font-weight:660;font-size:14.5px}.tag{border:1px solid var(--line);border-radius:5px;background:var(--surface-2);color:var(--muted);padding:2px 6px;font:10px var(--mono)}.item p{margin:6px 0 0;color:var(--ink-2);font-size:13px}
+    .empty{display:none;padding:25px;text-align:center;color:var(--muted);border:1px dashed var(--line-strong);border-radius:12px}.legend{display:flex;flex-wrap:wrap;gap:12px;color:var(--muted);font-size:12px}.legend span{display:inline-flex;align-items:center;gap:6px}.dot{width:8px;height:8px;border-radius:50%;background:var(--done)}.dot.advance{background:var(--advance)}
+    footer{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}.print-only{display:none}
+    @media(max-width:780px){.stats,.team{grid-template-columns:repeat(2,1fr)}.outcomes,.next-grid{grid-template-columns:1fr}.theme{position:static;margin-top:15px}.section-head{display:block}.wrap{padding-top:24px}}
+    @media(max-width:460px){.stats{grid-template-columns:1fr 1fr}.stat{padding:12px}.stat .n{font-size:24px}.team{grid-template-columns:1fr}.controls{top:-1px}.search{min-width:100%}}
+    @media print{body{background:#fff;color:#111}.wrap{max-width:none;padding:12mm}.theme,.controls{display:none!important}.item,.outcome,.stat,.person,.next-card{box-shadow:none;break-inside:avoid}.report-group{break-inside:avoid-page}.print-only{display:block}.item[hidden],.report-group[hidden]{display:block!important}section{margin-top:22px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Weekly product update</div>
+    <h1>What we improved in PickleBallers this week</h1>
+    <p class="lede">A plain-language summary of the work completed across court booking, Open Play, owner tools, the public website, the mobile app, and the server.</p>
+    <div class="meta"><span><b>Coverage</b> 17–22 July 2026</span><span><b>Product</b> PickleBallers</span><span><b>Audience</b> Client update</span></div>
+    <button class="theme" id="themeButton" type="button" aria-label="Switch color theme">◐ Theme</button>
+  </header>
+
+  <div class="hero">
+    <div class="hero-kicker">The week in one sentence</div>
+    <h2>We moved from “the screen exists” to “the full journey behaves properly.”</h2>
+    <p>The team concentrated on the moments around each feature: what happens when an owner does not respond, a player changes their mind, a network request fails, two people act at the same time, or a staff account should have limited access.</p>
+  </div>
+
+  <div class="stats" aria-label="Weekly progress totals">
+    <div class="stat done"><div class="n" id="doneStat">71</div><div class="l">Delivered</div></div>
+    <div class="stat advance"><div class="n" id="advancedStat">11</div><div class="l">Advanced this week</div></div>
+    <div class="stat area"><div class="n" id="areaStat">7</div><div class="l">Product areas</div></div>
+    <div class="stat next"><div class="n">5</div><div class="l">Next items in motion</div></div>
+  </div>
+  <div class="progress" aria-label="71 of 82 reported improvements delivered"><span></span></div>
+
+  <section>
+    <div class="section-head"><div><h2>The biggest outcomes for players and venues</h2><p>These are the changes clients and users are most likely to notice.</p></div></div>
+    <div class="outcomes">
+      <article class="outcome"><div class="icon">⏱</div><h3>Booking requests no longer sit forever</h3><p>Owner-approval requests now have clear deadlines, countdowns, reminders, automatic release of expired court time, and messages for both player and owner.</p></article>
+      <article class="outcome"><div class="icon">✓</div><h3>Joining Open Play is a complete journey</h3><p>A player’s pending request now stays visible after leaving the screen, can be cancelled, and can be reviewed by the host without duplicate or over-capacity joins.</p></article>
+      <article class="outcome"><div class="icon">⌂</div><h3>Venue teams have better day-to-day controls</h3><p>Manual reservations show booked and maintenance hours clearly, fully booked courts are disabled, and owners can give each staff member only the access they need.</p></article>
+      <article class="outcome"><div class="icon">↗</div><h3>The website now leads people into the app</h3><p>Booking, login, registration, game creation, club creation, coach hiring, and major competition calls-to-action now point users toward the mobile experience.</p></article>
+      <article class="outcome"><div class="icon">↻</div><h3>Mobile errors are recoverable</h3><p>Important screens now distinguish “nothing here” from “could not load,” show useful messages, restore failed optimistic actions, and give the user a retry path.</p></article>
+      <article class="outcome"><div class="icon">⚙</div><h3>The server is safer under real-world pressure</h3><p>Concurrent game joins and roster changes are atomic, exact-slot booking collisions are guarded, malformed input receives clean errors, and venue deletion preserves history.</p></article>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><div><h2>Team delivery roll-up</h2><p>The work is presented by customer outcome below; this is the contributor view.</p></div></div>
+    <div class="team">
+      <article class="person"><div class="name">Kenneth</div><div class="focus">Player-hosted events, approval lobbies, persistent join requests, request cancellation, host editing, and staff revenue access.</div><div class="date">17 &amp; 21 July</div></article>
+      <article class="person"><div class="name">Vic / Jambik / Victor</div><div class="focus">Approval and payment deadlines, automatic expiry, court release, reminders, countdowns, settings, and decline notifications.</div><div class="date">20 July</div></article>
+      <article class="person"><div class="name">Edu</div><div class="focus">Organizer fees and profiles, player birthday, manual reservations, fully booked courts, and individual staff permissions.</div><div class="date">20 &amp; 21 July</div></article>
+      <article class="person"><div class="name">Ivan</div><div class="focus">Website-to-app journeys, mobile recovery states, owner dashboard resilience, and server concurrency/input safety.</div><div class="date">21 July</div></article>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><div><h2>What is already in motion next</h2><p>These items have active work or a known dependency and carry into the next update.</p></div></div>
+    <div class="next-grid">
+      <article class="next-card"><h3>Owner payouts and GCash/bank setup</h3><p>The payout and manual GCash work has progressed on the payment branch. Final live activation depends on production payment setup.</p></article>
+      <article class="next-card"><h3>Paid coach and organizer activation</h3><p>The payment path is being tightened so paid access is never granted before a valid payment is recorded.</p></article>
+      <article class="next-card"><h3>Senior and PWD discount</h3><p>The 20% discount workflow has been built on its delivery branch and is being prepared for integration and live rollout.</p></article>
+      <article class="next-card"><h3>Final booking hardening</h3><p>Follow-up work covers unusual overlapping time ranges, very last-minute payment deadlines, and durable retry protection across a full app reload.</p></article>
+      <article class="next-card"><h3>Client inputs and production readiness</h3><p>Final GCash details and the complete venue/court list are still needed to finish production-like booking and payment checks.</p></article>
+    </div>
+    <div class="note"><b>Current payment state:</b> the system remains in payment test mode. The screens and workflows can continue to progress, but real-money launch should be communicated separately after production credentials and end-to-end payment checks are complete.</div>
+  </section>
+
+  <section id="full-update">
+    <div class="section-head"><div><h2>Complete weekly change log</h2><p>All reported improvements, rewritten in customer language. “Advanced” means meaningful work shipped this week while a narrower follow-up remains.</p></div><div class="legend"><span><i class="dot"></i> Delivered</span><span><i class="dot advance"></i> Advanced</span></div></div>
+    <div class="controls">
+      <input class="search" id="search" type="search" placeholder="Search the weekly update…" aria-label="Search update">
+      <button class="filter" data-filter="all" aria-pressed="true" type="button">All</button>
+      <button class="filter" data-filter="done" aria-pressed="false" type="button">Delivered</button>
+      <button class="filter" data-filter="advanced" aria-pressed="false" type="button">Advanced</button>
+      <span class="count" id="visibleCount"></span>
+    </div>
+    <div id="report"></div>
+    <div class="empty" id="empty">No update matches that search.</div>
+  </section>
+
+  <footer>
+    PickleBallers weekly product update · 17–22 July 2026<br>
+    Prepared as a client-facing delivery summary across the player app, owner tools, public website, and backend.
+  </footer>
+</div>
+
+<script>
+const updates = [
+  {g:"Game hosting & Open Play",by:"Kenneth",d:"17 Jul",s:"done",t:"Players can create their own events",p:"Regular player accounts can publish public games, not only paid organizer accounts."},
+  {g:"Game hosting & Open Play",by:"Kenneth",d:"17 Jul",s:"done",t:"Hosts can require approval before someone joins",p:"A host can turn on an approval step so new players wait for acceptance before entering the lobby."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Every approval request receives an expiry deadline",p:"A court is no longer held indefinitely while waiting for an owner response."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Expired requests cancel automatically and release the court",p:"The player is not charged, the time becomes available again, and both sides receive an update."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Availability updates at the deadline itself",p:"Expired requests stop blocking the court even before the scheduled clean-up process runs."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"advanced",t:"Approval time now adjusts to how soon the game starts",p:"Last-minute requests receive shorter response windows, while owners can still choose a longer policy for early bookings."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Court cards show when owner approval is required",p:"Players know the booking rule before selecting a court."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Players see the exact deadline and a live countdown",p:"The waiting state clearly explains when the request expires and confirms that no payment was taken."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Owners receive countdowns, reminders, and urgency sorting",p:"Requests that need attention soonest are shown first, with halfway and final reminders."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Response and payment settings are now reachable",p:"Venue owners can control approval and payment windows from their booking-policy screen."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"advanced",t:"Payment deadlines now account for scheduled play time",p:"Normal bookings are cut off before play begins; an extreme last-minute edge case remains in the final hardening list."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Venue-wide Require Owner Approval now works",p:"The venue policy and individual court overrides now feed the actual booking decision."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Declined requests notify the player",p:"Players receive both an in-app notification and an email when an owner declines a request."},
+  {g:"Booking approvals",by:"Vic",d:"20 Jul",s:"done",t:"Booking notifications open a useful destination",p:"Tapping a booking message now takes the player or owner to the appropriate booking list."},
+  {g:"Profiles & organizer tools",by:"Edu",d:"20 Jul",s:"done",t:"Organizer accounts display the correct role",p:"Profiles and navigation now show Organizer after a valid organizer subscription is active."},
+  {g:"Profiles & organizer tools",by:"Edu",d:"20 Jul",s:"done",t:"Organizers can add an optional Open Play entrance fee",p:"A session can be free or carry a clearly stated participation fee."},
+  {g:"Profiles & organizer tools",by:"Edu",d:"20 Jul",s:"done",t:"Players see and confirm an entrance fee before joining",p:"The amount is shown before the player commits to the session."},
+  {g:"Profiles & organizer tools",by:"Edu",d:"20 Jul",s:"done",t:"Birthday is available as an optional profile field",p:"Players can add their date of birth with a date picker instead of typing free-form text."},
+  {g:"Profiles & organizer tools",by:"Edu",d:"20 Jul",s:"done",t:"Birthday entries are validated and saved",p:"The edit-profile journey checks the date and stores it on the signed-in player’s account."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Book a Court sends users into the mobile experience",p:"Opening the website booking route now guides the user to the PickleBallers PWA."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Website Login and Register lead to PWA login",p:"Users avoid an unnecessary download-page detour."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Sign-in-to-join and sign-in-to-register actions go directly to the app",p:"The main public participation journeys now use one clear destination."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"advanced",t:"Venue booking calls-to-action are clearer",p:"The normal venue action now says Book a court and opens the app; venues with their own external booking link continue to use it."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Club creation guides signed-out users into the app",p:"The Create action no longer leaves an unauthenticated user at a dead end."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Create a Game now presents a useful app prompt",p:"The old dead web form has been replaced with a clear route to create the game in the PWA."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Coach pages now include a Hire Coach action",p:"The new green call-to-action takes interested players into the app."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Open Play detail uses the clearer Join Game label",p:"The action now matches the language players see in the app."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"The Compete menu now presents five clear options",p:"Open Play, Leagues, Quick Game, Round Robin, and Mini Tournament are grouped together, with app-first links where appropriate."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"advanced",t:"Public Host, Create, Join, and Book journeys are now app-first",p:"The public acquisition paths are consistent while authenticated management actions remain inside the website console."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"A broken route shows a friendly recovery card",p:"One page failure no longer replaces the entire website with a blank or broken screen."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"One incomplete venue response no longer crashes the owner dashboard",p:"Available venues and statistics continue to load even when one venue request fails."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"advanced",t:"Owner and admin layouts stay visible while tabs load",p:"Navigation no longer disappears behind a full-page loading screen; a smaller loading state remains inside the content area."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Mistyped console URLs show a proper Not Found page",p:"Owner, admin, organizer, coach, player-dashboard, and public routes all have a useful fallback."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Failed chat messages can be retried",p:"The message remains visible with an error state instead of silently disappearing."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Prices use Philippine peso formatting",p:"Shared money formatting keeps price displays consistent across player and owner pages."},
+  {g:"Public website",by:"Ivan",d:"21 Jul",s:"done",t:"Conversation deletion handles overlapping actions safely",p:"A deleted row no longer unexpectedly returns because another action completed at the same time."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"A screen error no longer whitescreens the entire app",p:"Players receive a friendly recovery card with a reload option."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Owner data failures are separated from genuinely empty results",p:"Bookings, games, and reviews no longer show misleading zero or empty states after a failed request."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Edit Club retry works",p:"A failed club load can be requested again without leaving the screen stuck."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"The social feed distinguishes an error from No posts yet",p:"A failed feed load now explains the problem and offers retry."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Tournament scores reset between matches",p:"Numbers from the previous match no longer carry into the next score sheet."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Map markers use bundled assets",p:"Court pins no longer depend on downloading marker images while the app is in use."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"The clubs directory distinguishes error from no results",p:"A connection failure now shows retry instead of incorrectly saying no clubs were found."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Failed feed hide or delete actions restore the post",p:"If the server rejects the action, the app puts the content back rather than pretending it succeeded."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Failed conversation loads have retry",p:"Chat screens now provide a clear recovery path."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"advanced",t:"Organizer action feedback was expanded",p:"Several management actions now surface failures; remaining silent approve, check-in, cancel, and remove paths are in follow-up."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Venue overview warns when only part of the data loaded",p:"Owners no longer see incomplete zeros that look like real business results."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Owner profile has proper loading and error states",p:"A failed request no longer appears as zero venues and zero courts."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Venue saving reports refresh failures",p:"An owner is told when the final reload after saving did not succeed."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Membership success waits for server confirmation",p:"A failed venue membership request is rolled back and explained to the user."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Booking cancellation failures are explained",p:"The player receives a reason and can retry instead of seeing nothing happen."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Waitlist claim failures are visible",p:"A player knows when a promoted slot could not be claimed."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Booking-link venue failures show retry",p:"A broken or temporary venue request no longer spins forever."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Court-list failures are not presented as No courts",p:"The Nearby screen shows a load error and lets the player try again."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Availability failures produce an accuracy warning",p:"The map no longer presents every court as confidently free when live availability could not be checked."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Venue messaging and coach applications show failures",p:"Players receive feedback when either action cannot be completed."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"done",t:"Open Play detail has a real retry state",p:"A temporary load problem is no longer described as if the session had been removed."},
+  {g:"Mobile app reliability",by:"Ivan",d:"21 Jul",s:"advanced",t:"Create Game remembers completed steps during retry",p:"The mounted create flow avoids repeating successful steps; durable protection across a complete reload is the next hardening step."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"advanced",t:"Exact last-court booking collisions have a database guard",p:"Two confirmed bookings cannot take the same court, date, start time, and sub-unit; broader overlapping time ranges are next."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"advanced",t:"Exact coach-session collisions have the same protection",p:"Only one confirmed session can occupy the same coach, date, and start time; overlapping ranges are being hardened further."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"advanced",t:"Booking time input was hardened before pricing",p:"Badly shaped and non-numeric times are rejected; full clock-range validation is included in follow-up."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Search handles unusual characters safely",p:"Punctuation and special symbols are treated as literal search text instead of breaking or slowing the query."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Unverified coaches cannot publish themselves",p:"An administrator must verify the coach before the profile can enter the public directory."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Game joins are atomic",p:"Concurrent joins cannot duplicate the same player or push the lobby beyond its player cap."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Roster add and remove operations no longer overwrite each other",p:"Each change updates only the intended member, preserving other simultaneous edits."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Waitlist claims create an unpaid hold with a deadline",p:"A claimed slot waits for payment for one hour instead of becoming a free permanent confirmation."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Broken or empty request bodies receive a clean response",p:"The API returns a useful invalid-request message instead of a general server failure."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Mistyped and stale IDs receive a clean response",p:"Bad links are handled as invalid identifiers rather than unexpected server crashes."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Deleted accounts no longer break the Who’s here panel",p:"The venue check-in list safely skips a player record that no longer exists."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Already exists collisions return a clear conflict",p:"Users receive an understandable message when another action has just taken the same slot or record."},
+  {g:"Server & data safety",by:"Ivan",d:"21 Jul",s:"done",t:"Venue deletion now preserves history",p:"A venue is archived instead of erased, and deletion is blocked while future bookings still need to be resolved."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"Unpriced manual dates no longer create false booking conflicts",p:"Walk-in and phone reservations can proceed when a date has no special price override."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"Manual booking time picker labels booked and maintenance hours",p:"Front-desk staff can understand why a time cannot be selected."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"Fully booked courts are disabled and clearly marked",p:"The court picker prevents selection and shows Fully Booked before the user continues."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"Owners can assign access per staff member",p:"Different employees no longer need to share one all-or-nothing staff access level."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"The staff Access panel covers four business areas",p:"Owners can control Pricing, Analytics, Bookings, and Venue Management separately."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"Updated staff access is applied on the next sign-in",p:"The staff account receives its latest individual permissions when the session is refreshed."},
+  {g:"Owner operations & staff",by:"Edu",d:"21 Jul",s:"done",t:"Pricing permissions are enforced by the server",p:"Hiding a button is no longer the only protection; unauthorized pricing changes are rejected underneath."},
+  {g:"Game hosting & Open Play",by:"Kenneth",d:"21 Jul",s:"done",t:"A pending join request stays visible after navigation",p:"Leaving and reopening the play no longer makes the app forget that the player already requested access."},
+  {g:"Game hosting & Open Play",by:"Kenneth",d:"21 Jul",s:"done",t:"Players can cancel a pending join request",p:"A player who changes plans can remove themselves from the host’s waiting queue."},
+  {g:"Game hosting & Open Play",by:"Kenneth",d:"21 Jul",s:"done",t:"Hosts can edit a play after publishing",p:"The host can update the name, player limit, skill requirement, visibility, and approval setting."},
+  {g:"Owner operations & staff",by:"Kenneth",d:"21 Jul",s:"advanced",t:"Staff revenue is hidden by default with owner-controlled exceptions",p:"Standard staff no longer receive analytics access. An owner can intentionally grant analytics to a specific trusted staff account."}
+];
+
+const labels={done:"Delivered",advanced:"Advanced"};
+const report=document.getElementById("report");
+const empty=document.getElementById("empty");
+const search=document.getElementById("search");
+const count=document.getElementById("visibleCount");
+let active="all";
+
+function esc(value){return String(value).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);}
+function render(){
+  const term=search.value.trim().toLowerCase();
+  const filtered=updates.filter(x=>(active==="all"||x.s===active)&&(!term||`${x.g} ${x.by} ${x.d} ${x.t} ${x.p}`.toLowerCase().includes(term)));
+  const groups=[...new Set(updates.map(x=>x.g))];
+  report.innerHTML=groups.map(group=>{
+    const rows=filtered.filter(x=>x.g===group);
+    if(!rows.length)return "";
+    return `<section class="report-group"><div class="group-head"><h3>${esc(group)}</h3><span>${rows.length} update${rows.length===1?"":"s"}</span></div><div class="items">${rows.map(x=>`<article class="item" data-state="${x.s}"><div class="item-top"><span class="badge">${labels[x.s]}</span><span class="item-title">${esc(x.t)}</span><span class="tag">${esc(x.by)}</span><span class="tag">${esc(x.d)}</span></div><p>${esc(x.p)}</p></article>`).join("")}</div></section>`;
+  }).join("");
+  count.textContent=`Showing ${filtered.length} of ${updates.length}`;
+  empty.style.display=filtered.length?"none":"block";
+}
+
+document.querySelectorAll(".filter").forEach(btn=>btn.addEventListener("click",()=>{
+  active=btn.dataset.filter;
+  document.querySelectorAll(".filter").forEach(b=>b.setAttribute("aria-pressed",String(b===btn)));
+  render();
+}));
+search.addEventListener("input",render);
+
+const done=updates.filter(x=>x.s==="done").length;
+const advanced=updates.filter(x=>x.s==="advanced").length;
+document.getElementById("doneStat").textContent=done;
+document.getElementById("advancedStat").textContent=advanced;
+document.getElementById("areaStat").textContent=new Set(updates.map(x=>x.g)).size;
+document.querySelector(".progress span").style.width=`${(done/updates.length*100).toFixed(1)}%`;
+
+const themeButton=document.getElementById("themeButton");
+const saved=localStorage.getItem("pb-report-theme");
+if(saved)document.documentElement.dataset.theme=saved;
+themeButton.addEventListener("click",()=>{
+  const dark=document.documentElement.dataset.theme==="dark";
+  document.documentElement.dataset.theme=dark?"light":"dark";
+  localStorage.setItem("pb-report-theme",dark?"light":"dark");
+});
+render();
+</script>
+</body>
+</html>

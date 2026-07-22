@@ -34,18 +34,11 @@ export function OrganizerHubScreen({ onNavigate, onBack }: OrganizerHubScreenPro
 
   const tools: Tool[] = [
     {
-      key: 'games', icon: 'trophy', color: 'var(--primary)',
-      label: 'Games', description: 'Create and manage tournaments, brackets, and structured games.',
+      key: 'tournaments', icon: 'trophy', color: 'var(--primary)',
+      label: 'Tournaments', description: 'Create, register, seed, and run brackets to a champion.',
       onPress: () => onNavigate('organizer-tournaments'), perm: 'organizer.tournaments.manage',
-      stat: loading ? undefined : counts.tournaments + ' total - ' + counts.activeTournaments + ' active',
+      stat: loading ? undefined : `${counts.tournaments} total · ${counts.activeTournaments} active`,
     },
-    // HIDDEN: tournaments temporarily disabled for all roles
-    // {
-    //   key: 'tournaments', icon: 'trophy', color: 'var(--primary)',
-    //   label: 'Tournaments', description: 'Create, register, seed, and run brackets to a champion.',
-    //   onPress: () => onNavigate('organizer-tournaments'), perm: 'organizer.tournaments.manage',
-    //   stat: loading ? undefined : `${counts.tournaments} total · ${counts.activeTournaments} active`,
-    // },
     {
       key: 'open-play', icon: 'calendar', color: '#5b7400',
       label: 'Open Play', description: 'Recurring weekly sessions with rosters and attendance.',
@@ -58,13 +51,12 @@ export function OrganizerHubScreen({ onNavigate, onBack }: OrganizerHubScreenPro
       onPress: () => onNavigate('organizer-rosters'), perm: 'organizer.events.manage',
       stat: loading ? undefined : `${counts.rosters} list${counts.rosters === 1 ? '' : 's'}`,
     },
-    // HIDDEN: venue requests temporarily disabled (depends on tournaments)
-    // {
-    //   key: 'venue-requests', icon: 'storefront', color: 'var(--primary)',
-    //   label: 'Venue Requests', description: 'Request a venue for a tournament and track approvals.',
-    //   onPress: () => onNavigate('organizer-venue-requests', {}), perm: 'organizer.tournaments.manage',
-    //   stat: loading ? undefined : (counts.pendingRequests > 0 ? `${counts.pendingRequests} pending` : 'Up to date'),
-    // },
+    {
+      key: 'venue-requests', icon: 'storefront', color: 'var(--primary)',
+      label: 'Venue Requests', description: 'Request a venue for a tournament and track approvals.',
+      onPress: () => onNavigate('organizer-venue-requests', {}), perm: 'organizer.tournaments.manage',
+      stat: loading ? undefined : (counts.pendingRequests > 0 ? `${counts.pendingRequests} pending` : 'Up to date'),
+    },
   ];
 
   const visible = tools.filter((t) => userHasPermission(currentUser, t.perm));

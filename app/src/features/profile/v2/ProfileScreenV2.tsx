@@ -143,6 +143,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   // the competitive block. Admins/moderators get neither.
   const showPlayerStats = role === 'player' || role === 'coach';
   const showOrganizerStats = role === 'organizer';
+  // Coaching and Organizer subscription sections are for community members who
+  // might want to upgrade. Admins and moderators are platform operators — they
+  // manage the platform, they don't need to subscribe to a partner plan.
+  const showPartnerSections = role !== 'admin' && role !== 'moderator';
   // Gates on the live PAID subscription, not the `coach` role — an approved
   // venue application grants that role without one. Flips the row from
   // "Become a coach" to "Coach subscription" and reveals session requests.
@@ -186,9 +190,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   const [metrics, setMetrics] = useState<ProfileMetrics | null>(null);
   const [orgMetrics, setOrgMetrics] = useState<OrganizerMetrics | null>(null);
   const [loading, setLoading] = useState(true);
-  // Appearance is collapsed by default; the theme options reveal on tap (like
-  // the Account rows below), so the screen leads with a tidy single row.
+  // Appearance is collapsed by default; the theme options reveal on tap.  The
+  // content wrapper closes it when any other row is tapped (accordion pattern).
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const closeSections = () => setAppearanceOpen(false);
   const currentTheme = THEMES.find((t) => t.id === theme);
 
   const [prevStatsKey, setPrevStatsKey] = useState(`${isLoggedIn}|${user?.id ?? ''}|${showPlayerStats}`);
@@ -283,26 +288,31 @@ export function ProfileScreenV2(props: ProfileV2Props) {
               <div className="stat-col"><span className="stat-col-number games">{orgMetrics ? orgMetrics.players : '—'}</span><span className="stat-col-label">Players</span></div>
             </div>
           )}
-          <div style={{ marginTop: 16 }}>
-            <button className="edit-profile-btn" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
-          </div>
+          {showPartnerSections && (
+            <div style={{ marginTop: 16 }}>
+              <button className="edit-profile-btn" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* CONTENT — Win Rate stays demo (no results API); Activity, Booking
-          History + Recent Games are live (derived from games + bookings). */}
-      <div>
+          History + Recent Games are live (derived from games + bookings).
+          Tapping any non-collapsible row closes open sections (accordion). */}
+      <div onClick={closeSections}>
         <div className="section-gap" />
 
         {/* Coaching — the canonical home of the coach subscription. The Home tab
-            only carries a CTA that routes here. Shown to every signed-in player:
-            subscribing is how you *become* a coach, so it can't require the role.
+            only carries a CTA that routes here. Shown to every signed-in
+            community member: subscribing is how you *become* a coach, so it
+            can't require the role. Admins and moderators skip this — they manage
+            the platform, they don't need a partner plan.
 
             A player who isn't a coach yet sees the PITCH as an upgrade banner
             (same treatment as "Unlock Full Stats"); tapping it opens a sheet that
             spells out what the plan unlocks before sending them to the paid
             screen. Once subscribed the banner is replaced by plain manage rows. */}
-        {isLoggedIn && (
+        {isLoggedIn && showPartnerSections && (
           <div className="content-section">
             <h2 className="section-title">Coaching</h2>
 
@@ -358,8 +368,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         {/* Organizing — mirrors Coaching. A player who isn't a subscribed organizer
             sees the PITCH banner (→ the paid organizer-subscribe screen); once
             subscribed it's replaced by the console + a manage-plan row. Shown to
-            every signed-in player, since subscribing is how you *become* one. */}
-        {isLoggedIn && (
+            every signed-in community member, since subscribing is how you
+            *become* one. Admins and moderators skip this — they manage the
+            platform, they don't need a partner plan. */}
+        {isLoggedIn && showPartnerSections && (
           <div className="content-section">
             <h2 className="section-title">Organizer</h2>
 
@@ -412,29 +424,18 @@ export function ProfileScreenV2(props: ProfileV2Props) {
           </div>
         )}
 
-        {userHasPermission(user, 'admin.moderation.manage') && (
+        {userHasPermission(user, 'admin.access') && (
           <div className="content-section">
             <h2 className="section-title">Admin</h2>
             <ul className="settings-list">
-              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('admin-claims')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('admin-claims'); } }}>
+              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('admin-hub')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('admin-hub'); } }}>
                 <div className="settings-icon">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
                 </div>
                 <div className="settings-label">
-                  <strong>Venue claims</strong>
-                  <span>Review ownership claims</span>
-                </div>
-                <Chevron />
-              </li>
-              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('admin-post-reports')}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNavigate('admin-post-reports'); } }}>
-                <div className="settings-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" /></svg>
-                </div>
-                <div className="settings-label">
-                  <strong>Post reports</strong>
-                  <span>Review reported posts</span>
+                  <strong>Admin console</strong>
+                  <span>Manage the platform</span>
                 </div>
                 <Chevron />
               </li>
@@ -530,15 +531,18 @@ export function ProfileScreenV2(props: ProfileV2Props) {
 
         {/* SETTINGS — inlined here so the player sees every action on one screen
             (no drilling into a separate Settings page). */}
-        <div className="content-section">
-          <h2 className="section-title">Appearance</h2>
+        {/* Appearance — theme switcher. Shown only to community members; admins and
+            moderators manage the platform, not their profile look. */}
+        {showPartnerSections && (
+          <div className="content-section">
+            <h2 className="section-title">Appearance</h2>
           <ul className="settings-list">
             <li
               className="settings-item"
               role="button"
               tabIndex={0}
               aria-expanded={appearanceOpen}
-              onClick={() => setAppearanceOpen((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setAppearanceOpen((v) => !v); }}
             >
               <div className="settings-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>
@@ -578,11 +582,15 @@ export function ProfileScreenV2(props: ProfileV2Props) {
             )}
           </ul>
         </div>
+        )}
 
         <div className="content-section">
           <h2 className="section-title">Account</h2>
           <ul className="settings-list">
-            <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('edit-profile')}>
+            {/* Edit Profile — community members manage their player profile; admins
+                and moderators don't have a player-facing profile to edit. */}
+            {showPartnerSections && (
+              <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('edit-profile')}>
               <div className="settings-icon">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
               </div>
@@ -592,6 +600,7 @@ export function ProfileScreenV2(props: ProfileV2Props) {
               </div>
               <Chevron />
             </li>
+            )}
 
             {userHasPermission(user, 'user.messages.send') && (
               <li className="settings-item" role="button" tabIndex={0} onClick={() => onNavigate('messages')}>

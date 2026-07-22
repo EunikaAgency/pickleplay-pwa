@@ -6,7 +6,7 @@ import { Venue, VenueStaff } from '../venues/venues.model.js';
 import { signAccessToken, signRefreshToken, verifyToken } from '../../shared/lib/jwt.js';
 import { resolveRolePermissions, resolveSubscriptionPermissions } from '../../shared/lib/permissions.js';
 import { getOAuthUrl, exchangeCode, isGmailConfigured, hasValidTokens, sendEmail, getStoredTokens } from '../../shared/lib/gmail.js';
-import { passwordChangedEmail, passwordResetEmail, welcomeEmail } from '../../shared/lib/email-templates.js';
+import { emailVerificationEmail, passwordChangedEmail, passwordResetEmail, welcomeEmail } from '../../shared/lib/email-templates.js';
 import { PartnerSubscription, expireLapsedSubscriptions } from '../partner-subscriptions/partner-subscriptions.model.js';
 
 // Public self-registration is limited to player and owner. Everyone signs up as
@@ -224,7 +224,7 @@ async function authUserPayload(user: any) {
   };
 }
 
-async function tokenPayloadFor(user: any) {
+export async function tokenPayloadFor(user: any) {
   const roles = await getUserRoles(user);
   // Partner permissions ride in the token too, so every requirePermission check
   // sees them without a DB read — the term is re-checked on each refresh.
@@ -278,6 +278,11 @@ export async function register(c: any) {
     sendEmail({ to: body.email, subject: `Welcome to PickleBallers, ${body.displayName}!`, body: text, html, userInfo: `${body.displayName} - ${body.role}` })
       .catch((err: Error) => console.error('[register] Welcome email failed:', err.message));
   }
+
+  // Kick off email verification — issue a token and email the verify link so a
+  // typo'd address surfaces now, while it's fixable, instead of later when a
+  // password-reset link would silently go to an address the user doesn't own.
+  await issueEmailVerification(user, body.role);
 
   return c.json({ data: { accessToken, refreshToken, user: await authUserPayload(user) } }, 201);
 }
@@ -475,6 +480,31 @@ export async function resetPassword(c: any) {
 
 // ── Email verification ───────────────────────────────────────────
 
+/** Issue a fresh email-verification token for a user and (best-effort) email
+ *  the verify link. Any earlier unused tokens are expired so only the newest
+ *  link works. Returns the raw token ONLY when email isn't configured (dev), so
+ *  callers can surface it inline for local testing; '' otherwise. Shared by
+ *  register + resend-verification. */
+async function issueEmailVerification(user: any, roleLabel: string): Promise<string> {
+  await EmailVerificationToken.updateMany(
+    { userId: user._id, verifiedAt: null, expiresAt: { $gt: new Date() } },
+    { $set: { verifiedAt: new Date() } },
+  );
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  await EmailVerificationToken.create({ userId: user._id, email: user.email!, token, expiresAt });
+
+  const canEmail = isGmailConfigured() && hasValidTokens();
+  if (canEmail) {
+    const verifyUrl = `${process.env.APP_ORIGIN || 'https://pickleballer-pwa.eunika.xyz'}/verify-email?token=${encodeURIComponent(token)}`;
+    const { html, text } = emailVerificationEmail(verifyUrl);
+    // Fire-and-forget so a slow SMTP hop never blocks the caller (register/resend).
+    sendEmail({ to: user.email!, subject: 'Verify your PickleBallers email', body: text, html, userInfo: `${user.displayName} - ${roleLabel}` })
+      .catch((err: Error) => console.error('[verify-email] Gmail send failed:', err.message));
+  }
+  return canEmail ? '' : token;
+}
+
 const verifyEmailSchema = z.object({
   token: z.string().min(1),
 });
@@ -504,17 +534,7 @@ export async function resendVerification(c: any) {
     return c.json({ data: { message: 'Email is already verified.' } });
   }
 
-  // Expire any unused tokens for this email.
-  await EmailVerificationToken.updateMany(
-    { userId: user._id, verifiedAt: null, expiresAt: { $gt: new Date() } },
-    { $set: { verifiedAt: new Date() } },
-  );
-
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-  await EmailVerificationToken.create({ userId: user._id, email: user.email!, token, expiresAt });
-
-  const devToken = !process.env.EMAIL_FROM ? token : undefined;
+  const devToken = await issueEmailVerification(user, user.roleDefault || 'player');
 
   return c.json({
     data: {

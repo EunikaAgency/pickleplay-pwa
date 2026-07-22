@@ -164,6 +164,41 @@ describe('partner subscription payment gating', () => {
     expect(activated.expiresAt.getTime() - activated.startedAt.getTime())
       .toBe(45 * 24 * 60 * 60 * 1000);
   });
+
+  it('keeps the selected tier duration when a live GCash payment is confirmed later', async () => {
+    const player = await makeUser('tiered@example.com');
+    await AppSettings.create({
+      key: 'global',
+      paymentTestMode: false,
+      partnerSubscriptionDays: 30,
+      coachPlanTiers: [{ key: 'quarterly', label: 'Quarterly', durationDays: 90, price: 1200, enabled: true }],
+    });
+
+    const subscribeAttempt = mkCtx({
+      user: { sub: String(player._id) },
+      body: { plan: 'coach', tierKey: 'quarterly' },
+    });
+    await subscribe(subscribeAttempt);
+
+    const pending: any = await PartnerSubscription.findOne({ userId: player._id }).lean();
+    const payment: any = await Payment.findOne({ subscriptionId: pending._id }).lean();
+    expect(pending).toMatchObject({ status: 'pending', tierKey: 'quarterly', durationDays: 90, priceAmount: 1200 });
+
+    // A later admin edit must not rewrite the term the player already selected.
+    await AppSettings.updateOne({ key: 'global' }, { partnerSubscriptionDays: 7, coachPlanTiers: [] });
+    const adminAttempt = mkCtx({
+      user: { sub: String(new Types.ObjectId()), permissions: ['admin.bookings.manage'] },
+      params: { id: String(payment._id) },
+      body: { status: 'completed' },
+    });
+    await verifyPayment(adminAttempt);
+
+    const activated: any = await PartnerSubscription.findById(pending._id).lean();
+    expect(adminAttempt._responses[0]?.status).toBe(200);
+    expect(activated.status).toBe('active');
+    expect(activated.expiresAt.getTime() - activated.startedAt.getTime())
+      .toBe(90 * 24 * 60 * 60 * 1000);
+  });
 });
 
 describe('owner booking payment verification', () => {

@@ -442,16 +442,15 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       view: nextView === 'discover' ? undefined : nextView,
     }, { replace: true });
   };
-  // The search query deliberately survives a section/view switch: clearing it
-  // silently discarded what the user typed the moment they checked another tab.
+  // The search query AND filters deliberately survive a section/view switch:
+  // resetting either silently discarded what the user set up the moment they
+  // checked the other tab (the 20 Jul report's "filters don't persist" item).
+  // A carried-over filter that empties the list can't strand anyone — the feed's
+  // empty state names the cause and offers "Clear search & filters", and the
+  // filter button badges the active count the whole time.
   const selectSection = (next: Section) => {
     setSection(next);
     setView('discover');
-    // The two sections offer different play types (Events has no open play), so a
-    // carried-over type filter could strand the user on a guaranteed-empty list.
-    // Distance is cleared too — a filter that empties the feed must never survive
-    // a navigation the user didn't connect to it.
-    setFilters(makeDefaultGameFilters());
     syncTabUrl(next, 'discover');
   };
   const selectView = (next: View) => { setView(next); syncTabUrl(section, next); };
@@ -764,7 +763,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               hero={sort === 'best'}
               unfilteredCount={discoverUnfiltered}
               emptyText="No events available yet. Book a court and host one."
-              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
+              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }}
               narrowedByControls={q.length > 0 || activeFilterCount > 0}
               onClearControls={clearDiscoverControls}
               located={userLoc != null}
@@ -785,7 +784,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
           )}
           {!loading && section === 'games' && view === 'manage' && (
             gamesManage.length === 0
-              ? <Empty text="Plays you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />
+              ? <Empty text="Plays you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }} />
               : gamesManageFiltered.length === 0
                 ? <Empty text={`No results for "${search}"`} />
                 : gamesManageFiltered.map((g) => <GameCard key={'manage-' + g.id} game={g} onClick={() => onNavigate('game-details', { id: g.id })} action={{ label: actionId === g.id ? 'Removing...' : 'Remove Open Play', onClick: () => deleteOpenGame(g) }} />)
@@ -798,7 +797,7 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
               hero={sort === 'best'}
               unfilteredCount={discoverUnfiltered}
               emptyText="No open plays available yet. Book a court and publish one."
-              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('nearby') }}
+              emptyAction={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }}
               narrowedByControls={q.length > 0 || activeFilterCount > 0}
               onClearControls={clearDiscoverControls}
               located={userLoc != null}
@@ -1057,11 +1056,19 @@ function PlayCard({ item, onClick, located, featured }: { item: ScoredPlayItem; 
   const skillIneligible = !!me && !!item.skillBand
     && !!skillBlockReason(item.skillBand[0], item.skillBand[1], me.skillLevel, true);
   const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
-  const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // A real entrance fee gets its own chip, not just a number in the meta line —
   // venues also label their court rate "Pay to Play" / "Per Player" there, so a
   // player can't tell a genuine fee from marketing copy without this.
   const entryFee = item.joinFee != null && item.joinFee > 0 ? item.joinFee : null;
+  // `priceLabel` is a true per-player price only on a venue SESSION. On a player-
+  // hosted game it is never what the joiner pays: with an entry fee it's that fee
+  // (surfaced as the chip below), and with none it's the venue's court-cost LABEL —
+  // usually free-text like "Pay to Play" / "Per Player", not even a clean price — so
+  // it reads as a cost to join a game that's actually free. A game therefore shows
+  // no price in the meta line at all; only a session's priceLabel is shown. See
+  // PlayItem.joinFee in api.ts.
+  const priceMeta = item.kind === 'session' ? item.priceLabel : null;
+  const meta = [item.skillLabel, priceMeta, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // Three states, not two: a measured distance; "unknown" when we know where the
   // user is but the venue has no coordinates; and nothing at all when location is
   // off — in which case the banner above already explains the absence.
@@ -1158,7 +1165,7 @@ function OpenPlayJoined({ games, sessions, onNavigate, onLeave, busyId, emptyWit
 function OpenPlayManage({ games, bookings, mineGames, onNavigate, onDelete, onTogglePublish, busyId, emptyWithData, unfilteredCount }: { games: ApiGame[]; bookings: ApiBooking[]; mineGames: ApiGame[]; onNavigate: V2ScreenChrome['onNavigate']; onDelete: (g: ApiGame) => void; onTogglePublish: (b: ApiBooking) => void; busyId: string | null; emptyWithData: string; unfilteredCount: number }) {
   const totalItems = games.length + bookings.length;
   if (unfilteredCount > 0 && totalItems === 0) return <Empty text={emptyWithData} />;
-  if (!unfilteredCount) return <Empty text="Open Play sessions you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('nearby') }} />;
+  if (!unfilteredCount) return <Empty text="Open Play sessions you publish from bookings show up here." action={{ label: 'Book Court', onClick: () => onNavigate('book-court', {}) }} />;
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const upcomingBookings = bookings.filter((b) => !b.date || b.date >= todayStr);

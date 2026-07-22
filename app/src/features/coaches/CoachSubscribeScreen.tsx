@@ -164,6 +164,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
     try {
       const created = await subscribeToPartnerPlan(plan, {
         card: settings?.paymentTestMode ? card : undefined,
+        tierKey: selectedTierKey || undefined,
       });
       if (created.status === 'pending') {
         setPayOpen(false);
@@ -229,8 +230,16 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
 
   const active = state?.[plan] ?? null;
   const ending = !!active?.cancelAtPeriodEnd;
-  const price = state?.pricing[plan] ?? 0;
-  const days = state?.pricing.durationDays ?? 30;
+  const basePrice = state?.pricing[plan] ?? 0;
+  const baseDays = state?.pricing.durationDays ?? 30;
+  const tiers = (plan === 'coach' ? state?.pricing.coachTiers : state?.pricing.organizerTiers) ?? [];
+  const enabledTiers = tiers.filter((t) => t.enabled);
+
+  // Selected tier state — defaults to the base plan, switching to a picked tier.
+  const [selectedTierKey, setSelectedTierKey] = useState<string | null>(null);
+  const price = selectedTierKey ? (enabledTiers.find((t) => t.key === selectedTierKey)?.price ?? basePrice) : basePrice;
+  const days = selectedTierKey ? (enabledTiers.find((t) => t.key === selectedTierKey)?.durationDays ?? baseDays) : baseDays;
+
   const addressComplete = state?.addressComplete ?? true;
   const history = state?.subscriptions ?? [];
   const pending = history.find((s) => s.plan === plan && s.status === 'pending') ?? null;
@@ -272,7 +281,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                   <span className="font-heading text-[16px] font-extrabold">{ui.activeTitle}</span>
                 </div>
                 <p className="mt-1.5 text-[13px] text-[var(--muted)]">
-                  Renews {active.expiresAt ? fmtDate(active.expiresAt) : 'after activation'} · {peso(active.priceAmount)} / {days} days
+                  Renews {active.expiresAt ? fmtDate(active.expiresAt) : 'after activation'} · {peso(active.priceAmount)} / {active.durationDays ?? days} days
                 </p>
               </div>
             )
@@ -283,7 +292,7 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
                 <span className="font-heading text-[16px] font-extrabold">GCash payment pending</span>
               </div>
               <p className="mt-1.5 text-[13px] text-[var(--muted)]">
-                Your {plan} tools stay locked until the platform confirms the {peso(pending.priceAmount)} transfer. Your {days}-day term starts on confirmation.
+                Your {plan} tools stay locked until the platform confirms the {peso(pending.priceAmount)} transfer. Your {pending.durationDays ?? days}-day term starts on confirmation.
               </p>
             </div>
           ) : (
@@ -447,7 +456,27 @@ export function CoachSubscribeScreen({ onNavigate, onBack, plan = 'coach' }: Coa
 
       {/* Sticky action. */}
       {!loading && !loadError && state && (
-        <div className="sticky-cta">
+        <div className="sticky-cta flex flex-col gap-2">
+          {/* Tier picker — shown only when admin has configured selectable terms */}
+          {!active && enabledTiers.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {enabledTiers.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setSelectedTierKey(selectedTierKey === t.key ? null : t.key)}
+                  className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-bold transition-colors ${
+                    selectedTierKey === t.key
+                      ? 'border-[var(--lime)] bg-[var(--lime)] text-[var(--ink)]'
+                      : 'border-[var(--hairline)] text-[var(--muted)]'
+                  }`}
+                >
+                  {t.label} · {peso(t.price)}{' '}
+                  <span className="font-normal opacity-70">{t.durationDays}d</span>
+                </button>
+              ))}
+            </div>
+          )}
           {active ? (
             ending ? (
               <Button fullWidth onClick={() => void doResume()} disabled={busy}>

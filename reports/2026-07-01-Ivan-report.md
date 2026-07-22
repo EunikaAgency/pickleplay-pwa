@@ -1,12 +1,14 @@
-# Ivan Report — 2026-07-01: Gmail OAuth, Email Templates, Password Reset & API Gaps
+# Ivan Report — 2026-07-01
 
-## 1. Password Reset Flow (Full-Stack)
+## Part 1: Gmail OAuth, Email Templates, Password Reset & API Gaps
+
+### 1. Password Reset Flow (Full-Stack)
 
 **Before:** Dead "Forgot password?" link on LoginScreen (`href="#"`). No password reset flow existed.
 
 **Now:** Complete forgot/reset password flow across API, PWA, and web.
 
-### What changed
+#### What changed
 
 | Layer | File | What |
 |---|---|---|
@@ -19,7 +21,7 @@
 | PWA | `App.tsx` | Both screens rendered full-bleed |
 | PWA | `api.ts` | `forgotPassword(email)`, `resetPassword(token, password)` |
 
-### Verified
+#### Verified
 - ✅ Token generated & returned (dev mode)
 - ✅ Reset password updates password
 - ✅ Token reuse rejected (INVALID_TOKEN)
@@ -28,7 +30,7 @@
 
 ---
 
-## 2. Email Verification Endpoints
+### 2. Email Verification Endpoints
 
 **Before:** `EmailVerificationToken` model existed but no endpoints used it.
 
@@ -41,13 +43,13 @@
 
 ---
 
-## 3. Gmail API OAuth 2.0 Integration
+### 3. Gmail API OAuth 2.0 Integration
 
 **Before:** No email sending capability. Forgot password returned token inline (not secure for production).
 
 **Now:** Full Gmail API integration via OAuth 2.0. The server can send real HTML emails.
 
-### What changed
+#### What changed
 
 | File | What |
 |---|---|
@@ -57,13 +59,13 @@
 | `.env` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` |
 | `.gitignore` | `.gmail-tokens.json` added |
 
-### OAuth Flow
+#### OAuth Flow
 1. Admin visits `/api/v1/auth/gmail-oauth-url` → Google consent screen
 2. Grants consent → Google redirects to `/api/v1/auth/gmail-callback?code=...`
 3. Server exchanges code for tokens, stores refresh token
 4. `sendEmail()` available — auto-refreshes access token
 
-### Verified
+#### Verified
 - ✅ OAuth URL generated with correct client ID + scopes
 - ✅ Code exchange → tokens persisted
 - ✅ `sendEmail()` sends via Gmail REST API
@@ -72,19 +74,19 @@
 
 ---
 
-## 4. HTML Email Templates (7 Types)
+### 4. HTML Email Templates (7 Types)
 
 **Before:** Plain-text only emails.
 
 **Now:** Designed HTML emails with inline CSS (Gmail-safe).
 
-### Layout
+#### Layout
 - 🟢 **Header:** Lime green (`#b9e615`) background, "PickleBallers" wordmark
 - ⬜ **Body:** White card with receipt-style layout, itemized breakdown, status badge
 - ⬛ **Footer:** Dark navy (`#0b1220`) background, "sent from a court near you"
 - **Outer:** Slate (`#64748b`) background, card max-width 600px
 
-### Templates
+#### Templates
 
 | Template | Use Case | Badge |
 |---|---|---|
@@ -99,7 +101,7 @@
 
 ---
 
-## 5. Email Triggers Wired
+### 5. Email Triggers Wired
 
 All 7 templates connected to actual business events:
 
@@ -118,13 +120,13 @@ All emails are **best-effort, non-blocking** — failures don't affect the API r
 
 ---
 
-## 6. Email BCC (Monitoring)
+### 6. Email BCC (Monitoring)
 
 **Before:** No way to monitor outgoing emails.
 
 **Now:** Admin-toggleable BCC — a copy of every transactional email goes to a monitoring address.
 
-### What changed
+#### What changed
 
 | Layer | File | What |
 |---|---|---|
@@ -136,7 +138,7 @@ All emails are **best-effort, non-blocking** — failures don't affect the API r
 | PWA | `SettingsScreen.tsx` (v1) | Same section (admin-only) |
 | PWA | `api.ts` | `AppSettings` extended + `updateSettings()` added |
 
-### Toggle via API
+#### Toggle via API
 ```bash
 # ON
 PATCH /api/v1/settings { "emailBccEnabled": true, "emailBccAddress": "info@eunika.agency" }
@@ -146,7 +148,7 @@ PATCH /api/v1/settings { "emailBccEnabled": false }
 
 ---
 
-## 7. Other API Gaps Closed
+### 7. Other API Gaps Closed
 
 | Gap | Resolution |
 |---|---|
@@ -154,50 +156,19 @@ PATCH /api/v1/settings { "emailBccEnabled": false }
 | **Booking modify endpoint** | Already implemented — removed misleading "TBD" comment |
 | **`/lists` catalogue** | Updated with 8 new routes: forgot-password, reset-password, verify-email, resend-verification, gmail-oauth-url, gmail-callback, gmail-status, venues/:id/pricing |
 
-### Skipped
+#### Skipped
 - **EventRegistration join/leave** — `Event` model exists but events aren't part of current product surface
 - **Pool-play bracket playoff seeding** (`bracketEngine.ts:443`) — complex, requires tournament workflow design
 
 ---
 
-## Files Changed Summary
-
-```
-api/src/features/auth/auth.controller.ts     (+forgotPassword, +resetPassword, +verifyEmail, +resendVerification, +gmailOAuthUrl, +gmailCallback, +gmailStatus)
-api/src/features/auth/auth.routes.ts          (+6 routes)
-api/src/features/root/root.controller.ts      (+8 /lists entries)
-api/src/features/settings/settings.model.ts   (+emailBccEnabled, +emailBccAddress)
-api/src/features/settings/settings.controller.ts (+getEmailBcc, +BCC fields)
-api/src/features/bookings/bookings.controller.ts (+email triggers for create/cancel)
-api/src/features/venues/venues.controller.ts   (+approval email, +membership email, +sendMembershipEmail, +listVenuePricing)
-api/src/features/venues/venues.routes.ts       (+GET /venues/:id/pricing)
-api/src/features/payments/payments.controller.ts (+payment receipt email)
-api/src/shared/lib/gmail.ts                   (NEW — OAuth, sendEmail with HTML support, BCC)
-api/src/shared/lib/email-templates.ts          (NEW — 8 HTML email templates)
-api/.env                                       (+GOOGLE_CLIENT_ID, +GOOGLE_CLIENT_SECRET, fixed corrupted FIREBASE key)
-api/.gitignore                                 (+.gmail-tokens.json)
-
-app/src/features/auth/ForgotPasswordScreen.tsx (NEW)
-app/src/features/auth/ResetPasswordScreen.tsx  (NEW)
-app/src/features/auth/LoginScreen.tsx          (forgot password link wired)
-app/src/shared/lib/navigation.ts               (+forgot-password, +reset-password screens)
-app/src/App.tsx                                (+render cases for new screens)
-app/src/shared/lib/api.ts                      (+forgotPassword, +resetPassword, +updateSettings, +AppSettings fields)
-app/src/features/profile/v2/SettingsScreenV2.tsx (+admin BCC section)
-app/src/features/profile/SettingsScreen.tsx     (+admin BCC section)
-
-web/src/features/admin/AdminSettingsPage.jsx   (+email monitoring section with BCC toggle)
-```
-
----
-
-## 8. Refunds Automation
+### 8. Refunds Automation
 
 **Before:** `BookingRefundScreen` showed "Automatic refunds aren't available yet" — all refunds were manual.
 
 **Now:** In test mode, refunds are processed automatically on cancellation.
 
-### What changed
+#### What changed
 
 | Layer | File | What |
 |---|---|---|
@@ -206,13 +177,13 @@ web/src/features/admin/AdminSettingsPage.jsx   (+email monitoring section with B
 
 ---
 
-## 9. Web Forgot Password + Reset Pages
+### 9. Web Forgot Password + Reset Pages
 
 **Before:** No forgot password flow on web. PWA had it but web didn't.
 
 **Now:** Full forgot/reset password pages on web frontend.
 
-### What changed
+#### What changed
 
 | File | What |
 |---|---|
@@ -221,14 +192,14 @@ web/src/features/admin/AdminSettingsPage.jsx   (+email monitoring section with B
 | `web/src/features/auth/LoginPage.jsx` | "Forgot password?" link → navigates to `/forgot-password` |
 | `web/src/router.jsx` | `lazy()` imports + routes for `/forgot-password` and `/reset-password` |
 
-### Verified
+#### Verified
 - ✅ Build produces `ForgotPasswordPage-*.js` and `ResetPasswordPage-*.js` chunks
 - ✅ LoginPage chunk includes "forgot-password" link
 - ✅ Deployed and live at pickleballer.eunika.xyz/forgot-password
 
 ---
 
-## 10. Test Email Tool (API)
+### 10. Test Email Tool (API)
 
 **Before:** No way to preview email templates without triggering actual events.
 
@@ -240,16 +211,16 @@ web/src/features/admin/AdminSettingsPage.jsx   (+email monitoring section with B
 
 Templates selectable: `welcome`, `password-reset`, `email-verification`, `booking-confirmed`, `booking-requested`, `booking-approved`, `payment-receipt`, `cancellation`, `membership`
 
-### Verified
+#### Verified
 - ✅ Password reset sample sent to info@eunika.agency
 
 ---
 
-## 11. Test Email Tool (PWA UI)
+### 11. Test Email Tool (PWA UI)
 
 Added admin-only "Test email tool" section in Settings, alongside the existing Email monitoring BCC section.
 
-### What changed
+#### What changed
 
 | Layer | File | What |
 |---|---|---|
@@ -260,7 +231,7 @@ Added admin-only "Test email tool" section in Settings, alongside the existing E
 | API | `settings.routes.ts` | `POST /settings/test-email` route (auth-gated) |
 | API | `root.controller.ts` | `/lists` entry for test-email |
 
-### Verified
+#### Verified
 - ✅ All 9 templates sent successfully from the PWA Settings
 - ✅ Validation rejects invalid templates
 - ✅ Auth required (401 without token)
@@ -270,13 +241,13 @@ Added admin-only "Test email tool" section in Settings, alongside the existing E
 
 ---
 
-## 11b. Test Email Tool — Moved to Separate Screen
+### 11b. Test Email Tool — Moved to Separate Screen
 
 **Before:** The test email tool was a large inline section inside both Settings screens (v1 `SettingsScreen.tsx` and v2 `SettingsScreenV2.tsx`), cluttering the settings page.
 
 **Now:** Standalone screen at `/settings/test-email`, reachable via an "Admin tools" row in Settings.
 
-### What changed
+#### What changed
 
 | Layer | File | What |
 |---|---|---|
@@ -287,7 +258,7 @@ Added admin-only "Test email tool" section in Settings, alongside the existing E
 | PWA | `SettingsScreenV2.tsx` (v2) | Same — removed inline tool, added "Admin tools" settings-list row. Also cleaned up unused `bccLoaded` state |
 | PWA | `FILEMAP.md` | Updated profile slice entry |
 
-### Verified
+#### Verified
 - ✅ Build clean (no new TS errors)
 - ✅ Template list renders full height (no `max-h` scroll clamp)
 - ✅ Admin-gated via `admin.access` permission
@@ -295,13 +266,13 @@ Added admin-only "Test email tool" section in Settings, alongside the existing E
 
 ---
 
-## 12. Forgot/Reset Password Screen Fixes
+### 12. Forgot/Reset Password Screen Fixes
 
 **Problem:** Both `ForgotPasswordScreen` and `ResetPasswordScreen` rendered a blank black screen on load. Root cause: `useForm` hook doesn't have `bind()` or `validateAll()` methods — calling `form.bind('email')` threw `TypeError`, crashing the component.
 
 Also: `LoginScreen`'s "Forgot password?" button called `onNavigate('forgot-password')` but `onNavigate` was never passed as a prop.
 
-### What changed
+#### What changed
 
 | File | What |
 |---|---|
@@ -312,13 +283,13 @@ Also: `LoginScreen`'s "Forgot password?" button called `onNavigate('forgot-passw
 
 ---
 
-## 13. Edit Profile — Email Field
+### 13. Edit Profile — Email Field
 
 Added a disabled "Email" field on the Edit Profile screen so users can see which email is tied to their account.
 
 **Problem:** `AppUser` interface had no `email` field even though `ApiUser` did — `toAppUser()` never mapped it.
 
-### What changed
+#### What changed
 
 | File | What |
 |---|---|
@@ -328,13 +299,13 @@ Added a disabled "Email" field on the Edit Profile screen so users can see which
 
 ---
 
-## 14. Password Changed Notification Email
+### 14. Password Changed Notification Email
 
 **Before:** No notification when a user's password was changed — only the reset-token email on forgot-password.
 
 **Now:** After a successful password reset, the user receives a security notification email telling them their password was changed, with a warning if they didn't do it.
 
-### What changed
+#### What changed
 
 | File | What |
 |---|---|
@@ -343,7 +314,7 @@ Added a disabled "Email" field on the Edit Profile screen so users can see which
 
 ---
 
-## 15. Sender Name "Pickleballers" on All Emails
+### 15. Sender Name "Pickleballers" on All Emails
 
 **Before:** `From` header was bare email `noreply@pickleballer.eunika.xyz` — inbox showed "noreply" as sender.
 
@@ -355,26 +326,26 @@ Added a disabled "Email" field on the Edit Profile screen so users can see which
 
 ---
 
-## 16. Monitoring Copy as Separate Email (Not BCC)
+### 16. Monitoring Copy as Separate Email (Not BCC)
 
 **Before:** The monitoring system used a `Bcc:` header on the original email — the monitoring inbox got an invisible copy with no context about who triggered it.
 
 **Now:** `sendEmail()` sends a **separate** email to the monitoring address with an enriched subject: `[Juan Dela Cruz - player] Reset your PickleBallers password`. This also means the monitoring email appears as a direct message in the inbox, not as a blind copy.
 
-### What changed
+#### What changed
 
 | File | What |
 |---|---|
 | `gmail.ts` | Extracted `buildRawMessage()` helper. `sendEmail()` now sends the main email first, then a separate monitoring copy via a second `gmail.users.messages.send()` call. Added optional `userInfo` param for subject enrichment |
 | `auth.controller.ts` | All three email call sites (register, forgot-password, reset-password) now pass `userInfo: \`${displayName} - ${role}\`` |
 
-### Monitoring subject format
+#### Monitoring subject format
 - **With userInfo:** `[Juan Dela Cruz - player] Reset your PickleBallers password`
 - **Without userInfo:** unchanged subject (for call sites not yet updated with user context)
 
 ---
 
-## 17. Test Email Tool — `password-changed` Template Added
+### 17. Test Email Tool — `password-changed` Template Added
 
 Added the new `password-changed` template to the test email tool's template selection so admins can preview it.
 
@@ -386,7 +357,7 @@ Added the new `password-changed` template to the test email tool's template sele
 
 ---
 
-## 18. Visible Borders on Email Input Fields
+### 18. Visible Borders on Email Input Fields
 
 Added thicker, more visible borders on email input fields across the test email tool and email monitoring settings.
 
@@ -398,24 +369,24 @@ Added thicker, more visible borders on email input fields across the test email 
 
 ---
 
-## 19. Fixed Monitoring Copy Not Sending (DB Bug)
+### 19. Fixed Monitoring Copy Not Sending (DB Bug)
 
 **Bug:** Despite `emailBccEnabled: true` and `emailBccAddress` appearing to be set in the API response, the monitoring copy was never sent. Root cause: `emailBccAddress` field was **missing from the MongoDB document** entirely. The `publicShape()` function masked it with `?? 'info@eunika.agency'`, but `getEmailBcc()` did a strict truthy check on the raw field (`s?.emailBccAddress`) which returned `undefined` → condition failed → returned `null`.
 
-### Fix
+#### Fix
 
 | File | What |
 |---|---|
 | `settings.controller.ts` | `getEmailBcc()` now uses `s.emailBccAddress \|\| 'info@eunika.agency'` as fallback, matching `publicShape`'s behavior |
 | MongoDB | Backfilled `emailBccAddress: "info@eunika.agency"` on the existing `AppSettings` document |
 
-### Verified
+#### Verified
 - ✅ Monitoring copy now sent to `info@eunika.agency`
 - ✅ Subject enriched: `[edu.eunika - player] Reset your PickleBallers password`
 
 ---
 
-## 20. Renamed "BCC" Labels to "Email Monitoring"
+### 20. Renamed "BCC" Labels to "Email Monitoring"
 
 **Before:** All user-facing labels said "BCC emails" — inaccurate since it's now a separate email, not a blind carbon copy.
 
@@ -428,3 +399,123 @@ Added thicker, more visible borders on email input fields across the test email 
 |---|---|
 | `SettingsScreen.tsx` (v1) | Labels updated |
 | `SettingsScreenV2.tsx` (v2) | Labels, description, status text, and toggle label updated |
+
+---
+
+## Part 2: Staff Scope, Club Staff & Custom Amenities
+
+### 1. Staff — Per-Venue Access Fix (Breaking Change)
+
+**Before:** Staff accounts created at `/owner/staff` inherited the owner's full portfolio via `parentOwnerId` in the JWT. `effectiveOwnerId()` resolved to the owner's ID, granting staff access to ALL venues, bookings, clubs, and games — without any per-venue assignment.
+
+**Now:** Staff accounts start with ZERO venue access. They must be explicitly added to individual venues through each venue's Staff tab, which creates `VenueStaff` rows. The `parentOwnerId` is removed from the JWT entirely — staff permissions come only from `VenueStaff` assignments.
+
+#### What changed
+
+| Layer | File | What |
+|-------|------|------|
+| API | `auth/auth.controller.ts` | Removed `parentOwnerId` from JWT payload (`tokenPayloadFor`). The field stays on the User doc only for `listStaff` queries |
+| API | `staff/staff.controller.ts` | Updated module comment — no longer "manage ALL venues" |
+| API | `permissions.ts` | `effectiveOwnerId()` now returns staff's own ID (no `parentOwnerId` in token) |
+| PWA | `OwnerStaffScreen.tsx` | Updated subtitle, comment, and info banner — now says "add to specific venues" |
+| PWA | `StaffEditorTab.tsx` | Search now uses `searchOwnerStaff` (owner-scoped) instead of `searchPlayers` (global) |
+
+#### Verified
+- ✅ Staff JWT has `parentOwnerId: null`
+- ✅ `listVenues?managedByUserId=<staffId>` returns 0 venues for unassigned staff
+- ✅ Staff can only access venues where they have a `VenueStaff` row
+- ✅ Clubs: `isHostOf` returns false for staff without `parentOwnerId`
+- ✅ Staff see public clubs normally (same as players)
+
+---
+
+### 2. Per-Venue Staff Tab — Staff-Only Search + On-Focus Suggestions
+
+**Before:** The "Find a person" search in the Staff tab used `searchPlayers`, which returned ALL users in the system (players, coaches, anyone). No suggestions on focus.
+
+**Now:** Search is scoped to staff accounts created by this owner only. On-focus auto-suggests all owner's staff.
+
+#### What changed
+
+| Layer | File | What |
+|-------|------|------|
+| API | `search/search.controller.ts` | Added `ownerUserId` query param. When set with `type=players`, filters to `roleDefault:'staff'` + `parentOwnerUserId` match. `q` made optional — empty query returns all staff of that owner (on-focus suggestions). Limit: 30 for staff search, 10 for regular. Added `isStaff` boolean to results |
+| PWA | `api.ts` | Added `searchOwnerStaff(ownerUserId, q?)` function |
+| PWA | `StaffEditorTab.tsx` | Uses `searchOwnerStaff` instead of `searchPlayers`. `onFocus` handler loads suggestions. Placeholder: "Search your staff accounts…". Empty state: "No matching staff found. Create staff accounts in Owner → Staff first." Added "No staff yet? Create one in Owner → Staff" link |
+| PWA | `OwnerVenueScreen.tsx` | Passing `onNavigate` to `StaffEditorTab` for the link |
+
+#### Verified
+- ✅ On-focus with empty field: returns all staff of this owner
+- ✅ Typed search: returns only matching staff of this owner
+- ✅ Regular users/players never appear in results
+
+---
+
+### 3. Club Staff — Per-Club Staff Assignment
+
+**Before:** No per-club staff assignment existed. Staff inherited the owner's full club portfolio via `parentOwnerId` → `isHostOf`.
+
+**Now:** Club hosts can assign staff to specific clubs as moderators. Club staff can moderate posts and members but cannot delete the club or manage other staff.
+
+#### What changed
+
+| Layer | File | What |
+|-------|------|------|
+| API | `clubs/clubs.model.ts` | New `ClubStaff` model: `clubId`, `userId`, `staffRole` (default: 'moderator'), `status`. Unique index on `(clubId, userId)` |
+| API | `clubs/clubs.controller.ts` | Added `isClubStaff()`, `canModerateClub()` (host OR staff). Added `getClubStaff`, `addClubStaff`, `removeClubStaff` handlers. Updated `listClubs` `mine` to include ClubStaff clubs. Updated `serializeClub` to include `isStaff`. Updated moderation gates: edit club, remove member, moderate posts now allow ClubStaff. Delete club and manage staff remain host-only |
+| API | `clubs/clubs.routes.ts` | Added `GET/POST /:id/staff`, `DELETE /staff/:id` (declared before bare `/:id`) |
+| PWA | `api.ts` | New `ApiClubStaff` type. `isStaff` on `ApiClub`. `listClubStaff`, `addClubStaff`, `removeClubStaff` functions |
+| PWA | `ClubDetailsScreen.tsx` | Staff section in About tab (host-only): list current staff with role badges + Remove, search owner's staff accounts via `searchOwnerStaff` with focus suggestions, add as moderator |
+
+#### API routes
+| Method | Path | Gate |
+|--------|------|------|
+| GET | `/clubs/:id/staff` | Host only |
+| POST | `/clubs/:id/staff` | Host or `owner.staff.manage` |
+| DELETE | `/clubs/staff/:id` | Host or `owner.staff.manage` |
+
+#### Verified
+- ✅ Host creates club → adds staff → staff appears in list
+- ✅ Staff's `mine: true` clubs list includes assigned club with `isStaff: True`
+- ✅ Staff can moderate posts/remove members (via `canModerateClub`)
+- ✅ Staff cannot delete club (host-only gate preserved)
+- ✅ Staff cannot view/manage other staff (host-only gate preserved)
+- ✅ Duplicate add blocked (409)
+- ✅ Reactivating inactive staff assignment works
+
+---
+
+### 4. Custom Amenities — ListingEditorTab
+
+**Before:** 13 preset amenity toggles only. No way to add custom amenities.
+
+**Now:** Custom amenities TagField below presets in the Amenities section.
+
+#### What changed
+
+| Layer | File | What |
+|-------|------|------|
+| API | `venues/venues.model.ts` | Added `customAmenities: [String]` to Venue interface + schema |
+| API | `venues/venues.controller.ts` | Added `customAmenities: z.array(z.string()).max(20).optional()` to `updateVenueSchema` |
+| PWA | `api.ts` | Added `customAmenities?: string[] \| null` on `ApiVenue` |
+| PWA | `venueDisplay.ts` | `venueAmenities()` now merges boolean flags + `customAmenities` (not override) |
+| PWA | `ListingEditorTab.tsx` | `TagField` for custom amenities below preset chips. Placeholder: "e.g. Ball machine, Locker room, etc." Updated description |
+
+#### Verified
+- ✅ Custom amenities saved and returned in venue detail
+- ✅ Player-facing Court Details shows custom amenities alongside presets
+- ✅ 20-item max enforced by Zod schema
+
+---
+
+### 5. CSV & Test Guide Updates
+
+| File | Change |
+|------|--------|
+| `TASKS/Copy of Standardised Pickleballers - Pickleballers Questions.csv` | Row 43 (curated highlights) → Done. Row 49 formatting fixed. Row 53 removed |
+| `TASKS/test-guide.md` | Added test paths for custom amenities, staff per-venue, staff tab search, club staff |
+| `TASKS/demo-tour-guide.md` | Added sections 28 (staff per-venue), 29 (club staff), 30 (custom amenities) |
+
+---
+
+*Generated 2026-07-01. Covers all changes across both sessions.*

@@ -7,6 +7,7 @@ import { Venue } from '../venues/venues.model.js';
 import { PartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
 import { getPartnerSubscriptionPricing } from '../settings/settings.controller.js';
 import { effectiveOwnerId, hasPermission } from '../../shared/lib/permissions.js';
+import { notifyUser } from '../../shared/lib/notify.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { paymentReceipt } from '../../shared/lib/email-templates.js';
 
@@ -158,6 +159,23 @@ export async function checkout(c: any) {
       : await Booking.findOne({ _id: body.bookingId, userId: user.sub }).lean();
   }
 
+  // Notify the player their payment went through and the booking is confirmed.
+  if (testMode && booking) {
+    void (async () => {
+      try {
+        const v = await Venue.findById(booking.venueId).select('displayName').lean<{ displayName?: string }>();
+        void notifyUser(user.sub, {
+          type: 'booking_confirmed',
+          title: 'Payment received — booking confirmed',
+          body: `Your booking at ${v?.displayName || 'the venue'} on ${fmtDate(booking.date)}${booking.startTime ? ` at ${fmtTime2(booking.startTime)}` : ''} is confirmed.`,
+          icon: 'calendar',
+          linkUrl: '/my-bookings',
+          tag: String(booking._id),
+        });
+      } catch { /* best-effort */ }
+    })();
+  }
+
   // Send payment receipt email (best-effort, non-blocking).
   if (testMode && canEmail() && booking) {
     void (async () => {
@@ -244,21 +262,43 @@ export async function verifyPayment(c: any) {
   ).lean();
 
   if (body.status === 'completed' && result!.bookingId) {
-    await Booking.findOneAndUpdate(
+    const confirmedBooking = await Booking.findOneAndUpdate(
       { _id: result!.bookingId, status: { $in: ['awaiting_payment', 'confirmed', 'paid'] } },
       { status: 'confirmed', paymentMethod: result!.method || undefined },
-    );
+      { new: true },
+    ).lean<any>();
     // Auto-generate a draft receipt when a booking is confirmed via payment.
     void generateReceiptForBooking(String(result!.bookingId)).catch(() => {});
+    // Preserve the newer live notification behavior while keeping the stricter
+    // owner/admin authorization and expiry checks above.
+    if (confirmedBooking) {
+      void (async () => {
+        try {
+          const v = await Venue.findById(confirmedBooking.venueId).select('displayName').lean<{ displayName?: string }>();
+          void notifyUser(confirmedBooking.userId, {
+            type: 'booking_confirmed',
+            title: 'Payment verified — booking confirmed',
+            body: `Your booking at ${v?.displayName || 'the venue'} on ${fmtDate(confirmedBooking.date)}${confirmedBooking.startTime ? ` at ${fmtTime2(confirmedBooking.startTime)}` : ''} is confirmed.`,
+            icon: 'calendar',
+            linkUrl: '/my-bookings',
+            tag: String(confirmedBooking._id),
+          });
+        } catch { /* best-effort */ }
+      })();
+    }
   }
 
   if (body.status === 'completed' && result!.purpose === 'partner_subscription' && result!.subscriptionId) {
     // Only an admin reaches this branch (owners are rejected above). Start the
     // paid term now — never at request time — so manual reconciliation doesn't
     // consume part of the subscription period.
-    const pricing = await getPartnerSubscriptionPricing();
+    const [pricing, pendingSubscription] = await Promise.all([
+      getPartnerSubscriptionPricing(),
+      PartnerSubscription.findById(result!.subscriptionId).select('durationDays').lean<{ durationDays?: number }>(),
+    ]);
+    const durationDays = Number(pendingSubscription?.durationDays) || pricing.durationDays;
     const startedAt = new Date();
-    const expiresAt = new Date(startedAt.getTime() + pricing.durationDays * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(startedAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
     await PartnerSubscription.findOneAndUpdate(
       { _id: result!.subscriptionId, status: 'pending' },
       { status: 'active', startedAt, expiresAt },

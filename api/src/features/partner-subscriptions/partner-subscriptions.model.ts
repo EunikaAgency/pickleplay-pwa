@@ -23,6 +23,8 @@ export interface IPartnerSubscription {
   status: PartnerSubscriptionStatus;
   priceAmount: number;
   currency: string;
+  tierKey?: string;
+  durationDays?: number;
   startedAt?: Date;
   expiresAt?: Date;
   autoRenew: boolean;
@@ -42,6 +44,11 @@ const partnerSubscriptionSchema = new Schema({
   status:      { type: String, enum: ['pending', 'active', 'expired', 'cancelled'], default: 'pending' },
   priceAmount: { type: Number, required: true },
   currency:    { type: String, default: 'PHP', maxlength: 10 },
+  // Snapshot the selected term at purchase time. Admin tiers may change before
+  // a manual GCash payment is reconciled, so activation must not recalculate a
+  // pending subscription from today's settings.
+  tierKey:     { type: String, maxlength: 40 },
+  durationDays:{ type: Number, min: 1, max: 3650 },
   // A live/manual payment creates a pending row first. The paid term starts only
   // when that payment is verified, so these dates deliberately stay empty until
   // activation instead of silently burning subscription time while GCash is
