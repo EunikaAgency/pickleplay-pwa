@@ -149,8 +149,8 @@ const ADMIN_SECTIONS: AdminSection[] = [
 
 /** The collapsible admin section tree rendered inside the sidebar nav (desktop only). */
 function AdminSections({ onNavigate, activeScreenId }: { onNavigate: (screenId: string) => void; activeScreenId: string }) {
-  // All sections start expanded so everything is visible by default.
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // All sections start collapsed — the admin opens only what they need.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Directory: true, Moderation: true, System: true });
 
   function toggle(label: string) {
     setCollapsed((c) => ({ ...c, [label]: !c[label] }));

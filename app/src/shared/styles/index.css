@@ -2141,6 +2141,7 @@
   text-align: left;
   transition: background .15s ease, color .15s ease, transform .12s ease;
   width: 100%;
+  flex-shrink: 0;
 }
 .sidebar .side-tab:hover { background: var(--surface-2); }
 .sidebar .side-tab:active { transform: scale(0.98); }
@@ -2213,6 +2214,7 @@
   text-align: left;
   transition: background .15s ease, color .15s ease, transform .12s ease;
   width: 100%;
+  flex-shrink: 0;
 }
 .sidebar .admin-item:hover { background: var(--surface-2); }
 .sidebar .admin-item:active { transform: scale(0.98); }

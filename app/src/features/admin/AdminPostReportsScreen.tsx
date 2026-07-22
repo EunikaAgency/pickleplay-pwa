@@ -129,7 +129,7 @@ export function AdminPostReportsScreen({ onNavigate: _onNavigate, onBack }: Admi
                 </div>
 
                 {/* Reported post */}
-                <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                <div className="mt-3 rounded-[8px] border border-[var(--border)] bg-[var(--surface-2)] p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-semibold text-[13px] text-[var(--ink)] truncate">
                       {post?.author?.displayName ?? 'Unknown author'}
