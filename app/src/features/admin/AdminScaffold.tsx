@@ -63,14 +63,14 @@ export function AdminSearch({
 }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="field relative pt-3">
-      <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
+      <Icon name="search" size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
       <input
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-label={placeholder || 'Search'}
-        className="control pl-9"
+        className="control pr-9"
       />
     </div>
   );
