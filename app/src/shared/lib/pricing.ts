@@ -30,6 +30,9 @@ export interface RateBreakdown {
   memberApplied: boolean;
   /** The member discount % applied (0 when none). */
   memberDiscountPercent: number;
+  customerCategory: 'none' | 'senior' | 'pwd';
+  statutoryDiscountApplied: boolean;
+  statutoryDiscountPercent: number;
 }
 
 const toNum = (v: unknown): number | null => {
@@ -109,7 +112,7 @@ function surgeRate(
 }
 
 export interface ResolveRateInput {
-  venue: Pick<ApiVenue, 'priceFrom' | 'weekendPrice' | 'holidayPrice' | 'holidayDates' | 'memberDiscountPercent'> | null | undefined;
+  venue: Pick<ApiVenue, 'priceFrom' | 'weekendPrice' | 'holidayPrice' | 'holidayDates' | 'memberDiscountPercent' | 'statutoryDiscounts'> | null | undefined;
   court?: ApiCourt | null;
   subUnitIndex?: number | null;
   hours?: OwnerHourEntry[];
@@ -118,11 +121,12 @@ export interface ResolveRateInput {
   startTime: string;
   /** Whether the booking viewer is a member of this venue (member pricing applies). */
   isMember?: boolean;
+  customerCategory?: 'none' | 'senior' | 'pwd';
 }
 
 /** Resolve the effective hourly rate for a booking slot, with a breakdown. */
 export function resolveHourlyRate(input: ResolveRateInput): RateBreakdown {
-  const { venue, court, subUnitIndex, hours, overrides, date, startTime, isMember } = input;
+  const { venue, court, subUnitIndex, hours, overrides, date, startTime, isMember, customerCategory = 'none' } = input;
 
   const subUnitRate = (subUnitIndex != null && court?.subUnitRates?.length)
     ? (court.subUnitRates.find((r) => r.index === subUnitIndex)?.hourlyRate ?? null)
@@ -146,12 +150,21 @@ export function resolveHourlyRate(input: ResolveRateInput): RateBreakdown {
   else { baseRate = venueRate; source = 'venue'; }
 
   const memberDiscountPercent = Math.max(0, Math.min(100, Number(venue?.memberDiscountPercent) || 0));
-  const memberApplied = !!isMember && memberDiscountPercent > 0;
-  const rate = memberApplied
-    ? Math.round(baseRate * (1 - memberDiscountPercent / 100) * 100) / 100
+  const configuredStatutoryPercent = venue?.statutoryDiscounts
+    ?.find((d) => d.category === customerCategory)?.percent;
+  // Old venue records have no statutoryDiscounts field; launch policy still
+  // requires the 20% rate. An explicit stored 0 remains an intentional override.
+  const statutoryDiscountPercent = customerCategory === 'none' ? 0 : Math.max(0, Math.min(100,
+    configuredStatutoryPercent == null ? 20 : Number(configuredStatutoryPercent),
+  ));
+  const statutoryDiscountApplied = customerCategory !== 'none' && statutoryDiscountPercent > 0;
+  const memberApplied = !statutoryDiscountApplied && !!isMember && memberDiscountPercent > 0;
+  const appliedPercent = statutoryDiscountApplied ? statutoryDiscountPercent : memberApplied ? memberDiscountPercent : 0;
+  const rate = appliedPercent > 0
+    ? Math.round(baseRate * (1 - appliedPercent / 100) * 100) / 100
     : baseRate;
 
-  return { rate, baseRate, source, memberApplied, memberDiscountPercent };
+  return { rate, baseRate, source, memberApplied, memberDiscountPercent, customerCategory, statutoryDiscountApplied, statutoryDiscountPercent };
 }
 
 /** The per-player surcharge for a booking — ₱ per head beyond the included threshold. */

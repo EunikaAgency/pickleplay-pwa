@@ -549,6 +549,7 @@ export interface ApiVenue {
   holidayDates?: string[] | null;
   /** Member pricing: % discount off the resolved rate for venue members (0 = none). */
   memberDiscountPercent?: number | null;
+  statutoryDiscounts?: Array<{ category: 'senior' | 'pwd'; percent: number }> | null;
   /** Per-player surcharge: ₱ added per extra player beyond `perPlayerFeeThreshold`. */
   perPlayerFee?: number | string | null;
   /** Players included in the base rate before the per-player fee kicks in (default 1). */
@@ -3017,6 +3018,11 @@ export interface ApiBooking {
   overrideId?: string | null;        // SlotPriceOverride _id when rateSource='surge'
   baseRate?: number | null;          // resolved rate before member discount
   memberDiscountPercent?: number | null;  // 0–100
+  customerCategory?: 'none' | 'senior' | 'pwd' | null;
+  discountPercent?: number | null;
+  discountAmount?: number | null;
+  discountIdNumber?: string | null;
+  preDiscountSubtotal?: number | null;
   /** Owner-entered bookings: off-platform customer + source, or a slot-block reason. */
   customerName?: string | null;
   customerPhone?: string | null;
@@ -3052,6 +3058,8 @@ export interface CreateBookingPayload {
   paymentOption?: PaymentOption;
   amountPaid?: number;
   balanceDue?: number;
+  customerCategory?: 'none' | 'senior' | 'pwd';
+  discountIdNumber?: string;
   /** Repeat this same slot on these weekdays (0=Sun…6=Sat) for the next `weeks`.
    *  The primary is paid now; each occurrence is held awaiting_payment (pay lazily
    *  from My Bookings as its date nears). Server returns `recurrenceCount`. */
@@ -3142,6 +3150,8 @@ export interface VenueBookingPayload {
   amount?: number;
   paymentMethod?: string;
   notes?: string;
+  customerCategory?: 'none' | 'senior' | 'pwd';
+  discountIdNumber?: string;
   // Slot-block field.
   blockReason?: string;
 }
@@ -3165,6 +3175,8 @@ export interface RecurringBookingPayload {
   customerPhone?: string;
   bookingSource?: 'walk_in' | 'phone' | 'messenger' | 'instagram' | 'other';
   amount?: number;
+  customerCategory?: 'none' | 'senior' | 'pwd';
+  discountIdNumber?: string;
   notes?: string;
   blockReason?: string;
 }
@@ -3239,7 +3251,7 @@ export interface CheckoutCard {
 }
 
 export interface CheckoutPayload {
-  bookingId?: string;
+  bookingId: string;
   amount: number;
   currency?: string;
   method?: string;
@@ -4323,6 +4335,10 @@ export interface ApiOfficialReceipt {
   vatAmount?: number;
   vatRate?: number;
   netAmount?: number;
+  discountAmount?: number;
+  discountCategory?: 'senior' | 'pwd' | null;
+  discountIdNumber?: string | null;
+  vatExempt?: boolean;
   description?: string | null;
   status: string;                // draft | issued | voided
   issuedAt?: string | null;

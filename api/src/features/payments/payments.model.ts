@@ -61,6 +61,10 @@ const officialReceiptSchema = new Schema({
   vatAmount:     { type: Number, default: 0 },           // 12% VAT portion
   vatRate:       { type: Number, default: 12 },
   netAmount:     { type: Number, default: 0 },           // amount - vatAmount
+  discountAmount: { type: Number, default: 0 },
+  discountCategory: { type: String, enum: ['senior', 'pwd'] },
+  discountIdNumber: { type: String, maxlength: 80 },
+  vatExempt:     { type: Boolean, default: false },
   description:   { type: String, maxlength: 500 },
   status:        { type: String, default: 'draft' },     // draft | issued | voided
   issuedAt:      Date,
@@ -111,6 +115,7 @@ const settlementLineItemSchema = new Schema({
   bookingId:    { type: Schema.Types.ObjectId, ref: 'Booking', required: true },
   amount:       { type: Number, required: true },      // venue subtotal
   serviceFee:   { type: Number, default: 0 },          // platform's cut
+  discountAmount: { type: Number, default: 0 },
   paymentId:    { type: Schema.Types.ObjectId, ref: 'Payment' },
 });
 

@@ -334,6 +334,8 @@ const createSchema = z.object({
   paymentOption: z.enum(['full', 'deposit', 'pay_at_venue']).optional(),
   amountPaid: z.string().or(z.number()).optional(),
   balanceDue: z.string().or(z.number()).optional(),
+  customerCategory: z.enum(['none', 'senior', 'pwd']).optional().default('none'),
+  discountIdNumber: z.string().trim().max(80).optional(),
   // Recurring booking (step 2): repeat this same slot on these weekdays (0=Sun…6=Sat)
   // for the next `weeks`. The primary booking is paid now; each generated occurrence
   // is held as `awaiting_payment` and paid lazily as its date nears (from My Bookings).
@@ -341,6 +343,10 @@ const createSchema = z.object({
     daysOfWeek: z.array(z.number().int().min(0).max(6)).min(1).max(7),
     weeks: z.number().int().min(1).max(12),
   }).optional(),
+}).superRefine((body, ctx) => {
+  if (body.customerCategory !== 'none' && !body.discountIdNumber) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior/PWD ID number is required.' });
+  }
 });
 
 /** Coerce a "string | number | undefined" money input to a number, or null. */
@@ -665,7 +671,9 @@ export async function createBooking(c: any) {
 
   // Venue drives pricing, member discount, per-player surcharge, owner
   // notification — and the approval decision below, so it must be loaded first.
-  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold requireBookingApproval approvalWindowHours bookingPayWindowHours').lean<{ displayName?: string; ownerUserId?: any; priceFrom?: number; weekendPrice?: number; holidayPrice?: number; holidayDates?: string[]; memberDiscountPercent?: number; perPlayerFee?: number; perPlayerFeeThreshold?: number; requireBookingApproval?: boolean; approvalWindowHours?: number; bookingPayWindowHours?: number }>();
+  const venue = await Venue.findById(body.venueId)
+    .select('displayName ownerUserId priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent statutoryDiscounts perPlayerFee perPlayerFeeThreshold requireBookingApproval approvalWindowHours bookingPayWindowHours depositPercent')
+    .lean<any>();
 
   // Per-court approval, with the venue default behind it. 'manual' always requires
   // approval and 'auto' never does; 'inherit' (the court default) follows the
@@ -703,7 +711,11 @@ export async function createBooking(c: any) {
     : null;
 
   // ── Pricing validation (hard) — skip for blocked slots and open-play ──
-  let pricing: { rate: number; baseRate: number; source: string; memberApplied: boolean; memberDiscountPercent: number; overrideId?: string } | null = null;
+  let pricing: Awaited<ReturnType<typeof resolveHourlyRate>> | null = null;
+  let authoritativeAmount: number | null = null;
+  let preDiscountSubtotal: number | null = null;
+  let discountAmount = 0;
+  let discountPercent = 0;
   if (body.bookingType !== 'blocked' && body.bookingType !== 'open_play' && body.startTime && body.endTime) {
     const startH = Number(body.startTime.split(':')[0]);
     const endH = Number(body.endTime.split(':')[0]);
@@ -722,6 +734,7 @@ export async function createBooking(c: any) {
     const blendMode = appSettings?.pricingMode === 'blend';
 
     let expectedAmount = 0;
+    let preDiscountCourtAmount = 0;
     if (blendMode) {
       for (let h = startH; h < endH; h++) {
         const hourStart = `${String(h).padStart(2, '0')}:00`;
@@ -732,8 +745,10 @@ export async function createBooking(c: any) {
           date: body.date,
           startTime: hourStart,
           isMember: false,
+          customerCategory: body.customerCategory,
         });
         expectedAmount += hr.rate;
+        preDiscountCourtAmount += hr.baseRate;
         if (!pricing) pricing = hr;
       }
     } else {
@@ -745,12 +760,14 @@ export async function createBooking(c: any) {
         date: body.date,
         startTime: body.startTime,
         isMember: false,
+        customerCategory: body.customerCategory,
       });
       expectedAmount = pricing.rate * hours;
+      preDiscountCourtAmount = pricing.baseRate * hours;
     }
 
     // Check if the player is a venue member (for member discount).
-    if (user?.sub && pricing) {
+    if (body.customerCategory === 'none' && user?.sub && pricing) {
       const membership = await VenueMember.findOne({
         venueId: body.venueId, userId: user.sub, status: 'active',
         $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
@@ -785,6 +802,12 @@ export async function createBooking(c: any) {
       : 0;
     const surcharge = perPlayerSurcharge(venue, body.playerCount ?? 1);
     const expectedTotal = Math.round((expectedAmount + Number(equipAmount) + surcharge) * 100) / 100;
+    preDiscountSubtotal = body.customerCategory === 'none'
+      ? expectedTotal
+      : Math.round((preDiscountCourtAmount + Number(equipAmount) + surcharge) * 100) / 100;
+    discountAmount = Math.round((preDiscountSubtotal - expectedTotal) * 100) / 100;
+    discountPercent = pricing?.statutoryDiscountPercent ?? 0;
+    authoritativeAmount = expectedTotal;
     const clientAmount = typeof body.amount === 'number' ? body.amount : parseFloat(String(body.amount));
 
     // 1 PHP tolerance for rounding differences between client and server.
@@ -801,17 +824,25 @@ export async function createBooking(c: any) {
   // Service fee is server-authoritative — recompute it from the (already
   // amount-validated) stored total × the platform fee %, ignoring whatever the
   // client sent, so a crafted client can't under-report the platform's fee.
-  const storedAmount = typeof body.amount === 'number' ? body.amount : parseFloat(String(body.amount));
+  const storedAmount = authoritativeAmount ?? (typeof body.amount === 'number' ? body.amount : parseFloat(String(body.amount)));
+  preDiscountSubtotal ??= storedAmount;
   const { getServiceFeePercent } = await import('../settings/settings.controller.js');
   const serviceFeePercent = await getServiceFeePercent();
-  const serviceFeeAmount = Math.round((storedAmount || 0) * (serviceFeePercent / 100) * 100) / 100;
+  const serviceFeeAmount = Math.round((preDiscountSubtotal || 0) * (serviceFeePercent / 100) * 100) / 100;
+  const paymentOption = body.paymentOption || 'full';
+  const payableTotal = Math.round((storedAmount + serviceFeeAmount) * 100) / 100;
+  const depositPercent = Math.max(0, Math.min(100, Number(venue?.depositPercent) || 50));
+  const amountPaid = paymentOption === 'pay_at_venue' ? 0
+    : paymentOption === 'deposit' ? Math.round(payableTotal * depositPercent / 100 * 100) / 100
+    : payableTotal;
+  const balanceDue = Math.round((payableTotal - amountPaid) * 100) / 100;
 
   const result = await Booking.create({
     userId: user.sub, venueId: body.venueId, courtId: body.courtId || null,
     subUnitIndex: body.subUnitIndex ?? null,
     sessionId: body.sessionId || null, eventId: body.eventId || null, date: body.date,
     startTime: body.startTime || null, endTime: body.endTime || null, playerCount: body.playerCount,
-    amount: typeof body.amount === 'number' ? body.amount : parseFloat(body.amount),
+    amount: storedAmount,
     paymentMethod: body.paymentMethod || null,
     status: requiresApproval ? 'pending_approval' : awaitsManualPayment ? 'awaiting_payment' : 'confirmed',
     approvalDeadline,
@@ -827,14 +858,19 @@ export async function createBooking(c: any) {
     // is recomputed server-side above (not trusted from the client).
     notes: body.notes || null,
     serviceFeeAmount,
-    paymentOption: body.paymentOption || null,
-    amountPaid: num(body.amountPaid),
-    balanceDue: num(body.balanceDue),
+    paymentOption,
+    amountPaid,
+    balanceDue,
     // Pricing audit trail.
     rateSource: pricing?.source ?? null,
     overrideId: pricing?.overrideId ?? null,
     baseRate: pricing?.baseRate ?? null,
     memberDiscountPercent: pricing?.memberDiscountPercent ?? null,
+    customerCategory: body.customerCategory,
+    discountPercent,
+    discountAmount,
+    discountIdNumber: body.customerCategory === 'none' ? null : body.discountIdNumber,
+    preDiscountSubtotal,
   });
 
   // Notify the venue owner when a booking requires their approval. The deadline

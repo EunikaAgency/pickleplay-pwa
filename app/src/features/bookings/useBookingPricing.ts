@@ -18,6 +18,7 @@ export interface BookingPricingInput {
   startTime: string;
   endTime: string;
   isMember: boolean;
+  customerCategory: 'none' | 'senior' | 'pwd';
   playerCount: number;
   includeEquipment: boolean;
   settings: AppSettings | null;
@@ -37,6 +38,8 @@ export interface BookingPricing {
   surcharge: number;
   /** Venue price (court + equipment + per-player surcharge) — the booking `amount`. */
   subtotal: number;
+  preDiscountSubtotal: number;
+  discountAmount: number;
   serviceFeePercent: number;
   serviceFee: number;
   grandTotal: number;
@@ -45,12 +48,12 @@ export interface BookingPricing {
 export function useBookingPricing(input: BookingPricingInput): BookingPricing {
   const {
     venue, court, subUnitIndex, venueHours, overrides,
-    date, startTime, endTime, isMember, playerCount, includeEquipment, settings,
+    date, startTime, endTime, isMember, customerCategory, playerCount, includeEquipment, settings,
   } = input;
 
   const rateInfo = useMemo(() => resolveHourlyRate({
-    venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime, isMember,
-  }), [venue, court, subUnitIndex, venueHours, overrides, date, startTime, isMember]);
+    venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime, isMember, customerCategory,
+  }), [venue, court, subUnitIndex, venueHours, overrides, date, startTime, isMember, customerCategory]);
   const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
 
@@ -68,11 +71,24 @@ export function useBookingPricing(input: BookingPricingInput): BookingPricing {
     let sum = 0;
     for (let h = startH; h < endH; h++) {
       const hourStart = `${String(h).padStart(2, '0')}:00`;
-      const ri = resolveHourlyRate({ venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime: hourStart, isMember });
+      const ri = resolveHourlyRate({ venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime: hourStart, isMember, customerCategory });
       sum += ri.rate;
     }
     return Math.round(sum * 100) / 100;
-  }, [blendMode, startTime, endTime, rate, hours, venue, court, subUnitIndex, venueHours, overrides, date, isMember]);
+  }, [blendMode, startTime, endTime, rate, hours, venue, court, subUnitIndex, venueHours, overrides, date, isMember, customerCategory]);
+
+  const preDiscountHourlyTotal = useMemo(() => {
+    if (!blendMode) return rateInfo.baseRate * hours;
+    const startH = Number(startTime.split(':')[0]);
+    const endH = Number(endTime.split(':')[0]);
+    if (!(endH > startH)) return 0;
+    let sum = 0;
+    for (let h = startH; h < endH; h++) {
+      const hourStart = `${String(h).padStart(2, '0')}:00`;
+      sum += resolveHourlyRate({ venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime: hourStart, isMember, customerCategory }).baseRate;
+    }
+    return Math.round(sum * 100) / 100;
+  }, [blendMode, rateInfo.baseRate, hours, startTime, endTime, venue, court, subUnitIndex, venueHours, overrides, date, isMember, customerCategory]);
 
   // Group consecutive same-rate hours so the price card can show a breakdown when
   // the rate varies across the booking window (e.g. surge on the early hours).
@@ -85,7 +101,7 @@ export function useBookingPricing(input: BookingPricingInput): BookingPricing {
     const rows: { hour: number; rate: number; source: string }[] = [];
     for (let h = startH; h < endH; h++) {
       const hourStart = `${String(h).padStart(2, '0')}:00`;
-      const ri = resolveHourlyRate({ venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime: hourStart, isMember });
+      const ri = resolveHourlyRate({ venue, court, subUnitIndex, hours: venueHours, overrides, date, startTime: hourStart, isMember, customerCategory });
       rows.push({ hour: h, rate: ri.rate, source: ri.source });
     }
     const groups: RateGroup[] = [];
@@ -95,7 +111,7 @@ export function useBookingPricing(input: BookingPricingInput): BookingPricing {
       else groups.push({ startHour: r.hour, endHour: r.hour + 1, rate: r.rate, source: r.source });
     }
     return groups;
-  }, [blendMode, startTime, endTime, venue, court, subUnitIndex, venueHours, overrides, date, isMember]);
+  }, [blendMode, startTime, endTime, venue, court, subUnitIndex, venueHours, overrides, date, isMember, customerCategory]);
 
   const equipAmount = includeEquipment ? (Number(venue?.equipmentRentalPrice) || 0) : 0;
   const surcharge = perPlayerSurcharge(venue, playerCount);
@@ -103,9 +119,13 @@ export function useBookingPricing(input: BookingPricingInput): BookingPricing {
   // what the venue earns and what's stored as the booking `amount`. The platform
   // service fee is added on top to form the grand total the player pays.
   const subtotal = Math.round((hourlyTotal + equipAmount + surcharge) * 100) / 100;
+  const preDiscountSubtotal = customerCategory === 'none'
+    ? subtotal
+    : Math.round((preDiscountHourlyTotal + equipAmount + surcharge) * 100) / 100;
+  const discountAmount = Math.round((preDiscountSubtotal - subtotal) * 100) / 100;
   const serviceFeePercent = settings?.serviceFeePercent ?? 7;
-  const serviceFee = Math.round(subtotal * (serviceFeePercent / 100) * 100) / 100;
+  const serviceFee = Math.round(preDiscountSubtotal * (serviceFeePercent / 100) * 100) / 100;
   const grandTotal = Math.round((subtotal + serviceFee) * 100) / 100;
 
-  return { rateInfo, rate, hours, blendMode, hourlyBreakdown, equipAmount, surcharge, subtotal, serviceFeePercent, serviceFee, grandTotal };
+  return { rateInfo, rate, hours, blendMode, hourlyBreakdown, equipAmount, surcharge, subtotal, preDiscountSubtotal, discountAmount, serviceFeePercent, serviceFee, grandTotal };
 }

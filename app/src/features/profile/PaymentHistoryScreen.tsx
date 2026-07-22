@@ -454,8 +454,18 @@ function ReceiptCard({ payment, fallbackCurrency }: { payment: ApiPayment; fallb
             {/* VAT breakdown from BIR OR */}
             {orReceipt && orReceipt.status !== 'voided' ? (
               <>
-                <ReceiptRow label="Subtotal" value={money(orReceipt.netAmount || orReceipt.amount * 100 / 112)} />
-                <ReceiptRow label={`VAT (${orReceipt.vatRate || 12}%)`} value={money(orReceipt.vatAmount || orReceipt.amount * 12 / 112)} />
+                {orReceipt.vatExempt && Number(orReceipt.discountAmount) > 0 && (
+                  <>
+                    <ReceiptRow label="Pre-discount amount" value={money(orReceipt.amount + Number(orReceipt.discountAmount))} />
+                    <ReceiptRow label={`${orReceipt.discountCategory === 'senior' ? 'Senior citizen' : 'PWD'} discount`} value={`−${money(Number(orReceipt.discountAmount))}`} />
+                    {orReceipt.discountIdNumber && <ReceiptRow label="Discount ID" value={orReceipt.discountIdNumber} />}
+                  </>
+                )}
+                <ReceiptRow label="Subtotal" value={money(orReceipt.netAmount ?? orReceipt.amount * 100 / 112)} />
+                <ReceiptRow
+                  label={orReceipt.vatExempt ? 'VAT-exempt' : `VAT (${orReceipt.vatRate ?? 12}%)`}
+                  value={money(orReceipt.vatAmount ?? orReceipt.amount * 12 / 112)}
+                />
                 {orReceipt.payorName && <ReceiptRow label="Payor" value={orReceipt.payorName} />}
                 {orReceipt.payorTIN && <ReceiptRow label="TIN" value={orReceipt.payorTIN} />}
               </>

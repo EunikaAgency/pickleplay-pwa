@@ -21,6 +21,9 @@ export interface RateBreakdown {
   source: RateSource;
   memberApplied: boolean;
   memberDiscountPercent: number;
+  customerCategory: 'none' | 'senior' | 'pwd';
+  statutoryDiscountApplied: boolean;
+  statutoryDiscountPercent: number;
   /** The SlotPriceOverride _id when source='surge', else undefined. */
   overrideId?: string;
 }
@@ -129,6 +132,7 @@ export interface ResolveRateParams {
   startTime: string;
   /** Whether the booking viewer is a member of this venue (member pricing applies). */
   isMember?: boolean;
+  customerCategory?: 'none' | 'senior' | 'pwd';
 }
 
 /**
@@ -138,11 +142,11 @@ export interface ResolveRateParams {
  * and applies the identical 7-tier precedence as the client-side engine.
  */
 export async function resolveHourlyRate(params: ResolveRateParams): Promise<RateBreakdown> {
-  const { venueId, courtId, subUnitIndex, date, startTime, isMember } = params;
+  const { venueId, courtId, subUnitIndex, date, startTime, isMember, customerCategory = 'none' } = params;
 
   // Fetch all pricing inputs in parallel.
   const [venue, court, hours, overrides] = await Promise.all([
-    Venue.findById(venueId).select('priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean(),
+    Venue.findById(venueId).select('priceFrom weekendPrice holidayPrice holidayDates memberDiscountPercent statutoryDiscounts perPlayerFee perPlayerFeeThreshold').lean(),
     courtId ? Court.findById(courtId).select('hourlyRate subUnitRates').lean() : null,
     VenueHour.find({ venueId }).select('dayOfWeek openTime closeTime price isClosed').lean(),
     SlotPriceOverride.find({ venueId, date }).select('date startTime endTime price courtId note').lean(),
@@ -171,12 +175,22 @@ export async function resolveHourlyRate(params: ResolveRateParams): Promise<Rate
   else { baseRate = venueRate; source = 'venue'; }
 
   const memberDiscountPercent = Math.max(0, Math.min(100, Number((venue as any)?.memberDiscountPercent) || 0));
-  const memberApplied = !!isMember && memberDiscountPercent > 0;
-  const rate = memberApplied
-    ? Math.round(baseRate * (1 - memberDiscountPercent / 100) * 100) / 100
+  const configuredStatutoryPercent = (venue as any)?.statutoryDiscounts
+    ?.find((d: any) => d.category === customerCategory)?.percent;
+  // Existing venue documents predate this field. The locked launch policy is
+  // 20%, so missing configuration must not silently deny the statutory rate.
+  // Preserve an explicit 0 if an administrator deliberately stored one.
+  const statutoryDiscountPercent = customerCategory === 'none' ? 0 : Math.max(0, Math.min(100,
+    configuredStatutoryPercent == null ? 20 : Number(configuredStatutoryPercent),
+  ));
+  const statutoryDiscountApplied = customerCategory !== 'none' && statutoryDiscountPercent > 0;
+  const memberApplied = !statutoryDiscountApplied && !!isMember && memberDiscountPercent > 0;
+  const appliedPercent = statutoryDiscountApplied ? statutoryDiscountPercent : memberApplied ? memberDiscountPercent : 0;
+  const rate = appliedPercent > 0
+    ? Math.round(baseRate * (1 - appliedPercent / 100) * 100) / 100
     : baseRate;
 
-  return { rate, baseRate, source, memberApplied, memberDiscountPercent, overrideId };
+  return { rate, baseRate, source, memberApplied, memberDiscountPercent, customerCategory, statutoryDiscountApplied, statutoryDiscountPercent, overrideId };
 }
 
 /** Per-player surcharge — ₱ per head beyond the included threshold. Mirrors app pricing.ts. */

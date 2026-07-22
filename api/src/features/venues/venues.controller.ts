@@ -79,6 +79,10 @@ export const updateVenueSchema = z.object({
   holidayDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
   // Member pricing — % discount for venue members (0 clears it).
   memberDiscountPercent: z.coerce.number().min(0).max(100).optional(),
+  statutoryDiscounts: z.array(z.object({
+    category: z.enum(['senior', 'pwd']),
+    percent: z.coerce.number().min(0).max(100),
+  })).max(2).optional(),
   // Per-player surcharge — ₱ per extra player + the headcount included before it applies.
   perPlayerFee: z.coerce.number().min(0).optional(),
   perPlayerFeeThreshold: z.coerce.number().int().min(1).optional(),
@@ -351,10 +355,16 @@ export const createVenueBookingSchema = z.object({
   customerPhone: z.string().max(40).optional(),
   bookingSource: z.enum(['walk_in', 'phone', 'messenger', 'instagram', 'other']).optional(),
   amount: z.coerce.number().min(0).optional(),
+  customerCategory: z.enum(['none', 'senior', 'pwd']).optional().default('none'),
+  discountIdNumber: z.string().trim().max(80).optional(),
   paymentMethod: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
   // Slot block — why the time is unavailable.
   blockReason: z.string().max(200).optional(),
+}).superRefine((body, ctx) => {
+  if (body.bookingType === 'manual' && body.customerCategory !== 'none' && !body.discountIdNumber) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior/PWD ID number is required.' });
+  }
 });
 
 // Recurring booking (weekly regular / league): the same weekly slot generated
@@ -373,8 +383,14 @@ export const createRecurringBookingSchema = z.object({
   customerPhone: z.string().max(40).optional(),
   bookingSource: z.enum(['walk_in', 'phone', 'messenger', 'instagram', 'other']).optional(),
   amount: z.coerce.number().min(0).optional(),
+  customerCategory: z.enum(['none', 'senior', 'pwd']).optional().default('none'),
+  discountIdNumber: z.string().trim().max(80).optional(),
   notes: z.string().max(500).optional(),
   blockReason: z.string().max(200).optional(),
+}).superRefine((body, ctx) => {
+  if (body.bookingType === 'manual' && body.customerCategory !== 'none' && !body.discountIdNumber) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior/PWD ID number is required.' });
+  }
 });
 
 export const venueAnalyticsQuerySchema = z.object({
@@ -1681,6 +1697,8 @@ export async function createVenueBooking(c: any) {
   let overrideId: string | null = null;
   let baseRate: number | null = null;
   let memberDiscPercent: number | null = null;
+  let statutoryDiscountPercent = 0;
+  let computedPreDiscountAmount = 0;
   if (!isBlock && body.startTime && body.endTime) {
     try {
       // Resolve per clock hour so the audit trail matches multi-rate bookings.
@@ -1693,25 +1711,34 @@ export async function createVenueBooking(c: any) {
           venueId, courtId: body.courtId || null,
           subUnitIndex: body.subUnitIndex ?? null,
           date: body.date, startTime: hourStart, isMember: false,
+          customerCategory: body.customerCategory,
         });
         expectedAmount += hr.rate;
+        computedPreDiscountAmount += hr.baseRate;
         if (!baseRate) {
           baseRate = hr.baseRate;
           memberDiscPercent = hr.memberDiscountPercent;
+          statutoryDiscountPercent = hr.statutoryDiscountPercent;
           pricingSource = hr.source;
           overrideId = hr.overrideId ?? null;
         }
       }
       expectedAmount = Math.round(expectedAmount * 100) / 100;
-      const ownerAmount = body.amount ?? 0;
+      const ownerAmount = body.amount ?? computedPreDiscountAmount;
       // If the owner entered an amount that differs from the computed total, tag it 'manual'.
-      if (Math.abs(ownerAmount - expectedAmount) > 1) {
+      if (Math.abs(ownerAmount - computedPreDiscountAmount) > 1) {
         pricingSource = 'manual';
       }
     } catch (_) {
       // Pricing resolver failed (e.g. venue not found) — leave audit fields null.
     }
   }
+
+  const preDiscountSubtotal = isBlock ? 0 : (body.amount ?? computedPreDiscountAmount);
+  const discountAmount = body.customerCategory === 'none'
+    ? 0
+    : Math.round(preDiscountSubtotal * statutoryDiscountPercent / 100 * 100) / 100;
+  const finalAmount = Math.round((preDiscountSubtotal - discountAmount) * 100) / 100;
 
   const booking = await Booking.create({
     // userId satisfies the required ref; createdByUserId records who entered it.
@@ -1724,7 +1751,7 @@ export async function createVenueBooking(c: any) {
     startTime: body.startTime,
     endTime: body.endTime,
     playerCount: 1,
-    amount: isBlock ? 0 : (body.amount ?? 0),
+    amount: isBlock ? 0 : finalAmount,
     status: 'confirmed',
     bookingType: body.bookingType,
     paymentMethod: isBlock ? null : (body.paymentMethod || null),
@@ -1738,7 +1765,21 @@ export async function createVenueBooking(c: any) {
     overrideId,
     baseRate,
     memberDiscountPercent: memberDiscPercent,
+    customerCategory: isBlock ? 'none' : body.customerCategory,
+    discountPercent: isBlock ? 0 : statutoryDiscountPercent,
+    discountAmount: isBlock ? 0 : discountAmount,
+    discountIdNumber: isBlock || body.customerCategory === 'none' ? null : body.discountIdNumber,
+    preDiscountSubtotal: isBlock ? 0 : preDiscountSubtotal,
   });
+
+  // A statutory walk-in still needs the same VAT-exempt audit receipt as a
+  // self-service booking. The manual booking remains off-platform/settled at
+  // the venue; this records the compliant receipt without creating a payout.
+  if (!isBlock && body.customerCategory !== 'none') {
+    await import('../payments/payments.controller.js')
+      .then(({ generateReceiptForBooking }) => generateReceiptForBooking(String(booking._id)))
+      .catch(() => { /* booking remains valid if receipt generation is temporarily unavailable */ });
+  }
 
   // Enrich with the court label so the schedule row reads right without a refetch.
   const courtDoc = body.courtId ? await Court.findById(body.courtId).select('courtNumber courtName').lean<{ courtNumber?: string; courtName?: string }>() : null;
@@ -1792,6 +1833,14 @@ export async function createRecurringBooking(c: any) {
   }
 
   const isBlock = body.bookingType === 'blocked';
+  const venue = await Venue.findById(venueId).select('statutoryDiscounts').lean<any>();
+  const configuredPercent = body.customerCategory === 'none' ? 0
+    : venue?.statutoryDiscounts?.find((d: any) => d.category === body.customerCategory)?.percent;
+  const discountPercent = body.customerCategory === 'none' ? 0
+    : Math.max(0, Math.min(100, configuredPercent == null ? 20 : Number(configuredPercent)));
+  const preDiscountSubtotal = isBlock ? 0 : (body.amount ?? 0);
+  const discountAmount = Math.round(preDiscountSubtotal * discountPercent / 100 * 100) / 100;
+  const finalAmount = Math.round((preDiscountSubtotal - discountAmount) * 100) / 100;
   const recurringId = new Types.ObjectId();
   const created: any[] = [];
   const skipped: { date: string; reason: string }[] = [];
@@ -1815,7 +1864,7 @@ export async function createRecurringBooking(c: any) {
       startTime: body.startTime,
       endTime: body.endTime,
       playerCount: 1,
-      amount: isBlock ? 0 : (body.amount ?? 0),
+      amount: isBlock ? 0 : finalAmount,
       status: 'confirmed',
       bookingType: body.bookingType,
       customerName: isBlock ? null : (body.customerName || null),
@@ -1823,6 +1872,11 @@ export async function createRecurringBooking(c: any) {
       bookingSource: isBlock ? null : (body.bookingSource || null),
       blockReason: isBlock ? (body.blockReason || null) : null,
       notes: body.notes || null,
+      customerCategory: isBlock ? 'none' : body.customerCategory,
+      discountPercent: isBlock ? 0 : discountPercent,
+      discountAmount: isBlock ? 0 : discountAmount,
+      discountIdNumber: isBlock || body.customerCategory === 'none' ? null : body.discountIdNumber,
+      preDiscountSubtotal: isBlock ? 0 : preDiscountSubtotal,
       recurringId,
     });
     created.push({ ...booking.toObject(), id: booking._id });

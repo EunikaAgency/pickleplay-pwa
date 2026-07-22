@@ -149,6 +149,8 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
   // Holiday dates (YYYY-MM-DD) for holiday pricing — managed as a small date list.
   const [holidayDates, setHolidayDates] = useState<string[]>(venue.holidayDates ?? []);
   const [holidayDraft, setHolidayDraft] = useState('');
+  const [seniorDiscountPercent, setSeniorDiscountPercent] = useState(String(venue.statutoryDiscounts?.find((d) => d.category === 'senior')?.percent ?? 20));
+  const [pwdDiscountPercent, setPwdDiscountPercent] = useState(String(venue.statutoryDiscounts?.find((d) => d.category === 'pwd')?.percent ?? 20));
   // Cancellation & refund policy — owner-configurable per venue.
   const [cancelWindow, setCancelWindow] = useState(str(venue.cancellationWindowHours ?? 24));
   const [refundPct, setRefundPct] = useState(str(venue.refundPercent ?? 100));
@@ -263,6 +265,10 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
         ...form, ...chips, ...amenities,
         // Pricing rules — coerce the numeric ones; blank clears them (→ 0 / unset).
         memberDiscountPercent: Number(form.memberDiscountPercent) || 0,
+        statutoryDiscounts: [
+          { category: 'senior', percent: Number(seniorDiscountPercent) || 0 },
+          { category: 'pwd', percent: Number(pwdDiscountPercent) || 0 },
+        ],
         perPlayerFee: Number(form.perPlayerFee) || 0,
         perPlayerFeeThreshold: Number(form.perPlayerFeeThreshold) || 1,
         holidayDates,
@@ -316,6 +322,14 @@ export function ListingEditorTab({ venue, venueId, reload, onDeleted }: ListingE
             </div>
           </div>
         </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Statutory discounts" icon="badge" description="Configure the Senior Citizen and PWD discounts your venue absorbs. The platform fee remains based on the original subtotal.">
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Senior citizen %" value={seniorDiscountPercent} inputMode="numeric" onChange={(e) => { setSeniorDiscountPercent(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }} />
+          <FormField label="PWD %" value={pwdDiscountPercent} inputMode="numeric" onChange={(e) => { setPwdDiscountPercent(e.target.value.replace(/[^\d.]/g, '')); setStatus('idle'); }} />
+        </div>
+        <p className="t-sm text-[var(--muted)] mt-2">The launch default is 20%. A valid ID number is required on every discounted booking.</p>
       </CollapsibleSection>
 
       <CollapsibleSection title="Booking policy" icon="schedule" description="Whether you accept each booking yourself, and how long each side has to act.">

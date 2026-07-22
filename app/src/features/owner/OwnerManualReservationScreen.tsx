@@ -154,6 +154,8 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   const [payMethod, setPayMethod] = useState('cash');
   const [amountInput, setAmountInput] = useState('');
   const [amountTouched, setAmountTouched] = useState(false);
+  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>('none');
+  const [discountIdNumber, setDiscountIdNumber] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +281,12 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   // The amount shown: the owner's input once they've edited it, otherwise the
   // live court-rate × hours suggestion (derived — no ref/effect needed).
   const amountValue = amountTouched ? amountInput : (suggested ? String(suggested) : '');
+  const configuredDiscount = customerCategory === 'none' ? 0
+    : activeVenue?.statutoryDiscounts?.find((d) => d.category === customerCategory)?.percent;
+  const statutoryPercent = customerCategory === 'none' ? 0 : (configuredDiscount ?? 20);
+  const preDiscountAmount = Number(amountValue) || 0;
+  const discountPreview = Math.round(preDiscountAmount * statutoryPercent) / 100;
+  const finalAmountPreview = Math.round((preDiscountAmount - discountPreview) * 100) / 100;
 
   const today = todayYMD();
   const upcoming = useMemo(
@@ -300,6 +308,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
     if (courtId && fullyBookedCourtIds.has(courtId)) { setError('That court is fully booked on this date. Pick another court or date.'); return; }
     if (hours <= 0) { setError('End time must be after the start time.'); return; }
     if (!customerName.trim()) { setError('Add a customer name.'); return; }
+    if (customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen/PWD ID number.'); return; }
     setBusy(true);
     try {
       const blockingOverride = overrides.find((ov) =>
@@ -350,6 +359,8 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
         bookingSource: source,
         amount: amountValue === '' ? 0 : Number(amountValue),
         paymentMethod: payMethod,
+        customerCategory,
+        discountIdNumber: customerCategory === 'none' ? undefined : discountIdNumber.trim(),
       };
       await createVenueBooking(vref, payload);
 
@@ -370,6 +381,8 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
       setCustomerPhone('');
       setAmountInput('');
       setAmountTouched(false);
+      setCustomerCategory('none');
+      setDiscountIdNumber('');
       flash(painted ? 'Reservation saved · painted on the pricing grid' : 'Reservation saved · pricing grid not updated');
     } catch (e) {
       const mapped = mapBookingError(e);
@@ -501,6 +514,26 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
             />
             {!amountTouched && suggested > 0 && (
               <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Suggested {money(suggested, currency)} ({money(rate, currency)}/hr × {hours} hr)</div>
+            )}
+            <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior/PWD discount.</div>
+          </div>
+
+          <div className="field px-0!">
+            <div className="lbl">Senior citizen / PWD</div>
+            <div className="flex gap-1.5 flex-wrap">
+              {(['none', 'senior', 'pwd'] as const).map((category) => (
+                <Chip key={category} selected={customerCategory === category} onClick={() => setCustomerCategory(category)}>
+                  {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
+                </Chip>
+              ))}
+            </div>
+            {customerCategory !== 'none' && (
+              <>
+                <input className="control mt-2" value={discountIdNumber} onChange={(e) => setDiscountIdNumber(e.target.value)} placeholder="ID number" maxLength={80} />
+                <div className="mt-2 rounded-xl bg-[var(--lime-soft)] px-3 py-2 text-[12px] font-semibold text-[var(--lime-ink)]">
+                  {statutoryPercent}% discount: −{money(discountPreview, currency)} · customer pays {money(finalAmountPreview, currency)}
+                </div>
+              </>
             )}
           </div>
 

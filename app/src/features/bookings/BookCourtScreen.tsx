@@ -196,6 +196,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [card, setCard] = useState<CheckoutCard>({ number: '', expiry: '', cvc: '' });
+  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>('none');
+  const [discountIdNumber, setDiscountIdNumber] = useState('');
 
   // Lifecycle.
   const [error, setError] = useState<string | null>(null);
@@ -289,9 +291,9 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // venue/court context + the chosen schedule + settings.
   const pricing = useBookingPricing({
     venue: selected, court: selectedCourt, subUnitIndex, venueHours, overrides,
-    date, startTime, endTime, isMember: viewerIsMember, playerCount, includeEquipment, settings,
+    date, startTime, endTime, isMember: viewerIsMember, customerCategory, playerCount, includeEquipment, settings,
   });
-  const { rateInfo, rate, hours, hourlyBreakdown, equipAmount, surcharge, subtotal, serviceFeePercent, serviceFee, grandTotal } = pricing;
+  const { rateInfo, rate, hours, hourlyBreakdown, equipAmount, surcharge, subtotal, preDiscountSubtotal, discountAmount, serviceFeePercent, serviceFee, grandTotal } = pricing;
 
   const isTest = settings?.paymentTestMode ?? false;
   // Can a host gate their own lobby on approval? Defaults true if settings haven't
@@ -594,6 +596,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
+    if (customerCategory !== 'none' && !discountIdNumber.trim()) {
+      setError('Enter the Senior Citizen/PWD ID number.');
+      return;
+    }
     // Test mode uses the pre-filled demo card. Live launch mode is manual GCash,
     // so no card credentials are collected or stored.
     setSubmitting(true);
@@ -615,6 +621,8 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
         paymentOption: requiresApproval ? 'full' : paymentOption,
         amountPaid: requiresApproval ? 0 : amountDueNow,
         balanceDue: requiresApproval ? 0 : balanceDue,
+        customerCategory,
+        discountIdNumber: customerCategory === 'none' ? undefined : discountIdNumber.trim(),
         paymentMethod: payAtVenue ? 'pay_at_venue' : isTest ? 'test_card' : 'gcash',
         // Save the card on the request so paying after approval is one tap.
         card: requiresApproval && isTest ? maskCard(card) : undefined,
@@ -994,6 +1002,26 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               </div>
             </div>
           )}
+
+          <div className="field">
+            <div className="lbl">Senior citizen / PWD discount</div>
+            <div className="flex gap-2">
+              {(['none', 'senior', 'pwd'] as const).map((category) => (
+                <Chip key={category} selected={customerCategory === category} onClick={() => setCustomerCategory(category)}>
+                  {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
+                </Chip>
+              ))}
+            </div>
+            {customerCategory !== 'none' && (
+              <input
+                className="inp mt-2"
+                value={discountIdNumber}
+                onChange={(e) => setDiscountIdNumber(e.target.value)}
+                placeholder={`${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number`}
+                maxLength={80}
+              />
+            )}
+          </div>
 
           <div className="field">
             <div className="grid grid-cols-2 gap-3">
@@ -1572,6 +1600,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 sub={[
                   rateInfo.source === 'surge' ? 'Adjusted rate' : rateInfo.source === 'holiday' ? 'Holiday rate' : rateInfo.source === 'weekend' ? 'Weekend rate' : rateInfo.source === 'timeBlock' ? 'Time-block rate' : rateInfo.source === 'subUnit' ? 'Sub-unit rate' : null,
                   rateInfo.memberApplied ? `Member −${rateInfo.memberDiscountPercent}%` : null,
+                  rateInfo.statutoryDiscountApplied ? `${customerCategory === 'senior' ? 'Senior' : 'PWD'} −${rateInfo.statutoryDiscountPercent}%` : null,
                 ].filter(Boolean).join(' · ') || undefined}
               />
             )}
@@ -1597,6 +1626,18 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 </div>
                 <div className="font-heading font-semibold text-[15px]">{money(equipAmount, currency)}</div>
               </div>
+            )}
+            {discountAmount > 0 && (
+              <>
+                <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">
+                  <div className="text-[13px] font-semibold text-[var(--muted)]">Pre-discount subtotal</div>
+                  <div className="font-heading font-semibold text-[15px] tabular-nums">{money(preDiscountSubtotal, currency)}</div>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)] text-[var(--lime-ink)]">
+                  <div className="text-[13px] font-bold">{customerCategory === 'senior' ? 'Senior citizen' : 'PWD'} discount</div>
+                  <div className="font-heading font-bold text-[15px] tabular-nums">−{money(discountAmount, currency)}</div>
+                </div>
+              </>
             )}
             {/* Price breakdown — venue subtotal + the platform service fee. */}
             <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)]">

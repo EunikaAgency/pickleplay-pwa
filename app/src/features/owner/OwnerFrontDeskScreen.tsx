@@ -359,6 +359,8 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   const [blockReason, setBlockReason] = useState('');
   const [amount, setAmount] = useState('');
   const [amountTouched, setAmountTouched] = useState(false);
+  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>('none');
+  const [discountIdNumber, setDiscountIdNumber] = useState('');
   // Recurring (weekly regular / league): repeat the same slot for N weeks.
   const [repeat, setRepeat] = useState(false);
   const [weeks, setWeeks] = useState('4');
@@ -405,6 +407,12 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   const rate = rateInfo.rate;
   const hours = hoursBetween(startTime, endTime);
   const suggested = Math.round(rate * hours * 100) / 100;
+  const configuredDiscount = customerCategory === 'none' ? 0
+    : venue.statutoryDiscounts?.find((d) => d.category === customerCategory)?.percent;
+  const statutoryPercent = customerCategory === 'none' ? 0 : (configuredDiscount ?? 20);
+  const preDiscountAmount = Number(amount) || 0;
+  const discountPreview = Math.round(preDiscountAmount * statutoryPercent) / 100;
+  const finalAmountPreview = Math.round((preDiscountAmount - discountPreview) * 100) / 100;
 
   // Auto-fill the manual amount from the court rate × hours until the operator edits it.
   const prevAutoFillRef = useRef({ suggested, amountTouched, isBlock });
@@ -427,6 +435,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
     setError(null);
     if (hours <= 0) { setError('End time must be after the start time.'); return; }
     if (!isBlock && !customerName.trim()) { setError('Add a customer name.'); return; }
+    if (!isBlock && customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen/PWD ID number.'); return; }
     const weekCount = Math.max(2, Math.min(52, Number(weeks) || 0));
     if (repeat && weekCount < 2) { setError('Repeat for at least 2 weeks.'); return; }
     setBusy(true);
@@ -447,6 +456,8 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
                 customerPhone: customerPhone.trim() || undefined,
                 bookingSource: source,
                 amount: amount === '' ? 0 : Number(amount),
+                customerCategory,
+                discountIdNumber: customerCategory === 'none' ? undefined : discountIdNumber.trim(),
               }),
         });
         setRecurResult({ created: res.createdCount, skipped: res.skippedCount });
@@ -472,6 +483,8 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
             bookingSource: source,
             amount: amount === '' ? 0 : Number(amount),
             paymentMethod: payMethod,
+            customerCategory,
+            discountIdNumber: customerCategory === 'none' ? undefined : discountIdNumber.trim(),
           };
       const created = await createVenueBooking(vref, payload);
       onCreated(created);
@@ -612,6 +625,25 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
               />
               {!amountTouched && suggested > 0 && (
                 <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Suggested {money(suggested, currency)} ({money(rate, currency)}/hr × {hours} hr)</div>
+              )}
+              <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior/PWD discount.</div>
+            </div>
+            <div className="frontdesk-field">
+              <div className="lbl">Senior citizen / PWD</div>
+              <div className="flex gap-1.5 flex-wrap">
+                {(['none', 'senior', 'pwd'] as const).map((category) => (
+                  <Chip key={category} selected={customerCategory === category} onClick={() => setCustomerCategory(category)}>
+                    {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
+                  </Chip>
+                ))}
+              </div>
+              {customerCategory !== 'none' && (
+                <>
+                  <input className="control mt-2" value={discountIdNumber} onChange={(e) => setDiscountIdNumber(e.target.value)} placeholder="ID number" maxLength={80} />
+                  <div className="mt-2 rounded-xl bg-[var(--lime-soft)] px-3 py-2 text-[12px] font-semibold text-[var(--lime-ink)]">
+                    {statutoryPercent}% discount: −{money(discountPreview, currency)} · customer pays {money(finalAmountPreview, currency)}
+                  </div>
+                </>
               )}
             </div>
           </>

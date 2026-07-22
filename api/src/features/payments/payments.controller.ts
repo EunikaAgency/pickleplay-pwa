@@ -43,7 +43,7 @@ const verifySchema = z.object({
 // completed immediately; live mode just records a pending payment (no gateway
 // is wired yet).
 const checkoutSchema = z.object({
-  bookingId: z.string().optional(),
+  bookingId: z.string().min(1),
   amount: z.string().or(z.number()),
   currency: z.string().length(3).optional().default('PHP'),
   method: z.string().max(50).optional(),
@@ -93,7 +93,7 @@ export async function updatePayment(c: any) {
 export async function checkout(c: any) {
   const user = c.get('user');
   const body = checkoutSchema.parse(await c.req.json());
-  const amount = typeof body.amount === 'number' ? body.amount : parseFloat(body.amount);
+  let amount = typeof body.amount === 'number' ? body.amount : parseFloat(body.amount);
   const testMode = await isPaymentTestMode();
 
   // Demo card gate: in test mode a card whose number isn't the canonical test card
@@ -113,7 +113,8 @@ export async function checkout(c: any) {
   // (Instant-book bookings are already 'confirmed', so these checks no-op.)
   if (body.bookingId) {
     const existing = await Booking.findOne({ _id: body.bookingId, userId: user.sub })
-      .select('status paymentDueAt approvalDeadline').lean<{ status?: string; paymentDueAt?: Date; approvalDeadline?: Date }>();
+      .select('status paymentDueAt approvalDeadline amount amountPaid serviceFeeAmount').lean<any>();
+    if (!existing) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404);
     if (existing?.status === 'pending_approval') {
       return c.json({ error: { code: 'AWAITING_APPROVAL', message: 'This booking is awaiting venue approval — you can pay once the owner accepts it.' } }, 409);
     }
@@ -124,6 +125,11 @@ export async function checkout(c: any) {
       await expireOverdueBookings([{ ...existing, _id: body.bookingId }]);
       return c.json({ error: { code: 'PAYMENT_EXPIRED', message: 'The payment window for this booking has expired. Please book again.' } }, 409);
     }
+    // Never charge a client-supplied amount for a booking. The server computed
+    // amountPaid when it priced the booking (full/deposit/pay-at-venue).
+    amount = Number.isFinite(Number(existing.amountPaid))
+      ? Number(existing.amountPaid)
+      : Number(existing.amount || 0) + Number(existing.serviceFeeAmount || 0);
   }
 
   const payment = await Payment.create({
@@ -264,7 +270,7 @@ export async function verifyPayment(c: any) {
 /* ─── Official receipts ────────────────────────────────────────── */
 
 async function generateDraftReceipt(bookingId: string): Promise<void> {
-  const booking = await Booking.findById(bookingId).select('userId venueId amount serviceFeeAmount date startTime').lean();
+  const booking = await Booking.findById(bookingId).select('userId venueId amount serviceFeeAmount discountAmount customerCategory discountIdNumber customerName date startTime').lean();
   if (!booking) return;
   const venueId = String((booking as any).venueId);
 
@@ -281,8 +287,9 @@ async function generateDraftReceipt(bookingId: string): Promise<void> {
   const receiptNumber = `OR-${venueCode}-${year}-${seq}`;
 
   const gross = (booking as any).amount + ((booking as any).serviceFeeAmount || 0);
-  const vatRate = 12;
-  const vatAmount = Math.round(gross * vatRate / (100 + vatRate) * 100) / 100;
+  const vatExempt = ['senior', 'pwd'].includes((booking as any).customerCategory);
+  const vatRate = vatExempt ? 0 : 12;
+  const vatAmount = vatExempt ? 0 : Math.round(gross * vatRate / (100 + vatRate) * 100) / 100;
   const netAmount = Math.round((gross - vatAmount) * 100) / 100;
 
   await OfficialReceipt.create({
@@ -290,10 +297,15 @@ async function generateDraftReceipt(bookingId: string): Promise<void> {
     bookingId,
     userId: (booking as any).userId,
     venueId,
+    payorName: (booking as any).customerName || undefined,
     amount: gross,
     vatAmount,
     vatRate,
     netAmount,
+    discountAmount: (booking as any).discountAmount || 0,
+    discountCategory: vatExempt ? (booking as any).customerCategory : undefined,
+    discountIdNumber: vatExempt ? (booking as any).discountIdNumber : undefined,
+    vatExempt,
     description: `Court booking at ${(venue as any)?.displayName || 'venue'} on ${(booking as any).date || 'a date'}`,
     status: 'draft',
   });
@@ -320,6 +332,10 @@ export async function listMyReceipts(c: any) {
       vatAmount: r.vatAmount,
       netAmount: r.netAmount,
       vatRate: r.vatRate,
+      discountAmount: r.discountAmount,
+      discountCategory: r.discountCategory,
+      discountIdNumber: r.discountIdNumber,
+      vatExempt: r.vatExempt,
       description: r.description,
       status: r.status,
       issuedAt: r.issuedAt,
@@ -394,6 +410,10 @@ export async function listVenueReceipts(c: any) {
       amount: r.amount,
       vatAmount: r.vatAmount,
       netAmount: r.netAmount,
+      discountAmount: r.discountAmount,
+      discountCategory: r.discountCategory,
+      discountIdNumber: r.discountIdNumber,
+      vatExempt: r.vatExempt,
       status: r.status,
       issuedAt: r.issuedAt,
       createdAt: r.createdAt,
@@ -426,7 +446,7 @@ export async function generateSettlement(c: any) {
     status: 'confirmed',
     date: { $gte: body.periodStart, $lte: body.periodEnd },
     bookingType: { $nin: ['blocked', 'manual'] },
-  }).lean();
+  }).select('_id venueId amount serviceFeeAmount discountAmount').lean();
   const existingLineItems = periodBookings.length
     ? await SettlementLineItem.find({ bookingId: { $in: periodBookings.map((b) => b._id) } }).select('bookingId').lean()
     : [];
@@ -460,6 +480,7 @@ export async function generateSettlement(c: any) {
       bookingId: b._id,
       amount: b.amount || 0,
       serviceFee: b.serviceFeeAmount || 0,
+      discountAmount: b.discountAmount || 0,
     }));
     await SettlementLineItem.insertMany(items);
   }
