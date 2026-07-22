@@ -1057,11 +1057,22 @@ function PlayCard({ item, onClick, located, featured }: { item: ScoredPlayItem; 
   const skillIneligible = !!me && !!item.skillBand
     && !!skillBlockReason(item.skillBand[0], item.skillBand[1], me.skillLevel, true);
   const when = [prettyDate(item.date), item.startTime ? to12h(item.startTime) : null].filter(Boolean).join(' · ') || 'Time TBA';
-  const meta = [item.skillLabel, item.priceLabel, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // A real entrance fee gets its own chip, not just a number in the meta line —
   // venues also label their court rate "Pay to Play" / "Per Player" there, so a
   // player can't tell a genuine fee from marketing copy without this.
   const entryFee = item.joinFee != null && item.joinFee > 0 ? item.joinFee : null;
+  // `priceLabel` is a true per-player price only on a venue SESSION. On a player-
+  // hosted game it is never what the joiner pays: with an entry fee it's that fee
+  // (already surfaced by the chip below, so it's dropped here), and with none it's
+  // the venue's hourly court rate the host already covered — shown prefixed as the
+  // host's court cost so it can't be misread as a price to join. See
+  // PlayItem.joinFee in api.ts.
+  const priceMeta = item.kind === 'session'
+    ? item.priceLabel
+    : entryFee != null
+      ? null
+      : item.priceLabel ? `Court ${item.priceLabel}` : null;
+  const meta = [item.skillLabel, priceMeta, item.host ? `Hosted by ${item.host}` : null].filter(Boolean).join(' · ');
   // Three states, not two: a measured distance; "unknown" when we know where the
   // user is but the venue has no coordinates; and nothing at all when location is
   // off — in which case the banner above already explains the absence.
