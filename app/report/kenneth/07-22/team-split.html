@@ -240,21 +240,22 @@
         <div class="lane-tag">Task B · Edu</div>
         <h2>Coach, organizer &amp; tournaments</h2>
         <p class="grouped"><b>Grouped:</b> the whole paid-provider journey — subscribe → set up → run tournaments → get paid.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 2 of 6 done ✓ — coach profile editor shipped &amp; deployed; organizer paywall routing fixed (code-complete, deploy pending).</p>
       </div>
       <div class="lane-body">
 
-        <div class="task">
-          <h3>Organizer applicant routed to the wrong paywall<span class="src">[21Jul-new]</span></h3>
-          <p>Applying to <b>organize</b> lands on the ₱499 <b>coach</b> screen, not ₱999 organizer (<code>CourtDetailsScreen.tsx:471</code>).</p>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Organizer applicant routed to the wrong paywall<span class="src">[21Jul-new]</span></h3>
+          <p>Applying to <b>organize</b> lands on the ₱499 <b>coach</b> screen, not ₱999 organizer (<code>CourtDetailsScreen.tsx:483</code>).</p>
           <div class="fix"><b>Fix</b> Point that branch at the organizer subscribe screen.</div>
-          <div class="rel">gates the coach/organizer setup flows below</div>
+          <div class="shipped">code-complete — the <code>SUBSCRIPTION_REQUIRED</code> branch now routes on <code>kind</code>: organizers → <code>organizer-subscribe</code> (₱999), coaches → <code>coach-subscribe</code> (₱499); tsc clean; deploy pending.</div>
         </div>
 
-        <div class="task">
-          <h3>No coach profile editor<span class="src">[21Jul-new]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>No coach profile editor<span class="src">[21Jul-new]</span></h3>
           <p>Only rates exist; <code>createMyCoach</code> never called; bio/photo/certs/reviews unwired; no verify toggle.</p>
           <div class="fix"><b>Fix</b> Build the editor, call <code>createMyCoach</code>, wire reviews + a visible toggle.</div>
-          <div class="rel">same coach subscribe path as the paywall fix</div>
+          <div class="shipped">shipped &amp; deployed — profile editor on <b>Coach Information</b> (headline, city pulled from Edit Profile, experience, bio, languages, certifications) writes live to the public <code>/coaches/:slug</code> card via <code>updateMyCoach</code>; renamed <code>/coach/pricing</code> → <code>/coach/information</code> (old path aliased) + "View public page" link. Reviews, self-serve <code>createMyCoach</code> &amp; verify toggle not in this pass.</div>
         </div>
 
         <div class="task">
