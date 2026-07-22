@@ -180,6 +180,11 @@ async function authUserPayload(user: any) {
     role: user.roleDefault || 'player',
     roles,
     permissions,
+    // The per-account grants ALONE (not merged with role/subscription perms), so
+    // the client can layer only these on top of its own role-derived set — role
+    // permissions can drift in the DB, and the client must stay authoritative
+    // for those while still honouring an owner's explicit per-staff grant.
+    grantedPermissions,
     partnerRoles,
     coachId: user.coachId,
     managedCoachId: user.managedCoachId,

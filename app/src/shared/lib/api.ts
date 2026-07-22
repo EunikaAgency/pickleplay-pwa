@@ -218,6 +218,10 @@ export interface ApiUser {
   role?: string | null;
   roles?: string[];
   permissions?: string[];
+  /** Per-account grants ALONE (not merged with role perms) — an owner can grant
+   *  a staff member extra capabilities (e.g. pricing/analytics) from the Access
+   *  panel. Layered on top of the client's own role-derived set in `toAppUser`. */
+  grantedPermissions?: string[];
   skillLevel?: number | null;
   skillLevelLabel?: string | null;
   bio?: string | null;
@@ -250,10 +254,13 @@ interface AuthTokens {
 /**
  * Map the API user payload onto the app's `AppUser`. We re-derive the role- and
  * subscription-based permissions from the app's own `resolveRolePermissions`
- * (so the client stays authoritative for those even if the two lists drift), but
- * we ALSO trust the server's `permissions` array on top — it carries per-account
- * grants that roles alone don't express (e.g. a staff member the owner granted
- * `owner.pricing.manage`), which the client can't reconstruct from roles.
+ * (so the client stays authoritative for those even if the two lists drift), and
+ * we layer on the server's `grantedPermissions` — the per-account grants ALONE
+ * (e.g. a staff member the owner granted `owner.pricing.manage`), which the
+ * client can't reconstruct from roles. We deliberately do NOT trust the server's
+ * merged `permissions` array: the DB role set can drift (e.g. the live staff role
+ * carries `owner.analytics.view`), and honouring that would leak capabilities the
+ * owner never granted per-staff. Grants are the only server-derived add-on.
  */
 /** Coerce the API's free-string privacy field to a known value (default public). */
 function normalizePrivacy(value?: string | null): PrivacySetting {
@@ -300,18 +307,16 @@ export function toAppUser(api: ApiUser): AppUser {
     // Role permissions PLUS whatever the user's live partner subscriptions
     // unlock — coach/organizer are no longer roles, so a subscribed partner is a
     // plain `player` and would otherwise resolve to zero partner permissions.
-    // PLUS any per-account permissions the server granted that roles alone don't
-    // cover — e.g. an owner granting a staff member `owner.pricing.manage` from
-    // the Access panel. The server's `/me` payload already unions those grants
-    // in; we must carry them through here or the UI gates (sidebar Pricing item,
-    // etc.) never see them.
+    // PLUS the per-account grants an owner set for this staff member (e.g.
+    // `owner.pricing.manage`) — the ONLY server-derived add-on we trust, so a
+    // drifted DB role can't leak capabilities the owner never granted.
     permissions: [...new Set([
       ...resolveRolePermissions(roles),
       ...resolveSubscriptionPermissions([
         ...(api.coachSubscriptionActive ? ['coach' as const] : []),
         ...(api.organizerSubscriptionActive ? ['organizer' as const] : []),
       ]),
-      ...((api.permissions ?? []) as Permission[]),
+      ...((api.grantedPermissions ?? []) as Permission[]),
     ])],
     partnerRoles: api.partnerRoles ?? [],
   };
