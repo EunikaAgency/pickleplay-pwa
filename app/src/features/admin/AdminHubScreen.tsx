@@ -47,7 +47,9 @@ const SECTIONS: { label: string; items: SectionItem[] }[] = [
   {
     label: 'System',
     items: [
-      { screen: 'admin-settings', icon: 'settings', label: 'Settings', description: 'Payments, partner subscriptions, email monitoring', permission: 'admin.settings.manage' },
+      { screen: 'admin-payments', icon: 'payments', label: 'Payments', description: 'Test mode, fees, and pricing mode', permission: 'admin.settings.manage' },
+      { screen: 'admin-partner-subscriptions', icon: 'card_membership', label: 'Partner subscriptions', description: 'Coach & organizer pricing and plan tiers', permission: 'admin.settings.manage' },
+      { screen: 'admin-email-monitoring', icon: 'mail', label: 'Email monitoring', description: 'BCC transactional emails', permission: 'admin.settings.manage' },
       { screen: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions', description: 'What each role can do', permission: 'admin.settings.manage' },
     ],
   },

@@ -124,7 +124,7 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
     ...(isOrganizer ? [{ key: 'organize', icon: <Trophy />, label: 'Organizer console', sub: 'Tournaments & open play', onClick: () => onNavigate('organizer-hub') } as Row] : []),
     ...(canModerate ? [{ key: 'claims', icon: <Shield />, label: 'Venue claims', sub: 'Review ownership claims', onClick: () => onNavigate('admin-claims') } as Row] : []),
     ...(canModerate ? [{ key: 'post-reports', icon: <Flag />, label: 'Post reports', sub: 'Review reported posts', onClick: () => onNavigate('admin-post-reports') } as Row] : []),
-    ...(canSettings ? [{ key: 'app-settings', icon: <SettingsIco />, label: 'App settings', sub: 'Payment mode, fees & subscription pricing', onClick: () => onNavigate('admin-settings') } as Row] : []),
+    ...(canSettings ? [{ key: 'app-settings', icon: <SettingsIco />, label: 'App settings', sub: 'Payment mode, fees & subscription pricing', onClick: () => onNavigate('admin-payments') } as Row] : []),
     { key: 'settings', icon: <SettingsIco />, label: 'Settings', sub: 'Privacy & preferences', onClick: () => onNavigate('settings') },
   ];
 

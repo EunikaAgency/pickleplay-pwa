@@ -88,7 +88,11 @@ async function venueContext(conv: any, user: any): Promise<{
   const empty = { label: null, imageUrl: null, ownerId: null, viewerIsVenueSide: false };
   if (conv.contextType !== 'venue' || !conv.contextId) return empty;
   const venue: any = await Venue.findById(conv.contextId).select('displayName mainImageUrl ownerUserId').lean();
-  if (!venue) return empty;
+  if (!venue) {
+    // Venue removed/re-imported — keep the thread labelled from the snapshot so
+    // it doesn't collapse to showing the owner's personal name.
+    return { label: conv.contextName ?? null, imageUrl: null, ownerId: null, viewerIsVenueSide: false };
+  }
   // mainImageUrl (CSV import) is the base; user-uploaded Media wins — primary first.
   const media = await Media.find({ ownerType: 'venue', ownerId: String(conv.contextId) }).select('url isPrimary').lean();
   let imageUrl: string | null = venue.mainImageUrl ?? null;
@@ -96,7 +100,7 @@ async function venueContext(conv: any, user: any): Promise<{
     if (!imageUrl || m.isPrimary) imageUrl = m.url;
   }
   return {
-    label: venue.displayName ?? null,
+    label: venue.displayName ?? conv.contextName ?? null,
     imageUrl,
     ownerId: venue.ownerUserId ? String(venue.ownerUserId) : null,
     viewerIsVenueSide: (await managedVenueIds(user)).includes(String(conv.contextId)),
@@ -312,14 +316,16 @@ export async function listConversations(c: any) {
     const cid = String(cv.contextId);
     if (cv.contextType === 'venue') {
       const v = venueById.get(cid);
-      return v?.displayName ?? null;
+      // Prefer the live venue name (picks up renames); fall back to the snapshot
+      // captured at creation so a deleted/re-imported venue still shows its name
+      // instead of collapsing to the owner's personal name.
+      return v?.displayName ?? cv.contextName ?? null;
     }
     if (cv.contextType === 'booking') {
       const bk = bookingById.get(cid);
-      if (!bk) return null;
-      const v = venueById.get(String(bk.venueId));
-      const venueName = v?.displayName ?? null;
-      const d = bk.date ? new Date(bk.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+      const v = bk ? venueById.get(String(bk.venueId)) : null;
+      const venueName = v?.displayName ?? cv.contextName ?? null;
+      const d = bk?.date ? new Date(bk.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
       if (venueName && d) return `${venueName} · ${d}`;
       if (venueName) return venueName;
       if (d) return d;
@@ -381,6 +387,21 @@ export async function startConversation(c: any) {
   const baseKey = conversationKey(user.sub, userId);
   const effectiveKey = contextType && contextId ? `${baseKey}:${contextType}:${contextId}` : baseKey;
 
+  // For a context-scoped thread, resolve the entity's name up front — it's
+  // snapshotted onto the conversation (so the thread keeps its label even if the
+  // venue/booking is later removed) and reused for the venue auto intro message.
+  let venueName: string | null = null;
+  if (contextType === 'venue' && contextId) {
+    const venue = await Venue.findById(contextId).select('displayName').lean();
+    venueName = (venue as any)?.displayName ?? null;
+  } else if (contextType === 'booking' && contextId) {
+    const bk = await Booking.findById(contextId).select('venueId').lean();
+    if ((bk as any)?.venueId) {
+      const venue = await Venue.findById((bk as any).venueId).select('displayName').lean();
+      venueName = (venue as any)?.displayName ?? null;
+    }
+  }
+
   let conv = await Conversation.findOne({ key: effectiveKey });
   let created = false;
   if (!conv) {
@@ -390,15 +411,15 @@ export async function startConversation(c: any) {
       reads: [{ userId: user.sub, at: new Date() }],
       contextType: contextType ?? undefined,
       contextId: contextId ?? undefined,
+      contextName: venueName ?? undefined,
     });
     created = true;
 
     // For venue-scoped conversations, send an auto intro message so the owner
     // sees context immediately ("Hi, I have a question about The Dink Lab").
     if (contextType === 'venue' && contextId) {
-      const venue = await Venue.findById(contextId).select('displayName').lean();
-      const venueName = (venue as any)?.displayName || 'your venue';
-      const introBody = `Hi, I have a question about ${venueName}.`;
+      const introName = venueName || 'your venue';
+      const introBody = `Hi, I have a question about ${introName}.`;
       const now = new Date();
       const msg = await Message.create({ conversationId: conv._id, senderId: user.sub, body: introBody });
       conv.lastBody = introBody;
@@ -409,7 +430,7 @@ export async function startConversation(c: any) {
 
       // Tell the whole venue side — the owner AND their staff — a customer wrote in.
       await announceVenueIntro({
-        conv, senderId: user.sub, venueId: contextId, venueName,
+        conv, senderId: user.sub, venueId: contextId, venueName: introName,
         messageId: String(msg._id), body: introBody, at: now,
       });
     }
@@ -809,6 +830,7 @@ export async function getVenueConversation(c: any) {
       reads: [{ userId: user.sub, at: new Date() }],
       contextType: 'venue',
       contextId: venueId,
+      contextName: (venue as any).displayName ?? undefined,
     });
     created = true;
 

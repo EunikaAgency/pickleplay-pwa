@@ -41,6 +41,13 @@ const conversationSchema = new Schema(
     // venue" button always lands on the same thread (find-or-create by key + context).
     contextType: { type: String, maxlength: 30 },   // 'venue' (extensible)
     contextId:   { type: Schema.Types.ObjectId },    // ObjectId of the context entity
+    // Denormalized name of the context entity (e.g. the venue's displayName),
+    // snapshotted at creation. The chat list resolves the label from the live
+    // venue, but a venue can be deleted or re-imported (its _id changes) — when
+    // the contextId no longer resolves, the UI would otherwise fall back to the
+    // other participant (the venue OWNER's personal name). This snapshot keeps a
+    // venue thread showing its venue name regardless.
+    contextName: { type: String, maxlength: 200 },
   },
   { timestamps: true },
 );

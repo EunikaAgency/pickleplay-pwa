@@ -140,7 +140,9 @@ const ADMIN_SECTIONS: AdminSection[] = [
     label: 'System',
     icon: 'settings',
     items: [
-      { screenId: 'admin-settings', icon: 'settings', label: 'Settings' },
+      { screenId: 'admin-payments', icon: 'payments', label: 'Payments' },
+      { screenId: 'admin-partner-subscriptions', icon: 'card_membership', label: 'Partner subscriptions' },
+      { screenId: 'admin-email-monitoring', icon: 'mail', label: 'Email monitoring' },
       { screenId: 'admin-feature-flags', icon: 'toggle_on', label: 'Feature flags' },
       { screenId: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions' },
     ],
