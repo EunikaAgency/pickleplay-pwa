@@ -6,8 +6,6 @@ import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { listClaims, reviewClaim, apiImageUrl, ApiError, type VenueClaim } from '../../shared/lib/api';
-import type { Navigate } from '../../shared/lib/navigation';
-
 interface AdminClaimsScreenProps {
   onBack: () => void;
 }
