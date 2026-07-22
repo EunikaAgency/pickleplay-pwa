@@ -2085,7 +2085,6 @@
   flex-direction: column;
   width: var(--sidebar-w);
   flex-shrink: 0;
-  overflow: hidden;
   /* Brand-tinted panel so it separates from the white content area. */
   background: linear-gradient(180deg, #dfe4fb 0%, #cdd4f2 100%);
   border-right: 0.5px solid var(--hairline);
