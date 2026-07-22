@@ -1727,6 +1727,7 @@
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast .check { color: var(--lime); }
+.toast-error .check { color: var(--coral); }
 
 /* ─── Utilities ─── */
 @utility scrollbar-none {

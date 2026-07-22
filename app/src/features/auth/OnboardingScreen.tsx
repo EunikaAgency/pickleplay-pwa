@@ -53,21 +53,31 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [tier, setTier] = useState<SkillTier['id'] | null>(null);
   const [duprOpen, setDuprOpen] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  // Set when the account save fails — we surface it instead of silently dropping
+  // the skill tier/address, and let the user retry or continue anyway.
+  const [finishError, setFinishError] = useState(false);
 
   // Remember onboarding on the account (so the user is never re-onboarded),
   // saving the skill tier and the address they gave, then leave the flow.
-  // `completeOnboarding` is best-effort, so we always proceed via onComplete.
   const finish = async (chosenTier: SkillTier['id'] | null) => {
     if (finishing) return;
     setFinishing(true);
+    setFinishError(false);
     const tierName = chosenTier ? skillTiers.find((t) => t.id === chosenTier)?.name : undefined;
-    await completeOnboarding({
+    const saved = await completeOnboarding({
       ...(chosenTier ? { skillLevel: duprForTier(chosenTier), skillLevelLabel: tierName } : {}),
       ...(place ?? {}),
       ...(address1.trim() ? { address1: address1.trim() } : {}),
       ...(address2.trim() ? { address2: address2.trim() } : {}),
     });
-    onComplete();
+    if (saved) {
+      onComplete();
+    } else {
+      // Save failed — keep the user on the screen with feedback rather than
+      // dropping them into the app having silently lost what they entered.
+      setFinishError(true);
+      setFinishing(false);
+    }
   };
 
   // One resolved place → the fields, for all three entry points. Mirrors
@@ -293,10 +303,26 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 </>
               ) : (
                 <>
-                  <Icon name="bolt" size={18} /> Let's play!
+                  <Icon name="bolt" size={18} /> {finishError ? 'Try again' : "Let's play!"}
                 </>
               )}
             </Button>
+
+            {finishError && (
+              <div className="text-center">
+                <p className="text-[13px] font-semibold text-[var(--coral)] flex items-center justify-center gap-1.5">
+                  <Icon name="error" size={15} /> We couldn't save your preferences.
+                </p>
+                <p className="t-sm mt-1">Check your connection and try again, or continue and set them later in your profile.</p>
+                <button
+                  type="button"
+                  onClick={onComplete}
+                  className="mt-2 text-[var(--primary)] font-bold text-[13px]"
+                >
+                  Continue anyway →
+                </button>
+              </div>
+            )}
           </div>
         )}
         </div>
