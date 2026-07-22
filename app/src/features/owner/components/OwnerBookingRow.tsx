@@ -37,7 +37,7 @@ export function OwnerBookingRow({ booking, canManage, showVenue, onChanged, onOp
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messaging, setMessaging] = useState(false);
-  const chip = statusChip(booking.status);
+  const chip = statusChip(booking.status, booking.cancellationType);
   const now = useCountdown(booking.approvalDeadline);
   const urgency = deadlineUrgency(booking.createdAt, booking.approvalDeadline, now);
 

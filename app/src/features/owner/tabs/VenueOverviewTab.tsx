@@ -204,7 +204,7 @@ export function VenueOverviewTab({ venue, venueId, onOpenTab }: VenueOverviewTab
           ) : (
             <div className="space-y-2.5">
               {upcoming.map((b) => {
-                const chip = statusChip(b.status);
+                const chip = statusChip(b.status, b.cancellationType);
                 return (
                   <div key={b.id} className="flex items-center gap-3">
                     <div className="min-w-0 flex-1">

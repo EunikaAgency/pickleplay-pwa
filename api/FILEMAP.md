@@ -347,7 +347,12 @@ src/
                              #   expire-legacy-pending-bookings.ts (one-off: silently
                              #     cancels request-to-book rows stranded before
                              #     approvalDeadline existed, which would otherwise block
-                             #     their courts forever; --dry-run supported)
+                             #     their courts forever; --dry-run supported),
+                             #   backfill-cancellation-type.ts (one-off: infers
+                             #     Booking.cancellationType on legacy cancelled rows
+                             #     from their fixed cancellationReason strings, so
+                             #     reports can tell an owner rejection from a player
+                             #     cancellation; idempotent, --dry-run/--leave-unmatched)
     lib/                     # framework-agnostic helpers: jwt.ts, permissions.ts,
                              #   geo.ts (haversineKm — the Play feed's proximity signal),
                              #   cursor.ts (compound createdAt|_id keyset pagination),

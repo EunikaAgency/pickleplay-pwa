@@ -2244,12 +2244,20 @@ export async function updateBookingStatus(c: any) {
   if (status === 'cancelled' && result && booking.status === 'pending_approval') {
     const venue = await Venue.findById(venueId).select('displayName').lean<{ displayName?: string }>();
     const venueName = venue?.displayName || 'The venue';
+    // The Decline button sends a generic marker ('Declined by venue'), not a real
+    // note — appending it read as "declined your request: Declined by venue".
+    // Only quote a reason the owner actually typed; otherwise keep the copy clean.
+    const GENERIC_REASONS = ['Declined by venue', 'Removed by owner'];
+    const realReason = cancellationReason && !GENERIC_REASONS.includes(cancellationReason.trim())
+      ? cancellationReason.trim()
+      : null;
+    const when = `${fmtDate((result as any).date)}${(result as any).startTime ? ` at ${fmtTime((result as any).startTime)}` : ''}`;
     await notifyUser((result as any).userId, {
       type: 'booking_rejected',
       title: 'Booking request declined',
-      body: cancellationReason
-        ? `${venueName} declined your request: ${cancellationReason}`
-        : `${venueName} couldn't take your booking for ${fmtDate((result as any).date)}. You haven't been charged.`,
+      body: realReason
+        ? `${venueName} couldn't take your booking for ${when}: ${realReason}. You weren't charged.`
+        : `${venueName} couldn't take your booking for ${when}. You weren't charged.`,
       icon: 'calendar',
       linkUrl: '/my-bookings',
       tag: String((result as any)._id),

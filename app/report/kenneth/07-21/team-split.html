@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PickleBallers — Team Split (21 Jul 2026)</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5;
+    --ink: #191f28; --ink-2: #454e5b; --muted: #6b7686;
+    --line: #dde2e9; --line-strong: #cbd2dc;
+    --accent: #0d7d72; --accent-soft: #d9efec;
+    --sev-critical: #d63c3c; --sev-defect: #c9720a; --sev-partial: #b08600;
+    --sev-blocked: #6d6af0; --sev-verify: #2f6fd6; --sev-done: #1f9d57;
+    --laneA: #1f9d57; --laneB: #7a3ff0;
+    --shadow: 0 1px 2px rgba(20,28,40,.05), 0 2px 8px rgba(20,28,40,.04);
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1218; --surface: #161c25; --surface-2: #1d2530;
+      --ink: #e9edf3; --ink-2: #b9c2ce; --muted: #8592a1;
+      --line: #262f3b; --line-strong: #33404f;
+      --accent: #34b9ab; --accent-soft: #123c39;
+      --sev-critical: #f0655f; --sev-defect: #e6963a; --sev-partial: #d7b038;
+      --sev-blocked: #9a97ff; --sev-verify: #63a0f5; --sev-done: #4dc684;
+      --laneA: #4dc684; --laneB: #a889ff;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5;
+    --ink: #191f28; --ink-2: #454e5b; --muted: #6b7686;
+    --line: #dde2e9; --line-strong: #cbd2dc;
+    --accent: #0d7d72; --accent-soft: #d9efec;
+    --sev-critical: #d63c3c; --sev-defect: #c9720a; --sev-partial: #b08600;
+    --sev-blocked: #6d6af0; --sev-verify: #2f6fd6; --sev-done: #1f9d57;
+    --laneA: #1f9d57; --laneB: #7a3ff0;
+    --shadow: 0 1px 2px rgba(20,28,40,.05), 0 2px 8px rgba(20,28,40,.04);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1218; --surface: #161c25; --surface-2: #1d2530;
+    --ink: #e9edf3; --ink-2: #b9c2ce; --muted: #8592a1;
+    --line: #262f3b; --line-strong: #33404f;
+    --accent: #34b9ab; --accent-soft: #123c39;
+    --sev-critical: #f0655f; --sev-defect: #e6963a; --sev-partial: #d7b038;
+    --sev-blocked: #9a97ff; --sev-verify: #63a0f5; --sev-done: #4dc684;
+    --laneA: #4dc684; --laneB: #a889ff;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header { margin-bottom: 22px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 2px; }
+  h1 { font-size: clamp(26px, 4.5vw, 38px); line-height: 1.08; margin: 12px 0 10px; letter-spacing: -.02em; text-wrap: balance; font-weight: 700; }
+  .lede { color: var(--ink-2); font-size: 15px; max-width: 74ch; margin: 0; }
+  .lede code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .meta { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 22px 0 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 14px; box-shadow: var(--shadow); }
+  .stat .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat .l { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .stat.a .n { color: var(--laneA); }
+  .stat.b .n { color: var(--laneB); }
+  .stat.k .n { color: var(--sev-critical); }
+  .stat.blk .n { color: var(--sev-blocked); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 18px 0 6px; font-size: 12.5px; color: var(--ink-2); }
+  .legend .chip { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .d-easy { background: var(--sev-done); }
+  .d-med  { background: var(--sev-defect); }
+  .d-hard { background: var(--sev-critical); }
+
+  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 20px; }
+  @media (max-width: 860px) { .lanes { grid-template-columns: 1fr; } }
+  .lane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .lane-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--line); }
+  .lane-head.A { border-top: 3px solid var(--laneA); }
+  .lane-head.B { border-top: 3px solid var(--laneB); }
+  .lane-tag { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 600; }
+  .lane-head.A .lane-tag { color: var(--laneA); }
+  .lane-head.B .lane-tag { color: var(--laneB); }
+  .lane-head h2 { font-size: 19px; margin: 6px 0 4px; letter-spacing: -.01em; }
+  .lane-head p { margin: 0; font-size: 13px; color: var(--muted); }
+  .lane-body { padding: 8px 10px 14px; }
+
+  .task { padding: 13px 12px 14px; border-radius: 10px; border: 1px solid transparent; }
+  .task + .task { border-top: 1px solid var(--line); }
+  .task:hover { background: var(--surface-2); }
+  .task-top { display: flex; align-items: flex-start; gap: 9px; }
+  .diff { flex: none; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 3px 7px; border-radius: 6px; margin-top: 1px; color: #fff; }
+  .diff.easy { background: var(--sev-done); }
+  .diff.med  { background: var(--sev-defect); }
+  .diff.hard { background: var(--sev-critical); }
+  .task h3 { font-size: 14.5px; margin: 0; line-height: 1.35; font-weight: 650; }
+  .task .src { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-left: 6px; font-weight: 500; white-space: nowrap; }
+  .task p { margin: 7px 0 0 0; font-size: 13px; color: var(--ink-2); }
+  .task p code, .task h3 code { font-family: var(--mono); font-size: .84em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; color: var(--ink); }
+  .task:hover p code, .task:hover h3 code { background: var(--bg); }
+  .fix { margin-top: 8px; font-size: 12.5px; color: var(--ink); padding: 7px 10px; background: var(--accent-soft); border-radius: 8px; }
+  .fix b { color: var(--accent); font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: .05em; font-family: var(--mono); margin-right: 4px; }
+
+  section.block { margin-top: 34px; }
+  .sec-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+  .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .owned { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px 18px; }
+  .owned .row { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); display: flex; gap: 10px; align-items: baseline; }
+  .owned .row:last-child { border-bottom: none; }
+  .owned .m { flex: none; }
+  .owned code { font-family: var(--mono); font-size: .84em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .note { background: var(--surface-2); border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; color: var(--ink-2); }
+  .note b { color: var(--ink); }
+  footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">PickleBallers · Work split</div>
+    <h1>Launch Task Split — Two Even Task Sets</h1>
+    <p class="lede">
+      Kenneth takes the <b>launch-critical</b> set solo (listed below for reference). The remaining
+      <b>20 tasks</b> are split <b>dead even — 10 and 10</b>, with a matched difficulty mix on each side
+      (same number of hard ones), so nobody gets to say theirs is heavier. Every card has a short
+      <b>Fix</b>. Source: <code>2026-07-21-open-tasks.md</code>.
+    </p>
+    <div class="meta">
+      <span><b>Compiled:</b> 21 Jul 2026</span>
+      <span><b>Launch target:</b> end of July 2026</span>
+      <span><b>Balance:</b> 10 / 10 · 3 hard each</span>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat a"><div class="n">10</div><div class="l">Jambik · tasks</div></div>
+    <div class="stat b"><div class="n">10</div><div class="l">Edu · tasks</div></div>
+    <div class="stat k"><div class="n">10</div><div class="l">Kenneth · launch-critical</div></div>
+    <div class="stat blk"><div class="n">3+3</div><div class="l">Hard each lane</div></div>
+  </div>
+
+  <div class="legend">
+    <span class="chip"><span class="dot d-easy"></span> <b>Easy</b> — one-liner / unhide / config</span>
+    <span class="chip"><span class="dot d-med"></span> <b>Medium</b> — wiring, reuse, a screen</span>
+    <span class="chip"><span class="dot d-hard"></span> <b>Hard</b> — new flow / cross-cutting / build-from-scratch</span>
+  </div>
+
+  <!-- ============ LANES ============ -->
+  <div class="lanes">
+
+    <!-- JAMBIK -->
+    <div class="lane">
+      <div class="lane-head A">
+        <div class="lane-tag">Assigned · Jambik</div>
+        <h2>10 tasks · 3 easy · 4 med · 3 hard</h2>
+        <p>Balanced mix — equal weight to Edu's set.</p>
+      </div>
+      <div class="lane-body">
+
+        <div class="task">
+          <div class="task-top"><span class="diff easy">Easy</span>
+            <h3>Organizer applicant routed to the wrong paywall<span class="src">[21Jul-new]</span></h3></div>
+          <p>Applying to <b>organize</b> lands on the ₱499 <b>coach</b> screen, not ₱999 organizer (<code>CourtDetailsScreen.tsx:471</code>).</p>
+          <div class="fix"><b>Fix</b> Point that branch at the organizer subscribe screen.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff easy">Easy</span>
+            <h3>Finished features hidden behind disabled menus<span class="src">[20Jul]</span></h3></div>
+          <p>Organizer Tournaments + Venue Requests are built, then hidden.</p>
+          <div class="fix"><b>Fix</b> Flip the menu flags on (or delete the dead entries).</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff easy">Easy</span>
+            <h3>Filters don't persist across Open Play / Events<span class="src">[20Jul]</span></h3></div>
+          <p>Switching tabs wipes them; filters themselves work.</p>
+          <div class="fix"><b>Fix</b> Lift filter state above the tabs so it survives the switch.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>Silent failures swallow errors<span class="src">[21Jul-new]</span></h3></div>
+          <p>Club join (<code>ClubsPanel.tsx:75</code>), onboarding save (<code>OnboardingScreen.tsx:59</code>), open-play cancel fail with no feedback.</p>
+          <div class="fix"><b>Fix</b> Catch → error toast + keep the failed state on screen.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>Duplicate "Book Court" navigation<span class="src">[17Jul][20Jul]</span></h3></div>
+          <p>Four map/venue screens, two booking screens; Home &amp; Nearby land on the same one.</p>
+          <div class="fix"><b>Fix</b> Route every "Book Court" entry to one canonical booking screen.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>"Search-before-create" for new venues<span class="src">[17Jul][20Jul][21Jul]</span></h3></div>
+          <p>Static banner, no name lookup before <code>createVenue</code> — dupes possible. <code>ClaimVenueScreen</code> already searches.</p>
+          <div class="fix"><b>Fix</b> Reuse ClaimVenueScreen's search; block create on a match.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3></div>
+          <p><code>WeeklyHoursEditor</code>, <code>ClosuresEditorTab</code>, <code>SlotPricingTab</code>, <code>BookingsInboxTab</code> — built, unreachable.</p>
+          <div class="fix"><b>Fix</b> Mount them as tabs in <code>OwnerVenueScreen</code>.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff hard">Hard</span>
+            <h3>BIR official-receipt screen for owners<span class="src">[20Jul]</span></h3></div>
+          <p>Backend done; screen never built; tracking sheet wrongly marks it done.</p>
+          <div class="fix"><b>Fix</b> Build the OR screen against the existing backend route.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff hard">Hard</span>
+            <h3>New tournaments dead-end at <code>draft</code><span class="src">[21Jul-new]</span></h3></div>
+          <p>No venue field on create; no approval side, so it never reaches <code>approved</code> and registration can't open.</p>
+          <div class="fix"><b>Fix</b> Add a venue picker + approval step so draft → approved works.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff hard">Hard</span>
+            <h3>Most notifications not connected<span class="src">[20Jul]</span></h3></div>
+          <p>Only a couple fire; no confirm / cancel / paid / refund / expiry notices.</p>
+          <div class="fix"><b>Fix</b> Call the notification service from each lifecycle event.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- EDU -->
+    <div class="lane">
+      <div class="lane-head B">
+        <div class="lane-tag">Assigned · Edu</div>
+        <h2>10 tasks · 2 easy · 5 med · 3 hard</h2>
+        <p>Balanced mix — equal weight to Jambik's set.</p>
+      </div>
+      <div class="lane-body">
+
+        <div class="task">
+          <div class="task-top"><span class="diff easy">Easy</span>
+            <h3>Open-Play invite posts to the Game endpoint<span class="src">[21Jul-new]</span></h3></div>
+          <p>Session invite calls <code>inviteToGame</code> with a session id (<code>OpenPlayDetailScreen.tsx:403</code>).</p>
+          <div class="fix"><b>Fix</b> Remove it or repoint to the session-invite endpoint.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff easy">Easy</span>
+            <h3>"Events" tab shows player games, not tournaments<span class="src">[20Jul]</span></h3></div>
+          <p>Needs a product call: fold tournaments in, or rename the tab.</p>
+          <div class="fix"><b>Fix</b> Confirm the call, then rename or repoint the feed.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>Player-created game shows a price the joiner doesn't pay<span class="src">[20Jul]</span></h3></div>
+          <p>Reads like ₱350 to join — live-demo hazard.</p>
+          <div class="fix"><b>Fix</b> Hide/zero it for joiners, or label as the host's court cost.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>Brand colours duplicated in ~8 places<span class="src">[17Jul][20Jul]</span></h3></div>
+          <p>Worst in owner screens; blocks Marvin's redesign.</p>
+          <div class="fix"><b>Fix</b> Move colours into one theme-token file; swap usages.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>No email-verification flow in the app<span class="src">[21Jul-new]</span></h3></div>
+          <p>Backend supports it; client never calls it — typo'd emails break password reset.</p>
+          <div class="fix"><b>Fix</b> Wire the verify-email call + gate reset on it.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>Mobile map clumps pins; full-screen map unreachable<span class="src">[17Jul][20Jul]</span></h3></div>
+          <p>No clustering; <code>FullMapScreen</code> exists but nothing navigates to it.</p>
+          <div class="fix"><b>Fix</b> Add pin clustering + a nav entry into FullMapScreen.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff med">Med</span>
+            <h3>17 owner features "built but not tested"<span class="src">[17Jul][20Jul]</span></h3></div>
+          <p><code>venuestaffs</code> still 0 rows — the staff role has never run end to end.</p>
+          <div class="fix"><b>Fix</b> Seed a staff account; run each owner/staff flow once, log breaks.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff hard">Hard</span>
+            <h3>No coach profile editor<span class="src">[21Jul-new]</span></h3></div>
+          <p>Only rates exist; <code>createMyCoach</code> never called; bio/photo/certs/reviews unwired; no verify toggle.</p>
+          <div class="fix"><b>Fix</b> Build the editor, call <code>createMyCoach</code>, wire reviews + a visible toggle.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff hard">Hard</span>
+            <h3>No earnings visibility / real collection<span class="src">[21Jul-new]</span></h3></div>
+          <p>"Paid" is a manual toggle — no charge, receipt, or earnings screen; no coach-booking manage/pay/complete.</p>
+          <div class="fix"><b>Fix</b> Earnings screen + booking-manage + mark-complete <em>(sync w/ Kenneth on payment)</em>.</div>
+        </div>
+
+        <div class="task">
+          <div class="task-top"><span class="diff hard">Hard</span>
+            <h3>Missing booking endings<span class="src">[20Jul]</span></h3></div>
+          <p>No-shows unhandled; refunds stuck "processing"; reschedule charges no price diff; walk-ins leave a ₱0 tag.</p>
+          <div class="fix"><b>Fix</b> Close each branch: no-show, refund, reschedule delta, walk-in.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /lanes -->
+
+  <!-- ============ KENNETH — for reference ============ -->
+  <section class="block">
+    <div class="sec-title">Kenneth · launch-critical (reference — do not pick up)</div>
+    <div class="owned">
+      <div class="row"><span class="m">⚠️</span><span>Pending-join state doesn't survive reload → re-tap → 409. One-line: pass <code>c.get('user')?.sub</code> to <code>serialize</code> in both read handlers.</span></div>
+      <div class="row"><span class="m">❌</span><span>No way to cancel a pending join request. Add <code>DELETE /:id/join</code> + a Cancel button.</span></div>
+      <div class="row"><span class="m">⚠️</span><span>Hosts can't edit a lobby on the V2 app. Wire an edit entry into the V2 lobby/games-manage surface.</span></div>
+      <div class="row"><span class="m">⚠️</span><span>Two people can book the same court at once (double-booking race). Atomic slot check + write.</span></div>
+      <div class="row"><span class="m">⚠️</span><span>Approval-needed bookings never expire; expiry only runs on screen-open. Add a scheduled sweep.</span></div>
+      <div class="row"><span class="m">⚠️</span><span>Players never told when a booking is rejected; no "rejected" status distinct from "cancelled."</span></div>
+      <div class="row"><span class="m">⚠️</span><span>Payments only work in test mode; real mode grants paid roles free. <em>Blocked on payment decision.</em></span></div>
+      <div class="row"><span class="m">❌</span><span>Senior / PWD discount pricing (20% PH, legal). Customer-category concept in venue pricing + both booking flows.</span></div>
+      <div class="row"><span class="m">⚠️</span><span>Staff can see per-venue revenue in the PWA. <em>Blocked on staff-money decision.</em></span></div>
+      <div class="row"><span class="m">⚠️</span><span>Owner payout details can't be entered — <code>OwnerSettlementsScreen</code> unreachable (<code>OwnerHomeScreen.tsx:176</code>). Uncomment the entry.</span></div>
+    </div>
+  </section>
+
+  <!-- ============ Blocked ============ -->
+  <section class="block">
+    <div class="sec-title">Not assigned · blocked on client / business + decisions</div>
+    <div class="note">
+      <b>Blocked (client/business):</b> bank/merchant/compliance reqs · the payment decision (who collects, when
+      the platform takes its cut) · latest venue <b>and court</b> spreadsheet (current one is empty, no real courts
+      to test) · competitive research docs · Marvin's UI direction.<br><br>
+      <b>Decisions needed (not code):</b> can venue staff see their venue's money? · staff permission-levels scope ·
+      the meeting's 17 open questions (payment collection, commission timing, verification, refund/no-show, senior/PWD config).
+    </div>
+  </section>
+
+  <footer>
+    Generated from <a href="audit-report.html">audit-report.html</a> ·
+    source: <code>2026-07-21-open-tasks.md</code> · 21 Jul 2026 ·
+    10 / 10, 3 hard each — swap a card only if you also swap one back.
+  </footer>
+
+</div>
+</body>
+</html>

@@ -13,6 +13,7 @@ import {
   ApiError,
   type OwnerCourt,
 } from '../../../shared/lib/api';
+import { WeeklyHoursEditor } from '../components/WeeklyHoursEditor';
 
 interface CourtsEditorTabProps {
   venueId: string;

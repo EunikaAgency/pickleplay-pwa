@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PickleBallers — Kenneth Task Status (22 Jul 2026)</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5;
+    --ink: #191f28; --ink-2: #454e5b; --muted: #6b7686;
+    --line: #dde2e9; --line-strong: #cbd2dc;
+    --accent: #0d7d72; --accent-soft: #d9efec;
+    --laneA: #1f9d57; --laneB: #7a3ff0; --laneC: #2f6fd6; --laneD: #d63c3c;
+    --laneA-soft: #dcf1e5; --laneB-soft: #ece4fd; --laneC-soft: #dde9fb; --laneD-soft: #fbe1e1;
+    --shadow: 0 1px 2px rgba(20,28,40,.05), 0 2px 8px rgba(20,28,40,.04);
+    --radius: 12px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1218; --surface: #161c25; --surface-2: #1d2530;
+      --ink: #e9edf3; --ink-2: #b9c2ce; --muted: #8592a1;
+      --line: #262f3b; --line-strong: #33404f;
+      --accent: #34b9ab; --accent-soft: #123c39;
+      --laneA: #4dc684; --laneB: #a889ff; --laneC: #63a0f5; --laneD: #f0655f;
+      --laneA-soft: #123320; --laneB-soft: #241a3d; --laneC-soft: #142744; --laneD-soft: #3a1717;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eef1f5;
+    --ink: #191f28; --ink-2: #454e5b; --muted: #6b7686;
+    --line: #dde2e9; --line-strong: #cbd2dc;
+    --accent: #0d7d72; --accent-soft: #d9efec;
+    --laneA: #1f9d57; --laneB: #7a3ff0; --laneC: #2f6fd6; --laneD: #d63c3c;
+    --laneA-soft: #dcf1e5; --laneB-soft: #ece4fd; --laneC-soft: #dde9fb; --laneD-soft: #fbe1e1;
+    --shadow: 0 1px 2px rgba(20,28,40,.05), 0 2px 8px rgba(20,28,40,.04);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1218; --surface: #161c25; --surface-2: #1d2530;
+    --ink: #e9edf3; --ink-2: #b9c2ce; --muted: #8592a1;
+    --line: #262f3b; --line-strong: #33404f;
+    --accent: #34b9ab; --accent-soft: #123c39;
+    --laneA: #4dc684; --laneB: #a889ff; --laneC: #63a0f5; --laneD: #f0655f;
+    --laneA-soft: #123320; --laneB-soft: #241a3d; --laneC-soft: #142744; --laneD-soft: #3a1717;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 3px 12px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  header { margin-bottom: 22px; }
+  .eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--accent); border-radius: 2px; }
+  h1 { font-size: clamp(26px, 4.5vw, 38px); line-height: 1.08; margin: 12px 0 10px; letter-spacing: -.02em; text-wrap: balance; font-weight: 700; }
+  .lede { color: var(--ink-2); font-size: 15px; max-width: 78ch; margin: 0; }
+  .lede code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .meta { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12.5px; color: var(--muted); font-family: var(--mono); }
+  .meta b { color: var(--ink-2); font-weight: 600; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 22px 0 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 13px 14px; box-shadow: var(--shadow); }
+  .stat .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat .l { font-size: 11.5px; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .stat.a .n { color: var(--laneA); }
+  .stat.b .n { color: var(--laneB); }
+  .stat.c .n { color: var(--laneC); }
+  .stat.d .n { color: var(--laneD); }
+  .stat.done .n { color: var(--laneA); }
+  .stat.left .n { color: var(--laneD); }
+
+  .principle { margin: 16px 0 4px; font-size: 13px; color: var(--ink-2); background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: 6px; padding: 10px 14px; }
+  .principle b { color: var(--ink); }
+
+  .lanes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 20px; align-items: start; }
+  @media (max-width: 980px) { .lanes { grid-template-columns: 1fr; } }
+  .lane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .lane-head { padding: 15px 16px 13px; border-bottom: 1px solid var(--line); }
+  .lane-head.A { border-top: 3px solid var(--laneA); }
+  .lane-head.B { border-top: 3px solid var(--laneB); }
+  .lane-head.C { border-top: 3px solid var(--laneC); }
+  .lane-head.D { border-top: 3px solid var(--laneD); }
+  .lane-tag { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+  .lane-head.A .lane-tag { color: var(--laneA); }
+  .lane-head.B .lane-tag { color: var(--laneB); }
+  .lane-head.C .lane-tag { color: var(--laneC); }
+  .lane-head.D .lane-tag { color: var(--laneD); }
+  .lane-head h2 { font-size: 17px; margin: 6px 0 6px; letter-spacing: -.01em; line-height: 1.2; }
+  .grouped { margin: 0; font-size: 12px; color: var(--muted); font-style: italic; }
+  .grouped b { font-style: normal; color: var(--ink-2); font-weight: 600; }
+  .status-line { margin: 8px 0 0; font-size: 12.5px; font-style: normal; color: var(--laneA); font-weight: 600; }
+  .status-line b { color: var(--laneA); }
+  .lane-body { padding: 6px 9px 12px; }
+
+  .task { padding: 12px 10px 13px; border-radius: 10px; }
+  .task + .task { border-top: 1px solid var(--line); }
+  .task:hover { background: var(--surface-2); }
+  .task h3 { font-size: 14px; margin: 0; line-height: 1.35; font-weight: 650; }
+  .task .src { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: 5px; font-weight: 500; white-space: nowrap; }
+  .task p { margin: 6px 0 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .task p code, .task h3 code { font-family: var(--mono); font-size: .84em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; color: var(--ink); }
+  .task:hover p code, .task:hover h3 code { background: var(--bg); }
+  .fix { margin-top: 8px; font-size: 12.5px; color: var(--ink); padding: 7px 10px; border-radius: 8px; }
+  .fix b { font-family: var(--mono); font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: .05em; margin-right: 5px; }
+  .A .fix { background: var(--laneA-soft); } .A .fix b { color: var(--laneA); }
+  .B .fix { background: var(--laneB-soft); } .B .fix b { color: var(--laneB); }
+  .C .fix { background: var(--laneC-soft); } .C .fix b { color: var(--laneC); }
+  .D .fix { background: var(--laneD-soft); } .D .fix b { color: var(--laneD); }
+  .rel { margin-top: 6px; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+
+  /* Status overlay (Kenneth's Task D) */
+  .st { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; margin-right: 7px; vertical-align: middle; color: #fff; }
+  .st.done { background: var(--laneA); }
+  .st.todo { background: var(--laneD); }
+  .task.is-done h3 { color: var(--muted); }
+  .task.is-done .fix { opacity: .5; }
+  .shipped { margin-top: 6px; font-size: 11.5px; color: var(--laneA); font-family: var(--mono); font-weight: 600; }
+  .shipped::before { content: "\2714  "; }
+
+  /* Task D — full-width lane, task cards in a responsive grid */
+  .lane.full { margin-top: 4px; }
+  .dgrid { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 18px; padding: 6px 16px 14px; }
+  @media (max-width: 720px) { .dgrid { grid-template-columns: 1fr; } }
+  .dgrid .task { border-top: 1px solid var(--line); }
+  .blocked-pill { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--laneB); background: var(--laneB-soft); padding: 2px 6px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+  .rel::before { content: "\2194  "; }
+
+  section.block { margin-top: 34px; }
+  .sec-title { display: flex; align-items: center; gap: 10px; font-size: 13px; font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+  .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .owned { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--laneD); border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px 18px; }
+  .owned .row { padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); display: flex; gap: 10px; align-items: baseline; }
+  .owned .row:last-child { border-bottom: none; }
+  .owned .m { flex: none; }
+  .owned code { font-family: var(--mono); font-size: .84em; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+  .note { background: var(--surface-2); border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; color: var(--ink-2); }
+  .note b { color: var(--ink); }
+  footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); font-family: var(--mono); }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">PickleBallers · Kenneth status check</div>
+    <h1>Launch Tasks — Kenneth's Status Overlay</h1>
+    <p class="lede">
+      Same grouping as the team split (A/B/C left untouched for reference). This copy overlays a
+      <b>status check on Kenneth's Task&nbsp;D</b> — the 10 launch-critical items — verified against the
+      live code, database, and commits on <b>22&nbsp;Jul</b>. Headline: <b>7 of 10 done</b>, 3 remaining.
+      Source: <code>2026-07-21-open-tasks.md</code>.
+    </p>
+    <div class="meta">
+      <span><b>Updated:</b> 22 Jul 2026</span>
+      <span><b>Launch target:</b> end of July 2026</span>
+      <span><b>Overlay:</b> Task D done / to-do</span>
+    </div>
+  </header>
+
+  <div class="stats">
+    <div class="stat done"><div class="n">7</div><div class="l">Task D · done</div></div>
+    <div class="stat left"><div class="n">3</div><div class="l">Task D · to do</div></div>
+    <div class="stat c"><div class="n">A·B·C</div><div class="l">others — unchanged</div></div>
+    <div class="stat d"><div class="n">10</div><div class="l">Task D · Kenneth · total</div></div>
+  </div>
+
+  <p class="principle">
+    <b>Task D status (22 Jul):</b> the whole lobby chunk (join → cancel → edit), both booking-integrity fixes
+    (double-booking + expiry), the rejection work, and the staff-revenue gate are <b>done</b>. Remaining:
+    <b>payments real-mode</b>, <b>senior/PWD discount</b>, and <b>owner payouts</b>. A/B/C statuses not assessed here.
+  </p>
+
+  <!-- ============ GROUPS ============ -->
+  <div class="lanes">
+
+    <!-- JAMBIK -->
+    <div class="lane A">
+      <div class="lane-head A">
+        <div class="lane-tag">Task A · Jambik</div>
+        <h2>Venue ops &amp; booking lifecycle</h2>
+        <p class="grouped"><b>Grouped:</b> everything on the owner/venue screens + the money &amp; booking-lifecycle that flows from them.</p>
+      </div>
+      <div class="lane-body">
+
+        <div class="task">
+          <h3>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3>
+          <p><code>WeeklyHoursEditor</code>, <code>ClosuresEditorTab</code>, <code>SlotPricingTab</code>, <code>BookingsInboxTab</code> — built, unreachable.</p>
+          <div class="fix"><b>Fix</b> Mount them as tabs in <code>OwnerVenueScreen</code>.</div>
+          <div class="rel">same screen as venue-create &amp; staff testing</div>
+        </div>
+
+        <div class="task">
+          <h3>"Search-before-create" for new venues<span class="src">[17-21Jul]</span></h3>
+          <p>No name lookup before <code>createVenue</code> — dupes possible. <code>ClaimVenueScreen</code> already searches.</p>
+          <div class="fix"><b>Fix</b> Reuse ClaimVenueScreen's search; block create on a match.</div>
+          <div class="rel">touches OwnerNewVenueScreen (same owner flow)</div>
+        </div>
+
+        <div class="task">
+          <h3>17 owner features "built but not tested"<span class="src">[17Jul][20Jul]</span></h3>
+          <p><code>venuestaffs</code> still 0 rows — the staff role has never run end to end.</p>
+          <div class="fix"><b>Fix</b> Seed a staff account; run each owner/staff flow once, log breaks.</div>
+          <div class="rel">exercises the orphaned owner tools above</div>
+        </div>
+
+        <div class="task">
+          <h3>BIR official-receipt screen for owners<span class="src">[20Jul]</span></h3>
+          <p>Backend done; screen never built; tracking sheet wrongly marks it done.</p>
+          <div class="fix"><b>Fix</b> Build the OR screen against the existing backend route.</div>
+          <div class="rel">owner money surface, pairs with booking endings</div>
+        </div>
+
+        <div class="task">
+          <h3>Missing booking endings<span class="src">[20Jul]</span></h3>
+          <p>No-shows unhandled; refunds stuck "processing"; reschedule charges no price diff; walk-ins leave a ₱0 tag.</p>
+          <div class="fix"><b>Fix</b> Close each branch: no-show, refund, reschedule delta, walk-in.</div>
+          <div class="rel">fires the notification events below</div>
+        </div>
+
+        <div class="task">
+          <h3>Most notifications not connected<span class="src">[20Jul]</span></h3>
+          <p>Only a couple fire; no confirm / cancel / paid / refund / expiry notices.</p>
+          <div class="fix"><b>Fix</b> Call the notification service from each booking-lifecycle event.</div>
+          <div class="rel">directly depends on booking endings</div>
+        </div>
+
+        <div class="task">
+          <h3>Brand colours duplicated in ~8 places<span class="src">[17Jul][20Jul]</span></h3>
+          <p>Worst offenders are the owner screens; blocks Marvin's redesign.</p>
+          <div class="fix"><b>Fix</b> Move colours into one theme-token file; swap usages.</div>
+          <div class="rel">most edits land on the owner screens Jambik owns</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- EDU -->
+    <div class="lane B">
+      <div class="lane-head B">
+        <div class="lane-tag">Task B · Edu</div>
+        <h2>Coach, organizer &amp; tournaments</h2>
+        <p class="grouped"><b>Grouped:</b> the whole paid-provider journey — subscribe → set up → run tournaments → get paid.</p>
+      </div>
+      <div class="lane-body">
+
+        <div class="task">
+          <h3>Organizer applicant routed to the wrong paywall<span class="src">[21Jul-new]</span></h3>
+          <p>Applying to <b>organize</b> lands on the ₱499 <b>coach</b> screen, not ₱999 organizer (<code>CourtDetailsScreen.tsx:471</code>).</p>
+          <div class="fix"><b>Fix</b> Point that branch at the organizer subscribe screen.</div>
+          <div class="rel">gates the coach/organizer setup flows below</div>
+        </div>
+
+        <div class="task">
+          <h3>No coach profile editor<span class="src">[21Jul-new]</span></h3>
+          <p>Only rates exist; <code>createMyCoach</code> never called; bio/photo/certs/reviews unwired; no verify toggle.</p>
+          <div class="fix"><b>Fix</b> Build the editor, call <code>createMyCoach</code>, wire reviews + a visible toggle.</div>
+          <div class="rel">same coach subscribe path as the paywall fix</div>
+        </div>
+
+        <div class="task">
+          <h3>New tournaments dead-end at <code>draft</code><span class="src">[21Jul-new]</span></h3>
+          <p>No venue field on create; no approval side, so it never reaches <code>approved</code> and registration can't open.</p>
+          <div class="fix"><b>Fix</b> Add a venue picker + approval step so draft → approved works.</div>
+          <div class="rel">unblocks the hidden Tournaments menu below</div>
+        </div>
+
+        <div class="task">
+          <h3>Finished features hidden behind disabled menus<span class="src">[20Jul]</span></h3>
+          <p>Organizer Tournaments + Venue Requests are built, then hidden.</p>
+          <div class="fix"><b>Fix</b> Flip the menu flags on (or delete the dead entries).</div>
+          <div class="rel">reveals the tournament flow Edu is fixing</div>
+        </div>
+
+        <div class="task">
+          <h3>"Events" tab shows player games, not tournaments<span class="src">[20Jul]</span></h3>
+          <p>Needs a product call: fold tournaments in, or rename the tab.</p>
+          <div class="fix"><b>Fix</b> Confirm the call, then rename or repoint the feed.</div>
+          <div class="rel">where Edu's tournaments should surface</div>
+        </div>
+
+        <div class="task">
+          <h3>No earnings visibility / real collection<span class="src">[21Jul-new]</span></h3>
+          <p>"Paid" is a manual toggle — no charge, receipt, or earnings screen; no coach-booking manage/pay/complete.</p>
+          <div class="fix"><b>Fix</b> Earnings screen + booking-manage + mark-complete <em>(sync w/ Kenneth on payment)</em>.</div>
+          <div class="rel">the payout end of the coach/organizer journey</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- IVAN -->
+    <div class="lane C">
+      <div class="lane-head C">
+        <div class="lane-tag">Task C · Ivan</div>
+        <h2>Player discovery &amp; app reliability</h2>
+        <p class="grouped"><b>Grouped:</b> the player-facing browse / map / join surfaces + the account &amp; error-handling that spans them.</p>
+      </div>
+      <div class="lane-body">
+
+        <div class="task">
+          <h3>Mobile map clumps pins; full-screen map unreachable<span class="src">[17Jul][20Jul]</span></h3>
+          <p>No clustering; <code>FullMapScreen</code> exists but nothing navigates to it.</p>
+          <div class="fix"><b>Fix</b> Add pin clustering + a nav entry into FullMapScreen.</div>
+          <div class="rel">same map/venue screens as the nav fix</div>
+        </div>
+
+        <div class="task">
+          <h3>Duplicate "Book Court" navigation<span class="src">[17Jul][20Jul]</span></h3>
+          <p>Four map/venue screens, two booking screens; Home &amp; Nearby land on the same one.</p>
+          <div class="fix"><b>Fix</b> Route every "Book Court" entry to one canonical booking screen.</div>
+          <div class="rel">overlaps the map screens above</div>
+        </div>
+
+        <div class="task">
+          <h3>Filters don't persist across Open Play / Events<span class="src">[20Jul]</span></h3>
+          <p>Switching tabs wipes them; filters themselves work.</p>
+          <div class="fix"><b>Fix</b> Lift filter state above the tabs so it survives the switch.</div>
+          <div class="rel">same Open Play / Events feed as below</div>
+        </div>
+
+        <div class="task">
+          <h3>Open-Play invite posts to the Game endpoint<span class="src">[21Jul-new]</span></h3>
+          <p>Session invite calls <code>inviteToGame</code> with a session id (<code>OpenPlayDetailScreen.tsx:403</code>).</p>
+          <div class="fix"><b>Fix</b> Remove it or repoint to the session-invite endpoint.</div>
+          <div class="rel">Open Play surface, next to filters &amp; price</div>
+        </div>
+
+        <div class="task">
+          <h3>Player-created game shows a price the joiner doesn't pay<span class="src">[20Jul]</span></h3>
+          <p>Reads like ₱350 to join — live-demo hazard.</p>
+          <div class="fix"><b>Fix</b> Hide/zero it for joiners, or label as the host's court cost.</div>
+          <div class="rel">same games/Open Play feed</div>
+        </div>
+
+        <div class="task">
+          <h3>Silent failures swallow errors<span class="src">[21Jul-new]</span></h3>
+          <p>Club join (<code>ClubsPanel.tsx:75</code>), onboarding save (<code>OnboardingScreen.tsx:59</code>), open-play cancel fail with no feedback.</p>
+          <div class="fix"><b>Fix</b> Catch → error toast + keep the failed state on screen.</div>
+          <div class="rel">onboarding + open-play, shared with items above</div>
+        </div>
+
+        <div class="task">
+          <h3>No email-verification flow in the app<span class="src">[21Jul-new]</span></h3>
+          <p>Backend supports it; client never calls it — typo'd emails break password reset.</p>
+          <div class="fix"><b>Fix</b> Wire the verify-email call + gate reset on it.</div>
+          <div class="rel">account/onboarding, pairs with silent-failure fixes</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- KENNETH -->
+    <div class="lane D">
+      <div class="lane-head D">
+        <div class="lane-tag">Task D · Kenneth</div>
+        <h2>Launch-critical — core join → book → pay</h2>
+        <p class="grouped"><b>Grouped:</b> the must-ship bugs on the core journey — Kenneth's solo.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 7 of 10 done ✓ — remaining: payments, senior/PWD, payouts.</p>
+      </div>
+      <div class="lane-body">
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Pending-join state doesn't survive a reload<span class="src">[21Jul-new]</span></h3>
+          <p><code>getGame</code>/<code>listGames</code> call <code>serialize(row)</code> with no viewer id, so after a refetch the "Requested" button reverts and re-tapping 409s.</p>
+          <div class="fix"><b>Fix</b> Pass <code>c.get('user')?.sub</code> to <code>serialize</code> in both read handlers.</div>
+          <div class="shipped">shipped — viewer passed in both reads; committed + guarded by test</div>
+        </div>
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>No way to cancel a pending join request<span class="src">[21Jul-new]</span></h3>
+          <p>No cancel route; <code>POST /leave</code> 404s for a non-participant; the "Requested" button has no cancel affordance.</p>
+          <div class="fix"><b>Fix</b> Add <code>DELETE /:id/join</code> (or branch <code>leaveGame</code>) + a Cancel button.</div>
+          <div class="shipped">shipped — <code>DELETE /:id/join</code> + Cancel button; committed + test</div>
+        </div>
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Hosts can't edit a lobby on the V2 app<span class="src">[21Jul-new]</span></h3>
+          <p>The only edit entry is mounted in V1 screens; V2 has no "My games" link — name/size/gender/fee/approval can't change after creation.</p>
+          <div class="fix"><b>Fix</b> Wire an edit entry into the V2 lobby / games-manage surface.</div>
+          <div class="shipped">shipped — focused "Edit lobby" sheet on the V2 lobby; committed</div>
+        </div>
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Two people can book the same court at once<span class="src">[20Jul]</span></h3>
+          <p>Double-booking race, known + commented in code. Highest trust-damage bug; cheap fix.</p>
+          <div class="fix"><b>Fix</b> Atomic slot check + write (partial unique index — no replica set, so no txn).</div>
+          <div class="shipped">verified 22 Jul — unique index live in prod; duplicate confirmed-book blocked (E11000)</div>
+        </div>
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Approval-needed bookings never expire<span class="src">[20Jul]</span></h3>
+          <p>Expiry only runs on screen-open, so a court can stay silently blocked for days.</p>
+          <div class="fix"><b>Fix</b> Add a scheduled sweep for stale/pending bookings.</div>
+          <div class="shipped">verified 22 Jul — <code>booking-sweep</code> runs every 2 min in prod; behaviour test-covered</div>
+        </div>
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Players never told when a booking is rejected<span class="src">[20Jul]</span></h3>
+          <p>No "rejected" status distinct from "cancelled," and no message to the player.</p>
+          <div class="fix"><b>Fix</b> Add a <code>rejected</code> status + a notification/email.</div>
+          <div class="shipped">done (Kenneth) — <code>cancellationType</code> discriminator + notify + <code>rejection.test</code> (5 pass)</div>
+        </div>
+
+        <div class="task">
+          <h3><span class="st todo">To do</span>Payments only work in test mode<span class="src">[20Jul]</span><span class="blocked-pill">blocked · payment</span></h3>
+          <p><code>paymentTestMode: true</code> — bookings hang "pending"; coach/organizer subs grant the role with no payment taken.</p>
+          <div class="fix"><b>Fix</b> Flip the flag once the gateway is decided; gate role grants on a real charge.</div>
+          <div class="rel"><code>subscribe()</code> still sets <code>status:'active'</code> unconditionally — not started; blocked on payment decision</div>
+        </div>
+
+        <div class="task">
+          <h3><span class="st todo">To do</span>Senior / PWD discount pricing<span class="src">[17Jul][20Jul]</span></h3>
+          <p>Still 0 discount fields across all 107 <code>venuepricings</code>. Legal-compliance item (20% PH).</p>
+          <div class="fix"><b>Fix</b> Add a customer-category concept to venue pricing + both booking flows.</div>
+          <div class="rel">not started — no <code>customerCategory</code> / discount field yet (0 in DB &amp; model)</div>
+        </div>
+
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Staff can see per-venue revenue in the PWA<span class="src">[21Jul-new]</span></h3>
+          <p><code>VenueOverviewTab</code> renders "Revenue this month" + a trend chart; price controls are only UI-hidden, not blocked server-side.</p>
+          <div class="fix"><b>Fix</b> Block <code>owner.analytics.view</code> for staff server-side + hide the tab.</div>
+          <div class="shipped">done — analytics removed from the staff role + revenue tiles gated + guard test (team also added owner-grant opt-in)</div>
+        </div>
+
+        <div class="task">
+          <h3><span class="st todo">To do</span>Owner payout details can't be entered<span class="src">[21Jul-new]</span></h3>
+          <p><code>OwnerSettlementsScreen</code> is fully built but unreachable — its only nav trigger is commented out.</p>
+          <div class="fix"><b>Fix</b> Uncomment / add the entry (<code>OwnerHomeScreen.tsx:176</code>).</div>
+          <div class="rel">not started — settlements nav still commented at <code>OwnerHomeScreen.tsx:179</code>; balance-shape bug also open</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /lanes -->
+
+  <!-- ============ Blocked ============ -->
+  <section class="block">
+    <div class="sec-title">Not assigned · blocked on client / business + decisions</div>
+    <div class="note">
+      <b>Blocked (client/business):</b> bank/merchant/compliance reqs · the payment decision (who collects, when
+      the platform takes its cut) · latest venue <b>and court</b> spreadsheet (current one is empty, no real courts
+      to test) · competitive research docs · Marvin's UI direction.<br><br>
+      <b>Decisions needed (not code):</b> can venue staff see their venue's money? <em>(now shipped as owner-grantable)</em> ·
+      staff permission-levels scope · the meeting's 17 open questions (payment collection, commission timing, verification, refund/no-show, senior/PWD config).
+    </div>
+  </section>
+
+  <footer>
+    Status overlay on <a href="team-split.html">team-split.html</a> ·
+    Task D verified against live code + DB + commits, 22 Jul 2026 ·
+    7 done / 3 to do · A·B·C unchanged from the split.
+  </footer>
+
+</div>
+</body>
+</html>

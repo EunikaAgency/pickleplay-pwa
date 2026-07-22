@@ -15,6 +15,7 @@
     "db:import": "tsx src/shared/db/import-real-data.ts",
     "db:link-owners": "tsx src/shared/db/link-owner-venues.ts",
     "db:expire-legacy-pending": "tsx src/shared/db/expire-legacy-pending-bookings.ts",
+    "db:backfill-cancellation-type": "tsx src/shared/db/backfill-cancellation-type.ts",
     "db:courts": "tsx src/shared/db/generate-courts.ts",
     "db:download-images": "tsx src/shared/db/download-images.ts",
     "test": "vitest run",

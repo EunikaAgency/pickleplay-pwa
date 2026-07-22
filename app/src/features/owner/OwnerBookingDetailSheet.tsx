@@ -85,7 +85,7 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
   };
 
   const b = booking;
-  const chip = b ? statusChip(b.status) : null;
+  const chip = b ? statusChip(b.status, b.cancellationType) : null;
   // Owner-entered bookings: a 'manual' off-platform reservation carries an
   // off-platform customer (not a platform user); a 'blocked' slot has no customer.
   const isManual = b?.bookingType === 'manual';

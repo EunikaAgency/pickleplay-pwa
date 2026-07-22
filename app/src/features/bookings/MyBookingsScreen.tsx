@@ -440,6 +440,19 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
               <DetailRow label="Due at venue" value={money(detail.balanceDue)} />
             )}
             <DetailRow label="Status" value={bookingPhaseChip(detail).label} />
+            {/* A rejection ('owner_rejected') is stored as status 'cancelled'; tell the
+                player the venue turned the request down, and show the reason if any. */}
+            {detail.status === 'cancelled' && detail.cancellationType === 'owner_rejected' && (
+              <DetailRow
+                label="Declined"
+                value={detail.cancellationReason && detail.cancellationReason !== 'Declined by venue'
+                  ? detail.cancellationReason
+                  : 'Declined by the venue — you weren’t charged.'}
+              />
+            )}
+            {detail.status === 'cancelled' && detail.cancellationType !== 'owner_rejected' && detail.cancellationReason && (
+              <DetailRow label="Cancelled" value={detail.cancellationReason} />
+            )}
             {detail.status === 'awaiting_payment' && payByLabel(detail.paymentDueAt) && (
               <DetailRow label="Pay by" value={payByLabel(detail.paymentDueAt)} />
             )}

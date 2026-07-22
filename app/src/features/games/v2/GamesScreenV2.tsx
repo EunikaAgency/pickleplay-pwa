@@ -1182,7 +1182,7 @@ function OpenPlayManage({ games, bookings, mineGames, onNavigate, onDelete, onTo
 
 function BookingCard({ b, mineGames, onNavigate, onTogglePublish, busyId, isPast }: { b: ApiBooking; mineGames: ApiGame[]; onNavigate: V2ScreenChrome['onNavigate']; onTogglePublish: (b: ApiBooking) => void; busyId: string | null; isPast?: boolean }) {
   const court = b.courtName || (b.courtNumber ? `Court ${b.courtNumber}` : null);
-  const chip = statusChip(b.status);
+  const chip = statusChip(b.status, b.cancellationType);
   const isPublished = !isPast && canPublishBooking(b) && mineGames.some((g) => g.bookingId === b.id);
   const isBusy = busyId === b.id;
 
