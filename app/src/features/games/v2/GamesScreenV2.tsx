@@ -442,16 +442,15 @@ export function GamesScreenV2(chrome: GamesScreenV2Props) {
       view: nextView === 'discover' ? undefined : nextView,
     }, { replace: true });
   };
-  // The search query deliberately survives a section/view switch: clearing it
-  // silently discarded what the user typed the moment they checked another tab.
+  // The search query AND filters deliberately survive a section/view switch:
+  // resetting either silently discarded what the user set up the moment they
+  // checked the other tab (the 20 Jul report's "filters don't persist" item).
+  // A carried-over filter that empties the list can't strand anyone — the feed's
+  // empty state names the cause and offers "Clear search & filters", and the
+  // filter button badges the active count the whole time.
   const selectSection = (next: Section) => {
     setSection(next);
     setView('discover');
-    // The two sections offer different play types (Events has no open play), so a
-    // carried-over type filter could strand the user on a guaranteed-empty list.
-    // Distance is cleared too — a filter that empties the feed must never survive
-    // a navigation the user didn't connect to it.
-    setFilters(makeDefaultGameFilters());
     syncTabUrl(next, 'discover');
   };
   const selectView = (next: View) => { setView(next); syncTabUrl(section, next); };
