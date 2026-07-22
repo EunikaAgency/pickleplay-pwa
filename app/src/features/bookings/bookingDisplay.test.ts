@@ -1,9 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { countdownLabel, deadlineLabel, deadlineUrgency, estimateApprovalDeadline } from './bookingDisplay';
+import { countdownLabel, deadlineLabel, deadlineUrgency, estimateApprovalDeadline, isSeniorOnDate } from './bookingDisplay';
 
 const MIN = 60_000;
 const HOUR = 3_600_000;
 const NOW = new Date('2026-07-20T12:00:00.000Z').getTime();
+
+describe('isSeniorOnDate', () => {
+  it('becomes eligible on the 60th birthday', () => {
+    expect(isSeniorOnDate('1966-07-22', '2026-07-21')).toBe(false);
+    expect(isSeniorOnDate('1966-07-22', '2026-07-22')).toBe(true);
+  });
+
+  it('accepts an older Senior profile and rejects missing or invalid dates', () => {
+    expect(isSeniorOnDate('1950-11-20', '2026-07-22')).toBe(true);
+    expect(isSeniorOnDate(undefined, '2026-07-22')).toBe(false);
+    expect(isSeniorOnDate('1950-02-31', '2026-07-22')).toBe(false);
+  });
+});
 
 /** Build a `date` + `startTime` pair that lands `leadMs` from NOW, in local time
  *  (which is how the booking flow stores and re-parses them). */

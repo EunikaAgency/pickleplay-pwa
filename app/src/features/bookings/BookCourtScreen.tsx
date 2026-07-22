@@ -22,7 +22,7 @@ import { mapBookingError } from './bookingErrors';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
-import { addHours, deadlineLabel, estimateApprovalDeadline, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
+import { addHours, deadlineLabel, estimateApprovalDeadline, hoursBetween, isSeniorOnDate, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
 
 interface BookCourtScreenProps {
   venueId?: string;
@@ -114,6 +114,7 @@ function maskCard(card: CheckoutCard): { brand: string; last4: string } | undefi
 }
 
 export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours: hoursProp, courtId: courtIdProp, intent, onNavigate, onBack }: BookCourtScreenProps) {
+  const currentUser = useAuthStore((s) => s.user);
   const { trackBookingAttempt, trackBookingCompleted, trackCheckoutStarted, trackCheckoutAbandoned } = useDemandTracking();
   const [step, setStep] = useState(0);
   const [bookingMode, setBookingMode] = useState<BookingMode>(intent === 'lobby' ? 'public_game' : 'open_play');
@@ -196,8 +197,16 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [card, setCard] = useState<CheckoutCard>({ number: '', expiry: '', cvc: '' });
-  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>('none');
+  const profileIsSenior = isSeniorOnDate(currentUser?.birthday, date);
+  const discountCategoryTouched = useRef(false);
+  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>(() => profileIsSenior ? 'senior' : 'none');
   const [discountIdNumber, setDiscountIdNumber] = useState('');
+
+  // Cached auth can hydrate after this screen's first render. Select Senior once
+  // the profile arrives, but never undo a category the player chose themselves.
+  useEffect(() => {
+    if (profileIsSenior && !discountCategoryTouched.current) setCustomerCategory('senior');
+  }, [profileIsSenior]);
 
   // Lifecycle.
   const [error, setError] = useState<string | null>(null);
@@ -303,7 +312,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const approvalAllowed = settings?.allowPlayerApprovalLobbies ?? true;
   // Charging an entrance fee is an organizer capability, gated on the live PAID
   // subscription (not a role — organizer isn't one). Mirrors the server guard.
-  const canChargeFee = !!useAuthStore((s) => s.user)?.organizerSubscriptionActive;
+  const canChargeFee = !!currentUser?.organizerSubscriptionActive;
   // Per-court approval, with the venue default behind it: 'manual' always needs
   // approval, 'auto' never does, and 'inherit' follows the venue's own setting.
   // Mirrors the server's decision in bookings.controller's createBooking.
@@ -680,6 +689,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const next = () => {
     if (step === 0) {
       if (!selected) { setError('Please choose a venue.'); return; }
+      if (customerCategory !== 'none' && !discountIdNumber.trim()) {
+        setError('Enter the Senior Citizen/PWD ID number.');
+        return;
+      }
       if (courts.length > 0 && !courtId) { setError('Please choose a court.'); return; }
       if (!date) { setError('Please pick a date.'); return; }
       if (!startTime) { setError('Please pick a start time.'); return; }
@@ -1007,19 +1020,29 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             <div className="lbl">Senior citizen / PWD discount</div>
             <div className="flex gap-2">
               {(['none', 'senior', 'pwd'] as const).map((category) => (
-                <Chip key={category} selected={customerCategory === category} onClick={() => setCustomerCategory(category)}>
+                <Chip key={category} selected={customerCategory === category} onClick={() => {
+                  discountCategoryTouched.current = true;
+                  setCustomerCategory(category);
+                }}>
                   {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
                 </Chip>
               ))}
             </div>
             {customerCategory !== 'none' && (
-              <input
-                className="inp mt-2"
-                value={discountIdNumber}
-                onChange={(e) => setDiscountIdNumber(e.target.value)}
-                placeholder={`${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number`}
-                maxLength={80}
-              />
+              <>
+                {profileIsSenior && customerCategory === 'senior' && (
+                  <div className="mt-2 text-[12px] font-semibold text-[var(--lime-ink)]">
+                    Senior selected automatically from your profile birthday.
+                  </div>
+                )}
+                <input
+                  className="inp mt-2"
+                  value={discountIdNumber}
+                  onChange={(e) => setDiscountIdNumber(e.target.value)}
+                  placeholder={`${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number`}
+                  maxLength={80}
+                />
+              </>
             )}
           </div>
 

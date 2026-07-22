@@ -21,6 +21,31 @@ export function todayYMD(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/** Whether a profile birthday makes the player at least 60 on `onDate`.
+ * Both values are calendar dates, so compare their Y/M/D parts without a
+ * timezone conversion that could move either birthday by a day. */
+export function isSeniorOnDate(
+  birthday: string | null | undefined,
+  onDate: string = todayYMD(),
+): boolean {
+  const parse = (value: string | null | undefined) => {
+    const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const check = new Date(Date.UTC(year, month - 1, day));
+    if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return null;
+    return { year, month, day };
+  };
+  const birth = parse(birthday);
+  const target = parse(onDate);
+  if (!birth || !target) return false;
+  let age = target.year - birth.year;
+  if (target.month < birth.month || (target.month === birth.month && target.day < birth.day)) age -= 1;
+  return age >= 60;
+}
+
 /** "18:30" → "6:30 PM". */
 export function to12h(hhmm: string): string {
   if (!hhmm) return '';
