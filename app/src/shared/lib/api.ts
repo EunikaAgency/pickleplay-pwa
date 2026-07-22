@@ -5,7 +5,7 @@
 // live on different subdomains, so set VITE_API_BASE_URL to the API origin
 // (e.g. https://pickleballer-api.eunika.xyz) — CORS already allows the PWA host.
 
-import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, resolveSubscriptionPermissions, type AppUser, type Gender, type PrivacySetting, type UserPreferences } from './permissions';
+import { DEFAULT_PREFERENCES, normalizeRole, resolveRolePermissions, resolveSubscriptionPermissions, type AppUser, type Gender, type Permission, type PrivacySetting, type UserPreferences } from './permissions';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
 const AUTH_PREFIX = '/api/v1/auth';
@@ -248,10 +248,12 @@ interface AuthTokens {
 }
 
 /**
- * Map the API user payload onto the app's `AppUser`. The API ships roles +
- * permissions, but we re-derive permissions from roles via the app's own
- * `resolveRolePermissions` so the client stays the single source of truth for
- * its permission gating (and stays correct even if the two lists drift).
+ * Map the API user payload onto the app's `AppUser`. We re-derive the role- and
+ * subscription-based permissions from the app's own `resolveRolePermissions`
+ * (so the client stays authoritative for those even if the two lists drift), but
+ * we ALSO trust the server's `permissions` array on top — it carries per-account
+ * grants that roles alone don't express (e.g. a staff member the owner granted
+ * `owner.pricing.manage`), which the client can't reconstruct from roles.
  */
 /** Coerce the API's free-string privacy field to a known value (default public). */
 function normalizePrivacy(value?: string | null): PrivacySetting {
@@ -298,12 +300,18 @@ export function toAppUser(api: ApiUser): AppUser {
     // Role permissions PLUS whatever the user's live partner subscriptions
     // unlock — coach/organizer are no longer roles, so a subscribed partner is a
     // plain `player` and would otherwise resolve to zero partner permissions.
+    // PLUS any per-account permissions the server granted that roles alone don't
+    // cover — e.g. an owner granting a staff member `owner.pricing.manage` from
+    // the Access panel. The server's `/me` payload already unions those grants
+    // in; we must carry them through here or the UI gates (sidebar Pricing item,
+    // etc.) never see them.
     permissions: [...new Set([
       ...resolveRolePermissions(roles),
       ...resolveSubscriptionPermissions([
         ...(api.coachSubscriptionActive ? ['coach' as const] : []),
         ...(api.organizerSubscriptionActive ? ['organizer' as const] : []),
       ]),
+      ...((api.permissions ?? []) as Permission[]),
     ])],
     partnerRoles: api.partnerRoles ?? [],
   };
