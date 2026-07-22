@@ -429,7 +429,7 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
       </div>
 
       {!loading && !failed && !noProfile && coach && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--hairline)] bg-[var(--surface)] px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-3.5">
+        <div className="sticky bottom-0 z-20 -mx-5 border-t border-[var(--hairline)] bg-[var(--surface)] px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-3.5">
           <button
             type="button"
             onClick={save}
