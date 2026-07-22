@@ -102,9 +102,7 @@ export type Screen =
   | { id: 'open-play-book'; params: { venueId: string } }
   // Public plan-PDF viewer — lists the PDFs in the plan/ dir and previews them
   // inline (no auth required).
-  | { id: 'plan-pdfs' }
-  // Public full-screen venue map (no auth required).
-  | { id: 'map' };
+  | { id: 'plan-pdfs' };
 
 export type ScreenId = Screen['id'];
 
@@ -210,7 +208,6 @@ export function pathFromScreen(screen: Screen): string {
     case 'admin-post-reports': return '/admin/post-reports';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
     case 'plan-pdfs': return '/plan-pdfs';
-    case 'map': return '/map';
   }
   return '/';
 }
@@ -359,7 +356,6 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       return { id: 'organizer-hub' };
     case 'shop': return { id: 'owner-shop' };
     case 'plan-pdfs': return { id: 'plan-pdfs' };
-    case 'map': return { id: 'map' };
     case 'admin':
       if (b === 'claims') return { id: 'admin-claims' };
       if (b === 'post-reports') return { id: 'admin-post-reports' };
@@ -402,7 +398,6 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'admin-post-reports') return { id: 'profile' };
   if (id === 'open-play-book') return { id: 'nearby' };
   if (id === 'plan-pdfs') return { id: 'home' };
-  if (id === 'map') return { id: 'nearby' };
   // Friends now lives in the Social tab, not behind Profile.
   if (id === 'friends' || id === 'clubs' || id === 'social') return { id: 'home' };
   if (id === 'members') return { id: 'profile' };

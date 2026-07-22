@@ -6165,9 +6165,65 @@ body[data-dt-sheet] .pb-v2 .v2c-tabbar { display: none !important; }
 .pb-v2.v2-owner-home .ohome-empty p { font-size: 13px; color: var(--text-secondary); margin: 6px 0 16px; }
 .pb-v2.v2-owner-home .ohome-empty-btn { background: var(--lime); color: var(--ink); font-family: 'Grandstander', cursive; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: var(--radius-pill); }
 
-/* ---- /map — full-screen, public, no-interaction venue map ---- */
-.fullmap-screen { position: fixed; inset: 0; z-index: 9999; }
-.fullmap-leaflet { width: 100%; height: 100%; }
+/* ---- Map pin + cluster + recenter + fullscreen (Nearby V2) ---- */
+.pb-v2.v2-nearby .venue-cluster {
+  background: var(--blue); color: #fff;
+  border: 3px solid rgba(255,255,255,0.9); border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(26,33,56,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Grandstander', cursive; font-weight: 800; font-size: 13px; line-height: 1;
+}
+.pb-v2.v2-nearby .venue-pin .vp-dot {
+  position: absolute; top: 0; left: 0; width: 14px; height: 14px;
+  box-sizing: border-box; border-radius: 50%;
+  background: var(--blue); border: 2.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.35);
+}
+.pb-v2.v2-nearby .venue-pin .vp-label {
+  position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+  font-family: 'Nunito Sans', sans-serif; font-weight: 700; font-size: 11px; line-height: 1.2;
+  color: var(--ink);
+  background: rgba(255,255,255,0.88); padding: 1px 6px; border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  pointer-events: none;
+}
+.pb-v2.v2-nearby .map-recenter,
+.pb-v2.v2-nearby .map-fullscreen {
+  position: absolute;
+  z-index: 25;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--surface); color: var(--blue); border: none;
+  box-shadow: 0 2px 8px rgba(26,33,56,0.25);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.pb-v2.v2-nearby .map-fullscreen { left: 14px; bottom: calc(64px + 188px + 10px + env(safe-area-inset-bottom)); }
+.pb-v2.v2-nearby .map-recenter {
+  right: 14px;
+  bottom: calc(64px + 188px + 10px + env(safe-area-inset-bottom));
+}
+.pb-v2.v2-nearby .nearby-map-screen.fullscreen .map-recenter {
+  bottom: calc(22px + env(safe-area-inset-bottom));
+}
+.pb-v2.v2-nearby .map-recenter:active,
+.pb-v2.v2-nearby .map-fullscreen:active { transform: scale(0.94); }
+.pb-v2.v2-nearby .map-recenter:disabled { opacity: 0.6; cursor: default; }
+.pb-v2.v2-nearby .map-recenter svg,
+.pb-v2.v2-nearby .map-fullscreen svg { width: 22px; height: 22px; }
+.pb-v2.v2-nearby .nearby-map-screen.fullscreen .nearby-map-layer {
+  position: fixed; inset: 0; z-index: 9999;
+}
+.pb-v2.v2-nearby .nearby-map-screen.fullscreen .nearby-search-float,
+.pb-v2.v2-nearby .nearby-map-screen.fullscreen .nearby-sheet { display: none; }
+.pb-v2.v2-nearby .map-fullscreen-exit {
+  position: fixed; z-index: 10001; top: 16px; right: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface); color: var(--ink); border: none;
+  box-shadow: 0 2px 8px rgba(26,33,56,0.25);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.pb-v2.v2-nearby .map-fullscreen-exit:active { transform: scale(0.94); }
+.pb-v2.v2-nearby .map-fullscreen-exit svg { width: 20px; height: 20px; }
 
 /* ============================================================================
    External profile (px = profile eXternal) — the "Threads-style" public card

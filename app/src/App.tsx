@@ -61,7 +61,6 @@ import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
 import { AdminPostReportsScreen } from './features/admin/AdminPostReportsScreen';
 import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
 import PlanPdfsPage from './features/plan-pdfs/PlanPdfsPage';
-import { FullMapScreen } from './features/venues/FullMapScreen';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
 import { TournamentsScreen } from './features/organizer/tournaments/TournamentsScreen';
 import { CreateTournamentScreen } from './features/organizer/tournaments/CreateTournamentScreen';
@@ -551,7 +550,7 @@ function AppInner() {
   const canShowCreate = true;
 
   // `hideChrome` matters for the auth/onboarding surfaces, which run full-bleed.
-  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'plan-pdfs', 'map'].includes(screen.id);
+  const hideChrome = ['landing', 'onboarding', 'login', 'forgot-password', 'reset-password', 'plan-pdfs'].includes(screen.id);
   // Guests get the full chrome while browsing — that's how they roam the app.
   // In v2.1 the player screens supply their own top nav + bottom tab bar, so the
   // app's mobile TabBar (and the install prompt riding above it) are suppressed.
@@ -829,8 +828,6 @@ function AppInner() {
         return <OpenPlayBookScreen key={screen.params.venueId} venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'plan-pdfs':
         return <PlanPdfsPage />;
-      case 'map':
-        return <FullMapScreen />;
       default:
         // Unknown screen id — fall back to the home tab (owner dashboard or
         // the v2.1 player home).

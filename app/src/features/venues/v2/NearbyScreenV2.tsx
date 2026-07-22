@@ -1,7 +1,9 @@
+/// <reference types="leaflet.markercluster" />
+
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
-import { DEFAULT_ICON_OPTIONS } from '../../../shared/lib/leafletIcons';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { DateTimeFilterBar } from './DateTimeFilterBar';
@@ -28,8 +30,36 @@ const VISIBLE = 30;
 // Metro Manila — most seeded venues are here; used when none carry coords.
 const MAP_FALLBACK_CENTER: [number, number] = [14.5995, 120.9842];
 
-// Leaflet's default pin (served from unpkg, matching the v1 Nearby map).
-const markerIcon = new L.Icon(DEFAULT_ICON_OPTIONS);
+// ---- Custom map pins (small dot + label) + cluster icon factory ----
+
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const venueIconCache = new Map<string, L.DivIcon>();
+function venueIcon(name: string): L.DivIcon {
+  let ic = venueIconCache.get(name);
+  if (!ic) {
+    ic = L.divIcon({
+      className: 'venue-pin',
+      html: `<span class="vp-dot"></span><span class="vp-label">${escapeHtml(name)}</span>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      popupAnchor: [0, -10],
+    });
+    venueIconCache.set(name, ic);
+  }
+  return ic;
+}
+
+function createClusterIcon(cluster: { getChildCount(): number }): L.DivIcon {
+  const n = cluster.getChildCount();
+  const size = n < 10 ? 34 : n < 50 ? 42 : 50;
+  return L.divIcon({
+    html: `<span>${n}</span>`,
+    className: 'venue-cluster',
+    iconSize: L.point(size, size, true),
+  });
+}
 
 // Always returns a `backgroundImage` (the photo, else a gradient). We must NOT
 // mix this with the `background` shorthand in the same style object: React sets
@@ -64,12 +94,13 @@ interface MapPin {
 // as bottom padding: the user lands in the *visible* strip above the list (so
 // their location stays in view while the list is open) and re-centres into the
 // larger visible area as the sheet collapses.
-function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, collapsed, sheetRef }: {
+function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, clusterRef, collapsed, sheetRef }: {
   userLoc: LatLng | null;
   points: [number, number][];
   focusNonce: number;
   nearestId: string | null;
   markerRefs: { current: Record<string, L.Marker> };
+  clusterRef: { current: L.MarkerClusterGroup | null };
   collapsed: boolean;
   sheetRef: { current: HTMLDivElement | null };
 }) {
@@ -106,9 +137,18 @@ function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, collapse
         ],
         { paddingTopLeft: [40, 40], paddingBottomRight: [40, 40 + covered], maxZoom: 16 },
       );
-      // Surface the closest court only when the map is the focus (list collapsed),
-      // so an open list isn't covered by a popup in the thin visible strip.
-      if (collapsed && nearestId) markerRefs.current[nearestId]?.openPopup();
+      // Surface the closest court only when it's declustered (on the map) and the
+      // list is collapsed so an open popup isn't hidden. Deferred: fitBounds may
+      // still be animating.
+      const openNearest = () => {
+        if (!collapsed || !nearestId) return;
+        const marker = markerRefs.current[nearestId];
+        const cg = clusterRef.current;
+        if (!marker || !cg) return;
+        if (cg.getVisibleParent(marker) === marker) marker.openPopup();
+      };
+      openNearest();
+      map.once('moveend', openNearest);
       return;
     }
     if (points.length === 0) return;
@@ -117,7 +157,7 @@ function FrameMap({ userLoc, points, focusNonce, nearestId, markerRefs, collapse
       return;
     }
     map.fitBounds(points, { paddingTopLeft: [48, 48], paddingBottomRight: [48, 48 + covered], maxZoom: 14 });
-  }, [map, userLoc, points, nearestId, collapsed, coveredPx, markerRefs]);
+  }, [map, userLoc, points, nearestId, collapsed, coveredPx, markerRefs, clusterRef]);
 
   // Re-frame when the data changes (location arrives, "Near me" re-centre). The
   // sheet isn't animating in these cases, so the visible strip is already settled.
@@ -179,6 +219,11 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   const [focusNonce, setFocusNonce] = useState(0);
   // Live Leaflet markers, keyed by venue id, so FrameMap can pop the nearest one.
   const markerRefs = useRef<Record<string, L.Marker>>({});
+  // Marker cluster group ref — FrameMap checks whether the nearest marker is
+  // inside a cluster before opening its popup.
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+  // Fullscreen toggle for the map — hides the sheet + search, fills the frame.
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   // The list sheet element — FrameMap measures how much of the map it covers so
   // it can keep the user's location in the visible strip above it.
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -255,6 +300,14 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       .then((loc) => { setLiveLoc(loc); setLocStatus('on'); })
       .catch(() => setLocStatus('denied'));
   };
+  // Dedicated re-center: always bumps focusNonce regardless of sheet state, so
+  // the map re-frames on the user even when the sheet is expanded.
+  const recenter = () => {
+    if (!canLocate) return;
+    if (!userLoc) { locate(); return; }
+    setFocusNonce((n) => n + 1);
+  };
+
   // Auto-locate once on mount. locStatus already starts 'locating' (above), so the
   // effect body has no synchronous setState — only the async callbacks set state.
   useEffect(() => {
@@ -384,7 +437,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
   return (
     <V2Shell screen="v2-nearby" chrome={chrome}>
-      <div className="nearby-map-screen">
+      <div className={`nearby-map-screen${mapFullscreen ? ' fullscreen' : ''}`}>
         {/* Map — sits behind the list sheet; the user collapses the sheet to see it. */}
         <div className="nearby-map-layer">
           <MapContainer center={mapCenter} zoom={12} className="nearby-leaflet" zoomControl={false}>
@@ -392,7 +445,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <FrameMap userLoc={userLoc} points={mapPoints} focusNonce={focusNonce} nearestId={nearestId} markerRefs={markerRefs} collapsed={collapsed} sheetRef={sheetRef} />
+            <FrameMap userLoc={userLoc} points={mapPoints} focusNonce={focusNonce} nearestId={nearestId} markerRefs={markerRefs} clusterRef={clusterRef} collapsed={collapsed} sheetRef={sheetRef} />
             <CollapseOnMapClick onCollapse={() => setSheet('collapsed')} />
             {userLoc && (
               <CircleMarker
@@ -401,11 +454,18 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                 pathOptions={{ color: '#ffffff', weight: 3, fillColor: '#3355FF', fillOpacity: 1 }}
               />
             )}
+            <MarkerClusterGroup
+              ref={clusterRef}
+              chunkedLoading
+              showCoverageOnHover={false}
+              maxClusterRadius={55}
+              iconCreateFunction={createClusterIcon}
+            >
             {pins.map((p) => (
               <Marker
                 key={p.v.id}
                 position={[p.lat, p.lng]}
-                icon={markerIcon}
+                icon={venueIcon(p.v.displayName)}
                 ref={(m) => { if (m) markerRefs.current[p.v.id] = m; }}
               >
                 <Popup className="nearby-popup" minWidth={220} maxWidth={220}>
@@ -431,6 +491,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                 </Popup>
               </Marker>
             ))}
+            </MarkerClusterGroup>
           </MapContainer>
         </div>
 
@@ -454,6 +515,32 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             </button>
           )}
         </div>
+
+        {/* Fullscreen toggle — expands the map to fill the frame over the tab bar */}
+        {!mapFullscreen && (
+          <button type="button" className="map-fullscreen" onClick={() => setMapFullscreen(true)} aria-label="Expand map to full screen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>
+          </button>
+        )}
+
+        {/* Re-center — always bumps focusNonce, both sheet states */}
+        {canLocate && (
+          <button type="button" className="map-recenter" onClick={recenter} disabled={locStatus === 'locating'} aria-label="Re-center map on my location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="7" />
+              <line x1="12" y1="1" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="23" />
+              <line x1="1" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="23" y2="12" />
+              <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
+        )}
+
+        {/* Fullscreen exit — sits on top of the fixed map layer */}
+        {mapFullscreen && (
+          <button type="button" className="map-fullscreen-exit" onClick={() => setMapFullscreen(false)} aria-label="Exit full-screen map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        )}
 
         {/* List sheet — the primary surface; collapse it to reveal the map */}
         <div ref={sheetRef} className={`nearby-sheet ${collapsed ? 'collapsed' : 'expanded'}`}>
