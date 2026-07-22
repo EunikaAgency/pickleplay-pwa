@@ -143,6 +143,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
   // the competitive block. Admins/moderators get neither.
   const showPlayerStats = role === 'player' || role === 'coach';
   const showOrganizerStats = role === 'organizer';
+  // Coaching and Organizer subscription sections are for community members who
+  // might want to upgrade. Admins and moderators are platform operators — they
+  // manage the platform, they don't need to subscribe to a partner plan.
+  const showPartnerSections = role !== 'admin' && role !== 'moderator';
   // Gates on the live PAID subscription, not the `coach` role — an approved
   // venue application grants that role without one. Flips the row from
   // "Become a coach" to "Coach subscription" and reveals session requests.
@@ -295,14 +299,16 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         <div className="section-gap" />
 
         {/* Coaching — the canonical home of the coach subscription. The Home tab
-            only carries a CTA that routes here. Shown to every signed-in player:
-            subscribing is how you *become* a coach, so it can't require the role.
+            only carries a CTA that routes here. Shown to every signed-in
+            community member: subscribing is how you *become* a coach, so it
+            can't require the role. Admins and moderators skip this — they manage
+            the platform, they don't need a partner plan.
 
             A player who isn't a coach yet sees the PITCH as an upgrade banner
             (same treatment as "Unlock Full Stats"); tapping it opens a sheet that
             spells out what the plan unlocks before sending them to the paid
             screen. Once subscribed the banner is replaced by plain manage rows. */}
-        {isLoggedIn && (
+        {isLoggedIn && showPartnerSections && (
           <div className="content-section">
             <h2 className="section-title">Coaching</h2>
 
@@ -358,8 +364,10 @@ export function ProfileScreenV2(props: ProfileV2Props) {
         {/* Organizing — mirrors Coaching. A player who isn't a subscribed organizer
             sees the PITCH banner (→ the paid organizer-subscribe screen); once
             subscribed it's replaced by the console + a manage-plan row. Shown to
-            every signed-in player, since subscribing is how you *become* one. */}
-        {isLoggedIn && (
+            every signed-in community member, since subscribing is how you
+            *become* one. Admins and moderators skip this — they manage the
+            platform, they don't need a partner plan. */}
+        {isLoggedIn && showPartnerSections && (
           <div className="content-section">
             <h2 className="section-title">Organizer</h2>
 
