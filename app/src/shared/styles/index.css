@@ -2194,7 +2194,7 @@
 .sidebar .admin-section-items {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 /* Admin items match the side-tab rhythm: same height, radius, padding, gap, font,
    and transitions. The only distinction is the icon size (a notch smaller). */
@@ -2204,6 +2204,7 @@
   gap: 14px;
   height: 48px;
   padding: 0 14px;
+  margin: 0;
   border-radius: 14px;
   color: var(--ink-2);
   font-family: var(--font-heading);
