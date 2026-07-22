@@ -81,18 +81,23 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
   // Staff land on this same console (they hold owner.access) — show their real
   // role on the badge, and label them "Venue staff" rather than "Venue owner".
   const role = user ? primaryRole(user) : 'owner';
-  // Staff see no revenue/bookings roll-up, so don't pay for it: both flags fan
-  // out one request per venue, and a staff member inherits their owner's whole
-  // portfolio (which can be hundreds of venues).
+  // Staff normally see no revenue/bookings roll-up — but an owner can grant a
+  // staff member `owner.analytics.view` from the Access panel, which turns the
+  // "This month" KPI block on for them. `withAnalytics` is left to the hook's
+  // own permission gate (it only fetches when the viewer actually holds the
+  // permission), so a non-granted staff member still fans out zero requests.
   const isStaff = role === 'staff';
   const {
     canAnalytics, venues, combined, structural, statsReady, monthBookings, pending, status, retry,
-  } = useOwnerDashboard({ withBookings: canBookings && !isStaff, withAnalytics: !isStaff });
+  } = useOwnerDashboard({ withBookings: canBookings && !isStaff });
 
   const name = user?.displayName ?? 'Owner';
   const roleMeta = ROLE_META[role] ?? ROLE_META.owner;
   const roleNoun = role === 'staff' ? 'Venue staff' : 'Venue owner';
-  const pendingCount = canBookings ? pending.length : combined.pending;
+  // Staff granted analytics don't fetch the per-venue bookings list (that's the
+  // owner's actionable inbox), so read the pending count from the analytics
+  // roll-up instead of the (unfetched) bookings array.
+  const pendingCount = canBookings && !isStaff ? pending.length : combined.pending;
   const venueLine = venues.length > 0
     ? `${roleNoun} · ${venues.length} venue${venues.length === 1 ? '' : 's'}`
     : roleNoun;
@@ -183,9 +188,10 @@ export function OwnerProfileScreen({ onNavigate, onLogout }: OwnerProfileScreenP
       </div>
 
       <div>
-        {/* BUSINESS KPIs — mirrors the player Activity grid. Hidden for staff:
-            the revenue/bookings roll-up is the owner's business, not theirs. */}
-        {canAnalytics && !isStaff && (
+        {/* BUSINESS KPIs — mirrors the player Activity grid. Shown to owners and
+            to any staff the owner granted `owner.analytics.view` (the Access
+            panel's "Analytics" toggle); `canAnalytics` already encodes that. */}
+        {canAnalytics && (
           <div className="content-section">
             <h2 className="section-title">This month</h2>
             <div className="activity-grid">
