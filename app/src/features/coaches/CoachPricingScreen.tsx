@@ -6,6 +6,7 @@ import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { Toast } from '../../shared/components/ui/Toast';
 import { Button } from '../../shared/components/ui/Button';
+import { useAuthStore } from '../../shared/lib/authStore';
 import { ApiError, getMyCoach, updateMyCoach, type ApiCoachDetail } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 import { currencySymbol, money } from './coachDisplay';
@@ -32,6 +33,11 @@ function invalid(raw: string): boolean {
 }
 
 export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenProps) {
+  // City is not edited here — it comes from the account address (Edit Profile),
+  // so there's one source of truth. We just display it and send it on save.
+  const currentUser = useAuthStore((s) => s.user);
+  const accountCity = (currentUser?.city ?? '').trim();
+
   const [coach, setCoach] = useState<ApiCoachDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -40,7 +46,6 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
 
   // ── Profile fields ──
   const [specialty, setSpecialty] = useState('');
-  const [cityPrimary, setCityPrimary] = useState('');
   const [experienceYears, setExperienceYears] = useState('');
   const [bio, setBio] = useState('');
   const [languages, setLanguages] = useState<string[]>([]);
@@ -68,7 +73,6 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
         setCoach(c);
         // Profile
         setSpecialty(c.specialty ?? '');
-        setCityPrimary(c.cityPrimary ?? '');
         setExperienceYears(c.experienceYears != null ? String(c.experienceYears) : '');
         setBio(c.bio ?? '');
         setLanguages(c.languages ?? []);
@@ -131,7 +135,7 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
       const updated = await updateMyCoach({
         // Profile fields — sent on every save alongside rates.
         specialty: specialty.trim() || null,
-        cityPrimary: cityPrimary.trim() || null,
+        cityPrimary: accountCity || null,
         experienceYears: experienceYears.trim() ? Number(experienceYears) : null,
         bio: bio.trim() || null,
         languages: languages.length ? languages : undefined,
@@ -211,17 +215,29 @@ export function CoachPricingScreen({ onNavigate, onBack }: CoachPricingScreenPro
                 <span className="mt-0.5 block text-[12px] text-[var(--muted)]">Shown below your name on your public card.</span>
               </label>
 
-              <label className="mt-3 block">
-                <span className="text-[13px] font-bold">City</span>
-                <input
-                  value={cityPrimary}
-                  onChange={(e) => setCityPrimary(e.target.value)}
-                  maxLength={100}
-                  placeholder="e.g. Makati"
-                  aria-label="City where you coach"
-                  className="mt-1.5 block w-full rounded-2xl border border-[var(--field-border)] bg-[var(--surface)] px-3.5 py-3 text-[14px] outline-none placeholder:text-[var(--muted)]"
-                />
-              </label>
+              <div className="mt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-bold">City</span>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('edit-profile')}
+                    className="text-[12.5px] font-bold text-[var(--primary)]"
+                  >
+                    Edit in profile
+                  </button>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-[var(--field-border)] bg-[var(--bg-alt,var(--surface))] px-3.5 py-3">
+                  <Icon name="location_on" size={17} />
+                  <span className={`text-[14px] ${accountCity ? '' : 'text-[var(--muted)]'}`}>
+                    {accountCity || 'No city set'}
+                  </span>
+                </div>
+                <span className="mt-0.5 block text-[12px] text-[var(--muted)]">
+                  {accountCity
+                    ? 'Pulled from your profile address. Update it in Edit Profile.'
+                    : 'Set your address in Edit Profile to show a city on your public card.'}
+                </span>
+              </div>
 
               <label className="mt-3 block">
                 <span className="text-[13px] font-bold">Experience</span>
