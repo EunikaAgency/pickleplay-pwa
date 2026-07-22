@@ -6,7 +6,6 @@ import { ErrorState } from '../../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../../shared/components/ui/LoadingSkeleton';
 import { ShareLobbySheet } from '../../../shared/components/ui/ShareLobbySheet';
 import { Avatar } from '../../../shared/components/ui/Avatar';
-import { InvitePlayersSheet } from '../InvitePlayersSheet';
 import { GameDetailsScreen } from '../GameDetailsScreen';
 import { type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import {
@@ -155,7 +154,6 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -417,14 +415,8 @@ function OrganizerOpenPlayDetail({ id, chrome, onBack }: { id: string; chrome: V
           dateTime={sessionWhen(session)}
           venue={session.venueName}
           onNavigate={chrome.onNavigate}
-          onInvite={() => setInviteOpen(true)}
         />
       )}
-      <InvitePlayersSheet
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        gameId={id}
-      />
     </div>
   );
 }
