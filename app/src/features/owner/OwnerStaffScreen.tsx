@@ -53,7 +53,6 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
   // checkboxes edit this draft only; nothing persists until the owner presses
   // Save (was a toggle-on-click pill before).
   const [accessDraft, setAccessDraft] = useState<string[]>([]);
-  const [accessSaved, setAccessSaved] = useState(false);
 
   // Load on mount, when the management gate flips (auth restore), or when Retry
   // bumps reloadKey. State is set only inside async callbacks — never
@@ -132,13 +131,11 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
     setAccessOpen(next);
     setResetFor(null);
     setRowError('');
-    setAccessSaved(false);
     if (next) setAccessDraft([...(m.grantedPermissions ?? [])]);
   };
 
   // Tick/untick a grantable permission in the draft (no persistence yet).
   const toggleDraft = (permKey: string) => {
-    setAccessSaved(false);
     setAccessDraft((cur) => (cur.includes(permKey) ? cur.filter((k) => k !== permKey) : [...cur, permKey]));
   };
 
@@ -149,8 +146,10 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
     try {
       const updated = await updateStaffAccount(m.id, { grantedPermissions: accessDraft });
       setStaff((s) => s.map((x) => (x.id === m.id ? { ...x, grantedPermissions: updated.grantedPermissions } : x)));
-      setAccessDraft([...(updated.grantedPermissions ?? [])]);
-      setAccessSaved(true);
+      // Collapse the Access panel on a successful save — the persisted state is
+      // the confirmation, so no separate "Saved" affordance is needed.
+      setAccessOpen(null);
+      setAccessDraft([]);
     } catch {
       setRowError("Couldn't update access. Try again.");
     } finally {
@@ -379,7 +378,7 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                         const cur = new Set(m.grantedPermissions ?? []);
                         const dirty = cur.size !== accessDraft.length || accessDraft.some((k) => !cur.has(k));
                         return (
-                          <div className="flex items-center gap-2 mt-2">
+                          <div className="flex justify-end mt-2">
                             <button
                               type="button"
                               onClick={() => onSaveAccess(m)}
@@ -388,9 +387,6 @@ export function OwnerStaffScreen({ onBack }: OwnerStaffScreenProps) {
                             >
                               {savingAccess ? 'Saving…' : 'Save access'}
                             </button>
-                            {accessSaved && !dirty && (
-                              <span className="t-xs text-[var(--primary)] font-bold">Saved ✓</span>
-                            )}
                           </div>
                         );
                       })()}
