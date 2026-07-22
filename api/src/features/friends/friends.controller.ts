@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { Friend } from './friends.model.js';
-import { User } from '../auth/auth.model.js';
+import { User, UserRole } from '../auth/auth.model.js';
 import { Notification } from '../interactions/interactions.model.js';
 import { Club } from '../clubs/clubs.model.js';
 import { Game } from '../games/games.model.js';
@@ -11,8 +11,25 @@ const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
 const sendRequestSchema = z.object({ userId: objectId });
 const respondSchema = z.object({ accept: z.boolean() });
 
-/** Roles that can be added as a friend. Admins, moderators, and staff are excluded. */
+/** Roles that can be added as a friend. Admins, owners, and staff are excluded —
+ *  they are platform operators, not social participants. The whitelist excludes
+ *  them by `roleDefault`, and `getNonFriendableIds()` below also catches anyone
+ *  granted those roles via UserRole. */
 const FRIENDABLE_ROLES = ['player', 'coach', 'organizer'];
+
+/** Roles that are never friendable, even when granted via UserRole on a user whose
+ *  `roleDefault` is player/coach/organizer. */
+const NON_FRIENDABLE_ROLES = ['admin', 'owner', 'staff'];
+
+/** Returns a Set of user IDs who hold an admin, owner, or staff role via
+ *  UserRole grants. These users are excluded from friend search + suggestions
+ *  on top of the `roleDefault` filter. */
+async function getNonFriendableIds(): Promise<Set<string>> {
+  const grants = await UserRole.find({
+    role: { $in: NON_FRIENDABLE_ROLES },
+  }).select('userId').lean() as any[];
+  return new Set(grants.map((g) => String(g.userId)));
+}
 
 /** Public shape returned for a friend. */
 function friendView(u: any) {
@@ -230,7 +247,8 @@ export async function removeFriend(c: any) {
 }
 
 /** GET /friends/search?q= — search for friendable users (player/coach/organizer),
- *  excluding the current user and existing friends (any status). */
+ *  excluding the current user, existing friends (any status), and anyone who
+ *  holds an admin, owner, or staff role (either via roleDefault or UserRole). */
 export async function searchFriendableUsers(c: any) {
   const user = c.get('user');
   const q = (c.req.query('q') || '').trim();
@@ -247,6 +265,10 @@ export async function searchFriendableUsers(c: any) {
     excludeIds.add(String(r.recipientId));
   }
   excludeIds.add(user.sub); // exclude self
+
+  // Also exclude anyone with an admin/owner/staff UserRole grant.
+  const nonFriendable = await getNonFriendableIds();
+  for (const id of nonFriendable) excludeIds.add(id);
 
   const filter: Record<string, any> = {
     _id: { $nin: [...excludeIds] },

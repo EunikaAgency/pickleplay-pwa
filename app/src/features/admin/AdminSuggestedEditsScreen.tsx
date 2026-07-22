@@ -14,10 +14,10 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: 'var(--coral)',
 };
 
-/** Serialise a suggested edit's payload for preview. */
+/** Serialise a suggested edit's payload for preview. Truncates at 500 chars. */
 function payloadPreview(payload: unknown): string {
-  if (typeof payload === 'string') return payload.slice(0, 200);
-  try { return JSON.stringify(payload, null, 0).slice(0, 200); } catch { return String(payload).slice(0, 200); }
+  if (typeof payload === 'string') return payload.slice(0, 500);
+  try { return JSON.stringify(payload, null, 2).slice(0, 500); } catch { return String(payload).slice(0, 500); }
 }
 
 function venueName(e: AdminSuggestedEdit): string {

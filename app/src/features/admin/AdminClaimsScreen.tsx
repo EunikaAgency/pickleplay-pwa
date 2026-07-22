@@ -9,7 +9,6 @@ import { listClaims, reviewClaim, apiImageUrl, ApiError, type VenueClaim } from 
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface AdminClaimsScreenProps {
-  onNavigate: Navigate;
   onBack: () => void;
 }
 

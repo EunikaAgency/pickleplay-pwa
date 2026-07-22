@@ -131,9 +131,16 @@ function isHostOf(club: any, viewer?: string | Viewer | null): boolean {
   return !!viewer.parentOwnerId && hostId === String(viewer.parentOwnerId);
 }
 
-/** Can this viewer read the club (its detail + feed)? Public: anyone. Private: members/host (staff count as their owner). */
+/** Can this viewer read the club detail (name, description, member count)? Public: anyone. Private: members/host (staff count as their owner). */
 async function canViewClub(club: any, viewer?: string | Viewer | null): Promise<boolean> {
   if (club.visibility === 'public') return true;
+  if (isHostOf(club, viewer)) return true;
+  const uid = typeof viewer === 'string' ? viewer : viewer?.sub;
+  return !!(await getMembership(club._id, uid));
+}
+
+/** Can this viewer read the club feed (posts)? Members/host only — the feed is never public, even for public clubs. */
+async function canViewFeed(club: any, viewer?: string | Viewer | null): Promise<boolean> {
   if (isHostOf(club, viewer)) return true;
   const uid = typeof viewer === 'string' ? viewer : viewer?.sub;
   return !!(await getMembership(club._id, uid));
@@ -572,8 +579,8 @@ export async function listFeed(c: any) {
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
   const user = c.get('user');
-  if (!(await canViewClub(club, user))) {
-    return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
+  if (!(await canViewFeed(club, user))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Join this club to see its feed' } }, 403);
   }
   const q = feedQuery.parse(c.req.query());
   const filter = withCursor({ clubId: club._id, parentPostId: null, isDeleted: false }, q.cursor);
@@ -593,8 +600,8 @@ export async function getPost(c: any) {
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
   const user = c.get('user');
-  if (!(await canViewClub(club, user))) {
-    return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
+  if (!(await canViewFeed(club, user))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Join this club to see its feed' } }, 403);
   }
   const post = await ClubPost.findOne({ _id: c.req.param('postId'), clubId: club._id })
     .populate('authorId', PERSON_SELECT).lean();
@@ -619,8 +626,8 @@ export async function listReplies(c: any) {
   const club = await loadClub(c.req.param('id'));
   if (!club) return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
   const user = c.get('user');
-  if (!(await canViewClub(club, user))) {
-    return c.json({ error: { code: 'NOT_FOUND', message: 'Club not found' } }, 404);
+  if (!(await canViewFeed(club, user))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Join this club to see its feed' } }, 403);
   }
   const q = feedQuery.parse(c.req.query());
   const filter = withCursor({ clubId: club._id, parentPostId: c.req.param('postId'), isDeleted: false }, q.cursor);
