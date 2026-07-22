@@ -1,5 +1,6 @@
 import { V2Shell, type V2ScreenChrome } from '../../shared/components/layout/V2Chrome';
 import { useFriendRequestStore } from '../../shared/lib/friendRequestStore';
+import { useAuthStore } from '../../shared/lib/authStore';
 import { ClubsPanel } from './ClubsPanel';
 import { FriendsPanel } from './FriendsPanel';
 import { FeedPanel } from './FeedPanel';
@@ -21,15 +22,23 @@ interface SocialScreenProps {
  *
  * The outer switch is a segmented pill track, deliberately *not* another chip
  * row — the panels carry their own filters underneath.
+ *
+ * Admin accounts (role `admin`) see PickleFeed + Clubs only — the Friends tab
+ * is hidden. Admins are platform operators, not social participants, and should
+ * not appear in friend search results either.
  */
 export function SocialScreen({ chrome, tab }: SocialScreenProps) {
   const { onNavigate, requireAuth } = chrome;
   const pending = useFriendRequestStore((s) => s.pending);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.roles.includes('admin') ?? false;
 
   // PickleFeed is the default landing (guests included — the feed is public
   // read). Friends still badges its pending count; it just no longer changes
   // where a bare `/social` lands.
-  const active: SocialTab = tab ?? 'feed';
+  // If the user is an admin and the URL asks for the friends tab, drop back to
+  // feed — admins don't get the Friends panel.
+  const active: SocialTab = (tab === 'friends' && isAdmin) ? 'feed' : (tab ?? 'feed');
 
   const goPanel = (next: SocialTab) => {
     if (next === active) return;
@@ -71,15 +80,17 @@ export function SocialScreen({ chrome, tab }: SocialScreenProps) {
           >
             Clubs
           </button>
-          <button
-            role="tab"
-            aria-selected={active === 'friends'}
-            className={active === 'friends' ? 'active' : ''}
-            onClick={() => goPanel('friends')}
-          >
-            Friends
-            {pending > 0 && <span className="social-seg-count">{pending}</span>}
-          </button>
+          {!isAdmin && (
+            <button
+              role="tab"
+              aria-selected={active === 'friends'}
+              className={active === 'friends' ? 'active' : ''}
+              onClick={() => goPanel('friends')}
+            >
+              Friends
+              {pending > 0 && <span className="social-seg-count">{pending}</span>}
+            </button>
+          )}
         </div>
 
         {active === 'feed' ? (

@@ -62,7 +62,7 @@ export function AdminSearch({
   value, onChange, placeholder,
 }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <div className="relative pt-3">
+    <div className="field relative pt-3">
       <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
       <input
         type="search"
