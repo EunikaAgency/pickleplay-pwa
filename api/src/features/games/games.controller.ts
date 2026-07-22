@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import { Game, GameMessage, INVITABLE_ROLE } from './games.model.js';
 import { parseTimeLabel } from './gameTime.js';
 import { Booking } from '../bookings/bookings.model.js';
-import { User } from '../auth/auth.model.js';
+import { User, UserRole } from '../auth/auth.model.js';
 import { notifyUser, notifyUsers } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
@@ -12,6 +12,18 @@ import { getPlayerCapabilities } from '../settings/settings.controller.js';
 import { toWebpUrl } from '../../shared/lib/webp.js';
 
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/);
+
+/** Who may charge an Open Play entrance fee: a live PAID organizer subscriber, OR
+ *  anyone an owner has approved as an organizer at a venue (a venue-scoped
+ *  `UserRole` grant — no subscription needed, survives a lapsed one). Mirrors the
+ *  app's `canChargeFee` gate in BookCourtScreen (`organizerSubscriptionActive ||
+ *  partnerRoles.some(r => r.role === 'organizer')`). */
+async function canChargeEntranceFee(userId: Types.ObjectId | string): Promise<boolean> {
+  if (await hasActivePartnerSubscription(userId, 'organizer')) return true;
+  return !!(await UserRole.exists({
+    userId, role: 'organizer', scopeType: 'venue', scopeId: { $ne: null },
+  }));
+}
 
 // Competitive format for a public game — how the session is run.
 const gameFormat = z.enum(['bracketing', 'round_robin', 'mini_tournament']);
@@ -382,12 +394,13 @@ export async function createGame(c: any) {
     ? await Booking.findOne({ _id: body.bookingId, userId: user.sub }).select('startTime').lean()
     : null;
   const startTime = booking?.startTime ?? parseTimeLabel(body.timeLabel);
-  // A join fee only sticks for a subscribed organizer (they keep 100% of it). Any
-  // other host — or an organizer whose plan lapsed — posts free Open Play, no matter
-  // what the client sent. The platform's cut stays the 7% on the booking alone.
+  // A join fee only sticks for an organizer — a live subscriber OR an owner-approved
+  // organizer at a venue (they keep 100% of it). Any other host posts free Open
+  // Play, no matter what the client sent. The platform's cut stays the 7% on the
+  // booking alone.
   let joinFee = 0;
   if (body.gameType === 'open' && body.joinFee && body.joinFee > 0) {
-    if (await hasActivePartnerSubscription(user.sub, 'organizer')) joinFee = body.joinFee;
+    if (await canChargeEntranceFee(user.sub)) joinFee = body.joinFee;
   }
   // The two admin kill switches. Both default ON, so this is a no-op until an admin
   // turns one off — at which point it's a real gate, not just a hidden button.
@@ -1058,9 +1071,10 @@ export async function updateGame(c: any) {
   }
   if (body.visibility !== undefined) game.visibility = body.visibility;
   if (body.joinFee !== undefined) {
-    // Same gate as creation: an organizer keeps their fee; anyone else is forced
-    // to free, so a lapsed/never-subscribed host can't start charging via edit.
-    (game as any).joinFee = body.joinFee > 0 && await hasActivePartnerSubscription(user.sub, 'organizer')
+    // Same gate as creation: an organizer (subscriber or owner-approved) keeps
+    // their fee; anyone else is forced to free, so a non-organizer host can't
+    // start charging via edit.
+    (game as any).joinFee = body.joinFee > 0 && await canChargeEntranceFee(user.sub)
       ? body.joinFee
       : 0;
   }

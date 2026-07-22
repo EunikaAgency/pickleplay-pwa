@@ -178,9 +178,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const [opTarget, setOpTarget] = useState(8);
   // Host-gated joining for this Open Play. Off unless the host asks for it.
   const [opRequiresApproval, setOpRequiresApproval] = useState(false);
-  // Entrance fee for this Open Play. Off = free (what every player gets). Only a
-  // live organizer subscriber can charge — the server enforces the same rule in
-  // createGame, so an unchecked box and a non-organizer both store 0.
+  // Entrance fee for this Open Play. Off = free (what every player gets). Only an
+  // organizer (a live subscriber OR an owner-approved organizer at any venue) can
+  // charge — the server enforces the same rule in createGame, so an unchecked box
+  // and a non-organizer both store 0.
   const [opHasFee, setOpHasFee] = useState(false);
   const [opJoinFee, setOpJoinFee] = useState('');
   // Public-game details (collected in step 1 when bookingMode === 'public_game').
@@ -314,9 +315,12 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // control. NOTE: unrelated to `requiresApproval` below, which is the *venue*
   // approving the court booking. Same word, different thing.
   const approvalAllowed = settings?.allowPlayerApprovalLobbies ?? true;
-  // Charging an entrance fee is an organizer capability, gated on the live PAID
-  // subscription (not a role — organizer isn't one). Mirrors the server guard.
-  const canChargeFee = !!currentUser?.organizerSubscriptionActive;
+  // Charging an entrance fee is an organizer capability. Two ways to hold it: a
+  // live PAID organizer subscription, OR an owner-approved organizer role at any
+  // venue (a `partnerRoles` grant — no subscription needed). Mirrors the server
+  // guard `canChargeEntranceFee` in games.controller.
+  const canChargeFee = !!currentUser?.organizerSubscriptionActive
+    || !!currentUser?.partnerRoles?.some((r) => r.role === 'organizer');
   // Per-court approval, with the venue default behind it: 'manual' always needs
   // approval, 'auto' never does, and 'inherit' follows the venue's own setting.
   // Mirrors the server's decision in bookings.controller's createBooking.
@@ -1259,9 +1263,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 </div>
               )}
 
-              {/* Entrance fee — organizers only. Unchecked is free, which is what
-                  every non-organizer host gets (the control isn't rendered for
-                  them, and the server stores 0 regardless). */}
+              {/* Entrance fee — organizers only (subscriber or owner-approved
+                  organizer role). Unchecked is free, which is what every
+                  non-organizer host gets (the control isn't rendered for them,
+                  and the server stores 0 regardless). */}
               {canChargeFee && (
                 <div className="field mt-4">
                   <div className="lbl">Entrance fee</div>
