@@ -77,6 +77,7 @@ import { AdminSuggestedEditsScreen } from './features/admin/AdminSuggestedEditsS
 import { AdminUsersScreen } from './features/admin/AdminUsersScreen';
 import { AdminVenueApprovalsScreen } from './features/admin/AdminVenueApprovalsScreen';
 import { AdminVenuesScreen } from './features/admin/AdminVenuesScreen';
+import { AdminDrawer } from './features/admin/AdminDrawer';
 import { OpenPlayBookScreen } from './features/bookings/OpenPlayBookScreen';
 import PlanPdfsPage from './features/plan-pdfs/PlanPdfsPage';
 import { OrganizerHubScreen } from './features/organizer/OrganizerHubScreen';
@@ -398,6 +399,9 @@ function AppInner() {
   // Animated launch splash — shown once per browser session on cold start, then
   // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
   // restore etc. run during the intro); the splash just sits on top.
+  // Admin sidebar drawer — toggled by the hamburger menu button in the top nav.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   const [showSplash, setShowSplash] = useState(() => {
     // Skip the splash on deep-link entry points (reset-password, forgot-password)
     // — the user clicked a link from an email, not a cold app launch.
@@ -602,7 +606,8 @@ function AppInner() {
     onCreate: handleCreate, onHost: handleHost, onInvites: handleInvites, isLoggedIn, requireAuth,
     onBack: goBack, canGoBack, inviteCount,
     tabIds: (canSeeTournaments ? [...tabScreens] : tabScreens.filter((t) => t !== 'tournaments')).filter((t) => t !== 'messages'),
-    suppressTabBar: isOrganizer,
+    suppressTabBar: isOrganizer || isAdmin,
+    onMenuToggle: isAdmin ? () => setDrawerOpen((v) => !v) : undefined,
   };
 
   const renderScreen = () => {
@@ -943,6 +948,16 @@ function AppInner() {
 
       {/* Animated launch splash, on top of everything (waits for the CTA tap). */}
       {showSplash && <SplashScreen onDone={dismissSplash} auto />}
+
+      {/* Admin sidebar drawer — mobile/tablet navigation for admins (no bottom tab bar). */}
+      {isAdmin && (
+        <AdminDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onNavigate={(screenId) => (navigate as (id: string) => void)(screenId)}
+          activeScreenId={screen.id}
+        />
+      )}
     </div>
   );
 }

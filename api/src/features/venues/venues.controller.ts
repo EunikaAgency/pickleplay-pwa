@@ -2239,29 +2239,46 @@ export async function updateBookingStatus(c: any) {
     }).catch(() => { /* paint cleanup is best-effort */ });
   }
 
-  // Tell the booker their request was turned down. Previously nothing was sent at
-  // all: a declined player found out by opening the app, or showed up anyway.
-  if (status === 'cancelled' && result && booking.status === 'pending_approval') {
+  // Tell the booker their booking was cancelled by the venue. Two cases:
+  // 1. Rejection — a pending_approval request the owner declined.
+  // 2. Removal — an already-live booking (awaiting_payment/confirmed/paid) the
+  //    owner pulled. Previously the player heard nothing in either case.
+  if (status === 'cancelled' && result) {
     const venue = await Venue.findById(venueId).select('displayName').lean<{ displayName?: string }>();
     const venueName = venue?.displayName || 'The venue';
-    // The Decline button sends a generic marker ('Declined by venue'), not a real
-    // note — appending it read as "declined your request: Declined by venue".
-    // Only quote a reason the owner actually typed; otherwise keep the copy clean.
-    const GENERIC_REASONS = ['Declined by venue', 'Removed by owner'];
-    const realReason = cancellationReason && !GENERIC_REASONS.includes(cancellationReason.trim())
-      ? cancellationReason.trim()
-      : null;
     const when = `${fmtDate((result as any).date)}${(result as any).startTime ? ` at ${fmtTime((result as any).startTime)}` : ''}`;
-    await notifyUser((result as any).userId, {
-      type: 'booking_rejected',
-      title: 'Booking request declined',
-      body: realReason
-        ? `${venueName} couldn't take your booking for ${when}: ${realReason}. You weren't charged.`
-        : `${venueName} couldn't take your booking for ${when}. You weren't charged.`,
-      icon: 'calendar',
-      linkUrl: '/my-bookings',
-      tag: String((result as any)._id),
-    });
+
+    if (booking.status === 'pending_approval') {
+      // The Decline button sends a generic marker ('Declined by venue'), not a real
+      // note — appending it read as "declined your request: Declined by venue".
+      // Only quote a reason the owner actually typed; otherwise keep the copy clean.
+      const GENERIC_REASONS = ['Declined by venue', 'Removed by owner'];
+      const realReason = cancellationReason && !GENERIC_REASONS.includes(cancellationReason.trim())
+        ? cancellationReason.trim()
+        : null;
+      await notifyUser((result as any).userId, {
+        type: 'booking_rejected',
+        title: 'Booking request declined',
+        body: realReason
+          ? `${venueName} couldn't take your booking for ${when}: ${realReason}. You weren't charged.`
+          : `${venueName} couldn't take your booking for ${when}. You weren't charged.`,
+        icon: 'calendar',
+        linkUrl: '/my-bookings',
+        tag: String((result as any)._id),
+      });
+    } else {
+      // Owner removed an already-active booking — the player had already paid or
+      // was about to. They need to know the slot is gone and what happens to their
+      // payment.
+      await notifyUser((result as any).userId, {
+        type: 'booking_removed',
+        title: 'Booking cancelled by venue',
+        body: `${venueName} cancelled your booking for ${when}.${cancellationReason && !['Declined by venue', 'Removed by owner'].includes(cancellationReason.trim()) ? ` Reason: ${cancellationReason.trim()}` : ''} Please contact the venue about any refund.`,
+        icon: 'calendar',
+        linkUrl: '/my-bookings',
+        tag: String((result as any)._id),
+      });
+    }
 
     if (canEmail()) {
       void (async () => {

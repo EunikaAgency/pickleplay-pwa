@@ -255,7 +255,8 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
         {visibleTabs.map((t) => {
           const isActive = activeTab === t.id && !(t.id === 'nearby' && pricingActive) && !(t.id === 'nearby' && manualReservationActive) && !(t.id === 'nearby' && calendarActive) && !(t.id === 'nearby' && partnersActive);
           // Guests see the "Profile" tab as "Login" - tapping it sends them to sign in.
-          const label = t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
+          // Admins get "Overview" instead of "Today" — their home is the admin console.
+          const label = t.id === 'home' && isAdmin ? 'Overview' : t.id === 'profile' && !isLoggedIn ? 'Login' : t.label;
           return (
             <div key={t.id} className="contents">
               <button
@@ -319,7 +320,8 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             </div>
           );
         })}
-        {isLoggedIn && onOpenMessages && (
+        {/* Messages — hidden for admins (they use the admin console, not DMs). */}
+        {isLoggedIn && onOpenMessages && !isAdmin && (
           <button className={`side-tab ${activeTab === 'messages' ? 'active' : ''}`} onClick={onOpenMessages} aria-current={activeTab === 'messages' ? 'page' : undefined}>
             <span className="ico">
               <Icon name="chat" size={20} />

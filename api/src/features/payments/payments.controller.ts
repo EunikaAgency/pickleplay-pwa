@@ -5,6 +5,7 @@ import { isBlocking } from '../bookings/bookingDeadlines.js';
 import { expireOverdueBookings } from '../bookings/bookings.controller.js';
 import { Venue } from '../venues/venues.model.js';
 import { hasPermission } from '../../shared/lib/permissions.js';
+import { notifyUser } from '../../shared/lib/notify.js';
 import { sendEmail, isGmailConfigured, hasValidTokens } from '../../shared/lib/gmail.js';
 import { paymentReceipt } from '../../shared/lib/email-templates.js';
 
@@ -146,6 +147,23 @@ export async function checkout(c: any) {
       : await Booking.findOne({ _id: body.bookingId, userId: user.sub }).lean();
   }
 
+  // Notify the player their payment went through and the booking is confirmed.
+  if (testMode && booking) {
+    void (async () => {
+      try {
+        const v = await Venue.findById(booking.venueId).select('displayName').lean<{ displayName?: string }>();
+        void notifyUser(user.sub, {
+          type: 'booking_confirmed',
+          title: 'Payment received — booking confirmed',
+          body: `Your booking at ${v?.displayName || 'the venue'} on ${fmtDate(booking.date)}${booking.startTime ? ` at ${fmtTime2(booking.startTime)}` : ''} is confirmed.`,
+          icon: 'calendar',
+          linkUrl: '/my-bookings',
+          tag: String(booking._id),
+        });
+      } catch { /* best-effort */ }
+    })();
+  }
+
   // Send payment receipt email (best-effort, non-blocking).
   if (testMode && canEmail() && booking) {
     void (async () => {
@@ -192,9 +210,25 @@ export async function verifyPayment(c: any) {
   const result = await Payment.findByIdAndUpdate(id, { status: body.status, notes: body.notes || null }, { new: true }).lean();
   if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
   if (body.status === 'completed' && result.bookingId) {
-    await Booking.findByIdAndUpdate(result.bookingId, { status: 'confirmed', paymentMethod: result.method || undefined });
+    const booking = await Booking.findByIdAndUpdate(result.bookingId, { status: 'confirmed', paymentMethod: result.method || undefined }, { new: true }).lean();
     // Auto-generate a draft receipt when a booking is confirmed via payment.
     void generateDraftReceipt(String(result.bookingId)).catch(() => {});
+    // Notify the player their payment was verified and booking is confirmed.
+    if (booking) {
+      void (async () => {
+        try {
+          const v = await Venue.findById((booking as any).venueId).select('displayName').lean<{ displayName?: string }>();
+          void notifyUser((booking as any).userId, {
+            type: 'booking_confirmed',
+            title: 'Payment verified — booking confirmed',
+            body: `Your booking at ${v?.displayName || 'the venue'} on ${fmtDate((booking as any).date)}${(booking as any).startTime ? ` at ${fmtTime2((booking as any).startTime)}` : ''} is confirmed.`,
+            icon: 'calendar',
+            linkUrl: '/my-bookings',
+            tag: String((booking as any)._id),
+          });
+        } catch { /* best-effort */ }
+      })();
+    }
   }
   return c.json({ data: { ...result, id: result._id } });
 }

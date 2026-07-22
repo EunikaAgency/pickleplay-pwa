@@ -19,12 +19,14 @@ interface AdminScreenProps {
   title: string;
   subtitle?: string;
   onRefresh?: () => void;
+  /** When provided, a hamburger menu button renders beside the back arrow. */
+  onMenuToggle?: () => void;
   children: ReactNode;
 }
 
 /** The outer chrome: a sticky "Admin console" header with a Back arrow and an
  *  optional refresh action, over a scrolling body. */
-export function AdminScreen({ onBack, title, subtitle, onRefresh, children }: AdminScreenProps) {
+export function AdminScreen({ onBack, title, subtitle, onRefresh, onMenuToggle, children }: AdminScreenProps) {
   return (
     <div className="scroll safe-top safe-bottom px-5">
       <ScreenHeader
