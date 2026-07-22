@@ -150,29 +150,30 @@
     <p class="lede">
       Same grouping as the team split (A/B/C left untouched for reference). This copy overlays a
       <b>status check on Kenneth's Task&nbsp;D</b> — the 10 launch-critical items — verified against shipped
-      code plus the integrated commits, focused tests, and isolated production-build UI smoke test on
-      <b>22&nbsp;Jul</b>. Headline: <b>10 of 10 code-complete</b>; the final three await approved deployment.
+      code plus the integrated commits, 56 focused tests, an isolated production-build smoke test, and a
+      fresh-browser check on the live PWA on <b>22&nbsp;Jul</b>. Headline: <b>10 of 10 deployed</b>.
       Source: <code>2026-07-21-open-tasks.md</code>.
     </p>
     <div class="meta">
       <span><b>Updated:</b> 22 Jul 2026</span>
       <span><b>Launch target:</b> end of July 2026</span>
-      <span><b>Overlay:</b> Task D · 10/10 code-complete</span>
+      <span><b>Overlay:</b> Task D · 10/10 deployed</span>
     </div>
   </header>
 
   <div class="stats">
-    <div class="stat done"><div class="n">10</div><div class="l">Task D · code-complete</div></div>
+    <div class="stat done"><div class="n">10</div><div class="l">Task D · deployed</div></div>
     <div class="stat done"><div class="n">0</div><div class="l">Task D · remaining</div></div>
     <div class="stat c"><div class="n">A·B·C</div><div class="l">others — unchanged</div></div>
     <div class="stat d"><div class="n">10</div><div class="l">Task D · Kenneth · total</div></div>
   </div>
 
   <p class="principle">
-    <b>Task D status (22 Jul):</b> all 10 Kenneth items are <b>code-complete</b>. The last three — manual-GCash
-    live mode, Senior/PWD pricing, and owner payouts — are integrated on <code>lc-launch-integration</code>,
-    covered by 55 combined API tests, and passed an isolated UI smoke test. They are not yet deployed;
-    production <code>paymentTestMode</code> remains unchanged. A/B/C statuses were not assessed here.
+    <b>Task D status (22 Jul):</b> all 10 Kenneth items are <b>deployed</b>. The final launch integration —
+    manual GCash, Senior/PWD pricing, and owner payouts — is live from <code>b44c543</code>, covered by
+    56 combined API tests and a successful production build. A fresh-browser live check proved the Senior
+    summary line (−₱300) and ₱1,305 total. Production <code>paymentTestMode</code> remains unchanged; A/B/C
+    statuses were not assessed here.
   </p>
 
   <!-- ============ GROUPS ============ -->
@@ -360,7 +361,7 @@
         <div class="lane-tag">Task D · Kenneth</div>
         <h2>Launch-critical — core join → book → pay</h2>
         <p class="grouped"><b>Grouped:</b> the must-ship bugs on the core journey — Kenneth's solo.</p>
-        <p class="status-line"><b>Status 22 Jul:</b> 10 of 10 code-complete ✓ — final three integrated and smoke-tested, deployment pending approval.</p>
+        <p class="status-line"><b>Status 22 Jul:</b> 10 of 10 deployed ✓ — live PWA/API healthy and Senior summary verified in production.</p>
       </div>
       <div class="lane-body">
 
@@ -408,16 +409,16 @@
 
         <div class="task is-done">
           <h3><span class="st done">Done</span>Payments only work in test mode<span class="src">[20Jul]</span></h3>
-          <p>Production intentionally remains in test mode until deployment approval; the integrated live-mode launch path now uses manual GCash without granting unpaid bookings or partner roles.</p>
+          <p>The manual-GCash launch path is deployed without granting unpaid bookings or partner roles. The production test-mode setting remains unchanged pending the separate go-live decision.</p>
           <div class="fix"><b>Fix</b> Flip the flag once the gateway is decided; gate role grants on a real charge.</div>
-          <div class="shipped">done in <code>lc-launch-integration</code> — unpaid subscriptions stay pending; owner-scoped Mark GCash paid confirms bookings and receipts; player/owner UI passed isolated smoke coverage and partner activation is test-covered</div>
+          <div class="shipped">deployed in <code>b44c543</code> — unpaid subscriptions stay pending; owner-scoped Mark GCash paid confirms bookings and receipts; partner activation and delayed tier duration are test-covered</div>
         </div>
 
         <div class="task is-done">
           <h3><span class="st done">Done</span>Senior / PWD discount pricing<span class="src">[17Jul][20Jul]</span></h3>
           <p>The integrated flow now carries venue-configured Senior/PWD rates, customer category, ID, audit fields, VAT-exempt receipts, and discounted settlement math.</p>
           <div class="fix"><b>Fix</b> Add a customer-category concept to venue pricing + both booking flows.</div>
-          <div class="shipped">done in <code>lc-launch-integration</code> — 20% fallback with explicit 0 preserved; player + staff booking UIs; fee stays on pre-discount base; isolated smoke proved ₱500 → ₱400 + ₱35 fee and VAT-exempt receipts</div>
+          <div class="shipped">deployed in <code>b44c543</code> — 20% fallback with explicit 0 preserved; player + staff booking UIs; fee stays on pre-discount base; live Summary verified ₱1,500 → ₱1,200 + ₱105 fee = ₱1,305</div>
         </div>
 
         <div class="task is-done">
@@ -431,7 +432,7 @@
           <h3><span class="st done">Done</span>Owner payout details can't be entered<span class="src">[21Jul-new]</span></h3>
           <p><code>OwnerSettlementsScreen</code> is now reachable from owner Home/Profile, renders per-venue balances, and saves venue-scoped payout methods including GCash.</p>
           <div class="fix"><b>Fix</b> Uncomment / add the entry (<code>OwnerHomeScreen.tsx:176</code>).</div>
-          <div class="shipped">done in <code>lc-launch-integration</code> — balance-shape bug fixed, venue selector added, already-settled/manual/other-venue rows excluded; UI smoke showed the correct ₱365 payout balance and saved masked GCash details</div>
+          <div class="shipped">deployed in <code>b44c543</code> — balance-shape bug fixed, venue selector added, already-settled/manual/other-venue rows excluded; isolated UI smoke showed the correct ₱365 payout balance and saved masked GCash details</div>
         </div>
 
       </div>
@@ -447,16 +448,17 @@
       at venue-absorbed 20% with the 7% fee on the pre-discount base and VAT-exempt receipts; staff revenue is gated;
       owner payout entry is connected. Bank/merchant/compliance requirements remain future-gateway dependencies,
       not blockers for the manual-GCash launch implementation.<br><br>
-      <b>Deployment boundary:</b> the last three items are complete on the isolated integration branch and have not
-      been pushed, merged into the shared live branch, deployed, or used to change production <code>paymentTestMode</code>.
-      A/B/C tasks and their external inputs remain outside this Kenneth-only status audit.
+      <b>Deployment boundary:</b> the final integration was fast-forwarded into the live <code>lc-staff-revenue</code>
+      tree at <code>b44c543</code>; the PWA and API were restarted and returned HTTP 200 through Cloudflare.
+      The deploy did not change production <code>paymentTestMode</code>. A/B/C tasks and their external inputs remain
+      outside this Kenneth-only status audit.
     </div>
   </section>
 
   <footer>
     Status overlay on <a href="team-split.html">team-split.html</a> ·
-    Task D verified against shipped code + integrated commits/tests + isolated UI smoke, 22 Jul 2026 ·
-    10/10 code-complete · deployment pending approval · A·B·C unchanged from the split.
+    Task D verified against deployed code + 56 focused tests + isolated and live UI smoke, 22 Jul 2026 ·
+    10/10 deployed · A·B·C unchanged from the split.
   </footer>
 
 </div>
