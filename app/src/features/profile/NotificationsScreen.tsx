@@ -47,9 +47,24 @@ function venueIdFromInvite(n: ApiNotification): string | null {
   return m ? m[1] : null;
 }
 
+/** Map notification types that were historically (incorrectly) used as icon
+ *  names to valid Material Symbols icons. The server now stamps proper icon
+ *  names, but older seed data still carries the type string. */
+const TYPE_ICON_FALLBACK: Record<string, string> = {
+  system: 'campaign',
+  booking: 'calendar_month',
+  session: 'alarm',
+  review: 'reviews',
+  promo: 'sell',
+  coach: 'school',
+};
 /** The server stamps an `icon`; fall back to a bell for anything unlabelled. */
 function iconFor(n: ApiNotification): string {
-  return n.icon || 'bell';
+  const raw = n.icon || '';
+  if (!raw) return 'bell';
+  // If the icon looks like a notification type (not a Material Symbols name),
+  // use the fallback map; otherwise pass it through.
+  return TYPE_ICON_FALLBACK[raw] || raw;
 }
 
 /** Strip the server-prepended notification-type prefix from titles so

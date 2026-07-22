@@ -101,12 +101,12 @@ const FAQ_PAIRS = [
   { q: 'What are your peak hours?', a: 'Peak hours are 6–9pm on weekdays and mornings on weekends.' },
 ];
 const NOTIF = [
-  { type: 'booking', title: 'Booking confirmed', body: 'Your court reservation is confirmed. See you on the court!' },
-  { type: 'session', title: 'Open play reminder', body: 'Your open play session starts in 2 hours.' },
-  { type: 'review', title: 'New reply to your review', body: 'A venue owner responded to your review.' },
-  { type: 'promo', title: 'Weekend special', body: 'Get 20% off off-peak court rentals this weekend.' },
-  { type: 'system', title: 'Welcome to PickleBallers', body: 'Find venues, coaches, and open play near you.' },
-  { type: 'coach', title: 'New coaching slot', body: 'A coach you follow opened new private lesson slots.' },
+  { type: 'booking', title: 'Booking confirmed', body: 'Your court reservation is confirmed. See you on the court!', icon: 'calendar_month' },
+  { type: 'session', title: 'Open play reminder', body: 'Your open play session starts in 2 hours.', icon: 'alarm' },
+  { type: 'review', title: 'New reply to your review', body: 'A venue owner responded to your review.', icon: 'reviews' },
+  { type: 'promo', title: 'Weekend special', body: 'Get 20% off off-peak court rentals this weekend.', icon: 'sell' },
+  { type: 'system', title: 'Welcome to PickleBallers', body: 'Find venues, coaches, and open play near you.', icon: 'campaign' },
+  { type: 'coach', title: 'New coaching slot', body: 'A coach you follow opened new private lesson slots.', icon: 'school' },
 ];
 const TAG_GROUPS: Record<string, string[]> = {
   vibe: ['Competitive', 'Casual', 'Social', 'Family friendly', 'Beginner friendly', 'Pro level', 'High energy', 'Relaxed'],
@@ -478,7 +478,7 @@ async function seed() {
   await ensure(Notification, 'notifications', () =>
     Array.from({ length: N }, (_, i) => {
       const n = pick(NOTIF);
-      return { userId: uid(i), type: n.type, title: n.title, body: n.body, icon: n.type, isRead: chance(0.4) };
+      return { userId: uid(i), type: n.type, title: n.title, body: n.body, icon: n.icon, isRead: chance(0.4) };
     }),
   );
 
