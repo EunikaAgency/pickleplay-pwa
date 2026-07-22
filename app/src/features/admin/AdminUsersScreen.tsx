@@ -28,7 +28,7 @@ function fullName(u: AdminUser): string {
  * organizers, and admins have their own pages), searchable by name/email and
  * filterable by role. Gated by `admin.users.manage`.
  */
-export function AdminUsersScreen({ onBack }: Props) {
+export function AdminUsersScreen({ onNavigate, onBack: _onBack }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [role, setRole] = useState<RoleFilter>('all');
@@ -73,7 +73,7 @@ export function AdminUsersScreen({ onBack }: Props) {
   }, [users, role, query]);
 
   return (
-    <AdminScreen onBack={onBack} title="Players" subtitle={`${filtered.length} of ${users.length} accounts`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Players" subtitle={`${filtered.length} of ${users.length} accounts · Player and coach accounts. Search by name or email, filter by role.`} onRefresh={() => void load()}>
       <AdminSearch value={query} onChange={setQuery} placeholder="Search by name or email…" />
       <AdminFilters<RoleFilter>
         value={role}

@@ -115,7 +115,6 @@ export type Screen =
   | { id: 'admin-review-reports' }
   | { id: 'admin-venue-approvals' }
   | { id: 'admin-suggested-edits' }
-  | { id: 'admin-analytics' }
   | { id: 'admin-settings' }
   | { id: 'admin-feature-flags' }
   | { id: 'admin-roles' }
@@ -245,7 +244,6 @@ export function pathFromScreen(screen: Screen): string {
     case 'admin-review-reports': return '/admin/moderation/review-reports';
     case 'admin-venue-approvals': return '/admin/moderation/venue-approvals';
     case 'admin-suggested-edits': return '/admin/moderation/suggested-edits';
-    case 'admin-analytics': return '/admin/analytics';
     case 'admin-settings': return '/admin/settings';
     case 'admin-feature-flags': return '/admin/feature-flags';
     case 'admin-roles': return '/admin/roles';
@@ -409,7 +407,6 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'coaches') return { id: 'admin-coaches' };
       if (b === 'bookings') return { id: 'admin-bookings' };
       if (b === 'games') return { id: 'admin-games' };
-      if (b === 'analytics') return { id: 'admin-analytics' };
       if (b === 'settings') return { id: 'admin-settings' };
       if (b === 'feature-flags') return { id: 'admin-feature-flags' };
       if (b === 'roles') return { id: 'admin-roles' };

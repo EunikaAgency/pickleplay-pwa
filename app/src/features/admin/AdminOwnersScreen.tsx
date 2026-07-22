@@ -49,7 +49,7 @@ export function AdminOwnersScreen({ onNavigate }: Props) {
     <AdminScreen
       onBack={() => onNavigate('admin-hub')}
       title="Owners"
-      subtitle={`${owners.length} owner${owners.length === 1 ? '' : 's'} · ${venueCount} venue${venueCount === 1 ? '' : 's'}`}
+      subtitle={`${owners.length} owner${owners.length === 1 ? '' : 's'} · ${venueCount} venue${venueCount === 1 ? '' : 's'} · Venue owners and their associated venues.`}
       onRefresh={() => void load()}
     >
       <AdminSearch value={query} onChange={setQuery} placeholder="Search owner, email, or venue…" />

@@ -19,8 +19,8 @@ const STATUS_COLOR: Record<string, string> = {
 
 /**
  * Admin console: games across the platform (the website's Manage Games page,
- * wired to live data instead of its dummy table). Tapping a game opens the
- * lobby. Gated by `admin.access`.
+ * wired to live data instead of its dummy table). Rows are read-only — no tap
+ * action. Gated by `admin.access`.
  */
 export function AdminGamesScreen({ onNavigate }: Props) {
   const [games, setGames] = useState<ApiGame[]>([]);
@@ -44,7 +44,7 @@ export function AdminGamesScreen({ onNavigate }: Props) {
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Games" subtitle={`${games.length} games`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Games" subtitle={`${games.length} games · Published and cancelled games across the platform.`} onRefresh={() => void load()}>
       <AdminFilters<GameFilter>
         value={filter}
         onChange={setFilter}
@@ -65,7 +65,7 @@ export function AdminGamesScreen({ onNavigate }: Props) {
           {games.map((g) => {
             const s = g.status || 'published';
             return (
-              <button key={g.id} type="button" className="w-full text-left" onClick={() => onNavigate('game-details', { id: g.id })}>
+              <div key={g.id}>
                 <AdminRow
                   icon="sports_tennis"
                   title={g.title || 'Untitled game'}
@@ -81,7 +81,7 @@ export function AdminGamesScreen({ onNavigate }: Props) {
                     </div>
                   }
                 />
-              </button>
+              </div>
             );
           })}
         </div>

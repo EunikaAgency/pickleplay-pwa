@@ -83,7 +83,7 @@ export function AdminFeatureFlagsScreen({ onNavigate }: Props) {
   const busy = !loaded || save === 'saving';
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Feature flags">
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Feature flags" subtitle="Per-feature kill switches for player capabilities. Changes apply instantly.">
       {/* Master switch */}
       <section className="card p-4 mt-4">
         <h2 className="hd-2 flex items-center gap-2">

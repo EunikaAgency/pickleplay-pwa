@@ -16,6 +16,7 @@ export function AdminReviewReportsScreen({ onNavigate }: Props) {
   const [reports, setReports] = useState<AdminReviewReport[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const reqId = useRef(0);
 
   const load = useCallback(async () => {
@@ -35,18 +36,19 @@ export function AdminReviewReportsScreen({ onNavigate }: Props) {
 
   const resolve = async (id: string, status: 'resolved' | 'dismissed') => {
     setUpdating((u) => new Set(u).add(id));
+    setErrors((prev) => ({ ...prev, [id]: '' }));
     try {
       await resolveAdminReviewReport(id, status);
       setReports((rs) => rs.filter((r) => (r._id || r.id) !== id));
     } catch (e) {
-      alert(`Could not resolve report: ${(e as Error).message}`);
+      setErrors((prev) => ({ ...prev, [id]: `Could not resolve report: ${(e as Error).message}` }));
     } finally {
       setUpdating((u) => { const n = new Set(u); n.delete(id); return n; });
     }
   };
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Review reports" subtitle={`${reports.length} open report${reports.length === 1 ? '' : 's'}`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Review reports" subtitle={`${reports.length} open report${reports.length === 1 ? '' : 's'} · User-flagged reviews that need moderation.`} onRefresh={() => void load()}>
       <AdminStates
         state={state}
         isEmpty={reports.length === 0}
@@ -74,7 +76,8 @@ export function AdminReviewReportsScreen({ onNavigate }: Props) {
                 meta={<span className="t-sm">{adminDate(r.createdAt)}</span>}
               >
                 <div className="flex gap-2 mt-3">
-                  <button type="button" disabled={busy} onClick={() => resolve(id, 'resolved')}
+                  {errors[id] && <p className="mt-1 text-[13px] text-[var(--coral)]">{errors[id]}</p>}
+                <button type="button" disabled={busy} onClick={() => resolve(id, 'resolved')}
                     className="chip font-bold text-[var(--lime-ink)] disabled:opacity-40">{busy ? '…' : 'Resolve'}</button>
                   <button type="button" disabled={busy} onClick={() => resolve(id, 'dismissed')}
                     className="chip font-bold text-[var(--muted)] disabled:opacity-40">{busy ? '…' : 'Dismiss'}</button>

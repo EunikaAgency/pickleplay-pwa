@@ -76,7 +76,7 @@ export function AdminVenuesScreen({ onNavigate }: Props) {
   }, [venues, filter, query]);
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Venues" subtitle={`${filtered.length} of ${venues.length} venues`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Venues" subtitle={`${filtered.length} of ${venues.length} venues · Every venue on the platform. Search by name, city, or slug.`} onRefresh={() => void load()}>
       <AdminSearch value={query} onChange={setQuery} placeholder="Search by name, city, or slug…" />
       <AdminFilters<StateFilter>
         value={filter}

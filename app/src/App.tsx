@@ -59,7 +59,6 @@ import { OwnerCalendarScreen } from './features/owner/OwnerCalendarScreen';
 import { OwnerPartnersScreen } from './features/owner/OwnerPartnersScreen';
 import { OwnerVenuesScreenV2 } from './features/owner/OwnerVenuesScreenV2';
 import { MembersScreen } from './features/profile/MembersScreen';
-import { AdminAnalyticsScreen } from './features/admin/AdminAnalyticsScreen';
 import { AdminBookingsScreen } from './features/admin/AdminBookingsScreen';
 import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
 import { AdminCoachesScreen } from './features/admin/AdminCoachesScreen';
@@ -213,7 +212,6 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'admin-post-reports': 'admin.moderation.manage',
   'admin-venue-approvals': 'admin.moderation.manage',
   'admin-suggested-edits': 'admin.moderation.manage',
-  'admin-analytics': 'admin.reports.view',
   'admin-settings': 'admin.settings.manage',
   'admin-feature-flags': 'admin.settings.manage',
   'admin-roles': 'admin.settings.manage',
@@ -894,8 +892,6 @@ function AppInner() {
         return <AdminVenueApprovalsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-suggested-edits':
         return <AdminSuggestedEditsScreen onNavigate={navigate} onBack={goBack} />;
-      case 'admin-analytics':
-        return <AdminAnalyticsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-settings':
         return <AdminSettingsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-feature-flags':

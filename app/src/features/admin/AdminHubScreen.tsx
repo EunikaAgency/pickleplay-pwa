@@ -46,16 +46,9 @@ const SECTIONS: { label: string; items: SectionItem[] }[] = [
     ],
   },
   {
-    label: 'Reports',
-    items: [
-      { screen: 'admin-analytics', icon: 'analytics', label: 'Analytics', description: 'Platform totals', permission: 'admin.reports.view' },
-    ],
-  },
-  {
     label: 'System',
     items: [
       { screen: 'admin-settings', icon: 'settings', label: 'Settings', description: 'Payments + email monitoring', permission: 'admin.settings.manage' },
-      { screen: 'admin-feature-flags', icon: 'toggle_on', label: 'Feature flags', description: 'Player-capability kill switches', permission: 'admin.settings.manage' },
       { screen: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions', description: 'What each role can do', permission: 'admin.settings.manage' },
     ],
   },
@@ -95,7 +88,7 @@ export function AdminHubScreen({ onNavigate, onBack }: AdminHubScreenProps) {
   const can = (p?: Permission) => !p || userHasPermission(user, p);
 
   return (
-    <AdminScreen onBack={onBack} title="Admin console" subtitle="Manage the platform." onRefresh={() => void load()}>
+    <AdminScreen onBack={onBack} title="Admin console" subtitle="Platform overview — live totals and quick access to every admin surface." onRefresh={() => void load()}>
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 pt-4">
         <AdminStat label="Users" value={counts.users == null ? '—' : adminNumber(counts.users)} icon="people" tone="var(--blue)" />
@@ -104,36 +97,25 @@ export function AdminHubScreen({ onNavigate, onBack }: AdminHubScreenProps) {
         <AdminStat label="Bookings" value={counts.bookings == null ? '—' : adminNumber(counts.bookings)} icon="event_available" tone="var(--coral)" />
       </div>
 
-      {/* Section menu */}
-      <div className="space-y-6 pt-6 pb-8">
-        {SECTIONS.map((section) => {
-          const items = section.items.filter((it) => can(it.permission));
-          if (items.length === 0) return null;
-          return (
-            <div key={section.label}>
-              <div className="lbl mb-2">{section.label}</div>
-              <div className="space-y-2">
-                {items.map((it) => (
-                  <button
-                    key={it.screen}
-                    type="button"
-                    onClick={() => onNavigate(it.screen as 'admin-users')}
-                    className="w-full card p-4 flex items-center gap-3 text-left"
-                  >
-                    <span className="shrink-0 size-10 rounded-full flex items-center justify-center bg-[var(--surface-2,rgba(0,0,0,0.05))] text-[var(--blue)]">
-                      <Icon name={it.icon} size={20} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="hd-3 block truncate">{it.label}</span>
-                      <span className="t-sm block truncate">{it.description}</span>
-                    </span>
-                    <Icon name="chevron_right" size={20} className="text-[var(--muted)] shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      {/* Quick actions — the full nav lives in the sidebar/drawer */}
+      <div className="pt-6 pb-8">
+        <div className="lbl mb-2">Quick actions</div>
+        <div className="grid grid-cols-2 gap-3">
+          {SECTIONS.flatMap((s) => s.items).filter((it) => can(it.permission)).slice(0, 4).map((it) => (
+            <button
+              key={it.screen}
+              type="button"
+              onClick={() => onNavigate(it.screen as 'admin-users')}
+              className="card p-4 flex flex-col items-center gap-2 text-center"
+            >
+              <span className="shrink-0 size-10 rounded-full flex items-center justify-center bg-[var(--surface-2,rgba(0,0,0,0.05))] text-[var(--blue)]">
+                <Icon name={it.icon} size={20} />
+              </span>
+              <span className="hd-3">{it.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="t-sm mt-4 text-center">Full navigation in the sidebar menu or drawer.</p>
       </div>
     </AdminScreen>
   );

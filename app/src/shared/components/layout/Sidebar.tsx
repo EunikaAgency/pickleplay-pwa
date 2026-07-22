@@ -141,7 +141,6 @@ const ADMIN_SECTIONS: AdminSection[] = [
     label: 'System',
     icon: 'settings',
     items: [
-      { screenId: 'admin-analytics', icon: 'analytics', label: 'Analytics' },
       { screenId: 'admin-settings', icon: 'settings', label: 'Settings' },
       { screenId: 'admin-feature-flags', icon: 'toggle_on', label: 'Feature flags' },
       { screenId: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions' },

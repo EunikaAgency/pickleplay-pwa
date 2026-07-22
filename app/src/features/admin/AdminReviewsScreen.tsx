@@ -26,6 +26,7 @@ export function AdminReviewsScreen({ onNavigate }: Props) {
   const [state, setState] = useState<LoadState>('loading');
   const [filter, setFilter] = useState<StatusFilter>('pending_moderation');
   const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const reqId = useRef(0);
 
   const load = useCallback(async () => {
@@ -45,18 +46,19 @@ export function AdminReviewsScreen({ onNavigate }: Props) {
 
   const moderate = async (id: string, status: 'approved' | 'rejected' | 'hidden') => {
     setUpdating((u) => new Set(u).add(id));
+    setErrors((prev) => ({ ...prev, [id]: '' }));
     try {
       await moderateAdminReview(id, status);
       setReviews((rs) => rs.filter((r) => (r._id || r.id) !== id));
     } catch (e) {
-      alert(`Could not ${status} review: ${(e as Error).message}`);
+      setErrors((prev) => ({ ...prev, [id]: `Could not ${status} review: ${(e as Error).message}` }));
     } finally {
       setUpdating((u) => { const n = new Set(u); n.delete(id); return n; });
     }
   };
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Review moderation" subtitle={`${reviews.length} ${filter.replace(/_/g, ' ')}`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Review moderation" subtitle={`${reviews.length} ${filter.replace(/_/g, ' ')} · User-submitted venue reviews. Approve, reject, or hide.`} onRefresh={() => void load()}>
       <AdminFilters<StatusFilter>
         value={filter}
         onChange={setFilter}
@@ -94,7 +96,8 @@ export function AdminReviewsScreen({ onNavigate }: Props) {
               >
                 {filter === 'pending_moderation' && (
                   <div className="flex gap-2 mt-3">
-                    <button type="button" disabled={busy} onClick={() => moderate(id, 'approved')}
+                    {errors[id] && <p className="mt-1 text-[13px] text-[var(--coral)]">{errors[id]}</p>}
+                  <button type="button" disabled={busy} onClick={() => moderate(id, 'approved')}
                       className="chip font-bold text-[var(--lime-ink)] disabled:opacity-40">
                       {busy ? '…' : 'Approve'}
                     </button>

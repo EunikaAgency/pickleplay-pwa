@@ -57,7 +57,7 @@ export function AdminBookingsScreen({ onNavigate }: Props) {
     <AdminScreen
       onBack={() => onNavigate('admin-hub')}
       title="Bookings"
-      subtitle={`${bookings.length} bookings · ₱${adminNumber(total)} total`}
+      subtitle={`${bookings.length} bookings · ₱${adminNumber(total)} total · All court bookings across the platform with revenue totals.`}
       onRefresh={() => void load()}
     >
       <AdminFilters<BookingFilter>

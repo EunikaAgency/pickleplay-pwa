@@ -22,6 +22,7 @@ export function AdminVenueApprovalsScreen({ onNavigate }: Props) {
   const [venues, setVenues] = useState<PendingVenue[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const reqId = useRef(0);
 
   const load = useCallback(async () => {
@@ -41,11 +42,12 @@ export function AdminVenueApprovalsScreen({ onNavigate }: Props) {
 
   const review = async (id: string, status: 'approved' | 'rejected') => {
     setUpdating((u) => new Set(u).add(id));
+    setErrors((prev) => ({ ...prev, [id]: '' }));
     try {
       await reviewVenueApproval(id, status);
       setVenues((vs) => vs.map((v) => (v._id || v.id) === id ? { ...v, listingStatus: status === 'approved' ? 'published' : 'rejected' } : v));
     } catch (e) {
-      alert(`Could not update venue: ${(e as Error).message}`);
+      setErrors((prev) => ({ ...prev, [id]: `Could not update venue: ${(e as Error).message}` }));
     } finally {
       setUpdating((u) => { const n = new Set(u); n.delete(id); return n; });
     }
@@ -54,7 +56,7 @@ export function AdminVenueApprovalsScreen({ onNavigate }: Props) {
   const pendingCount = venues.filter((v) => (v.listingStatus || 'pending') === 'pending').length;
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Venue approvals" subtitle={`${pendingCount} awaiting review`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Venue approvals" subtitle={`${pendingCount} awaiting review · Owner-submitted venues waiting for listing approval.`} onRefresh={() => void load()}>
       <AdminStates
         state={state}
         isEmpty={venues.length === 0}
@@ -88,6 +90,7 @@ export function AdminVenueApprovalsScreen({ onNavigate }: Props) {
               >
                 {isPending && (
                   <div className="flex gap-2 mt-3">
+                    {errors[id] && <p className="mt-1 text-[13px] text-[var(--coral)]">{errors[id]}</p>}
                     <button type="button" disabled={busy} onClick={() => review(id, 'approved')}
                       className="chip font-bold text-[var(--lime-ink)] disabled:opacity-40">{busy ? '…' : 'Approve'}</button>
                     <button type="button" disabled={busy} onClick={() => review(id, 'rejected')}

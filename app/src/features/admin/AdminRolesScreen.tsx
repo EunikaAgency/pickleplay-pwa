@@ -112,7 +112,7 @@ export function AdminRolesScreen({ onNavigate }: Props) {
   }
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Roles & permissions" subtitle={`${roles.length} roles`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Roles & permissions" subtitle={`${roles.length} roles · Manage role permissions. Select a role to edit its access.`} onRefresh={() => void load()}>
       <div className="space-y-4 pt-4 pb-8">
         {/* Role picker */}
         <div className="flex flex-wrap items-end gap-4 card p-4">

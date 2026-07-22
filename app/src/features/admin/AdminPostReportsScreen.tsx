@@ -41,7 +41,7 @@ function postPreview(post: AdminFeedReport['post']): string {
  * chosen reason; a moderator can Resolve or Dismiss a pending report. The screen
  * is gated by `admin.moderation.manage` in App.tsx.
  */
-export function AdminPostReportsScreen({ onNavigate, onBack }: AdminPostReportsScreenProps) {
+export function AdminPostReportsScreen({ onNavigate: _onNavigate, onBack }: AdminPostReportsScreenProps) {
   const [filter, setFilter] = useState<FilterValue>('pending');
   const [reports, setReports] = useState<AdminFeedReport[]>([]);
   const [loadState, setLoadState] = useState<'loading' | 'idle' | 'error'>('loading');
@@ -134,17 +134,8 @@ export function AdminPostReportsScreen({ onNavigate, onBack }: AdminPostReportsS
                     <div className="font-semibold text-[13px] text-[var(--ink)] truncate">
                       {post?.author?.displayName ?? 'Unknown author'}
                     </div>
-                    {post && !post.isDeleted && (
-                      <button
-                        type="button"
-                        onClick={() => onNavigate('feed-post', { postId: post.id })}
-                        className="t-sm font-bold text-[var(--blue)] shrink-0"
-                      >
-                        View post
-                      </button>
-                    )}
                   </div>
-                  <p className={`mt-1 text-[14px] whitespace-pre-wrap break-words line-clamp-4 ${post?.isDeleted ? 'italic text-[var(--muted)]' : 'text-[var(--ink)]'}`}>
+                  <p className={`mt-1 text-[14px] whitespace-pre-wrap break-words ${post?.isDeleted ? 'italic text-[var(--muted)]' : 'text-[var(--ink)]'}`}>
                     {postPreview(post)}
                   </p>
                   {post && !post.isDeleted && post.hasMedia && post.body && (

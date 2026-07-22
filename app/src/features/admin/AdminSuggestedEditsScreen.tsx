@@ -38,6 +38,7 @@ export function AdminSuggestedEditsScreen({ onNavigate }: Props) {
   const [edits, setEdits] = useState<AdminSuggestedEdit[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [updating, setUpdating] = useState<Set<string>>(new Set());
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const reqId = useRef(0);
 
   const load = useCallback(async () => {
@@ -57,18 +58,19 @@ export function AdminSuggestedEditsScreen({ onNavigate }: Props) {
 
   const review = async (id: string, status: 'accepted' | 'rejected') => {
     setUpdating((u) => new Set(u).add(id));
+    setErrors((prev) => ({ ...prev, [id]: '' }));
     try {
       await reviewSuggestedEdit(id, status);
       setEdits((es) => es.map((e) => (e._id || e.id) === id ? { ...e, status } : e));
     } catch (e) {
-      alert(`Could not update edit: ${(e as Error).message}`);
+      setErrors((prev) => ({ ...prev, [id]: `Could not update edit: ${(e as Error).message}` }));
     } finally {
       setUpdating((u) => { const n = new Set(u); n.delete(id); return n; });
     }
   };
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Suggested edits" subtitle={`${edits.length} total`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-moderation')} title="Suggested edits" subtitle={`${edits.length} total · User-submitted venue corrections. Accept or reject.`} onRefresh={() => void load()}>
       <AdminStates
         state={state}
         isEmpty={edits.length === 0}
@@ -102,6 +104,7 @@ export function AdminSuggestedEditsScreen({ onNavigate }: Props) {
               >
                 {isPending && (
                   <div className="flex gap-2 mt-3">
+                    {errors[id] && <p className="mt-1 text-[13px] text-[var(--coral)]">{errors[id]}</p>}
                     <button type="button" disabled={busy} onClick={() => review(id, 'accepted')}
                       className="chip font-bold text-[var(--lime-ink)] disabled:opacity-40">{busy ? '…' : 'Accept'}</button>
                     <button type="button" disabled={busy} onClick={() => review(id, 'rejected')}

@@ -55,7 +55,7 @@ export function AdminCoachesScreen({ onNavigate }: Props) {
   }, [coaches, filter, query]);
 
   return (
-    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Coaches" subtitle={`${filtered.length} of ${coaches.length} coaches`} onRefresh={() => void load()}>
+    <AdminScreen onBack={() => onNavigate('admin-hub')} title="Coaches" subtitle={`${filtered.length} of ${coaches.length} coaches · Coaches listed on the platform. Filter by verification status.`} onRefresh={() => void load()}>
       <AdminSearch value={query} onChange={setQuery} placeholder="Search by name, location, or slug…" />
       <AdminFilters<CoachFilter>
         value={filter}
