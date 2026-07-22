@@ -43,6 +43,16 @@ const bookingSchema = new Schema({
   savedCard:          { brand: { type: String, maxlength: 20 }, last4: { type: String, maxlength: 4 } },
   cancellationReason: String,
   cancelledAt:        Date,
+  // Why this booking's status is 'cancelled' — lets reports/UI tell an owner
+  // rejection apart from a player cancellation WITHOUT a new top-level status
+  // (which would break the many `$ne:'cancelled'` occupancy/revenue filters that
+  // treat 'cancelled' as "dead / frees its slot / not counted"). Absent on
+  // non-cancelled and legacy rows (see shared/db/backfill-cancellation-type.ts).
+  //   owner_rejected   — owner declined a pending request-to-book
+  //   owner_removed    — owner cancelled an already-live booking / recurring series
+  //   player_cancelled — the booker cancelled their own booking
+  //   system_expired   — auto-cancelled (approval/pay deadline lapsed, game released)
+  cancellationType:   { type: String, enum: ['owner_rejected', 'player_cancelled', 'system_expired', 'owner_removed'], default: undefined },
   // Equipment rental add-on (V2): when true, equipmentRentalAmount was added to
   // the booking total at checkout.
   hasEquipmentRental:  Boolean,

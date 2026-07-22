@@ -1865,7 +1865,7 @@ export async function cancelRecurringBooking(c: any) {
   const today = ymd(new Date());
   const result = await Booking.updateMany(
     { recurringId, date: { $gte: today }, status: { $ne: 'cancelled' } },
-    { status: 'cancelled', cancellationReason: 'Recurring series cancelled', cancelledAt: new Date() },
+    { status: 'cancelled', cancellationReason: 'Recurring series cancelled', cancelledAt: new Date(), cancellationType: 'owner_removed' },
   );
   return c.json({ data: { cancelled: result.modifiedCount ?? 0 } });
 }
@@ -2181,7 +2181,15 @@ export async function updateBookingStatus(c: any) {
   }
 
   const update: Record<string, any> = { status };
-  if (status === 'cancelled') { update.cancelledAt = new Date(); if (cancellationReason) update.cancellationReason = cancellationReason; }
+  if (status === 'cancelled') {
+    update.cancelledAt = new Date();
+    if (cancellationReason) update.cancellationReason = cancellationReason;
+    // Declining a still-pending request is a REJECTION; cancelling a booking that
+    // was already live (awaiting_payment/confirmed/paid) is an owner removal. Both
+    // stay status:'cancelled' — this only records which, so reports can tell them
+    // apart from a player's own cancellation.
+    update.cancellationType = booking.status === 'pending_approval' ? 'owner_rejected' : 'owner_removed';
+  }
 
   // Approving a request-to-book. Two guards first, both consequences of expiry
   // being decided by the deadline at query time: once a request lapses its slot
@@ -2381,6 +2389,10 @@ export async function getVenueAnalytics(c: any) {
     upcoming: countIf((b) => b.date >= today && b.status !== 'cancelled'),
     week: countIf((b) => b.date >= weekStart && b.status !== 'cancelled'),
     prevWeek: countIf((b) => b.date >= prevWeekStart && b.date < weekStart && b.status !== 'cancelled'),
+    // Dead bookings over the window, split so the owner sees rejections (declined
+    // by them) apart from player cancellations. Both are status:'cancelled'.
+    declined: countIf((b) => b.status === 'cancelled' && b.cancellationType === 'owner_rejected'),
+    cancelled: countIf((b) => b.status === 'cancelled' && b.cancellationType !== 'owner_rejected'),
   };
 
   // Occupancy = booked court-hours ÷ available court-hours over the period.
@@ -2401,12 +2413,14 @@ export async function getVenueAnalytics(c: any) {
 
   // Daily series — fill every day in the window for continuous charts.
   const revByDay = new Map<string, { amount: number; bookings: number }>();
-  const bookByDay = new Map<string, { confirmed: number; paid: number; pending: number; cancelled: number }>();
+  // `declined` = owner rejections, split out of `cancelled` so the two can be
+  // told apart in the daily chart (both are status:'cancelled' underneath).
+  const bookByDay = new Map<string, { confirmed: number; paid: number; pending: number; cancelled: number; declined: number }>();
   for (let i = 0; i < days; i += 1) {
     const d = new Date(windowStartDate); d.setDate(windowStartDate.getDate() + i);
     const key = ymd(d);
     revByDay.set(key, { amount: 0, bookings: 0 });
-    bookByDay.set(key, { confirmed: 0, paid: 0, pending: 0, cancelled: 0 });
+    bookByDay.set(key, { confirmed: 0, paid: 0, pending: 0, cancelled: 0, declined: 0 });
   }
   for (const b of bookings) {
     const r = revByDay.get(b.date);
@@ -2415,7 +2429,10 @@ export async function getVenueAnalytics(c: any) {
     if (bk) {
       if (b.status === 'confirmed') bk.confirmed += 1;
       else if (b.status === 'paid') bk.paid += 1;
-      else if (b.status === 'cancelled') bk.cancelled += 1;
+      else if (b.status === 'cancelled') {
+        if (b.cancellationType === 'owner_rejected') bk.declined += 1;
+        else bk.cancelled += 1;
+      }
       else bk.pending += 1;
     }
   }

@@ -104,7 +104,7 @@ export function bookingDuration(b: Pick<ApiBooking, 'startTime' | 'endTime'>): s
 
 /** Date-aware status for a booking card: confirmed/paid split into Upcoming vs Completed. */
 export function bookingStatusChip(b: ApiBooking, now: number = Date.now()): StatusChip {
-  if (b.status === 'cancelled') return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
+  if (b.status === 'cancelled') return cancelledChip(b);
   if (b.status === 'pending_approval') return { label: 'Pending', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
   if (b.status === 'awaiting_payment') return { label: 'Pay to confirm', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
   const start = b.date ? new Date(`${b.date}T${b.startTime || '00:00'}:00`).getTime() : NaN;
@@ -219,7 +219,7 @@ export function bookingPhase(b: ApiBooking, now: number = Date.now()): BookingPh
  *  and still surfaces Cancelled/Pending. Used on the My-bookings cards. */
 export function bookingPhaseChip(b: ApiBooking, now: number = Date.now()): StatusChip {
   const s = (b.status || '').toLowerCase();
-  if (s === 'cancelled') return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
+  if (s === 'cancelled') return cancelledChip(b);
   if (s === 'pending_approval') return { label: 'Pending', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
   if (s === 'awaiting_payment') return { label: 'Pay to confirm', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
   const phase = bookingPhase(b, now);
@@ -228,8 +228,19 @@ export function bookingPhaseChip(b: ApiBooking, now: number = Date.now()): Statu
   return { label: 'Completed', className: 'bg-[var(--lime)] text-[var(--ink)]' };
 }
 
-/** Map a booking status to a human label + tone for a status chip. */
-export function statusChip(status: string | null | undefined): StatusChip {
+/** Chip for a cancelled booking — splits an owner rejection ("Declined") from a
+ *  plain cancellation. Both are the 'cancelled' status underneath; the
+ *  `cancellationType` discriminator (api Booking.cancellationType) tells them
+ *  apart so reports/UI don't conflate a decline with a player cancellation. */
+export function cancelledChip(b: { cancellationType?: string | null }): StatusChip {
+  return b.cancellationType === 'owner_rejected'
+    ? { label: 'Declined', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' }
+    : { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
+}
+
+/** Map a booking status to a human label + tone for a status chip. Pass the
+ *  optional `cancellationType` so a declined booking reads "Declined". */
+export function statusChip(status: string | null | undefined, cancellationType?: string | null): StatusChip {
   switch (status) {
     // Bookings arrive already paid + confirmed, so the settled state reads
     // "Complete". Legacy 'paid' rows fold into the same state.
@@ -237,7 +248,7 @@ export function statusChip(status: string | null | undefined): StatusChip {
     case 'paid':
       return { label: 'Complete', className: 'bg-[var(--lime)] text-[var(--ink)]' };
     case 'cancelled':
-      return { label: 'Cancelled', className: 'bg-[var(--surface-3)] text-[var(--muted)]' };
+      return cancelledChip({ cancellationType });
     // Owner approved a request-to-book; the player still needs to pay to confirm.
     case 'awaiting_payment':
       return { label: 'Awaiting payment', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };

@@ -434,7 +434,7 @@ async function cancelExpired(rows: any[]): Promise<number> {
     if (!reason) continue;
     const claimed = await Booking.findOneAndUpdate(
       { _id: r._id, status: r.status },
-      { status: 'cancelled', cancellationReason: reason, cancelledAt: new Date() },
+      { status: 'cancelled', cancellationReason: reason, cancelledAt: new Date(), cancellationType: 'system_expired' },
       { new: true },
     ).lean();
     if (!claimed) continue;   // someone else got here first
@@ -442,6 +442,7 @@ async function cancelExpired(rows: any[]): Promise<number> {
     // Mutate the caller's copy so a list read reflects the change it triggered.
     r.status = 'cancelled';
     r.cancellationReason = reason;
+    r.cancellationType = 'system_expired';
     void notifyBookingExpired(claimed, reason);
   }
   return cancelled;
@@ -936,7 +937,7 @@ export async function cancelBooking(c: any) {
   const body = cancelSchema.parse(await c.req.json());
   const result = await Booking.findOneAndUpdate(
     { _id: id, userId: user.sub },
-    { status: 'cancelled', cancellationReason: body.cancellationReason || null, cancelledAt: new Date() },
+    { status: 'cancelled', cancellationReason: body.cancellationReason || null, cancelledAt: new Date(), cancellationType: 'player_cancelled' },
     { new: true },
   ).lean();
   if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404);

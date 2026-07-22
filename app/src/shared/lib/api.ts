@@ -2991,6 +2991,9 @@ export interface ApiBooking {
   /** Masked card captured at request time (so paying after approval is one tap). */
   savedCard?: { brand?: string | null; last4?: string | null } | null;
   cancellationReason?: string | null;
+  /** Why a cancelled booking was cancelled — 'owner_rejected' (declined) vs
+   *  'player_cancelled' / 'system_expired' / 'owner_removed'. Absent unless cancelled. */
+  cancellationType?: string | null;
   /** Equipment rental add-on (V2). */
   hasEquipmentRental?: boolean | null;
   equipmentRentalAmount?: number | null;

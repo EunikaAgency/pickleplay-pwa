@@ -1144,7 +1144,7 @@ export async function deleteGame(c: any) {
       // already cancelled, or if the game had no booking — e.g. legacy games).
       await Booking.updateOne(
         { _id: game.bookingId, userId: game.creatorId, status: { $ne: 'cancelled' } },
-        { status: 'cancelled', cancellationReason: 'Game cancelled', cancelledAt: new Date() },
+        { status: 'cancelled', cancellationReason: 'Game cancelled', cancelledAt: new Date(), cancellationType: 'system_expired' },
       );
     }
   }
