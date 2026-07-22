@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { Avatar } from '../ui/Avatar';
 import type { TabId } from '../../lib/navigation';
@@ -41,14 +42,6 @@ interface SidebarProps {
   onOpenShop?: () => void;
   /** Whether the shop screen is active. */
   shopActive?: boolean;
-  /** Open the admin post-reports moderation queue (moderators/admins only). */
-  onOpenPostReports?: () => void;
-  /** Whether the post-reports screen is active. */
-  postReportsActive?: boolean;
-  /** Open the admin venue-claims review screen (moderators/admins only). */
-  onOpenClaims?: () => void;
-  /** Whether the venue-claims screen is active. */
-  claimsActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
   /** Whether the Social (Clubs + Friends) tab is offered. Hidden from staff —
@@ -61,10 +54,12 @@ interface SidebarProps {
   /** Admins aren't venue owners — they don't manage venues/pricing/reservations/
    *  calendar/partners/shop, so those owner-console items are hidden for them. */
   isAdmin?: boolean;
-  /** Open the admin console hub (shown instead of individual moderation links). */
-  onOpenAdmin?: () => void;
-  /** Whether the admin console screen is active. */
+  /** Whether the admin console screen is active (any admin screen). */
   adminActive?: boolean;
+  /** Navigate to any admin screen by ScreenId — used by the collapsible admin sections. */
+  onAdminNavigate?: (screenId: string) => void;
+  /** The currently active admin screen id (for active-state highlighting). */
+  adminScreenId?: string;
 }
 
 interface SideTab {
@@ -103,7 +98,106 @@ const organizerTabs: SideTab[] = [
   // Profile is rendered last for every role (see the pinned button below the nav list).
 ];
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, onOpenPostReports, postReportsActive = false, onOpenClaims, claimsActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, onOpenAdmin, adminActive = false }: SidebarProps) {
+type AdminSection = {
+  label: string;
+  icon: string;
+  items: { screenId: string; icon: string; label: string }[];
+};
+
+const ADMIN_SECTIONS: AdminSection[] = [
+  {
+    label: 'Directory',
+    icon: 'folder',
+    items: [
+      { screenId: 'admin-users', icon: 'people', label: 'Players' },
+      { screenId: 'admin-venues', icon: 'stadium', label: 'Venues' },
+      { screenId: 'admin-owners', icon: 'storefront', label: 'Owners' },
+      { screenId: 'admin-coaches', icon: 'sports', label: 'Coaches' },
+      { screenId: 'admin-bookings', icon: 'event_available', label: 'Bookings' },
+      { screenId: 'admin-games', icon: 'sports_tennis', label: 'Games' },
+    ],
+  },
+  {
+    label: 'Moderation',
+    icon: 'gavel',
+    items: [
+      { screenId: 'admin-moderation', icon: 'dashboard', label: 'Overview' },
+      { screenId: 'admin-reviews', icon: 'rate_review', label: 'Reviews' },
+      { screenId: 'admin-review-reports', icon: 'flag', label: 'Review reports' },
+      { screenId: 'admin-post-reports', icon: 'report', label: 'Post reports' },
+      { screenId: 'admin-claims', icon: 'assignment_ind', label: 'Venue claims' },
+      { screenId: 'admin-venue-approvals', icon: 'fact_check', label: 'Venue approvals' },
+      { screenId: 'admin-suggested-edits', icon: 'edit_note', label: 'Suggested edits' },
+    ],
+  },
+  {
+    label: 'System',
+    icon: 'settings',
+    items: [
+      { screenId: 'admin-analytics', icon: 'analytics', label: 'Analytics' },
+      { screenId: 'admin-settings', icon: 'settings', label: 'Settings' },
+      { screenId: 'admin-feature-flags', icon: 'toggle_on', label: 'Feature flags' },
+      { screenId: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions' },
+    ],
+  },
+];
+
+/** The collapsible admin section tree rendered inside the sidebar nav (desktop only). */
+function AdminSections({ onNavigate, activeScreenId }: { onNavigate: (screenId: string) => void; activeScreenId: string }) {
+  // All sections start expanded so everything is visible by default.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  function toggle(label: string) {
+    setCollapsed((c) => ({ ...c, [label]: !c[label] }));
+  }
+
+  return (
+    <>
+      {ADMIN_SECTIONS.map((section) => {
+        const isCollapsed = collapsed[section.label] ?? false;
+        return (
+          <div key={section.label} className="admin-section">
+            <button
+              type="button"
+              className="admin-section-header"
+              onClick={() => toggle(section.label)}
+              aria-expanded={!isCollapsed}
+            >
+              <span className="admin-section-icon">
+                <Icon name={section.icon} size={16} />
+              </span>
+              <span className="admin-section-label">{section.label}</span>
+              <Icon name="expand_more" size={16} className={`admin-section-chevron ${isCollapsed ? 'collapsed' : ''}`} />
+            </button>
+            {!isCollapsed && (
+              <div className="admin-section-items">
+                {section.items.map((item) => {
+                  const isActive = activeScreenId === item.screenId;
+                  return (
+                    <button
+                      key={item.screenId}
+                      type="button"
+                      className={`admin-item ${isActive ? 'active' : ''}`}
+                      onClick={() => onNavigate(item.screenId)}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      <span className="admin-item-icon">
+                        <Icon name={item.icon} size={16} />
+                      </span>
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, adminActive = false, onAdminNavigate, adminScreenId }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const roleTabs = isOwner ? ownerTabs : isOrganizer ? organizerTabs : tabs;
@@ -243,55 +337,16 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             Shop/Rental
           </button>
         )}
-        {/* Admin console — admins get a dedicated hub instead of (or in addition to)
-            the individual moderation links, which stay for non-admin moderators. */}
-        {isAdmin && onOpenAdmin && (
-          <button
-            className={`side-tab ${adminActive ? 'active' : ''}`}
-            onClick={onOpenAdmin}
-            aria-current={adminActive ? 'page' : undefined}
-          >
-            <span className="ico">
-              <Icon name="admin_panel_settings" size={20} />
-            </span>
-            Admin console
-          </button>
-        )}
-        {/* Moderation — admins/moderators review reported posts + venue claims. */}
-        {onOpenPostReports && (
-          <button
-            className={`side-tab ${postReportsActive ? 'active' : ''}`}
-            onClick={onOpenPostReports}
-            aria-current={postReportsActive ? 'page' : undefined}
-          >
-            <span className="ico">
-              <Icon name="message" size={20} />
-            </span>
-            Post reports
-          </button>
-        )}
-        {onOpenClaims && (
-          <button
-            className={`side-tab ${claimsActive ? 'active' : ''}`}
-            onClick={onOpenClaims}
-            aria-current={claimsActive ? 'page' : undefined}
-          >
-            <span className="ico">
-              <Icon name="shield" size={20} />
-            </span>
-            Venue claims
-          </button>
-        )}
-        {/* Profile — placed last (very bottom of the nav) for every role. On the
-            owner Shop screen the dedicated Shop item above is the active one, so
-            don't also light up Profile (Shop maps to the profile tab). */}
+        {/* ── Admin console — collapsible sections with header labels ── */}
+        {isAdmin && onAdminNavigate && <AdminSections onNavigate={onAdminNavigate} activeScreenId={adminScreenId ?? ''} />}
+        {/* Profile — placed last (very bottom of the nav) for every role. */}
         <button
-          className={`side-tab ${activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive && !adminActive ? 'active' : ''}`}
+          className={`side-tab ${activeTab === 'profile' && !shopActive && !adminActive ? 'active' : ''}`}
           onClick={() => onTabPress('profile')}
-          aria-current={activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive && !adminActive ? 'page' : undefined}
+          aria-current={activeTab === 'profile' && !shopActive && !adminActive ? 'page' : undefined}
         >
           <span className="ico">
-            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive && !postReportsActive && !claimsActive && !adminActive ? 'user_fill' : 'user'} size={20} />
+            <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive && !adminActive ? 'user_fill' : 'user'} size={20} />
           </span>
           {isLoggedIn ? 'Profile' : 'Login'}
         </button>

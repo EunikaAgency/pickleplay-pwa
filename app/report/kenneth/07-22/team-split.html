@@ -117,6 +117,7 @@
   /* Done-status overlay (Task C · Ivan) */
   .st { display: inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; margin-right: 7px; vertical-align: middle; color: #fff; }
   .st.done { background: var(--laneA); }
+  .st.verify { background: #63a0f5; }
   .task.is-done h3 { color: var(--muted); }
   .task.is-done .fix { opacity: .5; }
   .shipped { margin-top: 6px; font-size: 11.5px; color: var(--laneA); font-family: var(--mono); font-weight: 600; }
@@ -270,16 +271,18 @@
         </div>
 
         <div class="task">
-          <h3>Finished features hidden behind disabled menus<span class="src">[20Jul]</span></h3>
+          <h3><span class="st done">Done</span>Finished features hidden behind disabled menus<span class="src">[20Jul]</span></h3>
           <p>Organizer Tournaments + Venue Requests are built, then hidden.</p>
           <div class="fix"><b>Fix</b> Flip the menu flags on (or delete the dead entries).</div>
           <div class="rel">reveals the tournament flow Edu is fixing</div>
+          <div class="shipped">shipped &amp; deployed — Tournaments + Venue Requests cards un-hidden in Organizer Hub; subscribe endpoint now auto-issues fresh tokens so organizer permissions take effect immediately without a manual re-login; Tournament tab stays off the player nav per product decision</div>
         </div>
 
         <div class="task">
-          <h3>"Events" tab shows player games, not tournaments<span class="src">[20Jul]</span></h3>
+          <h3><span class="st verify">Verify</span>"Events" tab shows player games, not tournaments<span class="src">[20Jul]</span></h3>
           <p>Needs a product call: fold tournaments in, or rename the tab.</p>
           <div class="fix"><b>Fix</b> Confirm the call, then rename or repoint the feed.</div>
+          <div class="shipped">verify — Events feed sources from Game collection (gameType ∈ singles/doubles/public), not Tournament. Live DB has 48 games — all gameType=open, zero qualifying rows → Events genuinely empty. No data loss — same content visible under Open Play. URL changed ?section=games → ?section=events (matches tab label + API section name); old ?section=games links still work. Typecheck clean.</div>
           <div class="rel">where Edu's tournaments should surface</div>
         </div>
 
