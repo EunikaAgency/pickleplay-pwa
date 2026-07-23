@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import {
-  listCourts, listSlotOverrides, createSlotOverride, deleteSlotOverride,
+  listCourts, listSlotOverrides, listSlotOverridesRange, createSlotOverride, deleteSlotOverride,
   getHours, putHours, getCourtHours, putCourtHours, getOwnerVenue, updateVenue,
   type OwnerCourt, type OwnerHourEntry,
 } from '../../shared/lib/api';
@@ -364,55 +364,75 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     return () => { cancelled = true; };
   }, [venue]);
 
-  // Load slot overrides for ALL scopes (all courts + each specific court) so the
-  // summary always has complete data regardless of which court is selected.
+  // Load slot overrides for the WHOLE MONTH on screen, for every scope (all courts
+  // + each specific court) so the summary is complete whichever court is selected.
+  //
+  // Month-at-a-time, in ONE request: it used to fetch the visible week as 7 separate
+  // per-date calls, so every week switch paid a fresh round trip and the grid sat
+  // blank until it landed. A month is a handful of hundred rows, and the weeks are
+  // exactly what the week dropdown offers — so after the first load, moving between
+  // weeks of that month is instant.
   useEffect(() => {
     if (!venue) return;
-    // Determine which scopes to load — all courts + the "all" scope.
     const scopes = ['all', ...courts.map((c) => c.id)];
-    const wk = weekKey;
-    const monday = weekMonday(month, week, year);
+    const weekNumbers = monthWeekNums(month, year);
+    const firstWeek = weekNumbers[0];
+    const lastWeek = weekNumbers[weekNumbers.length - 1];
+    if (firstWeek == null || lastWeek == null) return;
+    // Weeks are Monday-based and the last one spills into the next month, so the
+    // range runs to that week's Sunday — not to the month's final day.
+    const rangeStart = weekMonday(month, firstWeek, year);
+    const rangeEnd = new Date(weekMonday(month, lastWeek, year));
+    rangeEnd.setDate(rangeEnd.getDate() + 6);
     let cancelled = false;
 
-    Promise.all(Array.from({ length: 7 }, (_, d) => {
-      const date = new Date(monday);
-      date.setDate(monday.getDate() + d);
-      return listSlotOverrides(venue, ymd(date));
-    })).then((results) => {
+    listSlotOverridesRange(venue, ymd(rangeStart), ymd(rangeEnd)).then((rows) => {
       if (cancelled) return;
+      const byDate = new Map<string, typeof rows>();
+      for (const ov of rows) {
+        const list = byDate.get(ov.date);
+        if (list) list.push(ov); else byDate.set(ov.date, [ov]);
+      }
+
       const updates: Record<string, Record<string, string>> = {};
       const newRuleMap = new Map<number, PricingRule>();
       let ruleIdx = 0;
-      for (const scope of scopes) {
-        const sk = `${wk}|${scope}`;
-        if (cellsByWeek[sk] && Object.keys(cellsByWeek[sk]).length > 0) continue; // already painted
-        const allCells: Record<string, string> = {};
-        for (let d = 0; d < 7; d++) {
-          const dayLabel = DAYS[d];
-          for (const ov of results[d]) {
-            // Match override to scope: "all" → courtId null, specific → courtId match.
-            if (scope === 'all' ? ov.courtId != null : ov.courtId !== scope) continue;
-            const startH = parseInt(ov.startTime.slice(0, 2), 10);
-            const endH = parseInt(ov.endTime.slice(0, 2), 10);
-            if (isNaN(startH) || isNaN(endH)) continue;
-            // Maintenance / Reserved overrides → paint red/green, not pricing rules.
-            if (ov.note === 'Maintenance' || ov.note === 'Reserved' || ov.note === 'Closed') {
-              const toolId = ov.note === 'Reserved' ? RESERVED_TOOL_ID
-                : ov.note === 'Closed' ? CLOSED_MARK_TOOL_ID
-                : MAINTENANCE_TOOL_ID;
-              for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = toolId;
-              continue;
+      for (const weekNum of weekNumbers) {
+        const monday = weekMonday(month, weekNum, year);
+        const wk = ymd(monday);
+        for (const scope of scopes) {
+          const sk = `${wk}|${scope}`;
+          if (cellsByWeek[sk] && Object.keys(cellsByWeek[sk]).length > 0) continue; // already painted
+          const allCells: Record<string, string> = {};
+          for (let d = 0; d < 7; d++) {
+            const dayLabel = DAYS[d];
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + d);
+            for (const ov of byDate.get(ymd(date)) ?? []) {
+              // Match override to scope: "all" → courtId null, specific → courtId match.
+              if (scope === 'all' ? ov.courtId != null : ov.courtId !== scope) continue;
+              const startH = parseInt(ov.startTime.slice(0, 2), 10);
+              const endH = parseInt(ov.endTime.slice(0, 2), 10);
+              if (isNaN(startH) || isNaN(endH)) continue;
+              // Maintenance / Reserved / Closed → paint the marker, not a price.
+              if (ov.note === 'Maintenance' || ov.note === 'Reserved' || ov.note === 'Closed') {
+                const toolId = ov.note === 'Reserved' ? RESERVED_TOOL_ID
+                  : ov.note === 'Closed' ? CLOSED_MARK_TOOL_ID
+                  : MAINTENANCE_TOOL_ID;
+                for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = toolId;
+                continue;
+              }
+              let rule = rules.find((r) => Number(r.price) === ov.price) ?? newRuleMap.get(ov.price);
+              if (!rule) {
+                ruleIdx++;
+                rule = { id: `loaded-${ov.price}-${ruleIdx}`, name: `₱${ov.price}/hr`, shortName: `₱${ov.price}`, price: String(ov.price), color: COLOR_SWATCHES[(ruleIdx - 1) % COLOR_SWATCHES.length] };
+                newRuleMap.set(ov.price, rule);
+              }
+              for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = rule.id;
             }
-            let rule = rules.find((r) => Number(r.price) === ov.price) ?? newRuleMap.get(ov.price);
-            if (!rule) {
-              ruleIdx++;
-              rule = { id: `loaded-${ov.price}-${ruleIdx}`, name: `₱${ov.price}/hr`, shortName: `₱${ov.price}`, price: String(ov.price), color: COLOR_SWATCHES[(ruleIdx - 1) % COLOR_SWATCHES.length] };
-              newRuleMap.set(ov.price, rule);
-            }
-            for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = rule.id;
           }
+          updates[sk] = allCells;
         }
-        updates[sk] = allCells;
       }
       setCellsByWeek((prev) => ({ ...prev, ...updates }));
       if (newRuleMap.size > 0) {
@@ -424,7 +444,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
       }
     }).catch(() => { /* silent */ });
     return () => { cancelled = true; };
-  }, [venue, courts, weekKey]);
+  }, [venue, courts, month, year]);
 
   const hasVenues = venues.length > 0;
   const isEditing = editingId !== null;

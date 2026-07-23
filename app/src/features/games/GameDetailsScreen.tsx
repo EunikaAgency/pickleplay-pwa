@@ -3,6 +3,7 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { Avatar } from '../../shared/components/ui/Avatar';
 import { Button } from '../../shared/components/ui/Button';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
+import { Dropdown } from '../../shared/components/ui/Dropdown';
 import { CourtIllustration } from '../../shared/components/ui/CourtIllustration';
 import { DuprExplainerSheet } from '../../shared/components/ui/DuprExplainerSheet';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
@@ -913,15 +914,14 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
               </label>
               <label className="field">
                 <span className="lbl block">Skill level</span>
-                <select
-                  className="control"
+                <Dropdown
                   value={editForm.skillLabel}
-                  onChange={(e) => setEditForm((f) => ({ ...f, skillLabel: e.target.value }))}
-                >
-                  {GAME_SKILL_OPTIONS.map((skill) => (
-                    <option key={skill} value={skill}>{skill}</option>
-                  ))}
-                </select>
+                  onChange={(skillLabel) => setEditForm((f) => ({ ...f, skillLabel }))}
+                  options={GAME_SKILL_OPTIONS.map((skill) => ({ value: skill, label: skill }))}
+                  variant="field"
+                  triggerClassName="control"
+                  aria-label="Skill level"
+                />
               </label>
               <label className="field">
                 <span className="lbl block">Players (capacity)</span>
