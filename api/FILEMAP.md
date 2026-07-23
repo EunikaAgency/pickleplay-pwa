@@ -49,6 +49,21 @@ src/
                              #   feed-reports (reported PickleFeed posts →
                              #   GET/PATCH /admin/feed-reports, backed by feed's
                              #   FeedReport). Dashboard rolls up pending counts.
+                             #   Mounts data-ops at /admin/data.
+    data-ops/                # admin Data tools: full DB truncate + full seed, run
+                             #   from the PWA admin console (admin.settings.manage).
+                             #   data-ops.policy.ts  = what a wipe must PRESERVE
+                             #   (roles, appsettings, admin users' auth rows; all
+                             #   other collections are wiped by enumeration, so new
+                             #   models are covered automatically).
+                             #   data-ops.jobs.ts    = in-memory background job
+                             #   runner (spawns each seed script as a tsx child;
+                             #   log ring buffer, polled by the client).
+                             #   data-ops.controller.ts = status/seed/truncate/job
+                             #   handlers; truncate needs typed confirm phrase +
+                             #   the caller's password, supports dryRun, and can
+                             #   sweep orphaned uploads/ files into a trash dir
+                             #   (never uploads/images/ — that's import source data).
     auth/                    # login/register/tokens; auth.model.ts = users
     bookings/                # court bookings; create-time guard (per-user overlap +
                              #   per-court / venue-pool double-booking, honoring a
@@ -465,6 +480,16 @@ src/
   `parentOwnerId`), else the user's own id; every venue/club ownership check uses it so staff inherit
   their owner's resources.
 - **`shared/db/import-real-data.ts`** — drops + reloads `real-data/handoff/` CSVs.
+- **`shared/db/pipeline.ts`** — the full-seed pipeline as data (`SEED_PIPELINE`): the 13 seed
+  scripts in dependency order, with per-step keys/labels/why. The single source of truth read by
+  BOTH the admin console (`features/data-ops/`) and the CLI (`run-pipeline.ts`), so they can't drift.
+- **`shared/db/run-pipeline.ts`** — `npm run db:seed:all` — runs the pipeline from the terminal
+  (`--list`, `--only=key,key`, `--continue-on-error`; point `MONGODB_URI` at a scratch DB to rehearse).
+- **`shared/db/seed-social-graph.ts`** — `npm run db:seed:social` — fills the 27 collections
+  `seed-dummy-data.ts` predates: clubs (+memberships/posts/reactions/requests/chat/staff), friends,
+  PickleFeed (+reactions/signals/hides/reports/subs), DMs, game/tournament chat, tournament entrants
+  + engine-generated brackets, coach bookings, demand events, open-play series. Same only-if-empty
+  contract as seed-dummy-data.
 
 ## Where to look first, by task
 
@@ -484,7 +509,8 @@ src/
 | Auth / tokens / gating | `shared/middleware/auth.ts`, `shared/lib/jwt.ts`, `features/auth/*` |
 | Roles & permissions | `shared/lib/permissions.ts`, `features/roles/*` |
 | Owner staff sub-accounts (delegation) | `features/staff/*`, `shared/lib/permissions.ts` (`effectiveOwnerId`); scope honored in `features/venues/venues.controller.ts` + `features/clubs/clubs.controller.ts` |
-| Seed / import data | `shared/db/import-real-data.ts`, `seed*.ts` |
+| Seed / import data | `shared/db/pipeline.ts` (the ordered manifest) → `run-pipeline.ts` (CLI) / `features/data-ops/` (admin console); individual scripts in `shared/db/import-real-data.ts`, `seed*.ts` |
+| Wipe the DB for launch / what survives a wipe | `features/data-ops/data-ops.policy.ts` (KEEP_WHOLE / SCOPE_TO_KEPT_USERS), `data-ops.controller.ts` |
 | Cross-feature helper | `shared/lib/` |
 
 > Keep this file current when structure or core flow changes — it's only useful if it's true.
