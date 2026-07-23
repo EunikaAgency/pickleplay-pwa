@@ -1,0 +1,231 @@
+{
+  "takenAt": "2026-07-23T04:32:39.687Z",
+  "note": "Games + Bookings created by seed-realistic-games.ts. Revert with --revert.",
+  "created": [
+    {
+      "gameId": "6a6199677cd5e9bf7b6305aa",
+      "bookingId": "6a6199677cd5e9bf7b6305a9",
+      "title": "Wednesday Evening Dinks"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ac",
+      "bookingId": "6a6199677cd5e9bf7b6305ab",
+      "title": "Tuesday Early Bird Ladder Play"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ae",
+      "bookingId": "6a6199677cd5e9bf7b6305ad",
+      "title": "Intermediate Night Ladder Play"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305b0",
+      "bookingId": "6a6199677cd5e9bf7b6305af",
+      "title": "Friday Doubles"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305b2",
+      "bookingId": "6a6199677cd5e9bf7b6305b1",
+      "title": "Friday Early Bird Open Play"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305b4",
+      "bookingId": "6a6199677cd5e9bf7b6305b3",
+      "title": "Intermediate Morning Scramble"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305b6",
+      "bookingId": "6a6199677cd5e9bf7b6305b5",
+      "title": "Beginner-Friendly Monday Doubles Drill"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305b8",
+      "bookingId": "6a6199677cd5e9bf7b6305b7",
+      "title": "Floodlight Rotation"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ba",
+      "bookingId": "6a6199677cd5e9bf7b6305b9",
+      "title": "Monday After-Work Round Robin"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305bc",
+      "bookingId": "6a6199677cd5e9bf7b6305bb",
+      "title": "Intermediate Night Open Play"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305be",
+      "bookingId": "6a6199677cd5e9bf7b6305bd",
+      "title": "Competitive Sunset 1v1 Grind"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305c0",
+      "bookingId": "6a6199677cd5e9bf7b6305bf",
+      "title": "Thursday Lunch Break Doubles Drill"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305c2",
+      "bookingId": "6a6199677cd5e9bf7b6305c1",
+      "title": "Sunrise Serves"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305c4",
+      "bookingId": "6a6199677cd5e9bf7b6305c3",
+      "title": "Thursday After-Work Drop-In"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305c6",
+      "bookingId": "6a6199677cd5e9bf7b6305c5",
+      "title": "3.0–3.5 Tuesday Round Robin"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305c8",
+      "bookingId": "6a6199677cd5e9bf7b6305c7",
+      "title": "All Levels Saturday Partner Hunt"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ca",
+      "bookingId": "6a6199677cd5e9bf7b6305c9",
+      "title": "Saturday Evening Paddle Jam"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305cc",
+      "bookingId": "6a6199677cd5e9bf7b6305cb",
+      "title": "Wednesday Doubles"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ce",
+      "bookingId": "6a6199677cd5e9bf7b6305cd",
+      "title": "Monday Evening Doubles"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305d0",
+      "bookingId": "6a6199677cd5e9bf7b6305cf",
+      "title": "Advanced Mid-Morning Doubles"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305d2",
+      "bookingId": "6a6199677cd5e9bf7b6305d1",
+      "title": "Saturday Mid-Morning Shootout"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305d4",
+      "bookingId": "6a6199677cd5e9bf7b6305d3",
+      "title": "Thursday Rally Hour"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305d6",
+      "bookingId": "6a6199677cd5e9bf7b6305d5",
+      "title": "Tuesday Early Bird Shootout"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305d8",
+      "bookingId": "6a6199677cd5e9bf7b6305d7",
+      "title": "Open Night Dinks"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305da",
+      "bookingId": "6a6199677cd5e9bf7b6305d9",
+      "title": "Learn-to-Play Mid-Morning Round Robin"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305dc",
+      "bookingId": "6a6199677cd5e9bf7b6305db",
+      "title": "Weekend Warriors Round Robin"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305de",
+      "bookingId": "6a6199677cd5e9bf7b6305dd",
+      "title": "Thursday Sunset Doubles Tune-Up"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305e0",
+      "bookingId": "6a6199677cd5e9bf7b6305df",
+      "title": "Sunday Shootout"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305e2",
+      "bookingId": "6a6199677cd5e9bf7b6305e1",
+      "title": "Monday Ladder"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305e4",
+      "bookingId": "6a6199677cd5e9bf7b6305e3",
+      "title": "Friday Dawn Singles Scramble"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305e6",
+      "bookingId": "6a6199677cd5e9bf7b6305e5",
+      "title": "Thursday Dawn Shootout"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305e8",
+      "bookingId": "6a6199677cd5e9bf7b6305e7",
+      "title": "Saturday Golden Hour Open Play"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ea",
+      "bookingId": "6a6199677cd5e9bf7b6305e9",
+      "title": "Friday Night Mixer"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ec",
+      "bookingId": "6a6199677cd5e9bf7b6305eb",
+      "title": "3.0–3.5 Evening Rally Hour"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305ee",
+      "bookingId": "6a6199677cd5e9bf7b6305ed",
+      "title": "Wednesday Midday Doubles Tune-Up"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305f0",
+      "bookingId": "6a6199677cd5e9bf7b6305ef",
+      "title": "Monday Night Mixed Doubles"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305f2",
+      "bookingId": "6a6199677cd5e9bf7b6305f1",
+      "title": "Beginner-Friendly Morning Doubles Rotation"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305f4",
+      "bookingId": "6a6199677cd5e9bf7b6305f3",
+      "title": "Learn-to-Play After-Work Paddle Jam"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305f6",
+      "bookingId": "6a6199677cd5e9bf7b6305f5",
+      "title": "Beginner-Friendly Mid-Morning Doubles Tune-Up"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305f8",
+      "bookingId": "6a6199677cd5e9bf7b6305f7",
+      "title": "Tuesday Night Singles Tune-Up"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305fa",
+      "bookingId": "6a6199677cd5e9bf7b6305f9",
+      "title": "Saturday Night Scramble"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305fc",
+      "bookingId": "6a6199677cd5e9bf7b6305fb",
+      "title": "Thursday Night Drop-In"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b6305fe",
+      "bookingId": "6a6199677cd5e9bf7b6305fd",
+      "title": "4.0+ Thursday Drop-In"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b630600",
+      "bookingId": "6a6199677cd5e9bf7b6305ff",
+      "title": "First Timers Wednesday Singles"
+    },
+    {
+      "gameId": "6a6199677cd5e9bf7b630602",
+      "bookingId": "6a6199677cd5e9bf7b630601",
+      "title": "Everyone Welcome Friday Ladder Play"
+    }
+  ]
+}

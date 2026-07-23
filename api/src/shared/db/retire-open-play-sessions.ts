@@ -111,8 +111,14 @@ async function main() {
     courtsByVenue.get(k)!.push(c);
   }
 
-  const upcoming = sessions.filter((s: any) => (s.date ?? '') >= today);
-  const past = sessions.filter((s: any) => (s.date ?? '') < today);
+  // Status matters as much as the date. The first run filtered on date alone and
+  // wrote `status: 'published'` below unconditionally, so 25 CANCELLED occurrences
+  // left behind by e2e/owner-recurring-openplay.sh came back as live Games — see
+  // retitle-open-play-games.ts, which cleaned them up. A cancelled session is not
+  // an upcoming one; it is deleted with the past rows.
+  const live = sessions.filter((s: any) => s.status !== 'cancelled');
+  const upcoming = live.filter((s: any) => (s.date ?? '') >= today);
+  const past = sessions.filter((s: any) => (s.date ?? '') < today || s.status === 'cancelled');
   const convertible = upcoming.filter((s: any) => s.venueId && courtsByVenue.has(String(s.venueId)));
   const unconvertible = upcoming.filter((s: any) => !s.venueId || !courtsByVenue.has(String(s.venueId)));
 

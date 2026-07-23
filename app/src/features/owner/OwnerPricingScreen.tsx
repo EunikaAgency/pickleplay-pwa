@@ -435,8 +435,19 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     markDirty();
   };
 
-  const paintCell = (day: string, hour: string) => {
-    paintCellKey(cellKey(day, hour));
+  /** `fromPointer` is false for keyboard-fired clicks (MouseEvent.detail === 0). */
+  const paintCell = (day: string, hour: string, fromPointer: boolean) => {
+    const key = cellKey(day, hour);
+    // Every cell carries BOTH onPointerDown and onClick, so a plain click paints it
+    // twice. That was invisible while every tool was idempotent (setting the same
+    // rule, or deleting an already-deleted cell, lands in the same place) — but the
+    // Closed toggle is not: the second pass undid the first, so the hour flicked
+    // shut and straight back open. The drag guard is reset on the next pointerdown
+    // rather than on pointerup, so it's still populated when this click arrives.
+    // Keyboard activation (Enter/Space) fires a click with NO pointerdown before
+    // it, so the guard must not apply there or the cell would never paint.
+    if (fromPointer && paintedDuringDragRef.current.has(key)) return;
+    paintCellKey(key);
   };
 
   const ruleForCell = (day: string, hour: string) => {
@@ -472,7 +483,9 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     if (!isPaintingRef.current) return;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
     isPaintingRef.current = false;
-    paintedDuringDragRef.current = new Set();
+    // Deliberately NOT cleared here — the click that follows this pointerup needs
+    // to see which cells were just painted so it doesn't repaint them. It's reset
+    // at the start of the next pointerdown instead.
   };
 
   const paintKeys = (keys: string[]) => {
@@ -971,7 +984,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                         aria-label={`${day} ${hour} ${label}`}
                         title={`${day} ${hour} · ${label}`}
                         data-pricing-cell-key={cellKey(day, hour)}
-                        onClick={() => paintCell(day, hour)}
+                        onClick={(e) => paintCell(day, hour, e.detail !== 0)}
                         onPointerDown={startCellPaint}
                         onPointerMove={moveCellPaint}
                         onPointerUp={stopCellPaint}

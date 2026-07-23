@@ -15,6 +15,7 @@ import 'dotenv/config';
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import { connectDb } from './index.js';
+import { openPlayTitle } from './open-play-titles.js';
 
 import { User, UserRole, UserDevice, PasswordResetToken, EmailVerificationToken } from '../../features/auth/auth.model.js';
 import { City } from '../../features/cities/cities.model.js';
@@ -290,16 +291,23 @@ async function seed() {
 
   const sessions = await ensure(OpenPlaySession, 'openplaysessions', () => {
     const out: any[] = [];
+    // Shared across the batch so no two seeded sessions land on the same name.
+    const titlesSeen = new Set<string>();
     for (let i = 0; i < N; i++) {
       const v = venues[i % venues.length]!;
       const lvl = pick(LEVELS);
       const start = randInt(6, 19);
       const cap = randInt(8, 24);
+      const date = ymd(dayOffset(randInt(-10, 30)));
+      const startTime = hhmm(start);
       out.push({
         slug: `open-play-${i}-${token().slice(0, 6)}`,
-        title: `${lvl.label} Open Play`, venueId: v._id, cityId: v.cityId,
-        date: ymd(dayOffset(randInt(-10, 30))),
-        startTime: hhmm(start), endTime: hhmm(start + 2),
+        // Named for when it runs and what it is, not for its skill band — four
+        // level labels across N rows read as a placeholder. See open-play-titles.ts.
+        title: openPlayTitle({ date, startTime, levelLabel: lvl.label }, titlesSeen),
+        venueId: v._id, cityId: v.cityId,
+        date,
+        startTime, endTime: hhmm(start + 2),
         levelLabel: lvl.label, levelColor: lvl.color, skillLevelMin: lvl.min, skillLevelMax: lvl.max,
         price: peso(150, 500), capacity: cap, joinedCount: randInt(0, cap),
         status: 'published', organizerName: pick(['Venue Staff', 'PB Community', 'Local League']),
