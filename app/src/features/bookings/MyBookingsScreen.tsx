@@ -453,6 +453,25 @@ export function MyBookingsScreen({ onNavigate, onBack }: MyBookingsScreenProps) 
             {detail.status === 'cancelled' && detail.cancellationType !== 'owner_rejected' && detail.cancellationReason && (
               <DetailRow label="Cancelled" value={detail.cancellationReason} />
             )}
+            {/* Where the money back actually is. This used to say "processing" with
+                no state behind it and no way for it to ever finish. */}
+            {detail.refund && (
+              <DetailRow
+                label={detail.refund.state === 'completed' ? 'Refunded' : 'Refund'}
+                value={detail.refund.state === 'completed'
+                  ? `${money(detail.refund.amount)} — paid out${detail.refund.reference ? ` · ${detail.refund.reference}` : ''}`
+                  : `${money(detail.refund.amount)} — on the way (5–10 business days)`}
+              />
+            )}
+            {/* The no-show ending — say why nothing came back. */}
+            {detail.attendance === 'no_show' && (
+              <DetailRow
+                label="No-show"
+                value={detail.noShowFeeAmount
+                  ? `Recorded by the venue — ${money(detail.noShowFeeAmount)} fee applies.`
+                  : 'Recorded by the venue — this booking wasn’t refunded.'}
+              />
+            )}
             {detail.status === 'awaiting_payment' && payByLabel(detail.paymentDueAt) && (
               <DetailRow label="Pay by" value={payByLabel(detail.paymentDueAt)} />
             )}

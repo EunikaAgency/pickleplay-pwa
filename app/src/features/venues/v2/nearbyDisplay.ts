@@ -60,9 +60,13 @@ export function openSlotCount(freeByHour: number[] | undefined): number | null {
   return freeByHour.reduce((n, free) => n + (free > 0 ? 1 : 0), 0);
 }
 
-/** "6 PM" / "12 NN" / "12 MN" — compact hour label for the time-range pickers. */
+/**
+ * "6 PM" / "12 NN" / "12 MN" — compact hour label for the time-range slider.
+ * Accepts 24 as an exclusive end-of-day bound, which reads as midnight (not
+ * "12 PM", which the naive h-12 arithmetic would produce).
+ */
 export function hourLabel(h: number): string {
-  if (h === 0) return '12 MN';
+  if (h === 0 || h === 24) return '12 MN';
   if (h === 12) return '12 NN';
   return h < 12 ? `${h} AM` : `${h - 12} PM`;
 }

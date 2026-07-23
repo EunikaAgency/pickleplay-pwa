@@ -229,6 +229,14 @@ const venueSchema = new Schema({
   pricingCurrency:     { type: String, default: 'PHP' },
   bookingSlotMinutes:  Number,
   bookingAdvanceWindowDays: { type: Number, default: 14 },
+  // Opt-in: treat the venue's weekly VenueHour rows as the RECURRING schedule, so
+  // a date with no SlotPriceOverride inherits that week's pattern instead of
+  // reading as closed. Off by default on purpose — imported venues carry stale
+  // VenueHour rows that were never meant to open anything, and flipping this for
+  // them would silently put unvetted hours on sale. It turns on only when an owner
+  // explicitly saves a weekly default from the pricing grid, so existing venues
+  // keep today's exact behaviour until they opt in.
+  useWeeklyPricingDefault: { type: Boolean, default: false },
   // When true, court bookings here land as `pending_approval` and the owner must
   // accept before the player pays (request-to-book). Default off = instant book.
   requireBookingApproval: { type: Boolean, default: false },

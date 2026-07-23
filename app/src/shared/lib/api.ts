@@ -940,6 +940,10 @@ export interface OwnerVenueDetail extends ApiVenueDetail {
   pricingTaxLabel?: string | null;
   // Automated dynamic pricing — owner opt-in, off by default.
   autoDynamicPricing?: boolean | null;
+  // Opt-in: the weekly `hours` rows act as the recurring schedule, so a date with
+  // no painted override inherits that week's pattern instead of reading as closed.
+  // Set by "Save as weekly default" on the pricing grid.
+  useWeeklyPricingDefault?: boolean | null;
   autoDynamicPricingMinConfidence?: 'low' | 'medium' | 'high' | null;
   autoDynamicPricingMaxAdjustment?: number | null;
   // Cancellation & refund policy — owner-configurable per venue.
@@ -3265,6 +3269,23 @@ export interface ApiBooking {
   discountAmount?: number | null;
   discountIdNumber?: string | null;
   preDiscountSubtotal?: number | null;
+  /** How a played-out booking ended. Absent = the venue hasn't marked it yet.
+   *  A no-show is NOT a cancellation — the slot was consumed and the venue kept
+   *  the payment, so the booking stays confirmed/paid. */
+  attendance?: 'attended' | 'no_show' | null;
+  attendanceMarkedAt?: string | null;
+  /** Flat no-show charge, snapshotted from the venue's policy when marked. */
+  noShowFeeAmount?: number | null;
+  /** Refund settlement on a cancelled booking — where the money back actually is.
+   *  Absent when nothing is owed. */
+  refund?: {
+    state: 'pending' | 'completed';
+    amount: number;
+    feeDeducted: number;
+    requestedAt?: string | null;
+    settledAt?: string | null;
+    reference?: string | null;
+  } | null;
   /** Owner-entered bookings: off-platform customer + source, or a slot-block reason. */
   customerName?: string | null;
   customerPhone?: string | null;
@@ -3373,6 +3394,59 @@ export async function updateBookingStatus(
   body: { status: BookingStatus; cancellationReason?: string },
 ): Promise<ApiBooking> {
   return request<ApiBooking>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/bookings/${encodeURIComponent(bookingId)}`, { method: 'PATCH', body, auth: true });
+}
+
+/** Record how a played-out booking ended: the player turned up, or didn't.
+ *  A no-show keeps the booking confirmed (the venue keeps the payment) and
+ *  applies the venue's configured no-show fee; it is re-markable so a front desk
+ *  can correct a mistake. Rejected before the slot has started (409 TOO_EARLY). */
+export async function markBookingAttendance(
+  venueId: string,
+  bookingId: string,
+  attendance: 'attended' | 'no_show',
+): Promise<ApiBooking> {
+  return request<ApiBooking>(
+    `${VENUES_PREFIX}/${encodeURIComponent(venueId)}/bookings/${encodeURIComponent(bookingId)}/attendance`,
+    { method: 'POST', body: { attendance }, auth: true },
+  );
+}
+
+/* ─── Refund queue — money owed back, and settling it ─────────────── */
+
+export interface PendingRefund {
+  id: string;                       // the Payment id
+  bookingId?: string | null;
+  userId?: string | null;
+  amount?: number | null;           // what was originally charged
+  refundAmount?: number | null;     // what is owed back
+  refundFeeAmount?: number | null;  // transaction fee kept
+  refundRequestedAt?: string | null;
+  method?: string | null;
+  notes?: string | null;
+  venueId?: string | null;
+  venueName?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+}
+
+/** Outstanding refunds — every cancellation still owing money back. Admins see
+ *  the whole queue; an owner sees only their own venues' bookings. */
+export async function listPendingRefunds(): Promise<PendingRefund[]> {
+  const env = await rawRequest<PendingRefund[]>(`${PAYMENTS_PREFIX}/refunds/pending`, { auth: true });
+  return env.data ?? [];
+}
+
+/** Mark an outstanding refund as actually paid out (or failed — which returns it
+ *  to the queue rather than losing it). Notifies the player on success. */
+export async function settleRefund(
+  paymentId: string,
+  body: { outcome?: 'refunded' | 'failed'; reference?: string; notes?: string } = {},
+): Promise<{ id: string; status: string }> {
+  return request<{ id: string; status: string }>(
+    `${PAYMENTS_PREFIX}/${encodeURIComponent(paymentId)}/refund`,
+    { method: 'POST', body, auth: true },
+  );
 }
 
 /** Owner/staff-entered booking: a 'manual' off-platform reservation (phone /
@@ -4434,6 +4508,14 @@ export interface ModifyBookingResult {
   id: string;
   changes: Record<string, [string, string]>;
   modificationCount: number;
+  /** What the move cost (positive = the player owes more) or saved (negative =
+   *  the venue owes a credit back). The new slot is re-priced through the same
+   *  ladder checkout uses, so a peak-hour move is no longer free. */
+  priceDelta: number;
+  amount?: number | null;
+  serviceFeeAmount?: number | null;
+  /** Outstanding after the move. Negative = the venue owes the player back. */
+  balanceDue?: number | null;
 }
 
 /** Reschedule or change the court of an upcoming booking (max 3 times). */

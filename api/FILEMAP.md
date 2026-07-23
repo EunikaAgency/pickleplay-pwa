@@ -81,7 +81,26 @@ src/
                              #   amountPaid + balanceDue) and owner-entered fields
                              #   (createdByUserId, customerName/phone, bookingSource, blockReason);
                              #   findSlotConflict is exported (optional userId) so the owner
-                             #   manual-booking endpoint reuses the same clash guard
+                             #   manual-booking endpoint reuses the same clash guard.
+                             #   BOOKING ENDINGS (bookingEndings.test.ts covers all four):
+                             #   (1) no-show — `attendance` ('attended'|'no_show') is a
+                             #   MARKER, not a status: the slot was consumed and the venue
+                             #   kept the payment, so the booking stays in REVENUE_STATUSES;
+                             #   the venue's noShowFee is snapshotted to noShowFeeAmount at
+                             #   mark time (markBookingAttendance, in venues.controller).
+                             #   (2) refund — recordRefundForBooking() settles a cancelled
+                             #   booking's money into one of not_required | completed
+                             #   (test mode) | pending, the last writing Payment.status
+                             #   'refund_pending' so the refund queue can finish it; it is
+                             #   AWAITED before any notification, which used to race it.
+                             #   (3) reschedule — modifyBooking re-prices the new slot via
+                             #   quoteSlotTotal() and records the real priceDelta.
+                             #   quoteSlotTotal is the SHARED slot-quoting ladder (blend vs
+                             #   start mode, member + statutory discount, equipment,
+                             #   per-player surcharge) that createBooking validates against,
+                             #   so a reschedule can't price a court-hour differently from
+                             #   checkout. (4) walk-in — a 'manual' booking must carry a
+                             #   positive amount (AMOUNT_REQUIRED); ₱0 holds are 'blocked'
     check-ins/               # live presence: a player marks themselves "here now"
                              #   at a venue (time-bounded ~3h). Powers the home
                              #   who-is-playing banner (GET /check-ins/hotspot) +
@@ -250,7 +269,15 @@ src/
                              #   notify.ts → inbox+push, AND publishes message.created to
                              #   userEvents.ts for realtime chat), unread-count. Gated by
                              #   user.messages.send.
-    payments/                # payments.model.ts = Payment + VenuePricing; POST /checkout (test-mode pay)
+    payments/                # payments.model.ts = Payment + VenuePricing; POST /checkout (test-mode pay).
+                             #   Also the REFUND QUEUE: a Payment goes 'completed' →
+                             #   'refund_pending' (+ refundAmount/refundFeeAmount/
+                             #   refundRequestedAt, written by bookings' recordRefundForBooking)
+                             #   → 'refunded' (+ refundedAt/refundReference). listPendingRefunds
+                             #   is the queue read (admin = all, owner = own venues only);
+                             #   settleRefund pays one out and notifies, or records a FAILED
+                             #   payout by returning it to 'completed' so it stays owed and
+                             #   retryable instead of being silently lost
     rental-inventory/        # owner-only equipment rental inventory (Shop):
                              #   RentalInventoryItem model (venueId?/ownerId/name/
                              #   brand/sku/category/rentalPricePerHour/stock counts/
@@ -295,6 +322,12 @@ src/
                              #   owner analytics (GET /:id/analytics) + public
                              #   per-hour court availability (GET /:id/availability;
                              #   add ?courtId for a single court's free hours);
+                             #   an hour is OPEN when a SlotPriceOverride covers it
+                             #   OR — for venues with useWeeklyPricingDefault — the
+                             #   recurring VenueHour pattern does (weeklyScheduleFor/
+                             #   weeklyWindowsForDate; a union, so a date's override is
+                             #   an exception, not a redefinition of the day). Mirrors
+                             #   the surge>timeBlock ladder pricing.ts already applies;
                              #   auto-generated booking link: getVenue/resolveVenueId
                              #   resolve a venue by custom bookingSlug too, updateVenue
                              #   normalizes+uniqueness-checks it, and GET
@@ -410,6 +443,8 @@ src/
 | PickleFeed (global player newsfeed) | `features/feed/` (`feed.controller.ts`, `feed.model.ts`, `feed.routes.ts`) — Threads/Facebook-style global feed, cursor-paginated; post/like/comment/repost + photos (per-photo caption) + share cards (game/open-play/club, enriched server-side); **per-viewer personalization** via `FeedSignal` (interested→float+de-cluster / not_interested→mute), `FeedHiddenPost` (24h hide), `FeedReport` (moderation), `FeedNotifySub` (comment-notify subscribe); no SSE yet (MVP refreshes on action); e2e in `e2e/feed.sh` |
 | Per-user realtime (chat + notifs) | `shared/lib/userEvents.ts` (bus) + `GET /me/stream` in `features/interactions/`; published by `shared/lib/notify.ts` + `features/messages/` |
 | Booking expiry / "is this slot free?" | `features/bookings/bookingDeadlines.ts` (pure) — `blockingFilter()` is the single occupancy predicate, spread into the 3 conflict queries in `bookings.controller.ts`; change the windows in `approvalShare()`. The sweeper + reminders are `sweepExpiredBookings()`, scheduled from `index.ts` via `shared/lib/scheduler.ts` |
+| How a booking ENDS (no-show / refund / reschedule delta / walk-in) | `features/bookings/bookings.controller.ts` — `recordRefundForBooking()` (refund settlement), `quoteSlotTotal()` (the shared pricing ladder both `createBooking` and `modifyBooking` use), `modifyBooking()` (priceDelta); `features/venues/venues.controller.ts` — `markBookingAttendance()` (no-show) + the `AMOUNT_REQUIRED` guard in `createVenueBooking`/`createRecurringBooking` (walk-in); `features/payments/payments.controller.ts` — `listPendingRefunds`/`settleRefund`. All four covered by `features/bookings/bookingEndings.test.ts` |
+| What a court-slot costs | `features/bookings/pricing.ts` (`resolveHourlyRate`, the 7-tier precedence) for ONE hour; `quoteSlotTotal()` in `bookings.controller.ts` for a whole booking (hours × rate + equipment + surcharge, member/statutory discounts, blend-vs-start mode). Never re-implement the ladder — both the create-time validation and the reschedule delta read it |
 | Bracket / seeding / advancement logic | `features/brackets/bracketEngine.ts` (pure, tested), then `brackets.controller.ts` |
 | Play tab Discover ranking / relevance weights | `features/play/playRanking.ts` (pure, 39 tests) — retune `RANK_WEIGHTS` here and every device picks it up with no app release; the feed itself is `play.controller.ts` |
 | Auth / tokens / gating | `shared/middleware/auth.ts`, `shared/lib/jwt.ts`, `features/auth/*` |

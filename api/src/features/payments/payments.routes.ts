@@ -6,6 +6,7 @@ import {
   generateSettlement, listSettlements, updateSettlement,
   listOwnerSettlements, getOwnerBalance,
   listPayoutMethods, createPayoutMethod, deletePayoutMethod,
+  listPendingRefunds, settleRefund,
 } from './payments.controller.js';
 
 const paymentsRoutes = new Hono();
@@ -34,6 +35,9 @@ paymentsRoutes.patch('/admin/settlements/:id', updateSettlement);
 // Venue-scoped receipts
 paymentsRoutes.get('/venues/:id/receipts', listVenueReceipts);
 
+// Refund queue — outstanding money owed back (static segment before :id).
+paymentsRoutes.get('/refunds/pending', listPendingRefunds);
+
 // Payments (with :id matchers last)
 paymentsRoutes.get('/', listPayments);
 paymentsRoutes.post('/', createPayment);
@@ -41,5 +45,6 @@ paymentsRoutes.post('/checkout', checkout);
 paymentsRoutes.get('/:id', getPayment);
 paymentsRoutes.patch('/:id', updatePayment);
 paymentsRoutes.post('/:id/verify', verifyPayment);
+paymentsRoutes.post('/:id/refund', settleRefund);
 
 export default paymentsRoutes;

@@ -548,9 +548,36 @@ export async function listBookings(c: any) {
   // as getVenueBookings in the owner inbox.)
   const rows = await Booking.find(filter).populate('venueId', 'displayName slug').sort({ _id: -1 }).limit(50).lean();
   await expireOverdueBookings(rows);
+  const refunds = await refundStateFor(rows.map((r: any) => String(r._id)));
   // Keep `venueId` the ObjectId string (the populate replaces it with the venue
   // doc); name/slug are split out. Consumers (e.g. createGame) expect a string id.
-  return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id, venueId: r.venueId ? String(r.venueId._id ?? r.venueId) : null, venueName: r.venueId?.displayName, venueSlug: r.venueId?.slug })) });
+  return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id, venueId: r.venueId ? String(r.venueId._id ?? r.venueId) : null, venueName: r.venueId?.displayName, venueSlug: r.venueId?.slug, refund: refunds.get(String(r._id)) ?? null })) });
+}
+
+/**
+ * Refund state per booking id, so a cancelled booking can say whether the money
+ * is on its way or already back. One batched query for the whole page — the
+ * alternative (a Payment lookup per row) is what usually turns a list read into
+ * an N+1.
+ */
+async function refundStateFor(bookingIds: string[]): Promise<Map<string, { state: RefundState; amount: number; feeDeducted: number; requestedAt: Date | null; settledAt: Date | null; reference: string | null }>> {
+  const out = new Map<string, any>();
+  if (!bookingIds.length) return out;
+  const payments = await Payment.find({
+    bookingId: { $in: bookingIds },
+    status: { $in: ['refund_pending', 'refunded'] },
+  }).select('bookingId status refundAmount refundFeeAmount refundRequestedAt refundedAt refundReference').lean<any[]>();
+  for (const p of payments) {
+    out.set(String(p.bookingId), {
+      state: p.status === 'refunded' ? 'completed' : 'pending',
+      amount: Number(p.refundAmount || 0),
+      feeDeducted: Number(p.refundFeeAmount || 0),
+      requestedAt: p.refundRequestedAt ?? null,
+      settledAt: p.refundedAt ?? null,
+      reference: p.refundReference ?? null,
+    });
+  }
+  return out;
 }
 
 /** Fan out the future occurrences of a recurring court booking. Each lands as an
@@ -593,6 +620,125 @@ async function generateRecurringOccurrences(
     created++;
   }
   return created;
+}
+
+/* ─── Slot quoting ─────────────────────────────────────────────────────────
+ *
+ * What a given court-slot costs, resolved server-side. Extracted so `createBooking`
+ * (which validates the client's number against it) and `modifyBooking` (which
+ * needs the NEW slot's price to work out the reschedule delta) can never disagree
+ * — a reschedule that priced the new slot by its own ladder would hand the player
+ * a different number for the same court-hour they'd have paid at checkout.
+ */
+export interface SlotQuoteParams {
+  venueId: string;
+  courtId?: string | null;
+  subUnitIndex?: number | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  playerCount?: number;
+  customerCategory?: 'none' | 'senior' | 'pwd';
+  /** Checked for an active venue membership (member pricing). Skipped when null. */
+  userId?: string | null;
+  /** Equipment rental add-on, carried through unchanged. */
+  equipmentAmount?: number;
+  /** Preloaded venue doc, when the caller already has one. */
+  venue?: any;
+}
+
+export interface SlotQuote {
+  /** Payable court total: rate × hours + equipment + per-player surcharge, post-discount. */
+  total: number;
+  /** The same total before any statutory (senior/PWD) discount. */
+  preDiscountSubtotal: number;
+  discountAmount: number;
+  discountPercent: number;
+  pricing: Awaited<ReturnType<typeof resolveHourlyRate>> | null;
+}
+
+export async function quoteSlotTotal(p: SlotQuoteParams): Promise<SlotQuote | null> {
+  const startH = Number(p.startTime.split(':')[0]);
+  const endH = Number(p.endTime.split(':')[0]);
+  // A non-finite hour count makes the total NaN, and `NaN > 1` is false — which
+  // would silently pass any client-chosen amount through the mismatch check.
+  if (!Number.isFinite(startH) || !Number.isFinite(endH)) return null;
+  const hours = Math.max(1, endH - startH);
+  const customerCategory = p.customerCategory ?? 'none';
+
+  const venue = p.venue ?? await Venue.findById(p.venueId)
+    .select('memberDiscountPercent perPlayerFee perPlayerFeeThreshold').lean<any>();
+
+  // Pricing mode: 'start' (default) = start-time rate × hours; 'blend' = resolve
+  // per clock hour so bookings crossing override boundaries price correctly
+  // (e.g. 8–10am early bird + 10am–noon regular).
+  const { getSingleton } = await import('../settings/settings.controller.js');
+  const appSettings = await getSingleton();
+  const blendMode = appSettings?.pricingMode === 'blend';
+
+  let pricing: Awaited<ReturnType<typeof resolveHourlyRate>> | null = null;
+  let expectedAmount = 0;
+  let preDiscountCourtAmount = 0;
+  if (blendMode) {
+    for (let h = startH; h < endH; h++) {
+      const hr = await resolveHourlyRate({
+        venueId: p.venueId, courtId: p.courtId || null, subUnitIndex: p.subUnitIndex ?? null,
+        date: p.date, startTime: `${String(h).padStart(2, '0')}:00`, isMember: false, customerCategory,
+      });
+      expectedAmount += hr.rate;
+      preDiscountCourtAmount += hr.baseRate;
+      if (!pricing) pricing = hr;
+    }
+  } else {
+    pricing = await resolveHourlyRate({
+      venueId: p.venueId, courtId: p.courtId || null, subUnitIndex: p.subUnitIndex ?? null,
+      date: p.date, startTime: p.startTime, isMember: false, customerCategory,
+    });
+    expectedAmount = pricing.rate * hours;
+    preDiscountCourtAmount = pricing.baseRate * hours;
+  }
+
+  // Venue membership discount — mutually exclusive with the statutory one, which
+  // is why it is only consulted when no senior/PWD category was claimed.
+  if (customerCategory === 'none' && p.userId && pricing) {
+    const membership = await VenueMember.findOne({
+      venueId: p.venueId, userId: p.userId, status: 'active',
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    }).lean();
+    if (membership) {
+      pricing.memberApplied = true;
+      pricing.memberDiscountPercent = Math.max(0, Math.min(100, Number(venue?.memberDiscountPercent) || 0));
+      const memberRate = (base: number) => Math.round(base * (1 - pricing!.memberDiscountPercent / 100) * 100) / 100;
+      if (blendMode) {
+        expectedAmount = 0;
+        for (let h = startH; h < endH; h++) {
+          const hr = await resolveHourlyRate({
+            venueId: p.venueId, courtId: p.courtId || null, subUnitIndex: p.subUnitIndex ?? null,
+            date: p.date, startTime: `${String(h).padStart(2, '0')}:00`, isMember: false,
+          });
+          expectedAmount += memberRate(hr.baseRate);
+        }
+      } else {
+        expectedAmount = memberRate(pricing.baseRate) * hours;
+      }
+      pricing.rate = memberRate(pricing.baseRate);
+    }
+  }
+
+  const equipAmount = Number(p.equipmentAmount || 0);
+  const surcharge = perPlayerSurcharge(venue, p.playerCount ?? 1);
+  const total = Math.round((expectedAmount + equipAmount + surcharge) * 100) / 100;
+  const preDiscountSubtotal = customerCategory === 'none'
+    ? total
+    : Math.round((preDiscountCourtAmount + equipAmount + surcharge) * 100) / 100;
+
+  return {
+    total,
+    preDiscountSubtotal,
+    discountAmount: Math.round((preDiscountSubtotal - total) * 100) / 100,
+    discountPercent: pricing?.statutoryDiscountPercent ?? 0,
+    pricing,
+  };
 }
 
 export async function createBooking(c: any) {
@@ -736,105 +882,36 @@ export async function createBooking(c: any) {
   let discountAmount = 0;
   let discountPercent = 0;
   if (body.bookingType !== 'blocked' && body.bookingType !== 'open_play' && body.startTime && body.endTime) {
-    const startH = Number(body.startTime.split(':')[0]);
-    const endH = Number(body.endTime.split(':')[0]);
-    // Defense-in-depth: a non-finite hour count makes expectedTotal NaN, and
-    // `NaN > 1` is false — which would silently pass any client-chosen amount.
-    if (!Number.isFinite(startH) || !Number.isFinite(endH)) {
+    const quote = await quoteSlotTotal({
+      venueId: body.venueId,
+      courtId: body.courtId || null,
+      subUnitIndex: body.subUnitIndex ?? null,
+      date: body.date,
+      startTime: body.startTime,
+      endTime: body.endTime,
+      playerCount: body.playerCount ?? 1,
+      customerCategory: body.customerCategory,
+      userId: user?.sub ?? null,
+      equipmentAmount: body.hasEquipmentRental && body.equipmentRentalAmount != null
+        ? (typeof body.equipmentRentalAmount === 'number' ? body.equipmentRentalAmount : parseFloat(String(body.equipmentRentalAmount)))
+        : 0,
+      venue,
+    });
+    // Null means the time window didn't parse — a NaN total would make the
+    // mismatch check below vacuously true and pass any client-chosen amount.
+    if (!quote) {
       return c.json({ error: { code: 'INVALID_TIME', message: 'Invalid start or end time.' } }, 400);
     }
-    const hours = Math.max(1, endH - startH);
-
-    // Read pricing mode from settings: 'start' (default) = start-time rate × hours;
-    // 'blend' = resolve per clock hour so bookings crossing override boundaries
-    // validate correctly (e.g. 8–10am early bird + 10am–noon regular).
-    const { getSingleton } = await import('../settings/settings.controller.js');
-    const appSettings = await getSingleton();
-    const blendMode = appSettings?.pricingMode === 'blend';
-
-    let expectedAmount = 0;
-    let preDiscountCourtAmount = 0;
-    if (blendMode) {
-      for (let h = startH; h < endH; h++) {
-        const hourStart = `${String(h).padStart(2, '0')}:00`;
-        const hr = await resolveHourlyRate({
-          venueId: body.venueId,
-          courtId: body.courtId || null,
-          subUnitIndex: body.subUnitIndex ?? null,
-          date: body.date,
-          startTime: hourStart,
-          isMember: false,
-          customerCategory: body.customerCategory,
-        });
-        expectedAmount += hr.rate;
-        preDiscountCourtAmount += hr.baseRate;
-        if (!pricing) pricing = hr;
-      }
-    } else {
-      // Start mode: resolve once at start time, multiply by hours.
-      pricing = await resolveHourlyRate({
-        venueId: body.venueId,
-        courtId: body.courtId || null,
-        subUnitIndex: body.subUnitIndex ?? null,
-        date: body.date,
-        startTime: body.startTime,
-        isMember: false,
-        customerCategory: body.customerCategory,
-      });
-      expectedAmount = pricing.rate * hours;
-      preDiscountCourtAmount = pricing.baseRate * hours;
-    }
-
-    // Check if the player is a venue member (for member discount).
-    if (body.customerCategory === 'none' && user?.sub && pricing) {
-      const membership = await VenueMember.findOne({
-        venueId: body.venueId, userId: user.sub, status: 'active',
-        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-      }).lean();
-      if (membership) {
-        pricing.memberApplied = true;
-        pricing.memberDiscountPercent = Math.max(0, Math.min(100, Number(venue?.memberDiscountPercent) || 0));
-        if (blendMode) {
-          expectedAmount = 0;
-          for (let h = startH; h < endH; h++) {
-            const hourStart = `${String(h).padStart(2, '0')}:00`;
-            const hr = await resolveHourlyRate({
-              venueId: body.venueId,
-              courtId: body.courtId || null,
-              subUnitIndex: body.subUnitIndex ?? null,
-              date: body.date,
-              startTime: hourStart,
-              isMember: false,
-            });
-            expectedAmount += Math.round(hr.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
-          }
-        } else {
-          expectedAmount = Math.round(pricing.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100 * hours;
-        }
-        pricing.rate = Math.round(pricing.baseRate * (1 - pricing.memberDiscountPercent / 100) * 100) / 100;
-      }
-    }
-
-    // Compute expected amount: total + equipment + per-player surcharge.
-    const equipAmount = body.hasEquipmentRental && body.equipmentRentalAmount != null
-      ? (typeof body.equipmentRentalAmount === 'number' ? body.equipmentRentalAmount : parseFloat(String(body.equipmentRentalAmount)))
-      : 0;
-    const surcharge = perPlayerSurcharge(venue, body.playerCount ?? 1);
-    const expectedTotal = Math.round((expectedAmount + Number(equipAmount) + surcharge) * 100) / 100;
-    preDiscountSubtotal = body.customerCategory === 'none'
-      ? expectedTotal
-      : Math.round((preDiscountCourtAmount + Number(equipAmount) + surcharge) * 100) / 100;
-    discountAmount = Math.round((preDiscountSubtotal - expectedTotal) * 100) / 100;
-    discountPercent = pricing?.statutoryDiscountPercent ?? 0;
-    authoritativeAmount = expectedTotal;
+    ({ pricing, preDiscountSubtotal, discountAmount, discountPercent } = quote);
+    authoritativeAmount = quote.total;
     const clientAmount = typeof body.amount === 'number' ? body.amount : parseFloat(String(body.amount));
 
     // 1 PHP tolerance for rounding differences between client and server.
-    if (Math.abs(clientAmount - expectedTotal) > 1) {
+    if (Math.abs(clientAmount - quote.total) > 1) {
       return c.json({
         error: {
           code: 'PRICE_MISMATCH',
-          message: `Amount mismatch. Expected ₱${expectedTotal.toFixed(2)}, got ₱${clientAmount.toFixed(2)}. The rate may have changed — please refresh and try again.`,
+          message: `Amount mismatch. Expected ₱${quote.total.toFixed(2)}, got ₱${clientAmount.toFixed(2)}. The rate may have changed — please refresh and try again.`,
         },
       }, 409);
     }
@@ -977,9 +1054,10 @@ export async function getBooking(c: any) {
   const row = await Booking.findOne({ _id: id, userId: user.sub }).populate('venueId', 'displayName slug').lean();
   if (!row) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found' } }, 404);
   await expireOverdueBookings([row]);
+  const refunds = await refundStateFor([String(row._id)]);
   // Keep `venueId` the ObjectId string (the populate replaces it with the venue
   // doc); name/slug are split out. Consumers (e.g. createGame) expect a string id.
-  return c.json({ data: { ...row, id: row._id, venueId: row.venueId ? String((row.venueId as any)._id ?? row.venueId) : null, venueName: (row.venueId as any)?.displayName, venueSlug: (row.venueId as any)?.slug } });
+  return c.json({ data: { ...row, id: row._id, venueId: row.venueId ? String((row.venueId as any)._id ?? row.venueId) : null, venueName: (row.venueId as any)?.displayName, venueSlug: (row.venueId as any)?.slug, refund: refunds.get(String(row._id)) ?? null } });
 }
 
 export async function updateBooking(c: any) {
@@ -1012,6 +1090,79 @@ async function computeRefundQuote(booking: any) {
   const feeDeducted = withinWindow ? Math.round(paid * (feePercent / 100) * 100) / 100 : 0;
   const refund = Math.round((paid - feeDeducted) * 100) / 100;
   return { paid, refund, feeDeducted, feePercent, withinWindow, daysUntil: Math.floor(daysUntil), freeWindowDays: 3 };
+}
+
+/**
+ * Actually put the refund somewhere it can be finished.
+ *
+ * The old code set a local `refundStatus` string inside a fire-and-forget IIFE
+ * and left the Payment row `completed`. Two things were broken by that: the
+ * notification and the email raced the assignment (both slept 500ms and hoped),
+ * and — worse — a live-mode refund had no record at all. "Processing — 5–10
+ * business days" was a sentence, not a state: nothing tracked it, and there was
+ * no way for anyone to ever mark it done. That is the "stuck processing" bug.
+ *
+ * Now the money lands in one of three settled outcomes, awaited before anything
+ * is said to the player:
+ *   not_required — no completed payment behind the booking, or nothing owed back
+ *   completed    — test mode (or a zero-fee instant reversal): money is back
+ *   pending      — live mode: recorded as `refund_pending` on the Payment, which
+ *                  is the queue `listRefunds`/`settleRefund` work from
+ */
+export type RefundState = 'not_required' | 'pending' | 'completed';
+
+export interface RefundOutcome {
+  state: RefundState;
+  amount: number;
+  feeDeducted: number;
+  paymentId: string | null;
+  /** Human line for the receipt email + the cancellation response. */
+  label: string;
+}
+
+export async function recordRefundForBooking(
+  bookingId: string,
+  quote: { refund: number; feeDeducted: number },
+  reason: string,
+): Promise<RefundOutcome> {
+  const base = { amount: quote.refund, feeDeducted: quote.feeDeducted, paymentId: null as string | null };
+  try {
+    const payment = await Payment.findOne({ bookingId, status: 'completed' });
+    if (!payment) return { ...base, state: 'not_required', label: 'No payment to refund' };
+    if (!(quote.refund > 0)) {
+      return { ...base, state: 'not_required', paymentId: String(payment._id), label: 'No refund due' };
+    }
+
+    const { isPaymentTestMode } = await import('../settings/settings.controller.js');
+    const testMode = await isPaymentTestMode();
+    const now = new Date();
+    const feeNote = quote.feeDeducted > 0 ? `, ₱${quote.feeDeducted.toFixed(2)} transaction fee kept` : '';
+
+    (payment as any).refundAmount = quote.refund;
+    (payment as any).refundFeeAmount = quote.feeDeducted;
+    (payment as any).refundRequestedAt = now;
+
+    if (testMode) {
+      // Test mode stands in for an instant gateway reversal.
+      payment.status = 'refunded';
+      (payment as any).refundedAt = now;
+      payment.notes = `Auto-refunded ₱${quote.refund.toFixed(2)} — ${reason} (test mode)${feeNote} — ${now.toISOString()}`;
+      await payment.save();
+      return { ...base, state: 'completed', paymentId: String(payment._id), label: 'Refunded (test mode)' };
+    }
+
+    // Live mode: no gateway is wired yet, so the refund is a real obligation the
+    // venue/admin settles by hand. Parking it in `refund_pending` is what makes
+    // it findable and finishable instead of silently forgotten.
+    payment.status = 'refund_pending';
+    payment.notes = `Refund of ₱${quote.refund.toFixed(2)} owed — ${reason}${feeNote} — requested ${now.toISOString()}`;
+    await payment.save();
+    return { ...base, state: 'pending', paymentId: String(payment._id), label: 'Processing — 5–10 business days' };
+  } catch {
+    // The cancellation itself already stands; report the refund as unsettled
+    // rather than claiming money moved.
+    return { ...base, state: 'not_required', label: 'Refund could not be recorded — contact the venue' };
+  }
 }
 
 /** Read-only: what the player would get back if they cancel this booking now. The
@@ -1049,32 +1200,18 @@ export async function cancelBooking(c: any) {
     } catch { /* promotion is best-effort */ }
   })();
 
-  // Auto-process refund in test mode — find the associated payment and mark it refunded.
-  let refundStatus = 'No payment to refund';
-  void (async () => {
-    try {
-      const payment = await Payment.findOne({ bookingId: id, status: 'completed' });
-      if (payment) {
-        const { isPaymentTestMode } = await import('../settings/settings.controller.js');
-        const testMode = await isPaymentTestMode();
-        if (testMode) {
-          payment.status = 'refunded';
-          payment.notes = `Auto-refunded ₱${refundQuote.refund.toFixed(2)} on cancellation (test mode)${refundQuote.feeDeducted > 0 ? `, ₱${refundQuote.feeDeducted.toFixed(2)} transaction fee kept` : ''} — ${new Date().toISOString()}`;
-          await payment.save();
-          refundStatus = 'Refunded (test mode)';
-        } else {
-          refundStatus = 'Processing — 5–10 business days';
-        }
-      }
-    } catch { /* best-effort */ }
-  })();
+  // Settle the refund BEFORE anything is said about it. This used to be a
+  // fire-and-forget IIFE whose local string the notification and the email each
+  // raced with a 500ms sleep — so the player could be told "no payment to refund"
+  // for a booking that had just been refunded. It is cheap and it is the money:
+  // await it.
+  const refund = await recordRefundForBooking(id, refundQuote, 'booking cancelled by player');
+  const refundStatus = refund.label;
 
   // Notify the player, the owner, and refund status (best-effort, fire-and-forget).
   // Runs independently of email — push + in-app notifications always fire.
   void (async () => {
     try {
-      // Wait a tick for refund to process
-      await new Promise(r => setTimeout(r, 500));
       const v = await Venue.findById((result as any).venueId).select('displayName ownerUserId').lean<{ displayName?: string; ownerUserId?: any }>();
       const venueName = v?.displayName || 'the venue';
       const when = `${fmtDate((result as any).date)}${(result as any).startTime ? ` at ${fmtTime((result as any).startTime)}` : ''}`;
@@ -1082,7 +1219,7 @@ export async function cancelBooking(c: any) {
       void notifyUser((result as any).userId, {
         type: 'booking_cancelled',
         title: 'Booking cancelled',
-        body: `Your booking at ${venueName} on ${when} was cancelled.${refundQuote.refund > 0 ? ` ₱${refundQuote.refund.toFixed(2)} will be refunded.` : ''}`,
+        body: `Your booking at ${venueName} on ${when} was cancelled.${refund.state !== 'not_required' ? ` ₱${refund.amount.toFixed(2)} will be refunded.` : ''}`,
         icon: 'calendar',
         linkUrl: '/my-bookings',
         tag: String((result as any)._id),
@@ -1099,11 +1236,25 @@ export async function cancelBooking(c: any) {
         });
       }
 
-      if (refundQuote.refund > 0) {
+      // Say what actually happened. "Refund processed" was sent even when nothing
+      // had been processed — the live-mode path had only written a string.
+      if (refund.state === 'completed') {
         void notifyUser((result as any).userId, {
           type: 'booking_refunded',
           title: 'Refund processed',
-          body: `₱${refundQuote.refund.toFixed(2)} has been refunded for your cancelled booking at ${venueName}.${refundStatus.includes('business days') ? ' It may take 5–10 business days to appear.' : ''}`,
+          body: `₱${refund.amount.toFixed(2)} has been refunded for your cancelled booking at ${venueName}.`
+            + (refund.feeDeducted > 0 ? ` A ₱${refund.feeDeducted.toFixed(2)} transaction fee was kept.` : ''),
+          icon: 'payments',
+          linkUrl: '/my-bookings',
+          tag: `refund-${String((result as any)._id)}`,
+        });
+      } else if (refund.state === 'pending') {
+        void notifyUser((result as any).userId, {
+          type: 'booking_refund_pending',
+          title: 'Refund on the way',
+          body: `₱${refund.amount.toFixed(2)} is being refunded for your cancelled booking at ${venueName}.`
+            + (refund.feeDeducted > 0 ? ` A ₱${refund.feeDeducted.toFixed(2)} transaction fee is kept.` : '')
+            + ' It may take 5–10 business days to appear.',
           icon: 'payments',
           linkUrl: '/my-bookings',
           tag: `refund-${String((result as any)._id)}`,
@@ -1118,9 +1269,6 @@ export async function cancelBooking(c: any) {
     if (ue) {
       void (async () => {
         try {
-          // Wait a tick for refund to process (separate from the notif tick above —
-          // both fire-and-forget, so worst case the DB lookup runs twice. Fine.)
-          await new Promise(r => setTimeout(r, 500));
           const v = await Venue.findById((result as any).venueId).select('displayName').lean<{ displayName?: string }>();
           const venueName = v?.displayName || 'the venue';
           const t = cancellationReceipt({
@@ -1128,7 +1276,7 @@ export async function cancelBooking(c: any) {
             venue: venueName,
             date: fmtDate((result as any).date),
             time: `${fmtTime((result as any).startTime)} – ${fmtTime((result as any).endTime)}`,
-            refund: `₱${refundQuote.refund.toFixed(2)}`,
+            refund: `₱${refund.amount.toFixed(2)}`,
             refundStatus,
             cancelledAt: new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
           });
@@ -1138,7 +1286,9 @@ export async function cancelBooking(c: any) {
     }
   }
 
-  return c.json({ data: { ...result, id: result._id, refundQuote } });
+  // `refund` is the settled outcome (what the Payment row now says); `refundQuote`
+  // stays for the existing callers that show the policy breakdown.
+  return c.json({ data: { ...result, id: result._id, refundQuote, refund } });
 }
 
 /* ─── Booking modification (reschedule / change court) ───────────────── */
@@ -1202,26 +1352,115 @@ export async function modifyBooking(c: any) {
       date: newDate,
       startTime: newStart,
       endTime: newEnd,
-      bookingType: (booking as any).bookingType,
-    }, String((booking as any).userId), 0, false);
+    },
+    String((booking as any).userId), 0, false,
+    // Exclude the booking being moved from the occupancy set. Without this a
+    // same-court, same-day time change clashes with ITSELF — both the
+    // "you already have a booking that overlaps" check and the capacity pool
+    // count the row we're about to vacate, so a one-court venue could never
+    // reschedule anything.
+    String((booking as any)._id),
+    );
     if (conflictMessage) {
       return c.json({ error: { code: 'SLOT_CONFLICT', message: conflictMessage } }, 409);
     }
   }
+
+  // ── Re-price the new slot ────────────────────────────────────────────────
+  //
+  // The reschedule branch used to end here with a hardcoded `priceDelta: 0`, so
+  // moving a booking from an off-peak Tuesday morning to a Saturday-evening surge
+  // slot cost the player nothing and the venue lost the difference (and the
+  // reverse silently kept the player's money). The new slot is priced through the
+  // SAME ladder checkout uses, and the difference lands on the booking.
+  const oldAmount = Number((booking as any).amount || 0);
+  const quote = (booking as any).bookingType === 'blocked' || (booking as any).bookingType === 'open_play'
+    ? null
+    : await quoteSlotTotal({
+      venueId: String((booking as any).venueId),
+      courtId: newCourtId,
+      subUnitIndex: (booking as any).subUnitIndex ?? null,
+      date: newDate,
+      startTime: newStart,
+      endTime: newEnd,
+      playerCount: (booking as any).playerCount ?? 1,
+      customerCategory: (booking as any).customerCategory ?? 'none',
+      userId: String((booking as any).userId),
+      equipmentAmount: (booking as any).hasEquipmentRental ? Number((booking as any).equipmentRentalAmount || 0) : 0,
+    });
 
   // Apply changes.
   if (body.date) (booking as any).date = body.date;
   if (body.startTime) (booking as any).startTime = body.startTime;
   if (body.endTime) (booking as any).endTime = body.endTime;
   if (body.courtId !== undefined) (booking as any).courtId = body.courtId || null;
+
+  let priceDelta = 0;
+  if (quote) {
+    const { getServiceFeePercent } = await import('../settings/settings.controller.js');
+    const serviceFeePercent = await getServiceFeePercent();
+    const serviceFeeAmount = Math.round((quote.preDiscountSubtotal || 0) * (serviceFeePercent / 100) * 100) / 100;
+    priceDelta = Math.round((quote.total - oldAmount) * 100) / 100;
+
+    (booking as any).amount = quote.total;
+    (booking as any).preDiscountSubtotal = quote.preDiscountSubtotal;
+    (booking as any).discountAmount = quote.discountAmount;
+    (booking as any).discountPercent = quote.discountPercent;
+    (booking as any).serviceFeeAmount = serviceFeeAmount;
+    (booking as any).rateSource = quote.pricing?.source ?? null;
+    (booking as any).overrideId = quote.pricing?.overrideId ?? null;
+    (booking as any).baseRate = quote.pricing?.baseRate ?? null;
+    (booking as any).memberDiscountPercent = quote.pricing?.memberDiscountPercent ?? null;
+
+    // What's already been collected doesn't change; what's outstanding does. A
+    // NEGATIVE balance is the venue owing the player back after a move to a
+    // cheaper slot — no gateway is wired to push that automatically, so it is
+    // carried here and settled at the venue rather than quietly kept.
+    const payableTotal = Math.round((quote.total + serviceFeeAmount) * 100) / 100;
+    const alreadyPaid = Number((booking as any).amountPaid || 0);
+    (booking as any).balanceDue = Math.round((payableTotal - alreadyPaid) * 100) / 100;
+  }
+
   await (booking as any).save();
 
   await BookingModification.create({
     bookingId: id,
     userId: user.sub,
     changes,
-    priceDelta: 0,
+    priceDelta,
   });
 
-  return c.json({ data: { id: String((booking as any)._id), changes, modificationCount: modCount + 1 } });
+  // Tell the player what the move cost or saved them — a reschedule that silently
+  // changes what they owe is the same bug in a different place.
+  if (priceDelta !== 0) {
+    void (async () => {
+      try {
+        const v = await Venue.findById((booking as any).venueId).select('displayName').lean<{ displayName?: string }>();
+        const when = `${fmtDate((booking as any).date)}${(booking as any).startTime ? ` at ${fmtTime((booking as any).startTime)}` : ''}`;
+        const owes = priceDelta > 0;
+        await notifyUser((booking as any).userId, {
+          type: owes ? 'booking_reschedule_due' : 'booking_reschedule_credit',
+          title: owes ? 'Reschedule — extra due' : 'Reschedule — credit due',
+          body: owes
+            ? `Your new slot at ${v?.displayName || 'the venue'} (${when}) costs ₱${priceDelta.toFixed(2)} more. Settle the difference with the venue.`
+            : `Your new slot at ${v?.displayName || 'the venue'} (${when}) costs ₱${Math.abs(priceDelta).toFixed(2)} less. The venue will credit the difference back.`,
+          icon: 'payments',
+          linkUrl: '/my-bookings',
+          tag: `reschedule-${String((booking as any)._id)}`,
+        });
+      } catch { /* notifications are best-effort; the reschedule already stands */ }
+    })();
+  }
+
+  return c.json({
+    data: {
+      id: String((booking as any)._id),
+      changes,
+      modificationCount: modCount + 1,
+      priceDelta,
+      amount: (booking as any).amount,
+      serviceFeeAmount: (booking as any).serviceFeeAmount,
+      balanceDue: (booking as any).balanceDue,
+    },
+  });
 }

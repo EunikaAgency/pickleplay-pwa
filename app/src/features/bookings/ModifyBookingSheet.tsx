@@ -49,14 +49,22 @@ export function ModifyBookingSheet({ booking, onClose, onModified }: ModifyBooki
       if (changes.endTime) payload.endTime = endTime;
       // We don't expose court change in this simple sheet — date/time reschedule only.
       const result = await modifyBooking(booking.id, payload);
+      // The new slot is re-priced server-side, so a move can cost or save money.
+      // Say so here — a silent change to what they owe is the bug this closes.
+      const delta = result.priceDelta ?? 0;
+      const deltaNote = delta > 0
+        ? ` ₱${delta.toFixed(2)} extra is due — settle it with the venue.`
+        : delta < 0
+          ? ` ₱${Math.abs(delta).toFixed(2)} will be credited back by the venue.`
+          : '';
       setSuccess(
         `Booking updated! (${result.modificationCount}/3 modifications used)${
           result.modificationCount >= 3 ? ' — no more changes allowed.' : ''
-        }`,
+        }${deltaNote}`,
       );
       onModified();
-      // Auto-close after a short delay so the user sees the success message.
-      setTimeout(() => onClose(), 1800);
+      // A price change needs longer on screen than a plain confirmation.
+      setTimeout(() => onClose(), deltaNote ? 4000 : 1800);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not modify booking.';
       if (/already started/i.test(msg)) setError("This booking has already started and can't be changed.");

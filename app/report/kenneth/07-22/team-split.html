@@ -153,7 +153,7 @@
       <code>2026-07-21-open-tasks.md</code>.
     </p>
     <div class="meta">
-      <span><b>Updated:</b> 22 Jul 2026</span>
+      <span><b>Updated:</b> 23 Jul 2026</span>
       <span><b>Launch target:</b> end of July 2026</span>
       <span><b>Grouping:</b> by relationship, not difficulty</span>
     </div>
@@ -181,7 +181,7 @@
         <div class="lane-tag">Task A · Jambik</div>
         <h2>Venue ops &amp; booking lifecycle</h2>
         <p class="grouped"><b>Grouped:</b> everything on the owner/venue screens + the money &amp; booking-lifecycle that flows from them.</p>
-        <p class="status-line"><b>Status 22 Jul:</b> 4 of 7 done ✓ — orphaned owner tools surfaced (Closures tab + per-court Hours); search-before-create on new venues; staff role run end-to-end (venuestaffs 0→2, owner flows 16/16, 3 sub-account gating breaks logged); notifications wired to all 6 booking-lifecycle events (confirm/cancel/refund/removal — expiry was already live).</p>
+        <p class="status-line"><b>Status 23 Jul:</b> 5 of 7 done ✓ — orphaned owner tools surfaced; search-before-create on new venues; staff role run end to end (3 sub-account gating breaks logged); all 6 booking notifications wired; and all four booking endings closed (no-show, refund, reschedule delta, walk-in). Left: the BIR receipt screen and the brand-colour tokens.</p>
       </div>
       <div class="lane-body">
 
@@ -189,7 +189,7 @@
           <h3><span class="st done">Done</span>Orphaned owner tools — imported by zero files<span class="src">[21Jul-new]</span></h3>
           <p><code>WeeklyHoursEditor</code>, <code>ClosuresEditorTab</code>, <code>SlotPricingTab</code>, <code>BookingsInboxTab</code> — built, unreachable.</p>
           <div class="fix"><b>Fix</b> Mount them as tabs in <code>OwnerVenueScreen</code>.</div>
-          <div class="shipped">code-complete &amp; live (PWA dev-server HMR) — verified all 4 were truly orphaned, but the fix wasn't "4 tabs". <code>ClosuresEditorTab</code> → new <b>Closures</b> tab on <code>OwnerVenueScreen</code>; <code>WeeklyHoursEditor</code> (takes a <code>courtId</code>, not a venue) → per-court <b>Hours</b> sub-tab inside the Courts tab. <code>SlotPricingTab</code> + <code>BookingsInboxTab</code> left unmounted — duplicates of the already-reachable <code>OwnerPricingScreen</code> / <code>OwnerBookingsScreen</code>. Matches the architecture already documented in FILEMAP. tsc + eslint clean.</div>
+          <div class="shipped">All 4 were genuinely orphaned, but the fix wasn't "4 tabs". <code>ClosuresEditorTab</code> → a new <b>Closures</b> tab; <code>WeeklyHoursEditor</code> (takes a <code>courtId</code>) → a per-court <b>Hours</b> sub-tab. The other two were duplicates of reachable screens — left unmounted.</div>
           <div class="rel">same screen as venue-create &amp; staff testing</div>
         </div>
 
@@ -197,7 +197,7 @@
           <h3><span class="st done">Done</span>"Search-before-create" for new venues<span class="src">[17-21Jul]</span></h3>
           <p>No name lookup before <code>createVenue</code> — dupes possible. <code>ClaimVenueScreen</code> already searches.</p>
           <div class="fix"><b>Fix</b> Reuse ClaimVenueScreen's search; block create on a match.</div>
-          <div class="shipped">code-complete &amp; live (PWA dev-server HMR) — <code>OwnerNewVenueScreen.tsx</code> now runs ClaimVenueScreen's debounced <code>listVenues({ search, state:'unclaimed', excludePendingClaims:true })</code> as you type the venue name; matches show under the field with a <b>Claim</b> shortcut, an <b>exact</b> name match disables Create + hard-blocks submit (near matches are advisory only). tsc + eslint clean; roadmap updated.</div>
+          <div class="shipped">The new-venue form now searches unclaimed venues as you type the name. Matches appear inline with a <b>Claim</b> shortcut; an <b>exact</b> match blocks Create outright, near matches only advise.</div>
           <div class="rel">touches OwnerNewVenueScreen (same owner flow)</div>
         </div>
 
@@ -205,7 +205,7 @@
           <h3><span class="st done">Done</span>17 owner features "built but not tested"<span class="src">[17Jul][20Jul]</span></h3>
           <p><code>venuestaffs</code> still 0 rows — the staff role has never run end to end.</p>
           <div class="fix"><b>Fix</b> Seed a staff account; run each owner/staff flow once, log breaks.</div>
-          <div class="shipped">live API sweep — seeded a staff sub-account (<code>POST /staff</code>) + the <b>first-ever per-venue <code>VenueStaff</code> rows</b> (front_desk + manager), ran every flow once. <b>Owner 16/16 pass</b> (Hours, Closures, pricing, bookings, manual reservation, analytics, staff, settlements, receipts). <b>Per-venue staff gating is correct</b> (front_desk scoped to its venue + 403'd from analytics/pricing/structural; manager gets analytics, not pricing) — it just had 0 rows. <b>3 breaks, all on the sub-account path</b>: <code>getVenueManagerRole</code> resolves owner-inheritance before the VenueStaff lookup, so a sub-account is full <b>owner</b> on every venue — <b>B1</b> over-inherits the whole portfolio; <b>B2</b> reads analytics/revenue (UI-hidden only); <b>B3</b> writes slot pricing (UI-hidden only). B2/B3 = the Kenneth-D revenue/pricing items. Fix: gate <code>/analytics</code> on <code>owner.analytics.view</code> + slot writes on <code>owner.pricing.manage</code>. <code>venuestaffs</code> 0→2; test writes cleaned up.</div>
+          <div class="shipped">Seeded the first-ever <code>VenueStaff</code> rows (front_desk + manager) and ran every flow once — <b>owner 16/16 pass</b>, and per-venue staff gating turned out correct all along; it simply had 0 rows. <b>3 breaks, all on the sub-account path</b>: <code>getVenueManagerRole</code> resolves owner-inheritance <i>before</i> the VenueStaff lookup, so a sub-account is full owner on every venue — over-inheriting the portfolio, reading revenue, and writing pricing (the last two are UI-hidden only, and are Kenneth's D items). Fix: gate <code>/analytics</code> and slot writes server-side.</div>
           <div class="rel">exercises the orphaned owner tools above</div>
         </div>
 
@@ -216,10 +216,11 @@
           <div class="rel">owner money surface, pairs with booking endings</div>
         </div>
 
-        <div class="task">
-          <h3>Missing booking endings<span class="src">[20Jul]</span></h3>
+        <div class="task is-done">
+          <h3><span class="st done">Done</span>Missing booking endings<span class="src">[20Jul]</span></h3>
           <p>No-shows unhandled; refunds stuck "processing"; reschedule charges no price diff; walk-ins leave a ₱0 tag.</p>
           <div class="fix"><b>Fix</b> Close each branch: no-show, refund, reschedule delta, walk-in.</div>
+          <div class="shipped">All four closed. <b>No-show</b> — staff mark attendance after the slot; charges the venue's <code>noShowFee</code>, kept as a marker not a status so revenue stands. <b>Refund</b> — "processing" was only a string; now a real queue someone pays out. <b>Reschedule</b> — the new slot is re-priced through checkout's ladder and the difference charged or credited. <b>Walk-in</b> — an amount is required (₱0 holds are "Block slot"). Plus 2 bugs killed: a refund racing its own notification, and a reschedule colliding with itself. 18 tests.</div>
           <div class="rel">fires the notification events below</div>
         </div>
 
@@ -227,7 +228,7 @@
           <h3><span class="st done">Done</span>Most notifications not connected<span class="src">[20Jul]</span></h3>
           <p>Only a couple fire; no confirm / cancel / paid / refund / expiry notices.</p>
           <div class="fix"><b>Fix</b> Call the notification service from each booking-lifecycle event.</div>
-          <div class="shipped">shipped &amp; deployed — wired <code>notifyUser</code> into all six booking-lifecycle gaps: <b>confirm</b> (instant-book + checkout payment + admin verify), <b>cancel</b> (player gets confirmation + owner gets "slot back on sale"), <b>refund</b> (amount + ETA), and <b>owner removal</b> (player told when venue pulls an active booking). Three files touched: <code>bookings.controller.ts</code> (create + cancel + refund), <code>payments.controller.ts</code> (checkout + verifyPayment), <code>venues.controller.ts</code> (owner-removal branch — previously only rejections fired). Expiry was already wired via the 2-min sweeper. All best-effort (never blocks the response). Verified e2e against prod API (all 6 notification types observed in the notifications collection). tsc + all 46 booking tests clean.</div>
+          <div class="shipped">Wired <code>notifyUser</code> into all six lifecycle gaps — confirm, cancel (both sides), refund, and owner-removal; expiry was already live via the sweeper. All best-effort, so a notification never blocks the response. Verified e2e against prod: all 6 types observed.</div>
           <div class="rel">directly depends on booking endings</div>
         </div>
 
@@ -458,7 +459,7 @@
 
   <footer>
     Generated from <a href="audit-report.html">audit-report.html</a> ·
-    source: <code>2026-07-21-open-tasks.md</code> · updated 22 Jul 2026 ·
+    source: <code>2026-07-21-open-tasks.md</code> · updated 23 Jul 2026 ·
     A Jambik · B Edu · C Ivan · D Kenneth · grouped by relationship — trade whole cards if load is uneven.
   </footer>
 

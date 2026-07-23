@@ -278,6 +278,9 @@ export function bookingPhaseChip(b: ApiBooking, now: number = Date.now()): Statu
   if (s === 'cancelled') return cancelledChip(b);
   if (s === 'pending_approval') return { label: 'Pending', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
   if (s === 'awaiting_payment') return { label: 'Pay to confirm', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };
+  // A no-show is a distinct ending, not a cancellation: the slot was consumed
+  // and the payment kept. It outranks "Completed", which would read as normal.
+  if (b.attendance === 'no_show') return { label: 'No-show', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' };
   const phase = bookingPhase(b, now);
   if (phase === 'upcoming') return { label: 'Upcoming', className: 'bg-[var(--primary-soft)] text-[var(--primary-deep)]' };
   if (phase === 'ongoing') return { label: 'Ongoing', className: 'bg-[var(--blue)]/15 text-[var(--blue)]' };

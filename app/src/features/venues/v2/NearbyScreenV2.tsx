@@ -9,7 +9,7 @@ import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
 import { NearbyFilterRow } from './NearbyFilterRow';
 import { RecentVenuesSection } from './RecentVenuesSection';
 import { VenueGridCard } from './VenueGridCard';
-import { openSlotCount, venueArea, localToday, deriveRecentVenues } from './nearbyDisplay';
+import { openSlotCount, venueArea, localToday, deriveRecentVenues, freeAcrossWindow } from './nearbyDisplay';
 import { listAllVenues, batchVenueAvailability, listBookings, type ApiBooking, type ApiVenue } from '../../../shared/lib/api';
 import { venueImage, priceLabel, locationLine, indoorLabel, venueCoords } from '../../../shared/lib/venueDisplay';
 import { haversineKm, formatDistance, getCurrentLocation, homeCoords, type LatLng } from '../../../shared/lib/geo';
@@ -31,6 +31,9 @@ const SORT_LABELS: Record<SortKey, string> = {
 // Keep the rendered list bounded (each card loads an image); "nearby" only needs
 // the closest handful, and the other sorts are a browse aid, not the full directory.
 const VISIBLE = 30;
+
+// The batch availability endpoint accepts at most 200 venue ids per request.
+const AVAIL_BATCH_MAX = 200;
 
 // Metro Manila — most seeded venues are here; used when none carry coords.
 const MAP_FALLBACK_CENTER: [number, number] = [14.5995, 120.9842];
@@ -352,9 +355,38 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   // so the list isn't arbitrary while the permission prompt is pending/denied.
   const effectiveSort: SortKey = sort === 'distance' && !userLoc ? 'rating' : sort;
 
-  // Area + court-type filters from the filter row. Availability is *reported* on
-  // each card rather than filtered on, so a venue never silently disappears
-  // because we couldn't check its calendar.
+  // Availability for the WHOLE directory on the chosen date. It has to cover
+  // every venue, not just the ones on screen: the time-window filter reads it,
+  // and scoping the fetch to the visible slice would make the filter depend on
+  // its own output. 104 venues today, well under the endpoint's 200-id cap.
+  const allIdKey = all.map((v) => v.id).join(',');
+  const availKey = `${filterDate}|${allIdKey}`;
+  useEffect(() => {
+    if (!allIdKey) return;
+    let alive = true;
+    batchVenueAvailability(allIdKey.split(',').slice(0, AVAIL_BATCH_MAX), filterDate)
+      .then((result) => {
+        if (!alive) return;
+        const map = new Map<string, number[]>();
+        for (const v of result.venues) map.set(v.venueId, v.freeByHour);
+        setAvail({ key: availKey, map, error: false });
+      })
+      // Leave the badges off rather than reporting a slot count we don't have.
+      .catch(() => { if (alive) setAvail({ key: availKey, map: null, error: true }); });
+    return () => { alive = false; };
+  }, [allIdKey, filterDate, availKey]);
+
+  // Stamping the result with the key it was fetched for means a superseded
+  // request can't paint yesterday's slot counts onto today's cards — and it
+  // gives us "loading" for free, without setting state inside the effect.
+  const availFresh = avail?.key === availKey ? avail : null;
+  const availByVenue = availFresh?.map ?? null;
+  const availError = !!availFresh?.error;
+  const availLoading = !!allIdKey && !availFresh;
+
+  // Area + court type are pure venue attributes, so they filter the list outright.
+  // The time window is handled separately (see `timeGroups`) because it needs
+  // availability data most venues simply don't have.
   const matchesFilters = useCallback((v: ApiVenue): boolean => {
     if (areaFilter && venueArea(v) !== areaFilter) return false;
     if (typeFilter && (v.indoorOutdoor || '').toLowerCase() !== typeFilter) return false;
@@ -395,34 +427,29 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
   const visible = sorted.slice(0, VISIBLE);
 
-  // Availability for exactly the venues on screen, on the chosen date — that's
-  // what the "N slots open" badges report. Refetched when the date or the
-  // visible set changes; the id list is joined so the effect keys off contents.
-  const visibleIdKey = visible.map((v) => v.id).join(',');
-  const availKey = `${filterDate}|${visibleIdKey}`;
-  useEffect(() => {
-    // Nothing on screen to check — leave the last result alone; no card reads it.
-    if (!visibleIdKey) return;
-    let alive = true;
-    batchVenueAvailability(visibleIdKey.split(','), filterDate)
-      .then((result) => {
-        if (!alive) return;
-        const map = new Map<string, number[]>();
-        for (const v of result.venues) map.set(v.venueId, v.freeByHour);
-        setAvail({ key: availKey, map, error: false });
-      })
-      // Leave the badges off rather than reporting a slot count we don't have.
-      .catch(() => { if (alive) setAvail({ key: availKey, map: null, error: true }); });
-    return () => { alive = false; };
-  }, [visibleIdKey, filterDate, availKey]);
-
-  // Stamping the result with the key it was fetched for means a superseded
-  // request can't paint yesterday's slot counts onto today's cards — and it
-  // gives us "loading" for free, without setting state inside the effect.
-  const availFresh = avail?.key === availKey ? avail : null;
-  const availByVenue = availFresh?.map ?? null;
-  const availError = !!availFresh?.error;
-  const availLoading = !!visibleIdKey && !availFresh;
+  /**
+   * Split the list against the chosen time window.
+   *
+   * Only a venue that has published courts + opening hours produces an
+   * availability row, and today that's a small minority of the directory — so
+   * excluding everything we can't verify would empty the screen and read as a
+   * broken filter. Instead:
+   *   confirmed — has a row AND a court free for every hour of the window
+   *   unchecked — has no row at all; we can't confirm or deny, so it's shown
+   *               below under a divider that says exactly that
+   * A venue that HAS a row but is busy in the window is genuinely dropped.
+   */
+  const timeGroups = useMemo(() => {
+    if (filterStartHour == null) return { confirmed: visible, unchecked: [] as ApiVenue[] };
+    const confirmed: ApiVenue[] = [];
+    const unchecked: ApiVenue[] = [];
+    for (const v of visible) {
+      const row = availByVenue?.get(v.id);
+      if (!row) unchecked.push(v);
+      else if (freeAcrossWindow(row, filterStartHour, filterEndHour)) confirmed.push(v);
+    }
+    return { confirmed, unchecked };
+  }, [visible, availByVenue, filterStartHour, filterEndHour]);
 
   // Venues the player has played at, resolved against the directory for photos
   // and current rates.
@@ -436,10 +463,14 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
 
   // In lobby mode, carry the intent into the court detail so the booking flow can
   // hand back to create-game once a court is reserved.
+  // Carry the chosen date + time window into the court detail so the booking
+  // flow opens on the slot the player was actually filtering for.
   const open = (v: ApiVenue) => onNavigate('court-details', {
     id: v.slug || v.id,
     intent,
     filterDate,
+    filterStartHour: filterStartHour ?? undefined,
+    filterEndHour: filterEndHour ?? undefined,
   });
 
   const distLabel = (v: ApiVenue) => {
@@ -615,12 +646,16 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             date={filterDate}
             onDateChange={setFilterDate}
             minDate={today}
+            startHour={filterStartHour}
+            endHour={filterEndHour}
+            onTimeChange={(s, e) => { setFilterStartHour(s); setFilterEndHour(e); }}
             area={areaFilter}
             areas={areas}
             onAreaChange={setAreaFilter}
             type={typeFilter}
             onTypeChange={setTypeFilter}
             loading={availLoading}
+            matchCount={timeGroups.confirmed.length}
           />
 
           <div className="sheet-list">
@@ -699,7 +734,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                     </p>
                   ) : (
                     <div className="nv-grid">
-                      {visible.map((v) => (
+                      {timeGroups.confirmed.map((v) => (
                         <VenueGridCard
                           key={v.id}
                           v={v}
@@ -709,6 +744,30 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                         />
                       ))}
                     </div>
+                  )}
+
+                  {/* Venues whose schedule we couldn't check — shown, but never
+                      passed off as confirmed-free (see `timeGroups`). */}
+                  {timeGroups.unchecked.length > 0 && (
+                    <>
+                      <div className="nv-unchecked-note">
+                        {timeGroups.confirmed.length === 0
+                          ? 'No venue has published a court free at this time'
+                          : `${timeGroups.unchecked.length} more haven't published a schedule`}
+                        <span> — availability below isn't confirmed. Tap through to ask the venue.</span>
+                      </div>
+                      <div className="nv-grid nv-grid-muted">
+                        {timeGroups.unchecked.map((v) => (
+                          <VenueGridCard
+                            key={v.id}
+                            v={v}
+                            distance={distLabel(v)}
+                            slots={null}
+                            onOpen={() => open(v)}
+                          />
+                        ))}
+                      </div>
+                    </>
                   )}
 
                   {sorted.length > VISIBLE && (

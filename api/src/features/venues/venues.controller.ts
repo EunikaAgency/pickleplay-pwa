@@ -118,6 +118,8 @@ export const updateVenueSchema = z.object({
   // pays, and how many hours they then have to pay before the hold expires.
   requireBookingApproval: z.boolean().optional(),
   bookingPayWindowHours: z.coerce.number().int().min(1).max(168).optional(),
+  // Opt in to the recurring weekly schedule (see the Venue model field).
+  useWeeklyPricingDefault: z.boolean().optional(),
   // Ceiling on how long an unanswered request may hold a court.
   approvalWindowHours: z.coerce.number().int().min(1).max(72).optional(),
   // Payment options offered at checkout (subset of full/deposit/pay_at_venue) +
@@ -1735,6 +1737,22 @@ export async function createVenueBooking(c: any) {
   }
 
   const preDiscountSubtotal = isBlock ? 0 : (body.amount ?? computedPreDiscountAmount);
+
+  // The walk-in ending: a manual reservation is a PAYING customer, so it must not
+  // be filed at ₱0. That is what used to happen — the front desk sent `amount: 0`
+  // for an empty field, and at a venue with no configured rate the resolver also
+  // returns 0, so the walk-in landed as a free booking that dragged down every
+  // revenue and occupancy-value report. A genuinely non-paying hold is what
+  // `bookingType: 'blocked'` is for, which is why that branch is exempt.
+  if (!isBlock && !(preDiscountSubtotal > 0)) {
+    return c.json({
+      error: {
+        code: 'AMOUNT_REQUIRED',
+        message: 'Enter the amount for this booking. Use “Block slot” instead if the court is being held without payment.',
+      },
+    }, 400);
+  }
+
   const discountAmount = body.customerCategory === 'none'
     ? 0
     : Math.round(preDiscountSubtotal * statutoryDiscountPercent / 100 * 100) / 100;
@@ -1839,6 +1857,16 @@ export async function createRecurringBooking(c: any) {
   const discountPercent = body.customerCategory === 'none' ? 0
     : Math.max(0, Math.min(100, configuredPercent == null ? 20 : Number(configuredPercent)));
   const preDiscountSubtotal = isBlock ? 0 : (body.amount ?? 0);
+  // Same rule as the one-off manual booking, and it bites harder here: a ₱0 series
+  // files a free booking for EVERY week it generates.
+  if (!isBlock && !(preDiscountSubtotal > 0)) {
+    return c.json({
+      error: {
+        code: 'AMOUNT_REQUIRED',
+        message: 'Enter the per-session amount for this series. Use “Block slot” instead if the court is being held without payment.',
+      },
+    }, 400);
+  }
   const discountAmount = Math.round(preDiscountSubtotal * discountPercent / 100 * 100) / 100;
   const finalAmount = Math.round((preDiscountSubtotal - discountAmount) * 100) / 100;
   const recurringId = new Types.ObjectId();
@@ -1939,6 +1967,68 @@ export async function cancelRecurringBooking(c: any) {
   return c.json({ data: { cancelled: result.modifiedCount ?? 0 } });
 }
 
+/* ─── The recurring weekly schedule ───────────────────────────────── */
+
+/** Day-of-week for a YYYY-MM-DD string, 0=Sunday (local) — mirrors pricing.ts. */
+function dayOfWeekFor(date: string): number {
+  return new Date(date + 'T00:00:00').getDay();
+}
+
+type WeeklyHourRow = { dayOfWeek: number; openTime?: string | null; closeTime?: string | null; courtId?: any; isClosed?: boolean };
+/** An open-hour window, shaped like the SlotPriceOverride rows the masks expect. */
+type ScheduleWindow = { startTime: string; endTime: string; courtId?: any; note?: string | null };
+
+/**
+ * The venue's recurring weekly opening pattern — or `[]` when it hasn't opted in.
+ *
+ * `VenueHour` has always held a weekly template (dayOfWeek + open/close + an
+ * optional per-block price), and `pricing.ts` already reads it as the `timeBlock`
+ * rate tier, one rung below a date's SlotPriceOverride `surge`. Availability was
+ * the odd one out: it built its open-hour mask from overrides *alone*, so any week
+ * nobody had hand-painted read as closed even when the venue had a perfectly good
+ * weekly pattern sitting right there. That is why an owner had to repaint the grid
+ * every single week just to stay bookable. This supplies the missing half of the
+ * precedence chain the pricing layer already implements.
+ *
+ * Pass `enabled` when the caller has already loaded the venue, to save a lookup.
+ */
+async function weeklyScheduleFor(venueId: string, enabled?: boolean): Promise<WeeklyHourRow[]> {
+  if (enabled === undefined) {
+    const venue = await Venue.findById(venueId).select('useWeeklyPricingDefault').lean<{ useWeeklyPricingDefault?: boolean }>();
+    enabled = !!venue?.useWeeklyPricingDefault;
+  }
+  if (!enabled) return [];
+  return VenueHour.find({ venueId }).select('dayOfWeek openTime closeTime courtId isClosed').lean<WeeklyHourRow[]>();
+}
+
+/**
+ * The weekly template's windows for one date. A row flagged `isClosed` contributes
+ * nothing — that is the owner saying "shut on Sundays", not "open 00:00–00:00".
+ *
+ * Overnight rows are split across the date boundary. "07:00–02:00" is one of the
+ * commonest real schedules here, and the hour masks below all walk `start → end`
+ * ascending, so an unsplit overnight row silently contributes ZERO open hours —
+ * the venue would read closed all day. So today's row gives 07:00→24:00, and
+ * YESTERDAY's row gives its 00:00→02:00 tail to today.
+ */
+function weeklyWindowsForDate(weekly: WeeklyHourRow[], date: string): ScheduleWindow[] {
+  if (weekly.length === 0) return [];
+  const dow = dayOfWeekFor(date);
+  const prevDow = (dow + 6) % 7;
+  const windows: ScheduleWindow[] = [];
+  for (const h of weekly) {
+    if (h.isClosed || !h.openTime || !h.closeTime) continue;
+    const overnight = h.closeTime <= h.openTime;   // "02:00" <= "07:00" → wraps midnight
+    if (h.dayOfWeek === dow) {
+      windows.push({ startTime: h.openTime, endTime: overnight ? '24:00' : h.closeTime, courtId: h.courtId ?? null, note: null });
+    } else if (h.dayOfWeek === prevDow && overnight && h.closeTime > '00:00') {
+      // Yesterday ran past midnight into today.
+      windows.push({ startTime: '00:00', endTime: h.closeTime, courtId: h.courtId ?? null, note: null });
+    }
+  }
+  return windows;
+}
+
 // Public per-hour court availability for a venue on a date. Powers the booking
 // screens' time pickers (greys out hours with no free court). Mirrors the same
 // pool model the create-booking guard enforces, so the pre-check never disagrees
@@ -1957,22 +2047,27 @@ export async function getVenueAvailability(c: any) {
   if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
   const { date, courtId } = availabilityQuerySchema.parse(c.req.query());
 
-  // ── SlotPriceOverrides ARE the schedule ─────────────────────────
-  // A venue is only open on dates where it has at least one override.
+  // ── The schedule: this date's overrides, over the weekly default ──
+  // A date is open where it has a SlotPriceOverride, PLUS — for venues that opted
+  // in — wherever the recurring weekly pattern says so. The two are a union, not
+  // a fallback: an override is an *exception* for particular hours (a holiday
+  // rate, a tournament block), so it must not silently close the rest of the day
+  // the weekly default had open.
   const overrides = await SlotPriceOverride.find({ venueId, date })
     .lean<{ startTime: string; endTime: string; courtId?: any }[]>();
-  if (overrides.length === 0) {
-    // Closed — no overrides on this date at all. `open: false` distinguishes this
-    // from "open but every court is taken": both have `free: 0`, but only the
-    // latter is genuinely booked. Without the flag the picker labels a closed
-    // hour "Booked", which reads as demand that doesn't exist.
+  const windows: ScheduleWindow[] = [...overrides, ...weeklyWindowsForDate(await weeklyScheduleFor(venueId), date)];
+  if (windows.length === 0) {
+    // Closed — nothing on this date and no weekly pattern covering it. `open: false`
+    // distinguishes this from "open but every court is taken": both have `free: 0`,
+    // but only the latter is genuinely booked. Without the flag the picker labels a
+    // closed hour "Booked", which reads as demand that doesn't exist.
     const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, free: 0, open: false }));
     return c.json({ data: { date, capacity: 0, hours, closed: true } });
   }
 
-  // Build the open-hour mask from override windows.
+  // Build the open-hour mask from every window covering this date.
   const slotOpen = new Array<boolean>(24).fill(false);
-  for (const o of overrides) {
+  for (const o of windows) {
     const s = Number(o.startTime.split(':')[0]);
     const e = Number(o.endTime.split(':')[0]);
     for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
@@ -2083,8 +2178,10 @@ export async function getVenueAvailabilityRange(c: any) {
 
   const capacity = await resolveVenueCapacity(venueId);
 
-  // ── SlotPriceOverrides ARE the schedule ─────────────────────────
-  // Fetch all overrides for this venue in the date range, grouped by date.
+  // ── The schedule: each date's overrides, over the weekly default ──
+  // Fetch all overrides for this venue in the date range, grouped by date. The
+  // recurring weekly pattern is loaded once and unioned in per-date below.
+  const weekly = await weeklyScheduleFor(venueId);
   const allOverrides = await SlotPriceOverride.find({
     venueId,
     date: { $gte: from, $lte: to },
@@ -2121,14 +2218,17 @@ export async function getVenueAvailabilityRange(c: any) {
   const courtSubCount = courtConfig?.isSplittable ? (courtConfig.splitCount ?? 2) : 1;
 
   const days = dates.map((date) => {
-    const dayOverrides = overridesByDate.get(date);
-    if (!dayOverrides || dayOverrides.length === 0) {
+    const dayOverrides = overridesByDate.get(date) ?? [];
+    // This date's own blocks, plus whatever the weekly default opens (union — an
+    // override is an exception for some hours, not a redefinition of the day).
+    const dayWindows: ScheduleWindow[] = [...dayOverrides, ...weeklyWindowsForDate(weekly, date)];
+    if (dayWindows.length === 0) {
       return { date, openHours: 0, freeHours: 0, full: false, closed: true };
     }
 
-    // Build open-hour mask from override windows for this date.
+    // Build open-hour mask from every window covering this date.
     const slotOpen = new Array<boolean>(24).fill(false);
-    for (const o of dayOverrides) {
+    for (const o of dayWindows) {
       const s = Number(o.startTime.split(':')[0]);
       const e = Number(o.endTime.split(':')[0]);
       for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
@@ -2191,16 +2291,18 @@ export async function batchVenueAvailability(c: any) {
     try {
       const venueId = await resolveVenueId(rawId);
       if (!venueId) continue;
-      const venue = await Venue.findById(venueId).select('deletedAt').lean<{ deletedAt?: Date | null }>();
+      // The opt-in flag rides along on the fetch this loop already does.
+      const venue = await Venue.findById(venueId).select('deletedAt useWeeklyPricingDefault').lean<{ deletedAt?: Date | null; useWeeklyPricingDefault?: boolean }>();
       if (!venue || venue.deletedAt) continue;
 
-      // ── SlotPriceOverrides ARE the schedule ─────────────────────
-      // A venue is only open on dates where it has at least one override.
-      // Hours not covered by any override are closed (zero free courts).
+      // ── The schedule: this date's overrides, over the weekly default ──
+      // Hours no window covers are closed (zero free courts).
       const overrides = await SlotPriceOverride.find({ venueId, date })
         .lean<{ startTime: string; endTime: string; courtId?: any; note?: string | null }[]>();
+      const weekly = weeklyWindowsForDate(await weeklyScheduleFor(venueId, !!venue.useWeeklyPricingDefault), date);
+      const windows: ScheduleWindow[] = [...overrides, ...weekly];
 
-      if (overrides.length === 0) continue; // no schedule = closed — omit
+      if (windows.length === 0) continue; // no schedule = closed — omit
 
       const capacity = await resolveVenueCapacity(venueId);
       // Court-scoped maintenance arrives inside activeBookingsForDate; venue-wide
@@ -2209,15 +2311,15 @@ export async function batchVenueAvailability(c: any) {
       const free = freeCourtsByHour(bookings, capacity);
       const closed = closedHoursFromBlocks(overrides.filter((o) => OCCUPANCY_BLOCK_NOTES.includes(o.note ?? '')));
 
-      // Build the open-hour mask from the union of all override windows.
+      // Build the open-hour mask from the union of all windows.
       const slotOpen = new Array<boolean>(24).fill(false);
-      for (const o of overrides) {
+      for (const o of windows) {
         const s = Number(o.startTime.split(':')[0]);
         const e = Number(o.endTime.split(':')[0]);
         for (let h = s; h < e && h < 24; h++) slotOpen[h] = true;
       }
 
-      // Zero out hours outside every override window, and hours the venue is shut.
+      // Zero out hours outside every window, and hours the venue is shut.
       for (let h = 0; h < 24; h++) {
         if (!slotOpen[h] || closed[h]) free[h] = 0;
       }

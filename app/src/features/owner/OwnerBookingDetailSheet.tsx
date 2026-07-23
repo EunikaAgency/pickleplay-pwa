@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Avatar } from '../../shared/components/ui/Avatar';
-import { startConversation, updateBookingStatus, verifyPayment, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
-import { money, prettyDate, to12h, hoursBetween, bookingDuration, statusChip, paymentOptionLabel, bookingSourceLabel } from '../bookings/bookingDisplay';
+import { startConversation, updateBookingStatus, verifyPayment, markBookingAttendance, type ApiBooking, type BookingStatus } from '../../shared/lib/api';
+import { money, prettyDate, to12h, hoursBetween, bookingDuration, statusChip, paymentOptionLabel, bookingSourceLabel, bookingPhase } from '../bookings/bookingDisplay';
 import type { Navigate } from '../../shared/lib/navigation';
 
 // Read-friendly label for a payment method code ("gcash" → "GCash", etc.).
@@ -86,6 +86,23 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
     }
   };
 
+  // The no-show ending. Only offered once the slot has actually started — before
+  // that there is nothing to judge, and the server rejects it anyway.
+  const markAttendance = async (attendance: 'attended' | 'no_show') => {
+    if (!booking) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await markBookingAttendance(booking.venueId || '', booking.id, attendance);
+      onChanged({ ...booking, ...updated });
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't record attendance.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const messagePlayer = async () => {
     if (!b?.userId || messaging || !onNavigate) return;
     setMessaging(true);
@@ -114,6 +131,14 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
     : '';
   const st = b?.status;
   const booked = b ? bookedOn(b) : '';
+  // Attendance only applies to a live reservation whose slot has begun: a block
+  // has no customer, a cancelled booking already ended, and an unconfirmed one
+  // never became a reservation. `bookingPhase` owns the clock (its `now` default
+  // is evaluated inside the call, keeping render pure).
+  const hasStarted = !!b && bookingPhase(b) !== 'upcoming';
+  const canMarkAttendance = !!b && canManage && !isBlocked && hasStarted
+    && (st === 'confirmed' || st === 'paid');
+  const attendance = b?.attendance ?? null;
 
   return (
     <BottomSheet
@@ -143,6 +168,16 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
           {st === 'awaiting_payment' && b.paymentId && b.paymentStatus === 'pending' && (
             <button type="button" disabled={busy} onClick={() => void markPaid()} className="obook-btn obook-btn-confirm">
               Mark GCash paid
+            </button>
+          )}
+          {canMarkAttendance && attendance !== 'no_show' && (
+            <button type="button" disabled={busy} onClick={() => void markAttendance('no_show')} className="obook-btn obook-btn-cancel">
+              Mark no-show
+            </button>
+          )}
+          {canMarkAttendance && attendance === 'no_show' && (
+            <button type="button" disabled={busy} onClick={() => void markAttendance('attended')} className="obook-btn obook-btn-confirm">
+              Undo no-show
             </button>
           )}
           <button type="button" disabled={busy} onClick={() => act('cancelled')}
@@ -195,6 +230,20 @@ export function OwnerBookingDetailSheet({ booking, canManage, onClose, onChanged
             {b.paymentMethod && <Row label="Payment" value={paymentLabel(b.paymentMethod)} />}
             {booked && <Row label="Booked on" value={booked} />}
             {b.status === 'cancelled' && b.cancellationReason && <Row label="Cancelled" value={b.cancellationReason} />}
+            {attendance && (
+              <Row
+                label="Attendance"
+                value={attendance === 'no_show' ? 'No-show' : 'Turned up'}
+                sub={attendance === 'no_show' && b.noShowFeeAmount ? `${money(b.noShowFeeAmount)} no-show fee` : undefined}
+              />
+            )}
+            {b.refund && (
+              <Row
+                label="Refund"
+                value={money(b.refund.amount)}
+                sub={b.refund.state === 'completed' ? 'Paid out' : 'Processing'}
+              />
+            )}
             <div className="obook-total">
               <div className="obook-total-label">{isBlocked ? 'Charge' : 'Total'}</div>
               <div className="obook-total-val tabular-nums">{isBlocked ? 'No charge' : money((b.amount ?? 0) + (b.serviceFeeAmount ?? 0))}</div>

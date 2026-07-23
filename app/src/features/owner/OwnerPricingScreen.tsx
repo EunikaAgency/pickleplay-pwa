@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
-import { listCourts, listSlotOverrides, createSlotOverride, deleteSlotOverride, type OwnerCourt } from '../../shared/lib/api';
+import {
+  listCourts, listSlotOverrides, createSlotOverride, deleteSlotOverride,
+  getHours, putHours, getCourtHours, putCourtHours, getOwnerVenue, updateVenue,
+  type OwnerCourt, type OwnerHourEntry,
+} from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
 
 interface OwnerPricingScreenProps {
@@ -21,8 +25,16 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = ['12AM', '1AM', '2AM', '3AM', '4AM', '5AM', '6AM', '7AM', '8AM', '9AM', '10AM', '11AM', '12PM', '1PM', '2PM', '3PM', '4PM', '5PM', '6PM', '7PM', '8PM', '9PM', '10PM', '11PM'];
 const COLOR_SWATCHES = ['#f59e0b', '#f97316', '#eab308', '#14b8a6', '#06b6d4', '#3b82f6', '#426383', '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#64748b', '#4b5b70'];
-const CLOSED_COLOR = '#94a3b8';       // "Clear" — default open, no pricing rule
-const CLEAR_TOOL_ID = 'available';
+// "Closed" — no pricing painted, so the venue is NOT open for that hour. This
+// grid is the operating schedule, not just a rate card: the availability API
+// treats a date with no painted block as closed (see the `SlotPriceOverrides ARE
+// the schedule` comments in venues.controller.ts), so an unpainted cell can't be
+// sold. Painting is what opens an hour; the rule on it is what it costs.
+const CLOSED_COLOR = '#94a3b8';
+const CLEAR_TOOL_ID = 'closed';
+// Hours the recurring weekly default opens, shown dimmed because nothing was
+// painted for THIS week — they're inherited, and repainting isn't needed.
+const INHERITED_COLOR = '#38bdf8';
 const RESERVED_COLOR = '#22c55e';
 const RESERVED_TOOL_ID = 'reserved';
 const MAINTENANCE_COLOR = '#d63c43';  // "Maintenance" — blocked slot (calendar counterpart)
@@ -48,10 +60,13 @@ const cellKey = (day: string, hour: string) => `${day}:${hour}`;
 /** Local YYYY-MM-DD — avoids toISOString()'s UTC shift (saves July 7 as July 6 in PH). */
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-function cellLabel(rule: PricingRule | null, isReserved: boolean, isMaintenance: boolean) {
+function cellLabel(rule: PricingRule | null, isReserved: boolean, isMaintenance: boolean, inheritedPrice?: number | null) {
   if (isReserved) return 'Reserved';
   if (isMaintenance) return 'Maintenance · Blocked';
-  return rule ? `${rule.shortName} · ₱${rule.price}` : 'Clear · ₱0';
+  if (rule) return `${rule.shortName} · ₱${rule.price}`;
+  // Nothing painted for this week — the recurring weekly default covers it.
+  if (inheritedPrice != null) return `Weekly default · ₱${inheritedPrice}`;
+  return 'Closed · not bookable';
 }
 
 function peso(n: number) {
@@ -163,6 +178,14 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const [saveError, setSaveError] = useState('');
   const [dirtyWeeks, setDirtyWeeks] = useState<Record<string, boolean>>({});
   const [summaryOpen, setSummaryOpen] = useState(true);
+  // The recurring weekly pattern (VenueHour rows) + whether the venue has opted
+  // into it. Until the flag is on, the API ignores these rows, so the grid must
+  // not pretend they're covering anything.
+  const [weeklyHours, setWeeklyHours] = useState<OwnerHourEntry[]>([]);
+  const [weeklyEnabled, setWeeklyEnabled] = useState(false);
+  const [defaultStatus, setDefaultStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [defaultError, setDefaultError] = useState('');
+  const [confirmDefault, setConfirmDefault] = useState(false);
   const isPaintingRef = useRef(false);
   const paintToolRef = useRef(activeRuleId);
   const paintedDuringDragRef = useRef<Set<string>>(new Set());
@@ -231,6 +254,24 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     setSaveStatus('idle');
     setSaveError('');
   }, [venue]);
+
+  // The weekly default for the current scope (court-specific when a court is
+  // selected, else venue-wide) + the venue's opt-in flag.
+  useEffect(() => {
+    if (!venue) { setWeeklyHours([]); setWeeklyEnabled(false); return; }
+    let cancelled = false;
+    Promise.all([
+      selectedCourtId ? getCourtHours(selectedCourtId) : getHours(venue),
+      getOwnerVenue(venue),
+    ])
+      .then(([hours, detail]) => {
+        if (cancelled) return;
+        setWeeklyHours(hours);
+        setWeeklyEnabled(!!detail.useWeeklyPricingDefault);
+      })
+      .catch(() => { if (!cancelled) { setWeeklyHours([]); setWeeklyEnabled(false); } });
+    return () => { cancelled = true; };
+  }, [venue, selectedCourtId]);
 
   useEffect(() => {
     if (!venue) { setCourts([]); setSelectedCourtId(''); return; }
@@ -397,6 +438,30 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     paintKeys(DAYS.map((day) => cellKey(day, hour)));
   };
 
+  /**
+   * cellKey → ₱/hr for hours the recurring weekly pattern already opens. Only
+   * consulted where nothing is painted for the week on screen, so a real override
+   * always wins — same precedence the server applies.
+   */
+  const inheritedCells = useMemo(() => {
+    if (!weeklyEnabled) return {} as Record<string, number>;
+    const map: Record<string, number> = {};
+    for (const entry of weeklyHours) {
+      if (entry.isClosed || !entry.openTime || !entry.closeTime) continue;
+      // DAYS is Monday-first; dayOfWeek is 0=Sunday.
+      const day = DAYS[(entry.dayOfWeek + 6) % 7];
+      if (!day) continue;
+      const start = parseInt(entry.openTime.slice(0, 2), 10);
+      const end = parseInt(entry.closeTime.slice(0, 2), 10);
+      if (isNaN(start) || isNaN(end)) continue;
+      for (let h = start; h < end && h < 24; h++) {
+        const hour = HOURS[h];
+        if (hour) map[cellKey(day, hour)] = Number(entry.price) || 0;
+      }
+    }
+    return map;
+  }, [weeklyHours, weeklyEnabled]);
+
   const paintedRuleIds = Object.values(paintedCells).filter((id) => id !== RESERVED_TOOL_ID && id !== MAINTENANCE_TOOL_ID);
   const paidHours = paintedRuleIds.length;
   const weeklyRevenueEstimate = paintedRuleIds.reduce((sum, ruleId) => {
@@ -457,6 +522,56 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     if (editingId === id) closeForm();
   };
 
+  /**
+   * Turn the week on screen into the venue's RECURRING weekly pattern.
+   *
+   * This is the difference between a schedule and a snapshot. Painting writes
+   * SlotPriceOverride rows against seven concrete dates, so an unpainted week is
+   * a closed week — which is why the grid had to be repainted every week just to
+   * stay bookable. A weekly default is one set of rows that every future week
+   * inherits, and `pricing.ts` already reads it as the `timeBlock` rate tier, so
+   * the prices carry over with it.
+   *
+   * Only PRICED blocks become the pattern: Reserved and Maintenance are things
+   * that happened on one date, not something to repeat every Tuesday forever.
+   */
+  const saveWeeklyDefault = async () => {
+    if (!venue || defaultStatus === 'saving') return;
+    setConfirmDefault(false);
+    setDefaultStatus('saving');
+    setDefaultError('');
+    try {
+      const entries: OwnerHourEntry[] = [];
+      DAYS.forEach((day, index) => {
+        const dayOfWeek = (index + 1) % 7;   // DAYS is Monday-first; 0=Sunday.
+        const blocks = dayBlocks(day, paintedCells, rules).filter((block) => block.ruleId);
+        if (blocks.length === 0) {
+          entries.push({ dayOfWeek, isClosed: true });
+          return;
+        }
+        for (const block of blocks) {
+          entries.push({ dayOfWeek, isClosed: false, openTime: block.openTime, closeTime: block.closeTime, price: block.price });
+        }
+      });
+      if (selectedCourtId) await putCourtHours(selectedCourtId, entries);
+      else await putHours(venue, entries);
+      // Opt the venue in. Until this flag is set the API keeps ignoring the weekly
+      // rows — deliberately, so imported venues carrying stale hours don't put
+      // unvetted times on sale the moment this feature ships.
+      if (!weeklyEnabled) {
+        await updateVenue(venue, { useWeeklyPricingDefault: true });
+        setWeeklyEnabled(true);
+      }
+      setWeeklyHours(entries);
+      setDefaultStatus('saved');
+      setTimeout(() => setDefaultStatus('idle'), 2500);
+    } catch (err) {
+      setDefaultStatus('error');
+      setDefaultError(err instanceof Error ? err.message : 'Unknown error');
+      setTimeout(() => { setDefaultStatus('idle'); setDefaultError(''); }, 4000);
+    }
+  };
+
   const handleSave = async () => {
     if (!venue || saveStatus === 'saving' || courts.length === 0) return;
     setSaveStatus('saving');
@@ -515,8 +630,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 <Icon name="chevron" size={18} className="rotate-180" />
               </button>
               <div className="min-w-0">
-                <div className="font-heading font-extrabold text-[17px] leading-tight">Pricing Override</div>
-                <div className="mt-0.5 text-[12px] leading-snug text-[var(--muted)]">Paint time blocks with pricing rules, then save</div>
+                <div className="font-heading font-extrabold text-[17px] leading-tight">Opening Hours &amp; Pricing</div>
+                <div className="mt-0.5 text-[12px] leading-snug text-[var(--muted)]">Paint the hours you're open and what they cost. Unpainted hours are closed.</div>
               </div>
             </div>
 
@@ -565,6 +680,23 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                   </button>
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setConfirmDefault(true)}
+                disabled={defaultStatus === 'saving' || !venue || !hasVenues || paidHours === 0}
+                title={paidHours === 0 ? 'Paint some priced hours first' : 'Repeat this week every week'}
+                style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
+                className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
+                  defaultStatus === 'error'
+                    ? 'border-[var(--coral)] text-[var(--coral)]'
+                    : 'border-[var(--field-border)] bg-[var(--surface-2)] text-[var(--ink)]'
+                }`}
+              >
+                {defaultStatus === 'saving' ? 'Saving...'
+                  : defaultStatus === 'saved' ? 'Weekly default set ✓'
+                  : defaultStatus === 'error' ? `Failed${defaultError ? ` — ${defaultError}` : ''}`
+                  : 'Save as weekly default'}
+              </button>
               <button
                 type="button"
                 onClick={handleSave}
@@ -635,6 +767,26 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             </div>
           )}
 
+          {confirmDefault && (
+            <div className="fixed inset-0 z-[1400] flex items-end sm:items-center justify-center bg-black/45 px-4 py-6" role="dialog" aria-modal="true" aria-label="Save as weekly default">
+              <div className="w-full max-w-[460px] rounded-t-[18px] sm:rounded-[12px] border border-[var(--hairline)] bg-[var(--surface)] shadow-xl animate-slide-up">
+                <div className="px-4 py-4">
+                  <div className="font-heading font-extrabold text-[15px] text-[var(--ink)]">Repeat this week, every week?</div>
+                  <div className="mt-2 text-[12px] leading-relaxed text-[var(--muted)]">
+                    <span className="font-bold text-[var(--ink)]">{weekDateRange(month, week, year)}</span> becomes the standing schedule for{' '}
+                    {selectedCourtId ? 'this court' : 'the whole venue'}. Every future week inherits these hours and rates — no repainting.
+                    <div className="mt-2">Weeks you've painted individually still win: those stay as they are.</div>
+                    <div className="mt-2">This replaces the opening hours currently set on the Hours tab.</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--hairline)]">
+                  <button type="button" onClick={() => setConfirmDefault(false)} className="h-9 px-3 rounded-[4px] border border-[var(--field-border)] text-[12px] font-bold text-[var(--muted)]">Cancel</button>
+                  <button type="button" onClick={saveWeeklyDefault} className="h-9 px-4 rounded-[4px] bg-[#f59e0b] text-[#111827] text-[12px] font-extrabold">Set as weekly default</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-[var(--muted)]">
             <span className="font-bold uppercase tracking-wide">Paint tool:</span>
             {rules.map((rule) => {
@@ -676,7 +828,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                   className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
                   style={{ borderColor: active ? CLOSED_COLOR : 'transparent', color: active ? CLOSED_COLOR : 'var(--muted)' }}
                 >
-                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: CLOSED_COLOR }} /> Clear
+                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: CLOSED_COLOR }} /> Closed
                 </button>
               );
             })()}
@@ -743,8 +895,13 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                     const isReserved = cellVal === RESERVED_TOOL_ID;
                     const isMaintenance = cellVal === MAINTENANCE_TOOL_ID;
                     const rule = ruleForCell(day, hour);
-                    const label = cellLabel(rule, isReserved, isMaintenance);
-                    const bg = isReserved ? RESERVED_COLOR : isMaintenance ? MAINTENANCE_COLOR : (rule?.color ?? CLOSED_COLOR);
+                    // Nothing painted here — the weekly default may still open it.
+                    const inheritedPrice = cellVal ? null : (inheritedCells[cellKey(day, hour)] ?? null);
+                    const isInherited = inheritedPrice != null;
+                    const label = cellLabel(rule, isReserved, isMaintenance, inheritedPrice);
+                    const bg = isReserved ? RESERVED_COLOR
+                      : isMaintenance ? MAINTENANCE_COLOR
+                      : rule?.color ?? (isInherited ? INHERITED_COLOR : CLOSED_COLOR);
                     return (
                       <button
                         key={`${day}-${hour}`}
@@ -761,7 +918,9 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                         onMouseLeave={() => setTooltip(null)}
                         className="relative touch-none select-none p-1 border-r border-[var(--field-border)] last:border-r-0"
                       >
-                        <span className="block h-4 rounded-[2px]" style={{ background: bg }} />
+                        {/* Inherited hours read faded — they're covered, but nothing
+                            was painted for this week, so there's nothing to save. */}
+                        <span className="block h-4 rounded-[2px]" style={{ background: bg, opacity: isInherited ? 0.45 : 1 }} />
                       </button>
                     );
                   })}
@@ -773,7 +932,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
             {rules.map((rule) => <Legend key={rule.id} color={rule.color} label={`${rule.shortName} - ₱${rule.price}/hr`} />)}
             <Legend color={MAINTENANCE_COLOR} label="Maintenance · Blocked" />
-            <Legend color={CLOSED_COLOR} label="Clear · Open (default)" />
+            {weeklyEnabled && <Legend color={INHERITED_COLOR} label="Weekly default · inherited" />}
+            <Legend color={CLOSED_COLOR} label="Closed · not bookable" />
           </div>
 
           <div className="rounded-[8px] border border-[var(--hairline)] bg-[var(--surface)] overflow-hidden">

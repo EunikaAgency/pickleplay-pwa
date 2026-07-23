@@ -435,6 +435,13 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
     setError(null);
     if (hours <= 0) { setError('End time must be after the start time.'); return; }
     if (!isBlock && !customerName.trim()) { setError('Add a customer name.'); return; }
+    // A manual reservation is a paying customer. Blank used to be sent as `amount: 0`,
+    // which filed the walk-in as free and quietly dragged down every revenue report;
+    // a genuinely unpaid hold is what "Block a slot" is for.
+    if (!isBlock && !(Number(amount) > 0)) {
+      setError('Enter the amount collected, or use “Block a slot” for a non-paying hold.');
+      return;
+    }
     if (!isBlock && customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen/PWD ID number.'); return; }
     const weekCount = Math.max(2, Math.min(52, Number(weeks) || 0));
     if (repeat && weekCount < 2) { setError('Repeat for at least 2 weeks.'); return; }
@@ -615,7 +622,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
               </div>
             </div>
             <div className="frontdesk-field">
-              <div className="lbl">Amount ({currency})</div>
+              <div className="lbl">Amount ({currency}) <span className="text-[var(--coral)]">*</span></div>
               <input
                 className="control"
                 inputMode="numeric"
@@ -625,6 +632,11 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
               />
               {!amountTouched && suggested > 0 && (
                 <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Suggested {money(suggested, currency)} ({money(rate, currency)}/hr × {hours} hr)</div>
+              )}
+              {suggested <= 0 && (
+                <div className="text-[11px] font-semibold text-[var(--coral)] mt-1">
+                  No rate is set for this slot — type what the customer paid.
+                </div>
               )}
               <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior/PWD discount.</div>
             </div>

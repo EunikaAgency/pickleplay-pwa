@@ -1657,9 +1657,20 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  /* Four controls don't fit one phone-width line — wrap rather than squeezing
+     each one below a tappable width. */
+  flex-wrap: wrap;
   gap: 8px;
   /* Generous top gap so the controls don't crowd the "pull down for map" grip. */
   padding: 14px 16px 16px;
+}
+.pb-v2.v2-nearby .nv-filter-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--success);
 }
 .pb-v2.v2-nearby .nv-date,
 .pb-v2.v2-nearby .nv-select-btn {
@@ -1674,10 +1685,12 @@
   font-weight: 600;
   cursor: pointer;
 }
-.pb-v2.v2-nearby .nv-date { flex-shrink: 0; min-width: 0; }
+/* Keep every control wide enough to read + tap; wrapping handles the overflow. */
+.pb-v2.v2-nearby .nv-date { flex: 0 0 auto; }
+.pb-v2.v2-nearby .nv-select { flex: 1 1 96px; }
 .pb-v2.v2-nearby .nv-date:focus,
 .pb-v2.v2-nearby .nv-select-btn:focus-visible { outline: none; border-color: var(--blue); }
-.pb-v2.v2-nearby .nv-select { position: relative; flex: 1; min-width: 0; }
+.pb-v2.v2-nearby .nv-select { position: relative; min-width: 0; }
 .pb-v2.v2-nearby .nv-select-btn {
   width: 100%;
   display: flex;
@@ -1722,6 +1735,129 @@
 }
 .pb-v2.v2-nearby .nv-select-item:hover { background: var(--bg-wash); }
 .pb-v2.v2-nearby .nv-select-item.active { color: var(--blue); }
+/* ── Free-between: a field that opens a two-thumb range slider ── */
+.pb-v2.v2-nearby .nv-time { flex: 1 1 132px; }
+.pb-v2.v2-nearby .nv-time-icon { width: 13px; height: 13px; flex-shrink: 0; opacity: .75; }
+.pb-v2.v2-nearby .nv-time-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 268px;
+  max-width: calc(100vw - 40px);
+  padding: 12px 14px 10px;
+  background: var(--bg-white);
+  border: 2px solid var(--nv-edge);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+}
+.pb-v2.v2-nearby .nv-time-pop-head {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+}
+.pb-v2.v2-nearby .nv-time-pop-foot {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 8px;
+}
+.pb-v2.v2-nearby .nv-time-done {
+  padding: 6px 14px;
+  border-radius: var(--r-pill);
+  background: var(--blue);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-time-done:hover { background: var(--blue-dark); }
+.pb-v2.v2-nearby .nv-timebar-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted);
+}
+.pb-v2.v2-nearby .nv-timebar-value { font-size: 12.5px; font-weight: 700; color: var(--slate); }
+.pb-v2.v2-nearby .nv-timebar-value.active { color: var(--blue); }
+.pb-v2.v2-nearby .nv-timebar-clear {
+  background: none;
+  color: var(--blue);
+  font-family: var(--font-body);
+  font-size: 11.5px; font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-timebar-clear:disabled {
+  color: var(--muted); text-decoration: none; cursor: default;
+}
+
+/* Two <input type="range"> stacked on one track. The inputs are transparent and
+   pointer-transparent; only their thumbs take pointer events, so the fill and
+   track below stay visible and neither input blocks the other's thumb. */
+.pb-v2.v2-nearby .nv-range { position: relative; height: 26px; }
+.pb-v2.v2-nearby .nv-range-track,
+.pb-v2.v2-nearby .nv-range-fill {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 5px; border-radius: 9999px;
+}
+.pb-v2.v2-nearby .nv-range-track { left: 0; right: 0; background: var(--bg-wash); border: 1px solid var(--nv-edge); }
+.pb-v2.v2-nearby .nv-range-fill { background: var(--border); }
+.pb-v2.v2-nearby .nv-range.active .nv-range-fill { background: var(--blue); }
+
+.pb-v2.v2-nearby .nv-range-input {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 26px;
+  margin: 0;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: none;
+}
+.pb-v2.v2-nearby .nv-range-input:focus { outline: none; }
+/* `start` sits above `end` so the two thumbs stay individually grabbable when
+   they end up adjacent (they can never coincide — kept ≥1h apart in JS). */
+.pb-v2.v2-nearby .nv-range-input.end { z-index: 3; }
+.pb-v2.v2-nearby .nv-range-input.start { z-index: 4; }
+
+.pb-v2.v2-nearby .nv-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--bg-white);
+  border: 3px solid var(--blue);
+  box-shadow: 0 2px 6px rgba(26,33,56,0.28);
+  cursor: grab;
+}
+.pb-v2.v2-nearby .nv-range-input::-webkit-slider-thumb:active { cursor: grabbing; }
+.pb-v2.v2-nearby .nv-range-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--bg-white);
+  border: 3px solid var(--blue);
+  box-shadow: 0 2px 6px rgba(26,33,56,0.28);
+  cursor: grab;
+}
+.pb-v2.v2-nearby .nv-range-input:focus-visible::-webkit-slider-thumb { border-color: var(--navy); }
+.pb-v2.v2-nearby .nv-range-input:focus-visible::-moz-range-thumb { border-color: var(--navy); }
+
+.pb-v2.v2-nearby .nv-range-ticks {
+  display: flex; justify-content: space-between; margin-top: 2px;
+  font-size: 10px; font-weight: 600; color: var(--muted);
+}
+
+/* Venues we couldn't verify against the chosen window — visually stepped back
+   from the confirmed ones so the distinction is obvious at a glance. */
+.pb-v2.v2-nearby .nv-unchecked-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-wash);
+  border: 1.5px dashed var(--nv-edge);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--navy);
+}
+.pb-v2.v2-nearby .nv-unchecked-note span { font-weight: 500; color: var(--slate); }
+.pb-v2.v2-nearby .nv-grid-muted .nv-card { opacity: .82; }
+
 .pb-v2.v2-nearby .nv-filter-spin {
   width: 14px; height: 14px; flex-shrink: 0;
   border: 2px solid var(--border-sub);

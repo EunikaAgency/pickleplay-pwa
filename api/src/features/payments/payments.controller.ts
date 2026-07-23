@@ -307,6 +307,159 @@ export async function verifyPayment(c: any) {
   return c.json({ data: { ...result, id: result!._id } });
 }
 
+/* ─── Refunds — finishing the money, not just promising it ──────── */
+
+const settleRefundSchema = z.object({
+  // 'refunded' = the money went back. 'failed' = the transfer bounced and the
+  // player has to be dealt with out-of-band; it must not silently read as paid.
+  outcome: z.enum(['refunded', 'failed']).optional().default('refunded'),
+  /** Bank/GCash reference the venue can quote back to the player. */
+  reference: z.string().max(120).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+/**
+ * Who may act on a refund for `payment`: platform admins on anything, a venue
+ * owner/staff only on a payment for a booking at a venue they manage. Mirrors the
+ * split `verifyPayment` already enforces — holding the permission is not enough,
+ * the venue has to be theirs.
+ */
+async function canSettleRefund(c: any, payment: any): Promise<boolean> {
+  const user = c.get('user');
+  if (hasPermission(user, 'admin.bookings.manage')) return true;
+  if (!hasPermission(user, 'owner.bookings.manage') || !payment?.bookingId) return false;
+  const booking = await Booking.findById(payment.bookingId).select('venueId').lean<any>();
+  if (!booking) return false;
+  return !!(await Venue.exists({ _id: booking.venueId, ownerUserId: effectiveOwnerId(user) }));
+}
+
+/**
+ * GET /payments/refunds/pending — the refund queue.
+ *
+ * Without this the `refund_pending` state would be just as invisible as the
+ * string it replaced: someone has to be able to see what is owed before they can
+ * pay it out. Admins see every outstanding refund; an owner sees only the ones
+ * against their own venues' bookings.
+ */
+export async function listPendingRefunds(c: any) {
+  const user = c.get('user');
+  const isAdmin = hasPermission(user, 'admin.bookings.manage');
+  if (!isAdmin && !hasPermission(user, 'owner.bookings.manage')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Refund management permission required' } }, 403);
+  }
+
+  const rows = await Payment.find({ status: 'refund_pending' })
+    .sort({ refundRequestedAt: 1 }).limit(200).lean<any[]>();
+  if (!rows.length) return c.json({ data: [] });
+
+  const bookings = await Booking.find({ _id: { $in: rows.map((r) => r.bookingId).filter(Boolean) } })
+    .select('venueId date startTime endTime amount serviceFeeAmount').lean<any[]>();
+  const byBooking = new Map(bookings.map((b) => [String(b._id), b]));
+
+  // Scope an owner to their own venues — the query above is deliberately global
+  // so admins get the whole queue in one read.
+  let visible = rows;
+  if (!isAdmin) {
+    const owned = await Venue.find({ ownerUserId: effectiveOwnerId(user) }).select('_id').lean<any[]>();
+    const ownedIds = new Set(owned.map((v) => String(v._id)));
+    visible = rows.filter((r) => {
+      const b = byBooking.get(String(r.bookingId));
+      return b && ownedIds.has(String(b.venueId));
+    });
+  }
+
+  const venues = await Venue.find({ _id: { $in: visible.map((r) => byBooking.get(String(r.bookingId))?.venueId).filter(Boolean) } })
+    .select('displayName').lean<any[]>();
+  const venueName = new Map(venues.map((v) => [String(v._id), v.displayName]));
+
+  return c.json({
+    data: visible.map((r) => {
+      const b = byBooking.get(String(r.bookingId));
+      return {
+        id: String(r._id),
+        bookingId: r.bookingId ? String(r.bookingId) : null,
+        userId: String(r.userId),
+        amount: r.amount,
+        refundAmount: r.refundAmount ?? null,
+        refundFeeAmount: r.refundFeeAmount ?? null,
+        refundRequestedAt: r.refundRequestedAt ?? null,
+        method: r.method ?? null,
+        notes: r.notes ?? null,
+        venueId: b ? String(b.venueId) : null,
+        venueName: b ? venueName.get(String(b.venueId)) ?? null : null,
+        date: b?.date ?? null,
+        startTime: b?.startTime ?? null,
+        endTime: b?.endTime ?? null,
+      };
+    }),
+  });
+}
+
+/**
+ * POST /payments/:id/refund — mark an outstanding refund as actually paid out
+ * (or failed), and tell the player.
+ *
+ * This is the move that was missing entirely: a cancelled booking's refund had
+ * no terminal state, so "processing" was where it stopped forever.
+ */
+export async function settleRefund(c: any) {
+  const id = c.req.param('id');
+  const body = settleRefundSchema.parse(await c.req.json().catch(() => ({})));
+  const payment = await Payment.findById(id).lean<any>();
+  if (!payment) return c.json({ error: { code: 'NOT_FOUND', message: 'Payment not found' } }, 404);
+  if (!(await canSettleRefund(c, payment))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'You can only settle refunds for your venues' } }, 403);
+  }
+  if (payment.status !== 'refund_pending') {
+    return c.json({
+      error: {
+        code: 'NO_REFUND_PENDING',
+        message: payment.status === 'refunded'
+          ? 'This refund has already been settled.'
+          : 'There is no refund outstanding on this payment.',
+      },
+    }, 409);
+  }
+
+  const now = new Date();
+  const refunded = body.outcome === 'refunded';
+  const amount = Number(payment.refundAmount || 0);
+  const result = await Payment.findByIdAndUpdate(
+    id,
+    {
+      // A failed payout goes back to 'completed': the charge still stands and the
+      // refund is still owed, so it can be retried rather than lost to a dead end.
+      status: refunded ? 'refunded' : 'completed',
+      ...(refunded ? { refundedAt: now } : {}),
+      ...(body.reference ? { refundReference: body.reference } : {}),
+      notes: body.notes
+        || `${refunded ? 'Refund paid out' : 'Refund payout FAILED — still owed'} ₱${amount.toFixed(2)} — ${now.toISOString()}`,
+    },
+    { new: true },
+  ).lean<any>();
+
+  if (refunded && amount > 0) {
+    const booking = payment.bookingId
+      ? await Booking.findById(payment.bookingId).select('venueId date').lean<any>()
+      : null;
+    const venue = booking ? await Venue.findById(booking.venueId).select('displayName').lean<{ displayName?: string }>() : null;
+    void notifyUser(payment.userId, {
+      type: 'booking_refunded',
+      title: 'Refund completed',
+      body: `₱${amount.toFixed(2)} has been refunded${venue?.displayName ? ` for your booking at ${venue.displayName}` : ''}`
+        + `${booking?.date ? ` on ${fmtDate(booking.date)}` : ''}.`
+        + (body.reference ? ` Reference: ${body.reference}.` : ''),
+      icon: 'payments',
+      linkUrl: '/my-bookings',
+      // Same tag as the "on the way" notice, so the completion REPLACES it rather
+      // than leaving two refund cards for one refund.
+      tag: `refund-${String(payment.bookingId ?? payment._id)}`,
+    });
+  }
+
+  return c.json({ data: { ...result, id: String(result._id) } });
+}
+
 /* ─── Official receipts ────────────────────────────────────────── */
 
 async function generateDraftReceipt(bookingId: string): Promise<void> {

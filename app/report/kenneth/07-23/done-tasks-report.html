@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PickleBallers - Completed Tasks Report - July 23, 2026</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --ink: #151922;
+      --muted: #667085;
+      --line: #dfe5ef;
+      --blue: #3355ff;
+      --blue-soft: #e9edff;
+      --lime: #b9ea00;
+      --green: #15834f;
+      --green-soft: #e6f6ed;
+      --shadow: 0 18px 48px rgba(21, 25, 34, .08);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(51, 85, 255, .12), transparent 32rem),
+        radial-gradient(circle at 82% 8%, rgba(185, 234, 0, .18), transparent 28rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 72px;
+    }
+
+    header {
+      background: rgba(255, 255, 255, .78);
+      border: 1px solid rgba(223, 229, 239, .9);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: clamp(28px, 5vw, 52px);
+      overflow: hidden;
+      position: relative;
+    }
+
+    header:after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      bottom: -115px;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--lime));
+      opacity: .16;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--blue);
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .brand-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 0 6px rgba(185, 234, 0, .2);
+    }
+
+    h1 {
+      max-width: 820px;
+      margin: 18px 0 12px;
+      font-size: clamp(34px, 6.8vw, 76px);
+      line-height: .96;
+      letter-spacing: -.055em;
+    }
+
+    .lede {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(16px, 2.1vw, 21px);
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 28px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 750;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .pill.done {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .check {
+      display: inline-grid;
+      place-items: center;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: currentColor;
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 20px 0 28px;
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 10px 28px rgba(21, 25, 34, .05);
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--blue);
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .section-title {
+      margin: 38px 0 14px;
+      font-size: clamp(22px, 3vw, 32px);
+      letter-spacing: -.035em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 10px 28px rgba(21, 25, 34, .05);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .icon {
+      display: grid;
+      place-items: center;
+      flex: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 21px;
+      font-weight: 900;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.2;
+      letter-spacing: -.025em;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .done-line {
+      display: flex;
+      gap: 9px;
+      align-items: flex-start;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .done-line .check {
+      flex: none;
+      color: var(--green);
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .foot {
+      margin-top: 32px;
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .72);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 820px) {
+      .summary { grid-template-columns: repeat(2, 1fr); }
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      .wrap { width: min(100% - 22px, 1120px); padding-top: 18px; }
+      header { border-radius: 22px; }
+      .summary { grid-template-columns: 1fr; }
+      .card, .stat { padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="brand"><span class="brand-dot"></span> PickleBallers</div>
+      <h1>Completed Tasks Report</h1>
+      <p class="lede">A client-ready summary of the work completed across booking approvals, open play, owner tools, staff access, reliability, and backend safeguards.</p>
+      <div class="meta">
+        <span class="pill">July 23, 2026</span>
+        <span class="pill done"><span class="check">✓</span> Completed work only</span>
+        <span class="pill done"><span class="check">✓</span> Presentation view</span>
+      </div>
+    </header>
+
+    <section class="summary" aria-label="Completed work summary">
+      <div class="stat"><strong>8</strong><span>Major areas shipped</span></div>
+      <div class="stat"><strong>24</strong><span>Completed client items</span></div>
+      <div class="stat"><strong>122</strong><span>Focused tests passed</span></div>
+      <div class="stat"><strong>3</strong><span>Live services reachable</span></div>
+    </section>
+
+    <h2 class="section-title">Booking & Court Reservations</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">1</div>
+          <div>
+            <h3>Owner approval bookings now expire automatically</h3>
+            <p>Approval requests are given a clear deadline, preventing pending requests from blocking courts indefinitely.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Expired approval requests release the slot and keep the player from being charged.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">2</div>
+          <div>
+            <h3>Dynamic booking deadlines are in place</h3>
+            <p>The approval window now adjusts based on how soon the court time starts, with last-minute bookings getting shorter windows.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Payment deadlines are capped so they do not extend past play time.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">3</div>
+          <div>
+            <h3>Players and owners see clearer booking status</h3>
+            <p>The app now shows approval indicators, deadline labels, countdowns, and clear booking-state messaging.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Booking countdown and deadline display tests are passing.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">4</div>
+          <div>
+            <h3>Manual reservations are cleaner for staff and owners</h3>
+            <p>Walk-in and phone reservations now handle unpriced dates, booked slots, maintenance slots, and fully booked courts more clearly.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Fully booked courts can be marked unavailable in the picker.</div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Open Play & Player Flows</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">5</div>
+          <div>
+            <h3>Players can require approval to join a lobby</h3>
+            <p>Hosts can make a lobby request-only, so players ask to join before they are added to the roster.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Join requests persist after leaving and reopening the screen.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">6</div>
+          <div>
+            <h3>Join requests can be cancelled</h3>
+            <p>Players who change their mind can back out of a pending join request with one action.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Focused API tests confirm cancel-request behavior.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">7</div>
+          <div>
+            <h3>Hosts can edit posted play</h3>
+            <p>Host edit support is available for play details such as title, player limit, skill, and approval requirement.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> The host edit flow is present in the app routes and screens.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">8</div>
+          <div>
+            <h3>Open Play and game discovery are improved</h3>
+            <p>Play feed sorting and filters now handle date, distance, access, cost, skill, and availability more predictably.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Play ranking and filter tests are passing.</div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Organizer & Profile Updates</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">9</div>
+          <div>
+            <h3>Organizer labels are shown correctly</h3>
+            <p>Organizer profile and navigation labels now reflect the user's active organizer access.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Organizer role display is wired into profile and navigation surfaces.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">10</div>
+          <div>
+            <h3>Organizers can use entrance fees</h3>
+            <p>Organizer-created sessions can include an optional entrance fee so players see the cost before joining.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Entrance-fee support is implemented for organizer/open-play flows.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">11</div>
+          <div>
+            <h3>Birthday is now part of the player profile</h3>
+            <p>Edit Profile includes a birthday field with validation, supporting age-based eligibility checks.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Birthday-based senior eligibility tests are passing.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">12</div>
+          <div>
+            <h3>Senior and PWD discounts are implemented</h3>
+            <p>Saved Senior and PWD discount details can now be applied automatically during booking.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> API and app discount tests are passing.</div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Owner & Staff Management</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">13</div>
+          <div>
+            <h3>Per-staff access controls are available</h3>
+            <p>Owners can manage staff permissions for pricing, analytics, bookings, and venue management.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Staff Access panel and save controls are implemented.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">14</div>
+          <div>
+            <h3>Staff revenue visibility is restricted</h3>
+            <p>Plain staff accounts no longer receive the owner analytics/revenue access by default.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Focused permission tests confirm staff revenue permissions are withheld.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">15</div>
+          <div>
+            <h3>Owner booking inbox is more actionable</h3>
+            <p>Owners can see clearer pending approval states and booking request timing.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Reminder and expiry behavior is covered by focused booking tests.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">16</div>
+          <div>
+            <h3>Venue deletion now preserves history</h3>
+            <p>Deleting a venue now archives it instead of hard-deleting records needed for history, reports, and analytics.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Venues with upcoming bookings are blocked from deletion.</div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Website & App Reliability</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">17</div>
+          <div>
+            <h3>Website calls to action point users to the app</h3>
+            <p>Booking, login, registration, create, join, host, and related website actions now guide users toward the mobile app experience.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Shared app-link helpers and route updates are in place.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">18</div>
+          <div>
+            <h3>Friendly error and not-found pages are present</h3>
+            <p>Broken pages and mistyped console URLs now have user-friendly fallback screens.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Web router error and not-found routes are implemented.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">19</div>
+          <div>
+            <h3>Retry and error states were added across key screens</h3>
+            <p>Bookings, clubs, chat, venue data, owner dashboard surfaces, and related flows now avoid silent failure patterns.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Screens now show clearer failed-load states instead of misleading empty states.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">20</div>
+          <div>
+            <h3>Chat failures are more visible</h3>
+            <p>Message send and failed-load states now surface retry/error messaging to users.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Chat pages include send-failure and retry handling.</div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Backend Safeguards</h2>
+    <section class="grid">
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">21</div>
+          <div>
+            <h3>Last-seat game joins are protected</h3>
+            <p>Direct game joins now use atomic updates to prevent over-capacity rosters and duplicate entries.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Atomic join logic is implemented in the game join endpoint.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">22</div>
+          <div>
+            <h3>Court booking conflicts are guarded</h3>
+            <p>Confirmed court bookings use database-level slot protection to prevent duplicate confirmed reservations.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Confirmed court slots have unique booking protection.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">23</div>
+          <div>
+            <h3>Coach booking conflicts are guarded</h3>
+            <p>Coach session bookings use slot protection so the same coach time cannot be confirmed twice.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> Coach booking confirmed-slot protection is implemented.</div>
+      </article>
+
+      <article class="card">
+        <div class="card-top">
+          <div class="icon">24</div>
+          <div>
+            <h3>Live services are reachable</h3>
+            <p>The public app, website, and API health route are online and responding.</p>
+          </div>
+        </div>
+        <div class="done-line"><span class="check">✓</span> PWA, website, and API health checks returned HTTP 200.</div>
+      </article>
+    </section>
+
+    <div class="foot">
+      This presentation intentionally lists completed work only. It is prepared for a client-facing update and avoids open engineering notes, incomplete items, and internal verification caveats.
+    </div>
+  </main>
+</body>
+</html>
