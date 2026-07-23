@@ -2415,6 +2415,116 @@ export async function updateBookingStatus(c: any) {
   return c.json({ data: { ...result, id: result!._id } });
 }
 
+/* ─── Attendance — the no-show ending ─────────────────────────────── */
+
+export const markAttendanceSchema = z.object({
+  attendance: z.enum(['attended', 'no_show']),
+});
+
+/**
+ * POST /venues/:id/bookings/:bookingId/attendance — the venue records how a live
+ * booking actually ended.
+ *
+ * This is the branch that had no closing move at all: a booking whose slot came
+ * and went stayed `confirmed` forever, indistinguishable from one the player
+ * turned up for, and the venue's configured `noShowFee` was dead configuration
+ * nothing ever read.
+ *
+ * Attendance is a marker, NOT a status transition. A no-show consumed the court
+ * and the venue keeps the payment, so the booking must stay in `REVENUE_STATUSES`
+ * — flipping it to something like `no_show` would quietly delete real revenue
+ * from every owner report and free a slot that was never actually given back.
+ *
+ * Re-markable on purpose: a front desk that tags the wrong row has to be able to
+ * fix it, and correcting a no-show → attended drops the fee and tells the player.
+ */
+export async function markBookingAttendance(c: any) {
+  const rawId = c.req.param('id');
+  const bookingId = c.req.param('bookingId');
+  const venueId = await resolveVenueId(rawId);
+  if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
+  if (!(await requireVenueManager(c, venueId))) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Only the venue owner or staff can mark attendance' } }, 403);
+  }
+  const user = c.get('user');
+  const booking = await Booking.findOne({ _id: bookingId, venueId }).lean<any>();
+  if (!booking) return c.json({ error: { code: 'NOT_FOUND', message: 'Booking not found for this venue' } }, 404);
+
+  const { attendance } = markAttendanceSchema.parse(await c.req.json());
+
+  // A blocked slot has no customer to turn up, and a cancelled booking already
+  // ended — neither can be a no-show.
+  if (booking.bookingType === 'blocked') {
+    return c.json({ error: { code: 'BAD_REQUEST', message: 'A blocked slot has no attendance to record.' } }, 400);
+  }
+  if (booking.status === 'cancelled') {
+    return c.json({ error: { code: 'CONFLICT', message: 'This booking was cancelled — there is no attendance to record.' } }, 409);
+  }
+  // A request nobody approved (or paid for) never became a court reservation.
+  if (booking.status === 'pending_approval' || booking.status === 'awaiting_payment') {
+    return c.json({ error: { code: 'CONFLICT', message: 'This booking was never confirmed, so attendance does not apply.' } }, 409);
+  }
+  // Can't call a no-show before the player has had their slot.
+  const start = playStartOf(booking.date, booking.startTime);
+  if (start && start.getTime() > Date.now()) {
+    return c.json({ error: { code: 'TOO_EARLY', message: "That booking hasn't started yet — you can mark attendance once the slot begins." } }, 409);
+  }
+
+  const venue = await Venue.findById(venueId).select('displayName noShowFee').lean<{ displayName?: string; noShowFee?: number }>();
+  const wasNoShow = booking.attendance === 'no_show';
+  const isNoShow = attendance === 'no_show';
+  // Snapshot the policy fee now, so a later change to the venue's `noShowFee`
+  // never rewrites what this player was told they owed.
+  const feeAmount = isNoShow ? Math.max(0, Number(venue?.noShowFee) || 0) : 0;
+
+  const result = await Booking.findByIdAndUpdate(
+    bookingId,
+    {
+      attendance,
+      attendanceMarkedAt: new Date(),
+      attendanceMarkedByUserId: user.sub,
+      noShowFeeAmount: isNoShow ? feeAmount : null,
+    },
+    { new: true },
+  ).lean<any>();
+
+  // Only tell the player when the verdict actually changed — re-confirming the
+  // same mark (a double-tap on the front desk) must not fire a second push.
+  if (isNoShow && !wasNoShow) {
+    const venueName = venue?.displayName || 'The venue';
+    const when = `${fmtDate(booking.date)}${booking.startTime ? ` at ${fmtTime(booking.startTime)}` : ''}`;
+    void notifyUser(booking.userId, {
+      type: 'booking_no_show',
+      title: 'Marked as a no-show',
+      body: `${venueName} recorded your ${when} booking as a no-show, so it wasn't refunded.`
+        + (feeAmount > 0 ? ` A ₱${feeAmount.toFixed(2)} no-show fee applies.` : '')
+        + ' Contact the venue if this looks wrong.',
+      icon: 'event_busy',
+      linkUrl: '/my-bookings',
+      tag: String(booking._id),
+    });
+  } else if (!isNoShow && wasNoShow) {
+    void notifyUser(booking.userId, {
+      type: 'booking_no_show_cleared',
+      title: 'No-show removed',
+      body: `${venue?.displayName || 'The venue'} corrected your ${fmtDate(booking.date)} booking to attended`
+        + (Number(booking.noShowFeeAmount) > 0 ? ' and dropped the no-show fee.' : '.'),
+      icon: 'event_available',
+      linkUrl: '/my-bookings',
+      tag: String(booking._id),
+    });
+  }
+
+  return c.json({
+    data: {
+      ...result,
+      id: result._id,
+      attendance: result.attendance,
+      noShowFeeAmount: result.noShowFeeAmount ?? null,
+    },
+  });
+}
+
 /* ─── Analytics ───────────────────────────────────────────────────── */
 
 const REVENUE_STATUSES = ['confirmed', 'paid'];
@@ -2495,6 +2605,9 @@ export async function getVenueAnalytics(c: any) {
     // by them) apart from player cancellations. Both are status:'cancelled'.
     declined: countIf((b) => b.status === 'cancelled' && b.cancellationType === 'owner_rejected'),
     cancelled: countIf((b) => b.status === 'cancelled' && b.cancellationType !== 'owner_rejected'),
+    // Booked, paid for, never turned up. Counted separately from cancellations
+    // because the money stayed with the venue — it is still in `revenue` above.
+    noShows: countIf((b) => b.attendance === 'no_show'),
   };
 
   // Occupancy = booked court-hours ÷ available court-hours over the period.

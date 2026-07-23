@@ -54,6 +54,20 @@ const bookingSchema = new Schema({
   //   player_cancelled — the booker cancelled their own booking
   //   system_expired   — auto-cancelled (approval/pay deadline lapsed, game released)
   cancellationType:   { type: String, enum: ['owner_rejected', 'player_cancelled', 'system_expired', 'owner_removed'], default: undefined },
+  // ── Attendance — how a LIVE booking ended: did the player actually turn up? ──
+  // Marked by the venue once the slot has started. Deliberately NOT a `status`:
+  // a no-show still consumed the court and the venue keeps the payment, so the
+  // booking stays 'confirmed'/'paid' and every `$ne:'cancelled'` occupancy filter
+  // and `REVENUE_STATUSES` sum keeps counting it — which is the correct outcome.
+  // Absent = not marked yet (every booking predating this feature).
+  attendance:         { type: String, enum: ['attended', 'no_show'], default: undefined },
+  attendanceMarkedAt: Date,
+  attendanceMarkedByUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+  // Flat no-show charge, snapshotted from the venue's `noShowFee` at mark time so
+  // a later policy change can't rewrite what this player was told they owed. Sits
+  // beside `amount` rather than inside it: `amount` is what the court cost, this
+  // is a penalty, and analytics/receipts must be able to tell them apart.
+  noShowFeeAmount:    Number,
   // Equipment rental add-on (V2): when true, equipmentRentalAmount was added to
   // the booking total at checkout.
   hasEquipmentRental:  Boolean,

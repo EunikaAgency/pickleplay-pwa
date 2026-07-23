@@ -8,7 +8,7 @@ import {
   getVenueMembers, addVenueMember, removeVenueMember, joinVenueMembership, leaveVenueMembership, respondMembershipInvite,
   getSlotOverrides, createSlotOverride, deleteSlotOverride,
   getVenueFaqs, createFaq, updateFaq, deleteFaq,
-  getVenueBookings, createVenueBooking, updateBookingStatus, getVenueAnalytics, getVenueAvailability, getVenueAvailabilityRange, batchVenueAvailability,
+  getVenueBookings, createVenueBooking, updateBookingStatus, markBookingAttendance, getVenueAnalytics, getVenueAvailability, getVenueAvailabilityRange, batchVenueAvailability,
   createRecurringBooking, getRecurringBookings, cancelRecurringBooking,
   listSubscriptionPlans, createSubscriptionPlan, getSubscriptionPlan, updateSubscriptionPlan,
   deleteSubscriptionPlan, duplicateSubscriptionPlan, toggleSubscriptionPlan,
@@ -118,6 +118,8 @@ venuesRoutes.get('/:id/bookings', requireAuth, getVenueBookings);
 // Owner/staff create a manual (off-platform) booking or block a slot.
 venuesRoutes.post('/:id/bookings', requireAuth, createVenueBooking);
 venuesRoutes.patch('/:id/bookings/:bookingId', requireAuth, updateBookingStatus);
+// The no-show ending: the venue records whether the player actually turned up.
+venuesRoutes.post('/:id/bookings/:bookingId/attendance', requireAuth, markBookingAttendance);
 // Recurring bookings (weekly regulars / leagues) — owner/staff.
 venuesRoutes.get('/:id/recurring-bookings', requireAuth, getRecurringBookings);
 venuesRoutes.post('/:id/recurring-bookings', requireAuth, createRecurringBooking);

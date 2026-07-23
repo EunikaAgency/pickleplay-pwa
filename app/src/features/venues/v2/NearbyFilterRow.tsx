@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { hourLabel } from './nearbyDisplay';
+
+// Selectable start hours. Courts don't open at 3am, so the list starts at 5 —
+// a shorter menu is easier to hit than a complete-but-useless 0–23.
+const HOURS = Array.from({ length: 19 }, (_, i) => i + 5); // 5 AM … 11 PM
 
 // The Nearby filter row: date · area · court type.
 //
@@ -74,19 +79,27 @@ function FilterSelect({ value, options, onChange, ariaLabel }: {
 
 export function NearbyFilterRow({
   date, onDateChange, minDate,
+  startHour, endHour, onTimeChange,
   area, areas, onAreaChange,
   type, onTypeChange,
-  loading,
+  loading, matchCount,
 }: {
   date: string;
   onDateChange: (date: string) => void;
   minDate: string;
+  /** Start of the required free window, or null for "any time". */
+  startHour: number | null;
+  /** Exclusive end of that window. Ignored when `startHour` is null. */
+  endHour: number | null;
+  onTimeChange: (startHour: number | null, endHour: number | null) => void;
   area: string;
   areas: string[];
   onAreaChange: (area: string) => void;
   type: string;
   onTypeChange: (type: string) => void;
   loading?: boolean;
+  /** Venues free across the window — shown only while a time filter is on. */
+  matchCount?: number | null;
 }) {
   const areaOptions: FilterOption[] = [
     { value: '', label: 'All areas' },
@@ -97,6 +110,23 @@ export function NearbyFilterRow({
     { value: 'indoor', label: 'Indoor' },
     { value: 'outdoor', label: 'Outdoor' },
   ];
+  const startOptions: FilterOption[] = [
+    { value: '', label: 'Any time' },
+    ...HOURS.map((h) => ({ value: String(h), label: hourLabel(h) })),
+  ];
+  // The window must be at least an hour long, so "to" starts after "from".
+  const endOptions: FilterOption[] = startHour == null ? [] : HOURS
+    .filter((h) => h > startHour)
+    .concat(24)
+    .map((h) => ({ value: String(h), label: h === 24 ? '12 MN' : hourLabel(h) }));
+
+  const setStart = (v: string) => {
+    if (!v) { onTimeChange(null, null); return; }
+    const s = Number(v);
+    // Keep the end after the new start; default to a one-hour window.
+    const e = endHour != null && endHour > s ? endHour : Math.min(s + 1, 24);
+    onTimeChange(s, e);
+  };
 
   return (
     <div className="nv-filter-row">
@@ -108,9 +138,29 @@ export function NearbyFilterRow({
         onChange={(e) => onDateChange(e.target.value || minDate)}
         aria-label="Show availability for this date"
       />
+      <FilterSelect
+        value={startHour == null ? '' : String(startHour)}
+        options={startOptions}
+        onChange={setStart}
+        ariaLabel="Free from"
+      />
+      {startHour != null && (
+        <FilterSelect
+          value={endHour == null ? '' : String(endHour)}
+          options={endOptions}
+          onChange={(v) => onTimeChange(startHour, Number(v))}
+          ariaLabel="Free until"
+        />
+      )}
       <FilterSelect value={area} options={areaOptions} onChange={onAreaChange} ariaLabel="Filter by area" />
       <FilterSelect value={type} options={typeOptions} onChange={onTypeChange} ariaLabel="Filter by court type" />
       {loading && <span className="nv-filter-spin" aria-label="Checking availability" role="status" />}
+      {!loading && startHour != null && matchCount != null && (
+        <span className="nv-filter-count">
+          {matchCount} free
+          <button type="button" className="nv-filter-clear" onClick={() => onTimeChange(null, null)}>Clear</button>
+        </span>
+      )}
     </div>
   );
 }

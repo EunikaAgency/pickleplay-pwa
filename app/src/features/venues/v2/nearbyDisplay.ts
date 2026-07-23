@@ -60,6 +60,31 @@ export function openSlotCount(freeByHour: number[] | undefined): number | null {
   return freeByHour.reduce((n, free) => n + (free > 0 ? 1 : 0), 0);
 }
 
+/** "6 PM" / "12 NN" / "12 MN" — compact hour label for the time-range pickers. */
+export function hourLabel(h: number): string {
+  if (h === 0) return '12 MN';
+  if (h === 12) return '12 NN';
+  return h < 12 ? `${h} AM` : `${h - 12} PM`;
+}
+
+/**
+ * Whether a venue has a court free for EVERY hour of [startHour, endHour) —
+ * the question a player booking a 6–8 PM slot is actually asking. A venue we
+ * have no availability row for fails: we can't promise a court we never checked.
+ */
+export function freeAcrossWindow(
+  freeByHour: number[] | undefined,
+  startHour: number,
+  endHour: number | null,
+): boolean {
+  if (!freeByHour) return false;
+  const end = Math.min(endHour ?? startHour + 1, 24);
+  for (let h = startHour; h < end; h++) {
+    if ((freeByHour[h] ?? 0) <= 0) return false;
+  }
+  return true;
+}
+
 /** Up to `max` amenity chips for the card footer. */
 export function cardAmenities(v: ApiVenue, max = 3): string[] {
   return venueAmenities(v).slice(0, max);

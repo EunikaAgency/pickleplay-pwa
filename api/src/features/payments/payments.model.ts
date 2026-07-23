@@ -14,9 +14,25 @@ const paymentSchema = new Schema({
   provider:   { type: String, maxlength: 50 },
   providerRef:{ type: String, maxlength: 255 },
   proofUrl:   String,
+  // 'pending' → 'completed' | 'failed', then optionally 'refund_pending' → 'refunded'.
+  // 'refund_pending' is the state a live-mode refund sits in between the player
+  // cancelling and the money actually leaving the account: before it existed a
+  // cancelled booking's payment stayed 'completed' forever, so the app said
+  // "processing" with nothing behind it and no way to ever settle it.
   status:     { type: String, default: 'pending' },
+  // ── Refund settlement ── set when a cancellation (or a downward reschedule)
+  // owes the player money back. `refundAmount` is what they get, `refundFeeAmount`
+  // the transaction fee kept under the 3-day-window policy.
+  refundAmount:     Number,
+  refundFeeAmount:  Number,
+  refundRequestedAt: Date,
+  refundedAt:        Date,
+  refundReference:  { type: String, maxlength: 120 },
   notes:      String,
 }, { timestamps: true });
+
+// The refund queue: every payment still owing money back, oldest first.
+paymentSchema.index({ status: 1, refundRequestedAt: 1 });
 
 export const Payment = model('Payment', paymentSchema);
 

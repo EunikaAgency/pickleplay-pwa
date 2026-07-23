@@ -255,6 +255,9 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   // Filters: which date's availability the cards report, plus area / court type.
   const today = localToday();
   const [filterDate, setFilterDate] = useState<string>(today);
+  // Optional "free from … until …" window. Null start = any time.
+  const [filterStartHour, setFilterStartHour] = useState<number | null>(null);
+  const [filterEndHour, setFilterEndHour] = useState<number | null>(null);
   const [areaFilter, setAreaFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   // Per-venue free-court counts, powering each card's "N slots open" badge, kept
