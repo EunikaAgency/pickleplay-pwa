@@ -646,6 +646,9 @@ const RECEIPT_CATEGORY: Record<string, string> = {
   manual: 'Walk-in',
 };
 
+/** What an owner can file a manually issued receipt under. */
+export const MANUAL_RECEIPT_CATEGORIES = ['Court', 'Rental', 'Coaching', 'Membership', 'Event', 'Shop'] as const;
+
 /** A receipt's money status, as the owner thinks of it — the receipt's own
  *  lifecycle (draft/issued/voided) crossed with whether the money actually
  *  arrived. `voided` wins over everything; a refund beats a completed payment. */
@@ -717,6 +720,12 @@ export async function listOwnerFinance(c: any) {
     const payment = paymentByBooking.get(String(r.bookingId));
     const type = booking?.bookingType || 'court';
     return {
+      // A manually issued receipt carries its own category/method and has no
+      // booking or payment to read them off, so its stored values win.
+      category: r.category || RECEIPT_CATEGORY[type] || 'Court',
+      method: r.method || payment?.method || null,
+      birInvoiceNumber: r.birInvoiceNumber ?? null,
+      isManual: !!r.isManual,
       id: String(r._id),
       receiptNumber: r.receiptNumber,
       bookingId: r.bookingId ? String(r.bookingId) : null,
@@ -724,7 +733,6 @@ export async function listOwnerFinance(c: any) {
       venueName: venueNameById.get(String(r.venueId)) ?? null,
       payorName: r.payorName || r.userId?.displayName || 'Player',
       payorTIN: r.payorTIN ?? null,
-      category: RECEIPT_CATEGORY[type] ?? 'Court',
       description: r.description ?? null,
       amount: r.amount,
       vatAmount: r.vatAmount ?? 0,
@@ -736,8 +744,9 @@ export async function listOwnerFinance(c: any) {
       // The receipt's own lifecycle is kept alongside the money status so the
       // client can still tell a draft OR from an issued one.
       receiptStatus: r.status,
-      status: financeStatus(r.status, payment?.status),
-      method: payment?.method ?? null,
+      // A manual receipt has no Payment; the owner issuing it IS the record
+      // that the money was taken, so treat `issued` as collected.
+      status: r.isManual ? financeStatus(r.status, r.status === 'issued' ? 'completed' : null) : financeStatus(r.status, payment?.status),
       bookingDate: booking?.date ?? null,
       issuedAt: r.issuedAt ?? null,
       createdAt: r.createdAt ?? null,
@@ -789,6 +798,78 @@ export async function listOwnerFinance(c: any) {
 
 function emptyFinanceSummary() {
   return { gross: 0, vat: 0, net: 0, transactions: 0, byCategory: [] as unknown[] };
+}
+
+const issueReceiptSchema = z.object({
+  venueId: z.string().min(1),
+  payorName: z.string().min(1).max(200),
+  payorTIN: z.string().max(20).optional(),
+  payorAddress: z.string().max(300).optional(),
+  category: z.enum(MANUAL_RECEIPT_CATEGORIES),
+  description: z.string().min(1).max(500),
+  amount: z.number().positive(),                 // gross, VAT-inclusive
+  method: z.enum(['cash', 'gcash', 'maya', 'card', 'bank_transfer', 'other']),
+  vatExempt: z.boolean().optional(),
+  discountCategory: z.enum(['senior']).optional(),
+  discountIdNumber: z.string().max(80).optional(),
+  birInvoiceNumber: z.string().max(60).optional(),
+});
+
+// POST /receipts — issue an official receipt by hand, for money taken outside a
+// booking (a paddle sold at the counter, a coaching block paid in cash). Same
+// OR series and the same VAT extraction as an auto-generated one, so it lands
+// in the ledger indistinguishable from the rest — which is the point: BIR wants
+// one unbroken sequence per venue, not a separate manual pile.
+export async function issueReceipt(c: any) {
+  const user = c.get('user');
+  if (!hasPermission(user, 'owner.reports.view')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Owner reports permission required' } }, 403);
+  }
+  const body = issueReceiptSchema.parse(await c.req.json());
+
+  const ownerId = effectiveOwnerId(user);
+  const venue = await Venue.findById(body.venueId).select('displayName ownerUserId').lean<{ displayName?: string; ownerUserId?: any }>();
+  if (!venue || String(venue.ownerUserId) !== String(ownerId)) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Not your venue' } }, 403);
+  }
+
+  const counter = await ReceiptCounter.findOneAndUpdate(
+    { venueId: body.venueId },
+    { $inc: { seq: 1 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+  const year = new Date().getFullYear().toString().slice(2);
+  const receiptNumber = `OR-${venueReceiptCode(body.venueId, venue.displayName)}-${year}-${String(counter!.seq).padStart(5, '0')}`;
+
+  // A senior sale is VAT-exempt whether or not the caller ticked the box.
+  const vatExempt = !!body.vatExempt || !!body.discountCategory;
+  const vatRate = vatExempt ? 0 : 12;
+  const vatAmount = vatExempt ? 0 : round2(body.amount * vatRate / (100 + vatRate));
+
+  const doc = await OfficialReceipt.create({
+    receiptNumber,
+    venueId: body.venueId,
+    payorName: body.payorName,
+    payorTIN: body.payorTIN,
+    payorAddress: body.payorAddress,
+    amount: body.amount,
+    vatAmount,
+    vatRate,
+    netAmount: round2(body.amount - vatAmount),
+    vatExempt,
+    discountCategory: body.discountCategory,
+    discountIdNumber: body.discountIdNumber,
+    category: body.category,
+    method: body.method,
+    description: body.description,
+    birInvoiceNumber: body.birInvoiceNumber,
+    isManual: true,
+    // Issued on the spot — the owner is recording a receipt they just handed over.
+    status: 'issued',
+    issuedAt: new Date(),
+  });
+
+  return c.json({ data: { id: String(doc._id), receiptNumber, amount: body.amount, vatAmount, netAmount: round2(body.amount - vatAmount) } }, 201);
 }
 
 /* ─── Settlement / payout ledger ────────────────────────────────── */

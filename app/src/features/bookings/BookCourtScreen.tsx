@@ -283,8 +283,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const selected = detail ?? venues.find((v) => v.id === selectedId) ?? null;
   const currency = selected?.pricingCurrency ?? 'PHP';
   // Statutory discounts are profile-driven: booking never asks for a category or
-  // ID. PWD discounts are paused for launch, so only a saved age-eligible Senior
-  // card can trigger the automatic discount.
+  // ID. Only a saved age-eligible Senior card can trigger the automatic discount.
   const customerCategory = automaticStatutoryDiscountCategory({
     birthday: currentUser?.birthday,
     onDate: date,

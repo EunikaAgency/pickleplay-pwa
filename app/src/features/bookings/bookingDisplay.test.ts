@@ -34,31 +34,6 @@ describe('automaticStatutoryDiscountCategory', () => {
     expect(automaticStatutoryDiscountCategory({ ...seniorProfile, birthday: '1990-11-20' })).toBe('none');
   });
 
-  it('does not auto-apply a saved PWD card while PWD discounts are paused', () => {
-    expect(automaticStatutoryDiscountCategory({
-      birthday: '1990-11-20',
-      onDate: '2026-07-23',
-      pwdIdNumber: 'PWD-456',
-    })).toBe('none');
-  });
-
-  it('keeps Senior when both cards qualify while PWD discounts are paused', () => {
-    expect(automaticStatutoryDiscountCategory({
-      ...seniorProfile,
-      pwdIdNumber: 'PWD-456',
-      statutoryDiscounts: [
-        { category: 'senior', percent: 20 },
-        { category: 'pwd', percent: 25 },
-      ],
-    })).toBe('senior');
-  });
-
-  it('prefers Senior when both saved cards have the same discount', () => {
-    expect(automaticStatutoryDiscountCategory({
-      ...seniorProfile,
-      pwdIdNumber: 'PWD-456',
-    })).toBe('senior');
-  });
 });
 
 /** Build a `date` + `startTime` pair that lands `leadMs` from NOW, in local time

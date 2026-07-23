@@ -66,9 +66,14 @@ export const VenuePricing = model('VenuePricing', venuePricingSchema);
 // Structured data for print/PDF export — amounts include the 12% VAT breakdown.
 const officialReceiptSchema = new Schema({
   receiptNumber: { type: String, required: true, unique: true },  // OR-{venueCode}-{seq}
-  bookingId:     { type: Schema.Types.ObjectId, ref: 'Booking', required: true, unique: true },
+  // Optional + sparse-unique: a booking still gets at most one receipt, but an
+  // owner-issued manual receipt (a walk-in paddle sale, a coaching block paid
+  // at the counter) has no booking at all, and several of those must be able
+  // to coexist — a plain unique index would collide on the second null.
+  bookingId:     { type: Schema.Types.ObjectId, ref: 'Booking', unique: true, sparse: true },
   paymentId:     { type: Schema.Types.ObjectId, ref: 'Payment' },
-  userId:        { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  // Absent when the payor isn't a platform user (a walk-in customer).
+  userId:        { type: Schema.Types.ObjectId, ref: 'User' },
   venueId:       { type: Schema.Types.ObjectId, ref: 'Venue', required: true },
   payorName:     { type: String, maxlength: 200 },
   payorTIN:      { type: String, maxlength: 20 },
@@ -78,10 +83,22 @@ const officialReceiptSchema = new Schema({
   vatRate:       { type: Number, default: 12 },
   netAmount:     { type: Number, default: 0 },           // amount - vatAmount
   discountAmount: { type: Number, default: 0 },
-  discountCategory: { type: String, enum: ['senior', 'pwd'] },
+  discountCategory: { type: String, enum: ['senior'] },
   discountIdNumber: { type: String, maxlength: 80 },
   vatExempt:     { type: Boolean, default: false },
   description:   { type: String, maxlength: 500 },
+  // The serial from the venue's BIR-authorised invoice booklet (Authority to
+  // Print). Separate from `receiptNumber`, which we generate: BIR issues the
+  // venue a serial range on paper, and the owner records which one they handed
+  // over. Free-text because the format is whatever the ATP granted.
+  birInvoiceNumber: { type: String, maxlength: 60 },
+  // What this receipt is for. Court hire is the only thing bookings produce
+  // today; a manually issued receipt can be any of the others.
+  category:      { type: String, maxlength: 40 },
+  // How the money arrived, for a receipt with no Payment behind it (manual).
+  method:        { type: String, maxlength: 40 },
+  /** True when an owner issued this by hand rather than a booking generating it. */
+  isManual:      { type: Boolean, default: false },
   status:        { type: String, default: 'draft' },     // draft | issued | voided
   issuedAt:      Date,
   voidedAt:      Date,

@@ -57,7 +57,6 @@ const updateProfileSchema = z.object({
   // does let a user blank out an optional birthday.
   birthday: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal('')]).optional(),
   seniorCitizenIdNumber: z.string().trim().max(80).optional(),
-  pwdIdNumber: z.string().trim().max(80).optional(),
   skillLevel: z.string().optional(),
   skillLevelLabel: z.string().max(20).optional(),
   modePreference: z.enum(['player', 'owner', 'coach', 'organizer']).optional(),
@@ -197,7 +196,6 @@ async function authUserPayload(user: any) {
     gender: user.gender ?? null,
     birthday: user.birthday ?? null,
     seniorCitizenIdNumber: user.seniorCitizenIdNumber ?? null,
-    pwdIdNumber: user.pwdIdNumber ?? null,
     skillLevel: user.skillLevel,
     skillLevelLabel: user.skillLevelLabel,
     homeCityId: user.homeCityId,
@@ -294,7 +292,7 @@ export async function register(c: any) {
 export async function login(c: any) {
   const body = loginSchema.parse(await c.req.json());
   const user = await User.findOne({ email: body.email })
-    .select('+seniorCitizenIdNumber +pwdIdNumber');
+    .select('+seniorCitizenIdNumber');
   if (!user || !user.passwordHash) {
     return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid email or password' } }, 401);
   }
@@ -342,7 +340,7 @@ export async function logout(c: any) {
 export async function getMe(c: any) {
   const tokenUser = c.get('user');
   const user = await User.findById(tokenUser.sub)
-    .select('+seniorCitizenIdNumber +pwdIdNumber');
+    .select('+seniorCitizenIdNumber');
   if (!user) return c.json({ error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
   return c.json({ data: await authUserPayload(user) });
 }
@@ -366,10 +364,6 @@ export async function updateMe(c: any) {
     delete update.seniorCitizenIdNumber;
     unset.seniorCitizenIdNumber = '';
   }
-  if (rest.pwdIdNumber === '') {
-    delete update.pwdIdNumber;
-    unset.pwdIdNumber = '';
-  }
   if (preferences) {
     if (preferences.notifications) {
       for (const [key, value] of Object.entries(preferences.notifications)) {
@@ -383,7 +377,7 @@ export async function updateMe(c: any) {
     tokenUser.sub,
     Object.keys(unset).length ? { $set: update, $unset: unset } : update,
     { new: true },
-  ).select('+seniorCitizenIdNumber +pwdIdNumber');
+  ).select('+seniorCitizenIdNumber');
   if (!user) return c.json({ error: { code: 'NOT_FOUND', message: 'User not found' } }, 404);
   return c.json({ data: await authUserPayload(user) });
 }

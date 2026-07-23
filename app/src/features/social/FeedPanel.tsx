@@ -6,6 +6,7 @@ import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { V2Skeleton } from '../../shared/components/ui/V2Skeleton';
 import { Toast } from '../../shared/components/ui/Toast';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { REPORT_REASONS } from '../../shared/lib/reportReasons';
 import {
   listFeed, reactFeedPost, unreactFeedPost, deleteFeedPost,
   setFeedSignal, hideFeedPost, reportFeedPost, subscribeFeedPost, unsubscribeFeedPost,
@@ -18,19 +19,6 @@ import { FeedComposerSheet } from './FeedComposerSheet';
 interface FeedPanelProps {
   chrome: V2ScreenChrome;
 }
-
-// Report reasons shown when the viewer taps "Report post" — the chosen label is
-// stored on the report and shown to admins in the moderation dashboard.
-const REPORT_REASONS = [
-  'Spam or misleading',
-  'Nudity or sexual content',
-  'Hate speech or symbols',
-  'Violence or dangerous acts',
-  'Harassment or bullying',
-  'False information',
-  'Scam or fraud',
-  'Something else',
-];
 
 /** Build the repost snapshot the composer quotes from a post being reposted. */
 function toShared(p: ApiFeedPost): FeedSharedPost {

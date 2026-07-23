@@ -50,8 +50,8 @@ export type StatutoryDiscountCategory = 'none' | 'senior';
 
 /** Pick the statutory discount represented by cards already saved in the
  * player's profile. The booking flow must never ask the player to choose a
- * category or re-enter an ID. PWD discounts are paused for launch, so only
- * Senior Citizen cards can trigger the automatic discount. */
+ * category or re-enter an ID. Only Senior Citizen cards can trigger the
+ * automatic discount. */
 export function automaticStatutoryDiscountCategory({
   birthday,
   onDate,
@@ -60,8 +60,7 @@ export function automaticStatutoryDiscountCategory({
   birthday?: string | null;
   onDate: string;
   seniorCitizenIdNumber?: string | null;
-  pwdIdNumber?: string | null;
-  statutoryDiscounts?: Array<{ category: 'senior' | 'pwd'; percent: number }> | null;
+  statutoryDiscounts?: Array<{ category: 'senior'; percent: number }> | null;
 }): StatutoryDiscountCategory {
   const hasSeniorCard = !!seniorCitizenIdNumber?.trim() && isSeniorOnDate(birthday, onDate);
   return hasSeniorCard ? 'senior' : 'none';

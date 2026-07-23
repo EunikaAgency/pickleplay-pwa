@@ -61,3 +61,21 @@ const notificationSchema = new Schema({
 notificationSchema.index({ userId: 1, createdAt: -1 });
 
 export const Notification = model('Notification', notificationSchema);
+
+// A user's report of something that isn't a review or a feed post — so far a
+// message thread or a notification they received. One row per (userId,
+// targetType, targetId): a repeat report just refreshes the reason. Lifecycle
+// mirrors FeedReport/ReviewReport: pending → resolved | dismissed.
+const contentReportSchema = new Schema({
+  userId:     { type: Schema.Types.ObjectId, ref: 'User', required: true },   // the reporter
+  targetType: { type: String, required: true, enum: ['conversation', 'notification'] },
+  targetId:   { type: Schema.Types.ObjectId, required: true },
+  reason:     { type: String, maxlength: 500 },
+  status:     { type: String, enum: ['pending', 'resolved', 'dismissed'], default: 'pending' },
+  resolvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+}, { timestamps: true });
+
+contentReportSchema.index({ userId: 1, targetType: 1, targetId: 1 }, { unique: true });
+contentReportSchema.index({ status: 1, createdAt: -1 });
+
+export const ContentReport = model('ContentReport', contentReportSchema);

@@ -11,6 +11,7 @@ import {
   deleteNotification,
   markAllNotificationsRead,
   markNotificationRead,
+  reportNotification,
   unreadNotificationCount,
   removeFavorite,
   reportReview,
@@ -38,6 +39,7 @@ interactionsRoutes.get('/notifications/unread-count', requireAuth, unreadNotific
 interactionsRoutes.patch('/notifications/mark-all-read', requireAuth, markAllNotificationsRead);
 interactionsRoutes.patch('/notifications/:id', requireAuth, markNotificationRead);
 interactionsRoutes.delete('/notifications/:id', requireAuth, deleteNotification);
+interactionsRoutes.post('/notifications/:id/report', requireAuth, reportNotification);
 interactionsRoutes.post('/reviews/:id/reply', requireAuth, createReviewReply);
 interactionsRoutes.patch('/reviews/:id/reply', requireAuth, updateReviewReply);
 interactionsRoutes.delete('/reviews/:id/reply', requireAuth, deleteReviewReply);

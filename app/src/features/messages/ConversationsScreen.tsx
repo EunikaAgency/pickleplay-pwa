@@ -1,23 +1,30 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ActionMenu } from '../../shared/components/ui/ActionMenu';
 import { Avatar } from '../../shared/components/ui/Avatar';
+import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Icon } from '../../shared/components/ui/Icon';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
+import { Toast } from '../../shared/components/ui/Toast';
 import {
   listConversations,
   searchPlayers,
   getOwnerPlayerSuggestions,
   startConversation,
   deleteConversation,
+  markConversationRead,
+  markConversationUnread,
+  reportConversation,
   apiImageUrl,
   type ApiConversationSummary,
   type ApiPlayer,
   type OwnerPlayerSuggestion,
 } from '../../shared/lib/api';
 import { onRealtime } from '../../shared/lib/realtimeBus';
+import { REPORT_REASONS } from '../../shared/lib/reportReasons';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -153,9 +160,11 @@ interface ConvRowProps {
   userId: string | undefined;
   onNavigate: Navigate;
   onRemove: (c: ApiConversationSummary) => void;
+  onToggleRead: (c: ApiConversationSummary) => void;
+  onReport: (c: ApiConversationSummary) => void;
 }
 
-const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove }: ConvRowProps) {
+const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove, onToggleRead, onReport }: ConvRowProps) {
   // For venue/booking conversations: the player sees venue name + image; whoever
   // works the venue (owner or staff) sees the player's name + avatar so they know
   // WHO messaged.
@@ -237,14 +246,19 @@ const ConvRow = memo(function ConvRow({ c, userId, onNavigate, onRemove }: ConvR
           )}
         </div>
       </div>
-      <button
-        type="button"
-        aria-label={`Delete conversation with ${name}`}
-        className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--coral)]"
-        onClick={(e) => { e.stopPropagation(); onRemove(c); }}
-      >
-        <Icon name="close" size={16} />
-      </button>
+      <ActionMenu
+        aria-label={`More actions for the conversation with ${name}`}
+        actions={[
+          {
+            key: 'read',
+            label: c.unread > 0 ? 'Mark as read' : 'Mark as unread',
+            icon: c.unread > 0 ? 'check' : 'mail',
+            onSelect: () => onToggleRead(c),
+          },
+          { key: 'report', label: 'Report conversation', icon: 'shield', onSelect: () => onReport(c) },
+          { key: 'delete', label: 'Delete conversation', icon: 'trash', danger: true, onSelect: () => onRemove(c) },
+        ]}
+      />
     </motion.div>
   );
 });
@@ -322,6 +336,14 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [starting, setStarting] = useState(false);
+
+  // Row ⋮ menu side-effects: the report reason picker + the confirmation toast.
+  const [reportTarget, setReportTarget] = useState<ApiConversationSummary | null>(null);
+  const [toast, setToast] = useState({ show: false, message: '' });
+  const showToast = useCallback((message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 2000);
+  }, []);
 
   // Owner suggestion list: pre-fetched when the owner opens the compose screen
   // so they can browse players who've interacted with their venues without typing.
@@ -522,6 +544,45 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
       setReloadKey((k) => k + 1); // restore from server on failure
     }
   }, []);
+
+  // Flip a thread's read state from the row's ⋮ menu. Optimistic: the badge
+  // reacts immediately and we fall back to a re-fetch if the server disagrees.
+  // "Unread" rewinds the read mark server-side, so the count it comes back with
+  // is 1 (the last message from the other side), not the original tally.
+  const toggleRead = useCallback(async (c: ApiConversationSummary) => {
+    const wasUnread = c.unread > 0;
+    setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, unread: wasUnread ? 0 : 1 } : x)));
+    try {
+      if (wasUnread) {
+        await markConversationRead(c.id);
+        showToast('Marked as read');
+      } else {
+        const res = await markConversationUnread(c.id);
+        // No incoming message to be unread about (e.g. a thread only you wrote in).
+        if (!res.unread) {
+          setItems((prev) => prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x)));
+          showToast('Nothing to mark unread here');
+        } else {
+          showToast('Marked as unread');
+        }
+      }
+    } catch {
+      setReloadKey((k) => k + 1);
+      showToast("Couldn't update this conversation");
+    }
+  }, [showToast]);
+
+  // Reporting is two taps: the ⋮ menu opens the reason picker, picking a reason
+  // submits it (same flow as reporting a feed post).
+  const reportConv = useCallback((c: ApiConversationSummary) => setReportTarget(c), []);
+
+  const submitReport = (reason: string) => {
+    const target = reportTarget;
+    setReportTarget(null);
+    if (!target) return;
+    showToast("Thanks — we'll take a look");
+    reportConversation(target.id, reason).catch(() => showToast("Couldn't send that report"));
+  };
 
   const startWith = async (p: ApiPlayer) => {
     if (starting) return;
@@ -816,6 +877,8 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
                             userId={user?.id}
                             onNavigate={onNavigate}
                             onRemove={removeConv}
+                            onToggleRead={toggleRead}
+                            onReport={reportConv}
                           />
                         ))}
                       </AnimatePresence>
@@ -827,6 +890,30 @@ export function ConversationsScreen({ onNavigate, onBack }: ConversationsScreenP
           );
         })()}
       </div>
+
+      {/* Report reason picker — opens after tapping "Report conversation". */}
+      <BottomSheet
+        open={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        title="Report conversation"
+        subtitle="Why are you reporting this conversation?"
+      >
+        <div className="flex flex-col gap-1 pb-2">
+          {REPORT_REASONS.map((reason) => (
+            <button
+              key={reason}
+              type="button"
+              onClick={() => submitReport(reason)}
+              className="w-full flex items-center justify-between gap-2.5 px-2 py-3 text-left text-[15px] font-semibold text-[var(--ink)] active:bg-[var(--surface-2)] rounded-xl"
+            >
+              {reason}
+              <Icon name="chevron" size={16} className="text-[var(--muted)] shrink-0" />
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
+
+      <Toast message={toast.message} show={toast.show} />
     </div>
   );
 }

@@ -6,6 +6,8 @@ import {
   getConversation,
   sendMessage,
   markConversationRead,
+  markConversationUnread,
+  reportConversation,
   deleteConversation,
   deleteMessage,
   unreadMessageCount,
@@ -24,6 +26,8 @@ messagesRoutes.post('/conversations', requireAuth, startConversation);
 messagesRoutes.get('/unread-count', requireAuth, unreadMessageCount);
 messagesRoutes.get('/conversations/:id', requireAuth, getConversation);
 messagesRoutes.post('/conversations/:id/read', requireAuth, markConversationRead);
+messagesRoutes.post('/conversations/:id/unread', requireAuth, markConversationUnread);
+messagesRoutes.post('/conversations/:id/report', requireAuth, reportConversation);
 messagesRoutes.delete('/conversations/:id', requireAuth, deleteConversation);
 messagesRoutes.post('/conversations/:id/messages', requireAuth, sendMessage);
 messagesRoutes.post('/conversations/:id/typing', requireAuth, sendTyping);

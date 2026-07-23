@@ -228,7 +228,6 @@ export interface ApiUser {
   gender?: string | null;
   birthday?: string | null;
   seniorCitizenIdNumber?: string | null;
-  pwdIdNumber?: string | null;
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
@@ -295,7 +294,6 @@ export function toAppUser(api: ApiUser): AppUser {
     gender: normalizeGender(api.gender),
     birthday: api.birthday ?? undefined,
     seniorCitizenIdNumber: api.seniorCitizenIdNumber ?? undefined,
-    pwdIdNumber: api.pwdIdNumber ?? undefined,
     address1: api.address1 ?? undefined,
     address2: api.address2 ?? undefined,
     city: api.city ?? undefined,
@@ -443,8 +441,6 @@ export interface ProfileUpdate {
   birthday?: string;
   /** Empty string clears the saved ID. */
   seniorCitizenIdNumber?: string;
-  /** Empty string clears the saved ID. */
-  pwdIdNumber?: string;
   address1?: string;
   address2?: string;
   city?: string;
@@ -579,7 +575,7 @@ export interface ApiVenue {
   holidayDates?: string[] | null;
   /** Member pricing: % discount off the resolved rate for venue members (0 = none). */
   memberDiscountPercent?: number | null;
-  statutoryDiscounts?: Array<{ category: 'senior' | 'pwd'; percent: number }> | null;
+  statutoryDiscounts?: Array<{ category: 'senior'; percent: number }> | null;
   /** Per-player surcharge: ₱ added per extra player beyond `perPlayerFeeThreshold`. */
   perPlayerFee?: number | string | null;
   /** Players included in the base rate before the per-player fee kicks in (default 1). */
@@ -2481,9 +2477,9 @@ export async function getUnreadNotificationCount(): Promise<number> {
   return env.data?.count ?? 0;
 }
 
-/** Mark a single notification read. */
-export async function markNotificationRead(id: string): Promise<void> {
-  await request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body: {}, auth: true });
+/** Flip a single notification's read state (defaults to marking it read). */
+export async function markNotificationRead(id: string, isRead = true): Promise<void> {
+  await request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}`, { method: 'PATCH', body: { isRead }, auth: true });
 }
 
 /** Mark every unread notification read. */
@@ -2494,6 +2490,11 @@ export async function markAllNotificationsRead(): Promise<void> {
 /** Delete a single notification. */
 export async function deleteNotification(id: string): Promise<void> {
   await request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}`, { method: 'DELETE', auth: true });
+}
+
+/** Flag a notification for moderation review. */
+export async function reportNotification(id: string, reason?: string): Promise<{ reported: boolean }> {
+  return request(`${NOTIFICATIONS_PREFIX}/${encodeURIComponent(id)}/report`, { method: 'POST', body: { reason }, auth: true });
 }
 
 /* ─── Direct messages (1:1 chat) ─────────────────────────────── */
@@ -2616,6 +2617,16 @@ export async function markConversationRead(id: string): Promise<{ readAt?: strin
 /** Broadcast a typing indicator to the other participant (debounced by the caller). */
 export async function sendTyping(id: string): Promise<void> {
   await request(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/typing`, { method: 'POST', auth: true });
+}
+
+/** Mark a thread unread again — the inverse of `markConversationRead`. */
+export async function markConversationUnread(id: string): Promise<{ unread: number }> {
+  return request<{ unread: number }>(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/unread`, { method: 'POST', auth: true });
+}
+
+/** Flag a conversation for moderation review. */
+export async function reportConversation(id: string, reason?: string): Promise<{ reported: boolean }> {
+  return request(`${MESSAGES_PREFIX}/conversations/${encodeURIComponent(id)}/report`, { method: 'POST', body: { reason }, auth: true });
 }
 
 /** Total unread messages across the user's threads. */
@@ -3264,7 +3275,7 @@ export interface ApiBooking {
   overrideId?: string | null;        // SlotPriceOverride _id when rateSource='surge'
   baseRate?: number | null;          // resolved rate before member discount
   memberDiscountPercent?: number | null;  // 0–100
-  customerCategory?: 'none' | 'senior' | 'pwd' | null;
+  customerCategory?: 'none' | 'senior' | null;
   discountPercent?: number | null;
   discountAmount?: number | null;
   discountIdNumber?: string | null;
@@ -3321,7 +3332,7 @@ export interface CreateBookingPayload {
   paymentOption?: PaymentOption;
   amountPaid?: number;
   balanceDue?: number;
-  customerCategory?: 'none' | 'senior' | 'pwd';
+  customerCategory?: 'none' | 'senior';
   discountIdNumber?: string;
   /** Repeat this same slot on these weekdays (0=Sun…6=Sat) for the next `weeks`.
    *  The primary is paid now; each occurrence is held awaiting_payment (pay lazily
@@ -3466,7 +3477,7 @@ export interface VenueBookingPayload {
   amount?: number;
   paymentMethod?: string;
   notes?: string;
-  customerCategory?: 'none' | 'senior' | 'pwd';
+  customerCategory?: 'none' | 'senior';
   discountIdNumber?: string;
   // Slot-block field.
   blockReason?: string;
@@ -3491,7 +3502,7 @@ export interface RecurringBookingPayload {
   customerPhone?: string;
   bookingSource?: 'walk_in' | 'phone' | 'messenger' | 'instagram' | 'other';
   amount?: number;
-  customerCategory?: 'none' | 'senior' | 'pwd';
+  customerCategory?: 'none' | 'senior';
   discountIdNumber?: string;
   notes?: string;
   blockReason?: string;
@@ -4664,7 +4675,7 @@ export interface ApiOfficialReceipt {
   vatRate?: number;
   netAmount?: number;
   discountAmount?: number;
-  discountCategory?: 'senior' | 'pwd' | null;
+  discountCategory?: 'senior' | null;
   discountIdNumber?: string | null;
   vatExempt?: boolean;
   description?: string | null;
@@ -4713,15 +4724,19 @@ export interface ApiFinanceReceipt {
   venueName: string | null;
   payorName: string;
   payorTIN: string | null;
-  /** Court / Game / Open play / Walk-in — derived from the linked booking. */
+  /** Derived from the linked booking, or stored outright on a manual receipt. */
   category: string;
+  /** Serial from the venue's BIR-authorised booklet. Null until recorded. */
+  birInvoiceNumber: string | null;
+  /** True when an owner issued this by hand rather than a booking making it. */
+  isManual: boolean;
   description: string | null;
   amount: number;
   vatAmount: number;
   vatRate: number;
   netAmount: number;
   discountAmount: number;
-  discountCategory: 'senior' | 'pwd' | null;
+  discountCategory: 'senior' | null;
   vatExempt: boolean;
   receiptStatus: string;          // draft | issued | voided
   status: FinanceStatus;
@@ -4762,6 +4777,32 @@ export interface OwnerFinanceParams {
   status?: FinanceStatus | 'all';
   q?: string;
   limit?: number;
+}
+
+export const MANUAL_RECEIPT_CATEGORIES = ['Court', 'Rental', 'Coaching', 'Membership', 'Event', 'Shop'] as const;
+export type ManualReceiptCategory = typeof MANUAL_RECEIPT_CATEGORIES[number];
+export const RECEIPT_METHODS = ['cash', 'gcash', 'maya', 'card', 'bank_transfer', 'other'] as const;
+export type ReceiptMethod = typeof RECEIPT_METHODS[number];
+
+export interface IssueReceiptPayload {
+  venueId: string;
+  payorName: string;
+  payorTIN?: string;
+  payorAddress?: string;
+  category: ManualReceiptCategory;
+  description: string;
+  /** Gross, VAT-inclusive — the server extracts the 12% and the net. */
+  amount: number;
+  method: ReceiptMethod;
+  vatExempt?: boolean;
+  discountCategory?: 'senior';
+  discountIdNumber?: string;
+  birInvoiceNumber?: string;
+}
+
+/** Issue an official receipt by hand, for money taken outside a booking. */
+export async function issueReceipt(body: IssueReceiptPayload): Promise<{ id: string; receiptNumber: string; amount: number; vatAmount: number; netAmount: number }> {
+  return request('/api/v1/payments/receipts', { method: 'POST', body, auth: true });
 }
 
 /** Finance & receipts across every venue the owner holds. */

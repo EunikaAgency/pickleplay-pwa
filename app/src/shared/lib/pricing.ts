@@ -30,7 +30,7 @@ export interface RateBreakdown {
   memberApplied: boolean;
   /** The member discount % applied (0 when none). */
   memberDiscountPercent: number;
-  customerCategory: 'none' | 'senior' | 'pwd';
+  customerCategory: 'none' | 'senior';
   statutoryDiscountApplied: boolean;
   statutoryDiscountPercent: number;
 }
@@ -121,7 +121,7 @@ export interface ResolveRateInput {
   startTime: string;
   /** Whether the booking viewer is a member of this venue (member pricing applies). */
   isMember?: boolean;
-  customerCategory?: 'none' | 'senior' | 'pwd';
+  customerCategory?: 'none' | 'senior';
 }
 
 /** Resolve the effective hourly rate for a booking slot, with a breakdown. */

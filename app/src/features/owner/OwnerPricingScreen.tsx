@@ -257,17 +257,25 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const inheritedCells = useMemo(() => {
     if (!weeklyEnabled) return {} as Record<string, number>;
     const map: Record<string, number> = {};
-    for (const entry of weeklyHours) {
-      if (entry.isClosed || !entry.openTime || !entry.closeTime) continue;
-      // DAYS is Monday-first; dayOfWeek is 0=Sunday.
-      const day = DAYS[(entry.dayOfWeek + 6) % 7];
+    for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
+      const rows = weeklyHours.filter((e) => e.dayOfWeek === dayOfWeek && !e.isClosed && e.openTime && e.closeTime);
+      // A day holds one un-priced "operating hours" row plus any priced bands
+      // inside it. When bands exist they ARE the day — mirroring what the server
+      // does — so a gap between them (open 6–8am, shut, open 6–10pm) stays a gap
+      // instead of the operating row papering over it and showing hours as open
+      // here that availability reports as closed.
+      const priced = rows.filter((e) => e.price != null);
+      const use = priced.length > 0 ? priced : rows;
+      const day = DAYS[(dayOfWeek + 6) % 7];   // DAYS is Monday-first; 0=Sunday.
       if (!day) continue;
-      const start = parseInt(entry.openTime.slice(0, 2), 10);
-      const end = parseInt(entry.closeTime.slice(0, 2), 10);
-      if (isNaN(start) || isNaN(end)) continue;
-      for (let h = start; h < end && h < 24; h++) {
-        const hour = HOURS[h];
-        if (hour) map[cellKey(day, hour)] = Number(entry.price) || 0;
+      for (const entry of use) {
+        const start = parseInt(entry.openTime!.slice(0, 2), 10);
+        const end = parseInt(entry.closeTime!.slice(0, 2), 10);
+        if (isNaN(start) || isNaN(end)) continue;
+        for (let h = start; h < end && h < 24; h++) {
+          const hour = HOURS[h];
+          if (hour) map[cellKey(day, hour)] = Number(entry.price) || 0;
+        }
       }
     }
     return map;
@@ -566,8 +574,12 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
           if (rule) out[key] = Number(rule.price) || 0;
           continue;
         }
+        // `0` means the hour is OPEN but carries no rate of its own (an operating
+        // row with no priced band), so the court/venue rate applies. Writing it
+        // back as a ₱0 band would turn "no rate set" into "free", since the rate
+        // ladder treats any non-null band price as authoritative.
         const inherited = inheritedCells[key];
-        if (inherited != null) out[key] = inherited;
+        if (inherited != null && inherited > 0) out[key] = inherited;
       }
     }
     return out;

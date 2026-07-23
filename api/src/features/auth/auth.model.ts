@@ -18,10 +18,9 @@ export interface IUser {
    *  birthday is a calendar date, and storing it as a UTC instant shifts it a
    *  day for anyone east/west of the server. */
   birthday?: string;
-  /** Government-issued statutory-discount IDs. Kept off normal User queries;
-   *  only the account owner and booking validation explicitly select them. */
+  /** Government-issued statutory-discount ID. Kept off normal User queries;
+   *  only the account owner and booking validation explicitly select it. */
   seniorCitizenIdNumber?: string;
-  pwdIdNumber?: string;
   skillLevel?: number;
   skillLevelLabel?: string;
   homeCityId?: Types.ObjectId;
@@ -102,7 +101,6 @@ const userSchema = new Schema({
   gender:          { type: String, enum: ['male', 'female'] },
   birthday:        { type: String, maxlength: 10 },
   seniorCitizenIdNumber: { type: String, maxlength: 80, trim: true, select: false },
-  pwdIdNumber:           { type: String, maxlength: 80, trim: true, select: false },
   skillLevel:      Number,
   skillLevelLabel: { type: String, maxlength: 20 },
   homeCityId:      { type: Schema.Types.ObjectId, ref: 'City' },

@@ -12,7 +12,7 @@
 // that ALREADY exists and ALREADY has a Payment row, and it reuses the exact
 // figures and formulas the server generator uses:
 //   - amount   = booking.amount + booking.serviceFeeAmount (what the player paid)
-//   - VAT      = 12% extracted VAT-inclusive, or 0 for a senior/PWD booking
+//   - VAT      = 12% extracted VAT-inclusive, or 0 for a senior booking
 //   - number   = OR-{venueCode}-{yy}-{seq}, from the same per-venue ReceiptCounter
 //   - payor    = booking.customerName, else the booking's own user
 //   - venue    = booking.venueId, so it lands under that venue's real owner
@@ -23,7 +23,7 @@
 // has none of, and both of which `--revert` puts back exactly.
 //
 // WHAT IT ADDS ON TOP
-//   - EXEMPT_N bookings are marked senior/PWD (with a plausible ID number) so
+//   - EXEMPT_N bookings are marked senior (with a plausible ID number) so
 //     the VAT-exempt path renders. Their prior values are recorded for revert.
 //   - VOID_N receipts are voided with a real-sounding reason, so the Voided
 //     chip and the "excluded from totals" rule are visible.
@@ -82,10 +82,10 @@ const VOID_REASONS = [
   'Booking moved to another date — receipt reissued',
 ];
 
-/** A plausible PH senior-citizen / PWD ID number. Format only — not a real ID. */
-function idNumber(kind: 'senior' | 'pwd'): string {
+/** A plausible PH senior-citizen ID number. Format only — not a real ID. */
+function idNumber(): string {
   const n = (len: number) => Array.from({ length: len }, () => Math.floor(rng() * 10)).join('');
-  return kind === 'senior' ? `SC-${n(2)}-${n(5)}` : `PWD-${n(4)}-${n(4)}`;
+  return `SC-${n(2)}-${n(5)}`;
 }
 
 async function revert() {
@@ -166,22 +166,22 @@ async function main() {
 
   const backup: Backup = { createdAt: new Date().toISOString(), receiptIds: [], bookingEdits: [], counters: [] };
 
-  // ── Mark a few bookings senior/PWD so the VAT-exempt path is exercised ──
+  // ── Mark a few bookings senior so the VAT-exempt path is exercised ──
   const exemptTargets = [...candidates].sort(() => rng() - 0.5).slice(0, Math.min(EXEMPT_N, candidates.length));
   const exemptIds = new Set<string>();
   for (const b of exemptTargets as any[]) {
-    const kind: 'senior' | 'pwd' = chanceSenior() ? 'senior' : 'pwd';
     backup.bookingEdits.push({
       id: String(b._id),
       customerCategory: b.customerCategory ?? null,
       discountIdNumber: b.discountIdNumber ?? null,
     });
-    await Booking.updateOne({ _id: b._id }, { $set: { customerCategory: kind, discountIdNumber: idNumber(kind) } });
-    b.customerCategory = kind;
-    b.discountIdNumber = idNumber(kind);
+    const seniorIdNumber = idNumber();
+    await Booking.updateOne({ _id: b._id }, { $set: { customerCategory: 'senior', discountIdNumber: seniorIdNumber } });
+    b.customerCategory = 'senior';
+    b.discountIdNumber = seniorIdNumber;
     exemptIds.add(String(b._id));
   }
-  console.log(`\nMarked ${exemptTargets.length} booking(s) senior/PWD (VAT-exempt).`);
+  console.log(`\nMarked ${exemptTargets.length} booking(s) senior (VAT-exempt).`);
 
   // Snapshot the counters we are about to advance, so revert can rewind them.
   const touchedVenues = [...new Set(candidates.map((b: any) => String(b.venueId)))];
@@ -212,7 +212,7 @@ async function main() {
     const receiptNumber = `OR-${venueReceiptCode(String(b.venueId), venue.displayName)}-${year}-${String(counter!.seq).padStart(5, '0')}`;
 
     const gross = (b.amount || 0) + (b.serviceFeeAmount || 0);
-    const vatExempt = ['senior', 'pwd'].includes(b.customerCategory);
+    const vatExempt = b.customerCategory === 'senior';
     const vatRate = vatExempt ? 0 : 12;
     const vatAmount = vatExempt ? 0 : round2(gross * vatRate / (100 + vatRate));
     const netAmount = round2(gross - vatAmount);
@@ -262,8 +262,5 @@ async function main() {
 
   await mongoose.disconnect();
 }
-
-/** Seniors outnumber PWD bookings in practice; keep the mix believable. */
-function chanceSenior() { return rng() < 0.7; }
 
 main().catch((e) => { console.error(e); process.exit(1); });

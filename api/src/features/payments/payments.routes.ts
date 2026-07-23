@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { requireAuth } from '../../shared/middleware/auth.js';
 import {
   checkout, createPayment, getPayment, listPayments, updatePayment, verifyPayment,
-  listMyReceipts, getReceipt, updateReceipt, listVenueReceipts,
+  listMyReceipts, getReceipt, updateReceipt, listVenueReceipts, issueReceipt,
   generateSettlement, listSettlements, updateSettlement,
   listOwnerSettlements, getOwnerBalance, listOwnerFinance,
   listPayoutMethods, createPayoutMethod, deletePayoutMethod,
@@ -17,6 +17,7 @@ paymentsRoutes.use('/*', requireAuth);
 
 // Receipts
 paymentsRoutes.get('/receipts/mine', listMyReceipts);
+paymentsRoutes.post('/receipts', issueReceipt);
 paymentsRoutes.get('/receipts/:id', getReceipt);
 paymentsRoutes.patch('/receipts/:id', updateReceipt);
 

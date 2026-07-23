@@ -1,11 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
-import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
-import { getOwnerFinance, type ApiOwnerFinance, type ApiFinanceReceipt, type FinanceStatus } from '../../shared/lib/api';
+import {
+  getOwnerFinance,
+  issueReceipt,
+  MANUAL_RECEIPT_CATEGORIES,
+  RECEIPT_METHODS,
+  type ApiOwnerFinance,
+  type ApiFinanceReceipt,
+  type FinanceStatus,
+  type ManualReceiptCategory,
+  type ReceiptMethod,
+} from '../../shared/lib/api';
 import { money } from '../bookings/bookingDisplay';
 
 interface OwnerFinanceScreenProps {
@@ -20,24 +29,36 @@ const STATUS_FILTERS: { id: FinanceStatus | 'all'; label: string }[] = [
   { id: 'refunded', label: 'Refunded' },
 ];
 
-const STATUS_CHIP: Record<FinanceStatus, { label: string; className: string }> = {
-  paid: { label: 'Paid', className: 'bg-[var(--lime)] text-[var(--on-accent)]' },
-  pending: { label: 'Pending', className: 'bg-[var(--surface-3)] text-[var(--muted)]' },
-  voided: { label: 'Voided', className: 'bg-[var(--surface-3)] text-[var(--muted)] line-through' },
-  refunded: { label: 'Refunded', className: 'bg-[var(--coral)]/15 text-[var(--coral)]' },
+const STATUS_LABELS: Record<FinanceStatus, string> = {
+  paid: 'Paid',
+  pending: 'Pending',
+  voided: 'Voided',
+  refunded: 'Refunded',
 };
 
-// Payment methods as they're stored on the Payment doc. Anything unmapped
-// falls through as-is rather than being hidden.
 const METHOD_LABELS: Record<string, string> = {
   gcash: 'GCash',
   maya: 'Maya',
-  card: 'Card',
-  credit_card: 'Credit card',
+  card: 'Credit Card',
+  credit_card: 'Credit Card',
   cash: 'Cash',
-  bank_transfer: 'Bank transfer',
+  bank_transfer: 'Bank Transfer',
+  other: 'Other',
   test: 'Test payment',
 };
+
+const METHOD_ICONS: Record<string, string> = {
+  gcash: '💙',
+  maya: '💜',
+  card: '💳',
+  credit_card: '💳',
+  cash: '💵',
+  bank_transfer: '🏦',
+  other: '•',
+  test: '🧪',
+};
+
+const AVATAR_TONES = ['#dbe7dd', '#e7dfcf', '#d8e9ea', '#f0d9d3', '#dedcf0', '#dfe4c8'];
 
 function prettyDate(iso: string | null): string {
   if (!iso) return '—';
@@ -57,35 +78,86 @@ function toYMD(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Owner Finance & Receipts — the BIR-compliant transaction record across every
-// venue the owner holds, with the gross / net / VAT-payable roll-up they need
-// for remittance. Read-only: receipts are auto-generated when a booking is
-// paid, so this reports on them rather than creating them.
+function categoryLabel(category: string): string {
+  if (!category) return 'Other';
+  return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+}
+
+function categoryTone(category: string): string {
+  const normalized = category.toLowerCase();
+  if (normalized.includes('membership')) return 'membership';
+  if (normalized.includes('coach')) return 'coaching';
+  if (normalized.includes('rental')) return 'rental';
+  if (normalized.includes('shop')) return 'shop';
+  if (normalized.includes('event')) return 'event';
+  return 'court';
+}
+
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || '?';
+}
+
+function avatarTone(name: string): string {
+  const score = [...name].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return AVATAR_TONES[score % AVATAR_TONES.length];
+}
+
+interface ReceiptDraft {
+  venueId: string;
+  payorName: string;
+  payorTIN: string;
+  category: ManualReceiptCategory;
+  description: string;
+  amount: string;
+  method: ReceiptMethod;
+  birInvoiceNumber: string;
+}
+
+const EMPTY_DRAFT: ReceiptDraft = {
+  venueId: '',
+  payorName: '',
+  payorTIN: '',
+  category: 'Court',
+  description: '',
+  amount: '',
+  method: 'cash',
+  birInvoiceNumber: '',
+};
+
+// The owner finance workspace is intentionally full width on desktop. The same
+// data becomes compact cards below the desktop breakpoint so the route remains
+// usable as a mobile PWA.
 export function OwnerFinanceScreen({ onBack }: OwnerFinanceScreenProps) {
-  // One state cell keyed by the request that produced it, so "loading" is
-  // DERIVED (result.key !== requestKey) rather than set from inside the effect.
-  // Changing the venue scope therefore shows the skeleton again instead of
-  // leaving the previous venue's numbers on screen while the next load lands.
   const [result, setResult] = useState<{ key: string; data: ApiOwnerFinance | null; error: string | null }>(
     { key: '', data: null, error: null },
   );
   const [reloadKey, setReloadKey] = useState(0);
-
-  const [venueId, setVenueId] = useState('');            // '' = all venues
+  const [venueId, setVenueId] = useState('');
   const [status, setStatus] = useState<FinanceStatus | 'all'>('all');
-  const [category, setCategory] = useState('');           // '' = all categories
+  const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<ApiFinanceReceipt | null>(null);
+  const [issueOpen, setIssueOpen] = useState(false);
+  const [draft, setDraft] = useState<ReceiptDraft>(EMPTY_DRAFT);
+  const [issueState, setIssueState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [issueError, setIssueError] = useState('');
 
-  // Venue scope goes to the server; status/category/search stay client-side so
-  // typing doesn't refetch on every keystroke.
   const requestKey = `${venueId}|${reloadKey}`;
   useEffect(() => {
     let alive = true;
     getOwnerFinance({ venueId: venueId || undefined })
-      .then((d) => { if (alive) setResult({ key: requestKey, data: d, error: null }); })
-      .catch((e) => {
-        if (alive) setResult({ key: requestKey, data: null, error: e instanceof Error ? e.message : 'Could not load finance records.' });
+      .then((finance) => { if (alive) setResult({ key: requestKey, data: finance, error: null }); })
+      .catch((reason) => {
+        if (alive) setResult({
+          key: requestKey,
+          data: null,
+          error: reason instanceof Error ? reason.message : 'Could not load finance records.',
+        });
       });
     return () => { alive = false; };
   }, [requestKey, venueId]);
@@ -93,302 +165,277 @@ export function OwnerFinanceScreen({ onBack }: OwnerFinanceScreenProps) {
   const loading = result.key !== requestKey;
   const data = loading ? null : result.data;
   const error = loading ? null : result.error;
-
   const receipts = useMemo(() => data?.receipts ?? [], [data]);
-
   const categories = useMemo(
-    () => [...new Set(receipts.map((r) => r.category))].sort(),
+    () => [...new Set(receipts.map((receipt) => receipt.category))].sort(),
     [receipts],
   );
 
   const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return receipts.filter((r) => {
-      if (status !== 'all' && r.status !== status) return false;
-      if (category && r.category !== category) return false;
-      if (!q) return true;
-      return [r.receiptNumber, r.payorName, r.description, r.venueName]
-        .some((f) => (f || '').toLowerCase().includes(q));
+    const query = search.trim().toLowerCase();
+    return receipts.filter((receipt) => {
+      if (status !== 'all' && receipt.status !== status) return false;
+      if (category && receipt.category !== category) return false;
+      if (!query) return true;
+      return [receipt.receiptNumber, receipt.payorName, receipt.description, receipt.venueName, receipt.birInvoiceNumber]
+        .some((field) => (field || '').toLowerCase().includes(query));
     });
   }, [receipts, status, category, search]);
 
-  // The KPI cards always report the owner's real tax position for the loaded
-  // window (paid-only, server-computed) — narrowing the list with a filter
-  // must not make VAT payable look smaller than it is.
   const summary = data?.summary;
+  const venues = data?.venues ?? [];
+  const scopeLabel = venueId ? (venues.find((venue) => venue.id === venueId)?.name ?? 'Venue') : 'All Venues';
+
+  const openIssueReceipt = () => {
+    setDraft((current) => ({ ...current, venueId: current.venueId || venueId || venues[0]?.id || '' }));
+    setIssueOpen(true);
+  };
 
   const exportCsv = () => {
-    const esc = (v: string | number) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const header = ['Receipt #', 'Date', 'Venue', 'Payor', 'TIN', 'Category', 'Description', 'Gross', 'VAT', 'Net', 'Method', 'Status'];
-    const lines = visible.map((r) => [
-      r.receiptNumber, prettyDate(r.createdAt), r.venueName || '', r.payorName, r.payorTIN || '',
-      r.category, r.description || '', r.amount, r.vatExempt ? 'Exempt' : r.vatAmount, r.netAmount,
-      r.method ? (METHOD_LABELS[r.method] ?? r.method) : '', STATUS_CHIP[r.status].label,
+    const esc = (value: string | number) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const header = ['Receipt #', 'Date', 'Venue', 'Customer', 'TIN', 'Category', 'Description', 'Gross', 'VAT', 'Net', 'Method', 'Status', 'BIR Invoice'];
+    const lines = visible.map((receipt) => [
+      receipt.receiptNumber,
+      prettyDate(receipt.createdAt),
+      receipt.venueName || '',
+      receipt.payorName,
+      receipt.payorTIN || '',
+      receipt.category,
+      receipt.description || '',
+      receipt.amount,
+      receipt.vatExempt ? 'Exempt' : receipt.vatAmount,
+      receipt.netAmount,
+      receipt.method ? (METHOD_LABELS[receipt.method] ?? receipt.method) : '',
+      STATUS_LABELS[receipt.status],
+      receipt.birInvoiceNumber || '',
     ].map(esc).join(','));
     const csv = [header.map(esc).join(','), ...lines].join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bir-receipts-${toYMD(new Date())}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `bir-receipts-${toYMD(new Date())}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
     URL.revokeObjectURL(url);
   };
 
-  const venues = data?.venues ?? [];
-  const scopeLabel = venueId ? (venues.find((v) => v.id === venueId)?.name ?? 'Venue') : 'All venues';
+  const submitReceipt = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const amount = Number(draft.amount);
+    if (!draft.venueId || !draft.payorName.trim() || !draft.description.trim() || !Number.isFinite(amount) || amount <= 0) {
+      setIssueState('error');
+      setIssueError('Complete the venue, customer, description, and gross amount.');
+      return;
+    }
+    setIssueState('saving');
+    setIssueError('');
+    try {
+      await issueReceipt({
+        venueId: draft.venueId,
+        payorName: draft.payorName.trim(),
+        payorTIN: draft.payorTIN.trim() || undefined,
+        category: draft.category,
+        description: draft.description.trim(),
+        amount,
+        method: draft.method,
+        birInvoiceNumber: draft.birInvoiceNumber.trim() || undefined,
+      });
+      setDraft(EMPTY_DRAFT);
+      setIssueState('idle');
+      setIssueOpen(false);
+      setReloadKey((key) => key + 1);
+    } catch (reason) {
+      setIssueState('error');
+      setIssueError(reason instanceof Error ? reason.message : 'Could not issue the receipt.');
+    }
+  };
 
   return (
-    <div className="scroll pb-[100px] pt-[calc(20px+env(safe-area-inset-top))]">
-      <ScreenHeader
-        onBack={onBack}
-        title="Finance & Receipts"
-        eyebrow="Finance & billing"
-        subtitle={`Transaction records with BIR tax breakdown — ${scopeLabel}`}
-        action={
-          receipts.length > 0 ? (
-            <button
-              type="button"
-              onClick={exportCsv}
-              aria-label="Export BIR report as CSV"
-              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[var(--surface-2)] text-[var(--ink)] font-bold text-[13px] shrink-0 active:scale-95 transition-transform"
-            >
-              <Icon name="download" size={15} /> Export
+    <div className="scroll owner-finance-screen">
+      <main className="finance-workspace">
+        <div className="finance-page-heading">
+          <div>
+            <button type="button" className="finance-content-back" onClick={onBack} aria-label="Back"><Icon name="back" size={16} /></button>
+            <div className="finance-heading-badges">
+              <span>Finance &amp; Billing</span>
+              <span><Icon name="globe" size={12} /> {scopeLabel}</span>
+            </div>
+            <h1>Finance &amp; Receipts</h1>
+            <p>Transaction records with BIR tax breakdown — {scopeLabel}</p>
+          </div>
+          <div className="finance-heading-actions">
+            {venues.length > 1 && (
+              <select className="finance-venue-select" value={venueId} onChange={(event) => setVenueId(event.target.value)} aria-label="Venue scope">
+                <option value="">All Venues</option>
+                {venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+              </select>
+            )}
+            <button type="button" className="finance-btn finance-btn-secondary" onClick={exportCsv} disabled={visible.length === 0}>
+              <Icon name="download" size={15} /> Export BIR Report
             </button>
-          ) : undefined
-        }
-      />
+            <button type="button" className="finance-btn finance-btn-primary" onClick={openIssueReceipt}>
+              <Icon name="plus" size={14} /> Issue Receipt
+            </button>
+          </div>
+        </div>
 
-      <div className="px-5">
         {loading ? (
-          <LoadingSkeleton variant="card" count={4} />
+          <div className="finance-state"><LoadingSkeleton variant="card" count={4} /></div>
         ) : error ? (
-          <ErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
+          <div className="finance-state"><ErrorState message={error} onRetry={() => setReloadKey((key) => key + 1)} /></div>
         ) : venues.length === 0 ? (
-          <EmptyState
-            icon="receipt"
-            title="No venues yet"
-            description="List a venue first — official receipts are generated automatically once players start paying for bookings."
-          />
+          <div className="finance-state">
+            <EmptyState icon="receipt" title="No venues yet" description="List a venue first — official receipts are generated once players start paying for bookings." />
+          </div>
         ) : (
           <>
-            {/* KPI roll-up — paid receipts only, so VAT payable is what's owed. */}
             {summary && (
-              <div className="flex flex-col gap-3 mb-5">
-                <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Gross revenue</div>
-                  <div className="font-heading font-bold text-[28px] text-[var(--ink)] tabular-nums mt-1">{money(summary.gross)}</div>
-                  <div className="text-[12px] text-[var(--muted)] mt-0.5">
-                    Includes VAT · {summary.transactions} paid transaction{summary.transactions !== 1 ? 's' : ''}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Net revenue</div>
-                    <div className="font-heading font-bold text-[20px] text-[var(--ink)] tabular-nums mt-1">{money(summary.net)}</div>
-                    <div className="text-[12px] text-[var(--muted)] mt-0.5">After VAT</div>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--coral)]/10 border-[0.5px] border-[var(--coral)]/25 p-4">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--coral)]">VAT payable</div>
-                    <div className="font-heading font-bold text-[20px] text-[var(--coral)] tabular-nums mt-1">{money(summary.vat)}</div>
-                    <div className="text-[12px] text-[var(--muted)] mt-0.5">Due for BIR remittance</div>
-                  </div>
-                </div>
-              </div>
+              <section className="finance-kpi-grid" aria-label="Revenue summary">
+                <article className="finance-kpi-card gross">
+                  <div className="finance-kpi-head"><span>Gross Revenue</span><i>₱</i></div>
+                  <strong>{money(summary.gross)}</strong>
+                  <p>Includes VAT · {summary.transactions} transaction{summary.transactions !== 1 ? 's' : ''}</p>
+                </article>
+                <article className="finance-kpi-card net">
+                  <div className="finance-kpi-head"><span>Net Revenue</span><i><Icon name="trending_up" size={16} /></i></div>
+                  <strong>{money(summary.net)}</strong>
+                  <p>After 12% VAT deduction</p>
+                </article>
+                <article className="finance-kpi-card vat">
+                  <div className="finance-kpi-head"><span>VAT Payable</span><i><Icon name="description" size={16} /></i></div>
+                  <strong>{money(summary.vat)}</strong>
+                  <p>Due for BIR remittance</p>
+                </article>
+              </section>
             )}
 
-            {/* Venue scope — only worth showing to a multi-venue owner. */}
-            {venues.length > 1 && (
-              <label className="block mb-3">
-                <span className="text-[12px] font-bold text-[var(--muted)] uppercase tracking-wide">Venue</span>
-                <select
-                  value={venueId}
-                  onChange={(e) => setVenueId(e.target.value)}
-                  className="mt-1 w-full h-10 rounded-lg border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-3 text-[14px] font-semibold text-[var(--ink)]"
-                >
-                  <option value="">All venues</option>
-                  {venues.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                </select>
+            <section className="finance-filterbar" aria-label="Receipt filters">
+              <label className="finance-search">
+                <Icon name="search" size={15} />
+                <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by receipt #, customer, or description…" />
               </label>
-            )}
-
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by receipt #, customer, or description…"
-              className="w-full h-10 rounded-full border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] px-4 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] mb-3"
-            />
-
-            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1">
-              {STATUS_FILTERS.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setStatus(f.id)}
-                  aria-pressed={status === f.id}
-                  className={`shrink-0 h-8 px-3.5 rounded-full text-[12px] font-bold transition-colors ${
-                    status === f.id ? 'bg-[var(--ink)] text-[var(--surface)]' : 'bg-[var(--surface-2)] text-[var(--muted)]'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-
-            {categories.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 pb-1 mt-2">
-                <button
-                  type="button"
-                  onClick={() => setCategory('')}
-                  aria-pressed={category === ''}
-                  className={`shrink-0 h-8 px-3.5 rounded-full text-[12px] font-bold transition-colors ${
-                    category === '' ? 'bg-[var(--ink)] text-[var(--surface)]' : 'bg-[var(--surface-2)] text-[var(--muted)]'
-                  }`}
-                >
-                  All
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    aria-pressed={category === cat}
-                    className={`shrink-0 h-8 px-3.5 rounded-full text-[12px] font-bold transition-colors ${
-                      category === cat ? 'bg-[var(--ink)] text-[var(--surface)]' : 'bg-[var(--surface-2)] text-[var(--muted)]'
-                    }`}
-                  >
-                    {cat}
+              <div className="finance-segment" aria-label="Status">
+                {STATUS_FILTERS.map((filter) => (
+                  <button key={filter.id} type="button" onClick={() => setStatus(filter.id)} className={status === filter.id ? 'active' : ''} aria-pressed={status === filter.id}>
+                    {filter.label}
                   </button>
                 ))}
               </div>
-            )}
+              <div className="finance-segment finance-category-filter" aria-label="Category">
+                <button type="button" onClick={() => setCategory('')} className={category === '' ? 'active' : ''} aria-pressed={category === ''}>All</button>
+                {categories.map((item) => (
+                  <button key={item} type="button" onClick={() => setCategory(item)} className={category === item ? 'active' : ''} aria-pressed={category === item}>
+                    {categoryLabel(item)}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-            {/* Receipt rows — cards, not a table: this is a mobile console. */}
-            <div className="mt-4">
+            <section className="finance-ledger" aria-label="Receipt ledger">
               {visible.length === 0 ? (
                 <EmptyState
                   icon="receipt"
                   title={receipts.length === 0 ? 'No receipts yet' : 'Nothing matches those filters'}
-                  description={
-                    receipts.length === 0
-                      ? 'An official receipt is generated automatically each time a booking is paid for.'
-                      : 'Try a different status, category, or search term.'
-                  }
+                  description={receipts.length === 0 ? 'An official receipt is generated automatically each time a booking is paid for.' : 'Try a different status, category, or search term.'}
                 />
               ) : (
-                <div className="flex flex-col gap-3">
-                  {visible.map((r) => {
-                    const chip = STATUS_CHIP[r.status];
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => setDetail(r)}
-                        className="w-full text-left rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-4 transition-transform active:scale-[0.99]"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="font-heading font-semibold text-[14px] text-[var(--ink)] truncate">{r.receiptNumber}</div>
-                            <div className="text-[12px] text-[var(--muted)] mt-0.5">
-                              {prettyDate(r.createdAt)}{prettyTime(r.createdAt) ? ` · ${prettyTime(r.createdAt)}` : ''} · {r.payorName}
-                            </div>
-                          </div>
-                          <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${chip.className}`}>
-                            {chip.label}
-                          </span>
-                        </div>
-                        {r.description && (
-                          <div className="text-[12px] text-[var(--muted)] mt-1.5 line-clamp-2">{r.description}</div>
-                        )}
-                        <div className="mt-2 flex items-center justify-between gap-2">
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[var(--surface-2)] text-[var(--muted)]">
-                            {r.category}
-                          </span>
-                          <span className="text-[12px] text-[var(--muted)] tabular-nums">
-                            VAT {r.vatExempt ? 'exempt' : money(r.vatAmount)}
-                          </span>
-                          <span className="font-heading font-bold text-[16px] text-[var(--ink)] tabular-nums">{money(r.amount)}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {data?.truncated && (
-              <div className="text-[12px] text-[var(--muted)] mt-3">
-                Showing the {receipts.length} most recent receipts — the totals above cover this window only.
-              </div>
-            )}
-
-            {/* VAT breakdown by category — paid receipts only, same basis as the KPIs. */}
-            {summary && summary.byCategory.length > 0 && (
-              <div className="mt-6">
-                <div className="text-[13px] font-bold text-[var(--muted)] uppercase tracking-wide mb-3">
-                  VAT breakdown by category
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {summary.byCategory.map((cat) => (
-                    <div key={cat.category} className="rounded-xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3">
-                      <div className="text-[12px] font-bold text-[var(--ink)]">{cat.category}</div>
-                      <div className="font-heading font-bold text-[17px] text-[var(--ink)] tabular-nums mt-0.5">{money(cat.gross)}</div>
-                      <div className="text-[11px] text-[var(--muted)] mt-0.5">
-                        VAT {money(cat.vat)} · {cat.sharePct}% of gross
-                      </div>
+                <>
+                  <div className="finance-table">
+                    <div className="finance-table-head finance-table-row">
+                      <span>Receipt #</span><span>Date / Time</span><span>Customer</span><span>Category</span><span>Description</span><span>Gross</span><span>VAT (12%)</span><span>Net Amt.</span><span>Method</span><span>Status</span><span>BIR Invoice</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
+                    {visible.map((receipt) => (
+                      <button key={receipt.id} type="button" className="finance-table-row finance-table-body" onClick={() => setDetail(receipt)}>
+                        <span className="finance-receipt-number">{receipt.receiptNumber}</span>
+                        <span className="finance-date"><b>{prettyDate(receipt.createdAt)}</b><small>{prettyTime(receipt.createdAt)}</small></span>
+                        <span className="finance-customer"><i style={{ background: avatarTone(receipt.payorName) }}>{initials(receipt.payorName)}</i><b>{receipt.payorName}</b></span>
+                        <span><em className={`finance-category ${categoryTone(receipt.category)}`}>{categoryLabel(receipt.category)}</em></span>
+                        <span className="finance-description">{receipt.description || '—'}</span>
+                        <span className="finance-money gross-amount">{money(receipt.amount)}</span>
+                        <span className="finance-money vat-amount">{receipt.vatExempt ? 'Exempt' : money(receipt.vatAmount)}</span>
+                        <span className="finance-money net-amount">{money(receipt.netAmount)}</span>
+                        <span className="finance-method"><i>{receipt.method ? (METHOD_ICONS[receipt.method] ?? '•') : '—'}</i>{receipt.method ? (METHOD_LABELS[receipt.method] ?? receipt.method) : '—'}</span>
+                        <span><em className={`finance-status ${receipt.status}`}>{STATUS_LABELS[receipt.status]}</em></span>
+                        <span className="finance-invoice">{receipt.birInvoiceNumber || '—'}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="finance-mobile-list">
+                    {visible.map((receipt) => (
+                      <button key={receipt.id} type="button" className="finance-mobile-card" onClick={() => setDetail(receipt)}>
+                        <div className="finance-mobile-card-head">
+                          <div><b>{receipt.receiptNumber}</b><small>{prettyDate(receipt.createdAt)} · {prettyTime(receipt.createdAt)}</small></div>
+                          <em className={`finance-status ${receipt.status}`}>{STATUS_LABELS[receipt.status]}</em>
+                        </div>
+                        <div className="finance-mobile-customer"><i style={{ background: avatarTone(receipt.payorName) }}>{initials(receipt.payorName)}</i><span><b>{receipt.payorName}</b><small>{receipt.description || '—'}</small></span></div>
+                        <div className="finance-mobile-totals"><em className={`finance-category ${categoryTone(receipt.category)}`}>{categoryLabel(receipt.category)}</em><span>VAT {receipt.vatExempt ? 'exempt' : money(receipt.vatAmount)}</span><b>{money(receipt.amount)}</b></div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+
+            {data?.truncated && <p className="finance-truncated">Showing the {receipts.length} most recent receipts. The totals cover this window only.</p>}
           </>
         )}
-      </div>
+      </main>
 
-      {/* Receipt detail */}
       <BottomSheet
         open={detail !== null}
         onClose={() => setDetail(null)}
         title={detail?.receiptNumber || 'Receipt'}
         subtitle={detail ? `${detail.venueName || 'Venue'} · ${prettyDate(detail.createdAt)}` : undefined}
         flushFooter
-        footer={
-          <button
-            type="button"
-            onClick={() => setDetail(null)}
-            className="w-full h-11 rounded-xl bg-[var(--surface-2)] text-[var(--ink)] font-heading font-bold text-[14px]"
-          >
-            Close
-          </button>
-        }
+        footer={<button type="button" onClick={() => setDetail(null)} className="finance-sheet-close">Close</button>}
       >
         {detail && (
           <div className="px-5">
             <DetailRow label="Receipt #" value={detail.receiptNumber} />
-            <DetailRow label="Status" value={STATUS_CHIP[detail.status].label} />
+            <DetailRow label="Status" value={STATUS_LABELS[detail.status]} />
             <DetailRow label="Receipt state" value={detail.receiptStatus} />
-            <DetailRow label="Payor" value={detail.payorName} />
+            <DetailRow label="Customer" value={detail.payorName} />
             {detail.payorTIN && <DetailRow label="TIN" value={detail.payorTIN} />}
             <DetailRow label="Venue" value={detail.venueName || '—'} />
-            <DetailRow label="Category" value={detail.category} />
+            <DetailRow label="Category" value={categoryLabel(detail.category)} />
             {detail.description && <DetailRow label="Description" value={detail.description} />}
             <DetailRow label="Gross" value={money(detail.amount)} />
-            <DetailRow
-              label={detail.vatExempt ? 'VAT' : `VAT (${detail.vatRate}%)`}
-              value={detail.vatExempt ? 'Exempt' : money(detail.vatAmount)}
-            />
+            <DetailRow label={detail.vatExempt ? 'VAT' : `VAT (${detail.vatRate}%)`} value={detail.vatExempt ? 'Exempt' : money(detail.vatAmount)} />
             <DetailRow label="Net amount" value={money(detail.netAmount)} />
-            {detail.discountAmount > 0 && (
-              <DetailRow
-                label={detail.discountCategory === 'senior' ? 'Senior discount' : detail.discountCategory === 'pwd' ? 'PWD discount' : 'Discount'}
-                value={money(detail.discountAmount)}
-              />
-            )}
             {detail.method && <DetailRow label="Method" value={METHOD_LABELS[detail.method] ?? detail.method} />}
-            {detail.bookingDate && <DetailRow label="Booking date" value={detail.bookingDate} />}
-            {detail.issuedAt && <DetailRow label="Issued" value={prettyDate(detail.issuedAt)} />}
+            <DetailRow label="BIR invoice" value={detail.birInvoiceNumber || '—'} />
           </div>
         )}
+      </BottomSheet>
+
+      <BottomSheet
+        open={issueOpen}
+        onClose={() => { if (issueState !== 'saving') setIssueOpen(false); }}
+        title="Issue Receipt"
+        subtitle="Record a payment received outside an online booking."
+        flushFooter
+        footer={null}
+      >
+        <form className="finance-issue-form" onSubmit={submitReceipt}>
+          <label>Venue<select value={draft.venueId} onChange={(event) => setDraft({ ...draft, venueId: event.target.value })} required><option value="">Select venue</option>{venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}</select></label>
+          <div className="finance-form-grid">
+            <label>Customer<input value={draft.payorName} onChange={(event) => setDraft({ ...draft, payorName: event.target.value })} placeholder="Customer name" required /></label>
+            <label>TIN <small>Optional</small><input value={draft.payorTIN} onChange={(event) => setDraft({ ...draft, payorTIN: event.target.value })} placeholder="000-000-000" /></label>
+          </div>
+          <div className="finance-form-grid">
+            <label>Category<select value={draft.category} onChange={(event) => setDraft({ ...draft, category: event.target.value as ManualReceiptCategory })}>{MANUAL_RECEIPT_CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label>Method<select value={draft.method} onChange={(event) => setDraft({ ...draft, method: event.target.value as ReceiptMethod })}>{RECEIPT_METHODS.map((item) => <option key={item} value={item}>{METHOD_LABELS[item] ?? item}</option>)}</select></label>
+          </div>
+          <label>Description<input value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} placeholder="What was paid for?" required /></label>
+          <div className="finance-form-grid">
+            <label>Gross amount<input type="number" inputMode="decimal" min="0.01" step="0.01" value={draft.amount} onChange={(event) => setDraft({ ...draft, amount: event.target.value })} placeholder="0.00" required /></label>
+            <label>BIR invoice # <small>Optional</small><input value={draft.birInvoiceNumber} onChange={(event) => setDraft({ ...draft, birInvoiceNumber: event.target.value })} placeholder="BIR-2026-0001" /></label>
+          </div>
+          {issueState === 'error' && <p className="finance-form-error">{issueError}</p>}
+          <div className="finance-form-actions"><button type="button" onClick={() => setIssueOpen(false)} disabled={issueState === 'saving'}>Cancel</button><button type="submit" disabled={issueState === 'saving'}>{issueState === 'saving' ? 'Issuing…' : 'Issue Receipt'}</button></div>
+        </form>
       </BottomSheet>
     </div>
   );
@@ -398,7 +445,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2.5 border-b-[0.5px] border-[var(--hairline)] last:border-0">
       <span className="text-[13px] text-[var(--muted)] shrink-0">{label}</span>
-      <span className="text-[13px] font-semibold text-[var(--ink)] text-right min-w-0 truncate">{value}</span>
+      <span className="text-[13px] font-semibold text-[var(--ink)] text-right min-w-0">{value}</span>
     </div>
   );
 }

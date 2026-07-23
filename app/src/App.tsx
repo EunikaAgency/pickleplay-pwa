@@ -4,7 +4,6 @@ import { LoginScreen } from './features/auth/LoginScreen';
 import { ForgotPasswordScreen } from './features/auth/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './features/auth/ResetPasswordScreen';
 import { VerifyEmailScreen } from './features/auth/VerifyEmailScreen';
-import { VerifyEmailBanner } from './features/auth/VerifyEmailBanner';
 import { OnboardingScreen } from './features/auth/OnboardingScreen';
 import { SplashScreen } from './features/auth/SplashScreen';
 import { GameDetailsScreen } from './features/games/GameDetailsScreen';
@@ -934,7 +933,6 @@ function AppInner() {
       )}
 
       <main className="app-main">
-        {!hideChrome && isTabRoot && <VerifyEmailBanner onNavigate={navigate} />}
         <ErrorBoundary>{renderScreen()}</ErrorBoundary>
       </main>
 

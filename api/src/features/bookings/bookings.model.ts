@@ -95,7 +95,7 @@ const bookingSchema = new Schema({
   overrideId:          { type: Schema.Types.ObjectId, ref: 'SlotPriceOverride' },  // set when rateSource='surge'
   baseRate:            Number,    // resolved rate before member discount
   memberDiscountPercent: Number,  // 0–100
-  customerCategory:    { type: String, enum: ['none', 'senior', 'pwd'], default: 'none' },
+  customerCategory:    { type: String, enum: ['none', 'senior'], default: 'none' },
   discountPercent:     { type: Number, min: 0, max: 100, default: 0 },
   discountAmount:      { type: Number, min: 0, default: 0 },
   discountIdNumber:    { type: String, maxlength: 80 },

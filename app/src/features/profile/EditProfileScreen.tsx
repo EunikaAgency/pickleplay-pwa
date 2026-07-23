@@ -86,7 +86,6 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
       gender: (currentUser?.gender ?? '') as Gender | '',
       birthday: currentUser?.birthday ?? '',
       seniorCitizenIdNumber: currentUser?.seniorCitizenIdNumber ?? '',
-      pwdIdNumber: currentUser?.pwdIdNumber ?? '',
       bio: currentUser?.bio ?? '',
       address1: currentUser?.address1 ?? '',
       address2: currentUser?.address2 ?? '',
@@ -113,7 +112,6 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         if (isSeniorOnDate(all.birthday as string, TODAY) && !value) return 'Senior Citizen ID is required to claim the discount.';
         return value.length > 80 ? 'Use 80 characters or fewer.' : undefined;
       },
-      pwdIdNumber: (v) => (v as string).trim().length > 80 ? 'Use 80 characters or fewer.' : undefined,
     },
   });
 
@@ -207,7 +205,6 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
         // Sent even when blank — '' is how the server clears a birthday.
         birthday: form.values.birthday,
         seniorCitizenIdNumber: form.values.seniorCitizenIdNumber.trim(),
-        pwdIdNumber: form.values.pwdIdNumber.trim(),
         bio: form.values.bio.trim(),
         address1: form.values.address1.trim(),
         address2: form.values.address2.trim(),
@@ -347,18 +344,6 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             />
           </div>
         )}
-
-        <div className="field">
-          <FormField
-            label="PWD ID number"
-            value={form.values.pwdIdNumber}
-            onChange={(e) => form.setField('pwdIdNumber', e.target.value)}
-            onBlur={() => form.setTouched('pwdIdNumber')}
-            error={form.touched.pwdIdNumber ? form.errors.pwdIdNumber : undefined}
-            placeholder="PWD ID (optional)"
-            hint="PWD booking discounts are paused for launch."
-          />
-        </div>
 
         <div className="field">
           <div className="flex items-center justify-between gap-2 mb-1.5">

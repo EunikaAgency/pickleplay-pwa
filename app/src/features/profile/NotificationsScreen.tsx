@@ -1,12 +1,16 @@
 import { Fragment, useEffect, useState } from 'react';
+import { ActionMenu } from '../../shared/components/ui/ActionMenu';
 import { Icon } from '../../shared/components/ui/Icon';
+import { BottomSheet } from '../../shared/components/ui/BottomSheet';
 import { Chip } from '../../shared/components/ui/Chip';
+import { Toast } from '../../shared/components/ui/Toast';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
 import { ErrorState } from '../../shared/components/ui/ErrorState';
 import { LoadingSkeleton } from '../../shared/components/ui/LoadingSkeleton';
 import { DemoBranch } from '../../shared/components/ui/DemoBranch';
 import { ScreenHeader } from '../../shared/components/ui/ScreenHeader';
-import { listNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, respondToVenueMembershipInvite, getVenue, listPublicPlans, respondToFriendRequest, type ApiNotification, type ApiSubscriptionPlan } from '../../shared/lib/api';
+import { listNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, reportNotification, respondToVenueMembershipInvite, getVenue, listPublicPlans, respondToFriendRequest, type ApiNotification, type ApiSubscriptionPlan } from '../../shared/lib/api';
+import { REPORT_REASONS } from '../../shared/lib/reportReasons';
 import { MembershipSheet } from '../venues/MembershipSheet';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { useNotificationStore } from '../../shared/lib/notificationStore';
@@ -227,6 +231,13 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
   const [filter, setFilter] = useState<Filter>('All');
   // Per-notification state for membership invites the player accepts/declines inline.
   const [inviteState, setInviteState] = useState<Record<string, 'accepting' | 'declining' | 'accepted' | 'declined'>>({});
+  // Row ⋮ menu side-effects: the report reason picker + the confirmation toast.
+  const [reportTarget, setReportTarget] = useState<ApiNotification | null>(null);
+  const [toast, setToast] = useState({ show: false, message: '' });
+  const showToast = (message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 2000);
+  };
   // When the player taps Accept but has no subscription yet, open the Join
   // Membership sheet so they pick a plan first.
   const [membershipSheet, setMembershipSheet] = useState<{
@@ -285,6 +296,31 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
   const remove = async (id: string) => {
     setItems((prev) => prev.filter((n) => n.id !== id)); // optimistic
     try { await deleteNotification(id); } catch { /* best-effort */ }
+  };
+
+  // Flip one notification's read state from its ⋮ menu — the inbox equivalent of
+  // "Mark all read", but for a single row. Optimistic; the unread badge follows
+  // `items`, so it corrects itself on the next load if the write fails.
+  const toggleRead = async (n: ApiNotification) => {
+    const next = !n.isRead;
+    setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: next } : x)));
+    showToast(next ? 'Marked as read' : 'Marked as unread');
+    try {
+      await markNotificationRead(n.id, next);
+    } catch {
+      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: !next } : x)));
+      showToast("Couldn't update this notification");
+    }
+  };
+
+  // Reporting is two taps: the ⋮ menu opens the reason picker, picking a reason
+  // submits it (same flow as reporting a feed post).
+  const submitReport = (reason: string) => {
+    const target = reportTarget;
+    setReportTarget(null);
+    if (!target) return;
+    showToast("Thanks — we'll take a look");
+    reportNotification(target.id, reason).catch(() => showToast("Couldn't send that report"));
   };
 
   const open = (n: ApiNotification) => {
@@ -646,14 +682,20 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                 </button>
                 <div className="notif-right">
                   {!n.isRead && <span className="notif-dot-unread" aria-label="Unread" />}
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); remove(n.id); }}
-                    className="notif-x"
-                    aria-label="Delete notification"
-                  >
-                    <Icon name="close" size={14} />
-                  </button>
+                  <ActionMenu
+                    aria-label="Notification actions"
+                    size={16}
+                    actions={[
+                      {
+                        key: 'read',
+                        label: n.isRead ? 'Mark as unread' : 'Mark as read',
+                        icon: n.isRead ? 'mail' : 'check',
+                        onSelect: () => { void toggleRead(n); },
+                      },
+                      { key: 'report', label: 'Report notification', icon: 'shield', onSelect: () => setReportTarget(n) },
+                      { key: 'delete', label: 'Delete notification', icon: 'trash', danger: true, onSelect: () => { void remove(n.id); } },
+                    ]}
+                  />
                 </div>
               </div>
             );
@@ -689,6 +731,29 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
           apiPlans={membershipSheet.plans}
         />
       )}
+      {/* Report reason picker — opens after tapping "Report notification". */}
+      <BottomSheet
+        open={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        title="Report notification"
+        subtitle="Why are you reporting this notification?"
+      >
+        <div className="flex flex-col gap-1 pb-2">
+          {REPORT_REASONS.map((reason) => (
+            <button
+              key={reason}
+              type="button"
+              onClick={() => submitReport(reason)}
+              className="w-full flex items-center justify-between gap-2.5 px-2 py-3 text-left text-[15px] font-semibold text-[var(--ink)] active:bg-[var(--surface-2)] rounded-xl"
+            >
+              {reason}
+              <Icon name="chevron" size={16} className="text-[var(--muted)] shrink-0" />
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
+
+      <Toast message={toast.message} show={toast.show} />
       </div>{/* /scrollable content */}
     </div>
   );

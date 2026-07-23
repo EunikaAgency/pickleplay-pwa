@@ -78,7 +78,7 @@ export interface IVenue {
   holidayDates?: string[];
   // ── Member pricing ── % discount off the resolved hourly rate for venue members.
   memberDiscountPercent?: number;
-  statutoryDiscounts?: Array<{ category: 'senior' | 'pwd'; percent: number }>;
+  statutoryDiscounts?: Array<{ category: 'senior'; percent: number }>;
   // ── Per-player surcharge ── ₱ added per extra player beyond the included count.
   perPlayerFee?: number;
   // Players included in the base rate before the surcharge kicks in (default 1).
@@ -214,7 +214,7 @@ const venueSchema = new Schema({
   memberDiscountPercent: { type: Number, default: 0, min: 0, max: 100 },
   statutoryDiscounts: {
     type: [{
-      category: { type: String, enum: ['senior', 'pwd'], required: true },
+      category: { type: String, enum: ['senior'], required: true },
       percent: { type: Number, min: 0, max: 100, required: true },
       _id: false,
     }],

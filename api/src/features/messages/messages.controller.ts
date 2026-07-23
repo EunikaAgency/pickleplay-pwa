@@ -3,7 +3,7 @@ import { Conversation, Message, conversationKey } from './messages.model.js';
 import { User } from '../auth/auth.model.js';
 import { Venue, VenueStaff } from '../venues/venues.model.js';
 import { Booking } from '../bookings/bookings.model.js';
-import { Notification } from '../interactions/interactions.model.js';
+import { Notification, ContentReport } from '../interactions/interactions.model.js';
 import { Media } from '../media/media.model.js';
 import { notifyUser } from '../../shared/lib/notify.js';
 import { publishUserEvent } from '../../shared/lib/userEvents.js';
@@ -690,6 +690,63 @@ export async function markConversationRead(c: any) {
   await markThreadRead(conv, user, now);
 
   return c.json({ data: { readAt: now } });
+}
+
+// POST /messages/conversations/:id/unread — the inverse of /read. Rewinds the
+// viewer's read mark to just before the newest message from the other side, so
+// the thread reads as unread again (the "Mark as unread" every inbox has).
+// On a venue thread the whole venue side is rewound, mirroring markThreadRead:
+// unread there means "nobody working this venue has handled it yet".
+export async function markConversationUnread(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
+  const conv = await Conversation.findById(id);
+  if (!conv || !(await canAccess(conv, user))) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
+  }
+
+  const last: any = await Message.findOne({
+    conversationId: conv._id,
+    senderId: { $ne: user.sub },
+    deleted: { $ne: true },
+  }).sort({ createdAt: -1 }).select('createdAt').lean();
+  // Nothing from the other side — there is nothing to be unread about.
+  if (!last) return c.json({ data: { unread: 0 } });
+
+  const me = String(user.sub);
+  const sides = await threadSides(conv);
+  const readers = sides.venueSide.includes(me) ? sides.venueSide : [me];
+  const readAt = new Date(new Date(last.createdAt).getTime() - 1);
+  conv.reads = [
+    ...(conv.reads ?? []).filter((r: any) => !readers.includes(String(r.userId))),
+    ...readers.map((uid) => ({ userId: uid, at: readAt })),
+  ] as any;
+  await conv.save();
+
+  return c.json({ data: { unread: 1, readAt } });
+}
+
+const reportSchema = z.object({ reason: z.string().max(500).optional() });
+
+// POST /messages/conversations/:id/report — flag a thread for moderation review.
+// Self-scoped like the feed's report: any participant may report, one row per
+// (reporter, thread), and a repeat report just refreshes the reason.
+export async function reportConversation(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  if (!objectId.safeParse(id).success) return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
+  const conv = await Conversation.findById(id);
+  if (!conv || !(await canAccess(conv, user))) {
+    return c.json({ error: { code: 'NOT_FOUND', message: 'Conversation not found' } }, 404);
+  }
+  const body = reportSchema.parse(await c.req.json().catch(() => ({})));
+  await ContentReport.updateOne(
+    { userId: user.sub, targetType: 'conversation', targetId: conv._id },
+    { $set: { reason: body.reason ?? null, status: 'pending' }, $unset: { resolvedBy: '' } },
+    { upsert: true },
+  );
+  return c.json({ data: { reported: true } });
 }
 
 // POST /messages/conversations/:id/typing — broadcast a typing indicator to the

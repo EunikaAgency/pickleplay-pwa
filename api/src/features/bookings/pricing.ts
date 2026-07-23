@@ -21,7 +21,7 @@ export interface RateBreakdown {
   source: RateSource;
   memberApplied: boolean;
   memberDiscountPercent: number;
-  customerCategory: 'none' | 'senior' | 'pwd';
+  customerCategory: 'none' | 'senior';
   statutoryDiscountApplied: boolean;
   statutoryDiscountPercent: number;
   /** The SlotPriceOverride _id when source='surge', else undefined. */
@@ -137,7 +137,7 @@ export interface ResolveRateParams {
   startTime: string;
   /** Whether the booking viewer is a member of this venue (member pricing applies). */
   isMember?: boolean;
-  customerCategory?: 'none' | 'senior' | 'pwd';
+  customerCategory?: 'none' | 'senior';
 }
 
 /**

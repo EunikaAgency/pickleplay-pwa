@@ -18,7 +18,7 @@ export interface BookingPricingInput {
   startTime: string;
   endTime: string;
   isMember: boolean;
-  customerCategory: 'none' | 'senior' | 'pwd';
+  customerCategory: 'none' | 'senior';
   playerCount: number;
   includeEquipment: boolean;
   settings: AppSettings | null;

@@ -274,17 +274,17 @@
       <p class="lede">A client-ready summary of the work completed across booking approvals, open play, owner tools, staff access, reliability, and backend safeguards.</p>
       <div class="meta">
         <span class="pill">July 23, 2026</span>
-        <span class="pill done"><span class="check">✓</span> Completed work only</span>
-        <span class="pill done"><span class="check">✓</span> Presentation view</span>
+        <!-- <span class="pill done"><span class="check">✓</span> Completed work only</span>
+        <span class="pill done"><span class="check">✓</span> Presentation view</span> -->
       </div>
     </header>
 
-    <section class="summary" aria-label="Completed work summary">
+    <!-- <section class="summary" aria-label="Completed work summary">
       <div class="stat"><strong>8</strong><span>Major areas shipped</span></div>
       <div class="stat"><strong>24</strong><span>Completed client items</span></div>
       <div class="stat"><strong>122</strong><span>Focused tests passed</span></div>
       <div class="stat"><strong>3</strong><span>Live services reachable</span></div>
-    </section>
+    </section> -->
 
     <h2 class="section-title">Booking & Court Reservations</h2>
     <section class="grid">
@@ -414,24 +414,13 @@
         </div>
         <div class="done-line"><span class="check">✓</span> Birthday-based senior eligibility tests are passing.</div>
       </article>
-
-      <article class="card">
-        <div class="card-top">
-          <div class="icon">12</div>
-          <div>
-            <h3>Senior and PWD discounts are implemented</h3>
-            <p>Saved Senior and PWD discount details can now be applied automatically during booking.</p>
-          </div>
-        </div>
-        <div class="done-line"><span class="check">✓</span> API and app discount tests are passing.</div>
-      </article>
     </section>
 
     <h2 class="section-title">Owner & Staff Management</h2>
     <section class="grid">
       <article class="card">
         <div class="card-top">
-          <div class="icon">13</div>
+          <div class="icon">12</div>
           <div>
             <h3>Per-staff access controls are available</h3>
             <p>Owners can manage staff permissions for pricing, analytics, bookings, and venue management.</p>
@@ -442,7 +431,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">14</div>
+          <div class="icon">13</div>
           <div>
             <h3>Staff revenue visibility is restricted</h3>
             <p>Plain staff accounts no longer receive the owner analytics/revenue access by default.</p>
@@ -453,18 +442,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">15</div>
-          <div>
-            <h3>Owner booking inbox is more actionable</h3>
-            <p>Owners can see clearer pending approval states and booking request timing.</p>
-          </div>
-        </div>
-        <div class="done-line"><span class="check">✓</span> Reminder and expiry behavior is covered by focused booking tests.</div>
-      </article>
-
-      <article class="card">
-        <div class="card-top">
-          <div class="icon">16</div>
+          <div class="icon">14</div>
           <div>
             <h3>Venue deletion now preserves history</h3>
             <p>Deleting a venue now archives it instead of hard-deleting records needed for history, reports, and analytics.</p>
@@ -478,7 +456,7 @@
     <section class="grid">
       <article class="card">
         <div class="card-top">
-          <div class="icon">17</div>
+          <div class="icon">15</div>
           <div>
             <h3>Website calls to action point users to the app</h3>
             <p>Booking, login, registration, create, join, host, and related website actions now guide users toward the mobile app experience.</p>
@@ -489,7 +467,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">18</div>
+          <div class="icon">16</div>
           <div>
             <h3>Friendly error and not-found pages are present</h3>
             <p>Broken pages and mistyped console URLs now have user-friendly fallback screens.</p>
@@ -500,7 +478,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">19</div>
+          <div class="icon">17</div>
           <div>
             <h3>Retry and error states were added across key screens</h3>
             <p>Bookings, clubs, chat, venue data, owner dashboard surfaces, and related flows now avoid silent failure patterns.</p>
@@ -511,7 +489,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">20</div>
+          <div class="icon">18</div>
           <div>
             <h3>Chat failures are more visible</h3>
             <p>Message send and failed-load states now surface retry/error messaging to users.</p>
@@ -525,7 +503,7 @@
     <section class="grid">
       <article class="card">
         <div class="card-top">
-          <div class="icon">21</div>
+          <div class="icon">19</div>
           <div>
             <h3>Last-seat game joins are protected</h3>
             <p>Direct game joins now use atomic updates to prevent over-capacity rosters and duplicate entries.</p>
@@ -536,7 +514,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">22</div>
+          <div class="icon">20</div>
           <div>
             <h3>Court booking conflicts are guarded</h3>
             <p>Confirmed court bookings use database-level slot protection to prevent duplicate confirmed reservations.</p>
@@ -547,7 +525,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">23</div>
+          <div class="icon">21</div>
           <div>
             <h3>Coach booking conflicts are guarded</h3>
             <p>Coach session bookings use slot protection so the same coach time cannot be confirmed twice.</p>
@@ -558,7 +536,7 @@
 
       <article class="card">
         <div class="card-top">
-          <div class="icon">24</div>
+          <div class="icon">22</div>
           <div>
             <h3>Live services are reachable</h3>
             <p>The public app, website, and API health route are online and responding.</p>

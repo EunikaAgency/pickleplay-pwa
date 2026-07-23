@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { streamSSE } from 'hono/streaming';
-import { Review, ReviewReply, ReviewReport, Favorite, Notification } from './interactions.model.js';
+import { Review, ReviewReply, ReviewReport, Favorite, Notification, ContentReport } from './interactions.model.js';
 import { Venue } from '../venues/venues.model.js';
 import { verifyToken } from '../../shared/lib/jwt.js';
 import { subscribeUser } from '../../shared/lib/userEvents.js';
@@ -17,6 +17,9 @@ const addFavoriteSchema = z.object({
 });
 
 const replySchema = z.object({ text: z.string().min(1).max(5000) });
+
+const readStateSchema = z.object({ isRead: z.boolean().optional() });
+const reportContentSchema = z.object({ reason: z.string().max(500).optional() });
 
 const reportSchema = z.object({
   reason: z.enum(['inappropriate', 'spam', 'fake', 'offensive', 'other']),
@@ -101,9 +104,15 @@ export async function unreadNotificationCount(c: any) {
   return c.json({ data: { count } });
 }
 
+// PATCH /notifications/:id — flip a notification's read state. The body is
+// optional and defaults to `{ isRead: true }`, so the long-standing
+// "mark this read" callers (which send `{}`) are unchanged; passing
+// `{ isRead: false }` marks it unread again.
 export async function markNotificationRead(c: any) {
   const user = c.get('user'); const id = c.req.param('id');
-  const result = await Notification.findOneAndUpdate({ _id: id, userId: user.sub }, { isRead: true }, { new: true }).lean();
+  const body = readStateSchema.parse(await c.req.json().catch(() => ({})));
+  const isRead = body.isRead ?? true;
+  const result = await Notification.findOneAndUpdate({ _id: id, userId: user.sub }, { isRead }, { new: true }).lean();
   if (!result) return c.json({ error: { code: 'NOT_FOUND', message: 'Notification not found' } }, 404);
   return c.json({ data: { ...result, id: result._id } });
 }
@@ -112,6 +121,23 @@ export async function markAllNotificationsRead(c: any) {
   const user = c.get('user');
   await Notification.updateMany({ userId: user.sub, isRead: false }, { isRead: true });
   return c.json({ data: { message: 'All notifications marked as read' } });
+}
+
+// POST /notifications/:id/report — flag a notification for moderation review
+// (its content came from another user — a chat, a club post, an invite).
+// Self-scoped: you can only report a notification addressed to you.
+export async function reportNotification(c: any) {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  const notif = await Notification.findOne({ _id: id, userId: user.sub }).select('_id').lean();
+  if (!notif) return c.json({ error: { code: 'NOT_FOUND', message: 'Notification not found' } }, 404);
+  const body = reportContentSchema.parse(await c.req.json().catch(() => ({})));
+  await ContentReport.updateOne(
+    { userId: user.sub, targetType: 'notification', targetId: (notif as any)._id },
+    { $set: { reason: body.reason ?? null, status: 'pending' }, $unset: { resolvedBy: '' } },
+    { upsert: true },
+  );
+  return c.json({ data: { reported: true } });
 }
 
 export async function deleteNotification(c: any) {

@@ -638,7 +638,7 @@ export interface SlotQuoteParams {
   startTime: string;
   endTime: string;
   playerCount?: number;
-  customerCategory?: 'none' | 'senior' | 'pwd';
+  customerCategory?: 'none' | 'senior';
   /** Checked for an active venue membership (member pricing). Skipped when null. */
   userId?: string | null;
   /** Equipment rental add-on, carried through unchanged. */
@@ -650,7 +650,7 @@ export interface SlotQuoteParams {
 export interface SlotQuote {
   /** Payable court total: rate × hours + equipment + per-player surcharge, post-discount. */
   total: number;
-  /** The same total before any statutory (senior/PWD) discount. */
+  /** The same total before any statutory senior discount. */
   preDiscountSubtotal: number;
   discountAmount: number;
   discountPercent: number;
@@ -699,7 +699,7 @@ export async function quoteSlotTotal(p: SlotQuoteParams): Promise<SlotQuote | nu
   }
 
   // Venue membership discount — mutually exclusive with the statutory one, which
-  // is why it is only consulted when no senior/PWD category was claimed.
+  // is why it is only consulted when no senior category was claimed.
   if (customerCategory === 'none' && p.userId && pricing) {
     const membership = await VenueMember.findOne({
       venueId: p.venueId, userId: p.userId, status: 'active',

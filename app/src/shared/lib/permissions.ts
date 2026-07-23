@@ -199,7 +199,6 @@ export interface AppUser {
   birthday?: string;
   /** Private statutory-discount IDs, returned only on the signed-in user's auth payload. */
   seniorCitizenIdNumber?: string;
-  pwdIdNumber?: string;
   /** Postal address. Required before subscribing as a coach or organizer. */
   address1?: string;
   address2?: string;
