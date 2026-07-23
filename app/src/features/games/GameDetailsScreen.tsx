@@ -884,35 +884,53 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
 
           {/* Host edit — patches only the fields updateGame applies (keeps a
               'public' game's type/format/vibe intact). */}
-          <BottomSheet open={editOpen} onClose={() => setEditOpen(false)} title="Edit lobby">
-            <div className="px-1 pb-1 flex flex-col gap-4">
-              <label className="block">
-                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Title</span>
+          <BottomSheet
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            title="Edit lobby"
+            sheetClassName="edit-lobby-sheet"
+            flushFooter
+            footer={
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" fullWidth onClick={() => setEditOpen(false)} disabled={savingEdit}>Cancel</Button>
+                <Button fullWidth onClick={doSaveEdit} disabled={savingEdit}>
+                  {savingEdit ? (
+                    <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Saving…</>
+                  ) : (
+                    'Save changes'
+                  )}
+                </Button>
+              </div>
+            }
+          >
+            <div className="edit-lobby-form">
+              <label className="field">
+                <span className="lbl block">Title</span>
                 <input className="control" value={editForm.title} maxLength={120}
                   placeholder="e.g. Friday Night Dinks"
                   onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
               </label>
-              <label className="block">
-                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Skill label</span>
+              <label className="field">
+                <span className="lbl block">Skill label</span>
                 <input className="control" value={editForm.skillLabel} maxLength={30}
                   placeholder="e.g. 3.0–3.5 or All levels"
                   onChange={(e) => setEditForm((f) => ({ ...f, skillLabel: e.target.value }))} />
               </label>
-              <label className="block">
-                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Players (capacity)</span>
+              <label className="field">
+                <span className="lbl block">Players (capacity)</span>
                 <input className="control" type="number" inputMode="numeric"
                   min={Math.max(2, participants.length)} max={16} value={editForm.capacity}
                   onChange={(e) => setEditForm((f) => ({ ...f, capacity: Number(e.target.value) }))} />
-                <span className="block text-[12px] text-[var(--muted)] mt-1">Can't go below the {participants.length} already in the lobby.</span>
+                <span className="edit-lobby-help">Can't go below the {participants.length} already in the lobby.</span>
               </label>
-              <label className="block">
-                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Description</span>
+              <label className="field">
+                <span className="lbl block">Description</span>
                 <textarea className="control" value={editForm.description} maxLength={500} rows={3}
                   placeholder="Anything players should know"
                   onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} />
               </label>
-              <label className="block">
-                <span className="block text-[11px] font-extrabold uppercase tracking-wider text-[var(--muted)] mb-1.5">Visibility</span>
+              <label className="field">
+                <span className="lbl block">Visibility</span>
                 <select className="control" value={editForm.visibility}
                   onChange={(e) => setEditForm((f) => ({ ...f, visibility: e.target.value }))}>
                   <option value="public">Public — anyone can find it</option>
@@ -920,7 +938,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                 </select>
               </label>
               {approvalAllowed && (
-                <label className="flex cursor-pointer items-start gap-3">
+                <label className="edit-lobby-approval">
                   <input type="checkbox" className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--primary)]"
                     checked={editForm.requiresApproval}
                     onChange={(e) => setEditForm((f) => ({ ...f, requiresApproval: e.target.checked }))} />
@@ -932,16 +950,6 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   </span>
                 </label>
               )}
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingEdit}>Cancel</Button>
-                <Button onClick={doSaveEdit} disabled={savingEdit}>
-                  {savingEdit ? (
-                    <><span className="inline-flex animate-spin"><Icon name="spinner" size={18} /></span> Saving…</>
-                  ) : (
-                    'Save changes'
-                  )}
-                </Button>
-              </div>
             </div>
           </BottomSheet>
 

@@ -4,14 +4,19 @@
 // went missing). Idempotent: upserts by email, reassigns venues by slug.
 //
 //   npx tsx src/shared/db/restore-test-credentials.ts
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { User } from '../../features/auth/auth.model.js';
 import { Venue } from '../../features/venues/venues.model.js';
 
 const MONGO = process.env.MONGODB_URI || 'mongodb://localhost:27017/pickleballers';
-const CRED_FILE = '/var/public/pickleplay/web/TEST_CREDENTIALS.txt';
+// Resolved from this file, not hardcoded: the absolute path this used to carry
+// (/var/public/pickleplay/…) died when the monorepo moved, which silently broke
+// the step of the seed pipeline that restores the admin + the two test owners.
+const CRED_FILE = path.resolve(import.meta.dirname, '../../../../web/TEST_CREDENTIALS.txt');
 const ADMIN_PASSWORD = 'justinianthegreat!';
 const SEED_PASSWORD = 'password123';
 
@@ -51,6 +56,13 @@ function parse(text: string) {
 }
 
 async function main() {
+  // Skip cleanly rather than crashing: this runs as a step of the seed
+  // pipeline, and a missing credentials file shouldn't take the whole run down.
+  if (!existsSync(CRED_FILE)) {
+    console.warn(`⚠️  ${CRED_FILE} not found — skipping test-credential restore.`);
+    return;
+  }
+
   await mongoose.connect(MONGO);
   const { users, ownerVenues } = parse(readFileSync(CRED_FILE, 'utf8'));
 

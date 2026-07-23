@@ -40,4 +40,8 @@ adminRoutes.get('/subscriptions', listSubscriptions);
 adminRoutes.get('/partner-subscriptions', listPartnerSubscriptions);
 adminRoutes.delete('/partner-subscriptions/:id', deactivatePartnerSubscription);
 
+// Database seed + truncate for launch. Inherits the auth/admin gate above; each
+// handler additionally requires `admin.settings.manage`.
+adminRoutes.route('/data', dataOpsRoutes);
+
 export default adminRoutes;

@@ -1451,6 +1451,51 @@
 .field .control:focus { border-color: var(--primary); }
 .field textarea.control { min-height: 100px; resize: vertical; }
 
+/* Edit-lobby sheet: its controls live directly in a focused modal rather than
+   a full-page form. Keep them compact enough for a phone while retaining the
+   standard field treatment, and leave the actions in BottomSheet's fixed
+   footer so the approval row never sits underneath them. */
+.edit-lobby-sheet {
+  background: var(--surface);
+}
+.edit-lobby-sheet .sheet-body {
+  padding: 18px 0 10px;
+  overscroll-behavior: contain;
+}
+.edit-lobby-sheet .sheet-footer {
+  background: var(--surface);
+}
+.edit-lobby-form .field {
+  margin-bottom: 14px;
+}
+.edit-lobby-form .field .control {
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.edit-lobby-form .field textarea.control {
+  min-height: 82px;
+  resize: none;
+}
+.edit-lobby-help {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.edit-lobby-approval {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 2px 20px 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--field-border);
+  border-radius: 14px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
 /* Front-desk booking sheet: this form sits directly in a BottomSheet rather
    than using `.field`, so it needs its own visible controls and tighter rhythm. */
 .frontdesk-booking-sheet {

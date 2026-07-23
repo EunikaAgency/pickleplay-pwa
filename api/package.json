@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "TZ=Asia/Manila tsx watch src/index.ts",
     "db:seed": "tsx src/shared/db/seed.ts",
+    "db:seed:all": "tsx src/shared/db/run-pipeline.ts",
     "db:seed:users": "tsx src/shared/db/seed-dummy-users.ts",
     "db:seed:dummy": "tsx src/shared/db/seed-dummy-data.ts",
     "db:seed:coach-subs": "tsx src/shared/db/seed-coach-subscribers.ts",
