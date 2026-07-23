@@ -1,426 +1,290 @@
 {
-  "roleUsers": [
-    {
-      "id": "6a61b5daabe2d000c07b05f3",
-      "email": "christianian.i.alcazar@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05f4",
-      "email": "dodiaramburo@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05f5",
-      "email": "billyarceo@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05f6",
-      "email": "cebadion@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05f7",
-      "email": "barrientos_pao@yahoo.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05f8",
-      "email": "mbolanosjr@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05f9",
-      "email": "giselle@pickleball.ph",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05fa",
-      "email": "johnnoel.cano@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05fb",
-      "email": "paulcarrasco08@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05fc",
-      "email": "coachmarkcasal@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05fd",
-      "email": "jamescastaneda93@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05fe",
-      "email": "costalesfederico@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b05ff",
-      "email": "neil_rednetter@yahoo.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0600",
-      "email": "heintje14@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0601",
-      "email": "benjohervias@yahoo.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0602",
-      "email": "turoyignacio@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0603",
-      "email": "mike@pickleball.ph",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0604",
-      "email": "mcejayjuano.awwc@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0605",
-      "email": "jeffrey@pickleball.ph",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0606",
-      "email": "nrladera@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0607",
-      "email": "chrislaqueo@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0608",
-      "email": "lazaroleander@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0609",
-      "email": "pickleballval@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b060a",
-      "email": "jarrydmanduriao@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b060b",
-      "email": "glennmatienzo@yahoo.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b060c",
-      "email": "jaimemorales0303@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b060d",
-      "email": "thorpozon@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b060e",
-      "email": "alyreyes@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b060f",
-      "email": "enteng.romano@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0610",
-      "email": "noeldavidmark@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0611",
-      "email": "architect80tantoco@yahoo.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0612",
-      "email": "noelcarlovaler@gmail.com",
-      "roleDefault": "coach"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b061f",
-      "email": "b1098890.peterson@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0620",
-      "email": "3cd5758f.soler@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0621",
-      "email": "3595b581.cook@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0622",
-      "email": "dd379c51.warren@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0623",
-      "email": "590856c7.cortes@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0624",
-      "email": "c6a04594.butler@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0625",
-      "email": "c09f183c.chambers@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0626",
-      "email": "f08667cd.aartsen@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0627",
-      "email": "46820f39.nieto@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5daabe2d000c07b0628",
-      "email": "0d024bb3.curtis@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf64",
-      "email": "556b9e79.matthews@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf65",
-      "email": "637fa51b.reyes@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf66",
-      "email": "c7c61e34.wheeler@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf67",
-      "email": "f1350d82.riley@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf68",
-      "email": "09ee0a24.hoogeboom@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf69",
-      "email": "90541e80.margaret@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf6a",
-      "email": "8be14e63.robinson@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf6b",
-      "email": "fa9be53b.campbell@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf6c",
-      "email": "399fb5a3.flores@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf6d",
-      "email": "b83325d1.bruning@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf6e",
-      "email": "0ddb6fe3.li@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf6f",
-      "email": "e7e5d785.montgomery@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf70",
-      "email": "ea96adbc.cooper@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf71",
-      "email": "6b73354e.watts@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf72",
-      "email": "843beb96.horton@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf73",
-      "email": "38ecc6dd.alexander@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf74",
-      "email": "1c28c297.henry@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf75",
-      "email": "b5243619.gilbert@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf76",
-      "email": "59e45b78.simmons@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf77",
-      "email": "8e6638f1.campos@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf78",
-      "email": "105e4e65.lpez@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf79",
-      "email": "c83069a4.stevens@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf7a",
-      "email": "09105328.macdonald@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf7b",
-      "email": "3b1dbaf3.addy@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf7c",
-      "email": "23a5ad63.steward@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf7d",
-      "email": "8e22be0f.cunningham@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf7e",
-      "email": "5022b53a.lee@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf7f",
-      "email": "d758eeb3.claire@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf80",
-      "email": "591aa197.reyes@example.com",
-      "roleDefault": "organizer"
-    },
-    {
-      "id": "6a61b5dc62cdb8d40b2cbf81",
-      "email": "f5996042.walker@example.com",
-      "roleDefault": "organizer"
-    }
-  ],
+  "roleUsers": [],
   "globalGrants": [
     {
-      "id": "6a61b5e362cdb8d40b2cbfb5",
-      "userId": "6a61b5e3690137409984b098",
+      "id": "6a50bac434553c489987eb00",
+      "userId": "6a1e7292a6b0fd2e1a4915f2",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfb6",
-      "userId": "6a61b5e3690137409984b09b",
+      "id": "6a50c32334553c489988007b",
+      "userId": "6a4f16b5d2b28d59a068ecca",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfb7",
-      "userId": "6a61b5e3690137409984b09e",
+      "id": "6a573240a4804a97970b4da0",
+      "userId": "6a573240985d38586532fa16",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfb8",
-      "userId": "6a61b5e3690137409984b0a1",
+      "id": "6a573240a4804a97970b4da6",
+      "userId": "6a573240985d38586532fa19",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfb9",
-      "userId": "6a61b5e3690137409984b0a4",
+      "id": "6a573240a4804a97970b4dac",
+      "userId": "6a573240985d38586532fa1c",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfba",
-      "userId": "6a61b5e3690137409984b0a7",
+      "id": "6a573240a4804a97970b4db2",
+      "userId": "6a573240985d38586532fa1f",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfbb",
-      "userId": "6a61b5e3690137409984b0aa",
+      "id": "6a573240a4804a97970b4db8",
+      "userId": "6a573240985d38586532fa22",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfbc",
-      "userId": "6a61b5e3690137409984b0ad",
+      "id": "6a573240a4804a97970b4dbe",
+      "userId": "6a573240985d38586532fa25",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfbd",
-      "userId": "6a61b5e3690137409984b0b0",
+      "id": "6a573240a4804a97970b4dc4",
+      "userId": "6a573240985d38586532fa28",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfbe",
-      "userId": "6a61b5e3690137409984b0b3",
+      "id": "6a573240a4804a97970b4dca",
+      "userId": "6a573240985d38586532fa2b",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfbf",
-      "userId": "6a61b5e3690137409984b0b6",
+      "id": "6a573240a4804a97970b4dd0",
+      "userId": "6a573240985d38586532fa2e",
       "role": "coach"
     },
     {
-      "id": "6a61b5e362cdb8d40b2cbfc0",
-      "userId": "6a61b5e3690137409984b0b9",
+      "id": "6a573240a4804a97970b4dd6",
+      "userId": "6a573240985d38586532fa31",
       "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4ddc",
+      "userId": "6a573240985d38586532fa34",
+      "role": "coach"
+    },
+    {
+      "id": "6a573240a4804a97970b4de2",
+      "userId": "6a573240985d38586532fa37",
+      "role": "coach"
+    },
+    {
+      "id": "6a585388094a7a731cecff74",
+      "userId": "6a4f16b5d2b28d59a068ecca",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725336f",
+      "userId": "6a1ea54b8f397445e219ba35",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253378",
+      "userId": "6a4f122013abcfba8ba8507b",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253381",
+      "userId": "6a4f122013abcfba8ba8507c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725338a",
+      "userId": "6a4f122013abcfba8ba8507d",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253393",
+      "userId": "6a4f122013abcfba8ba8507e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725339c",
+      "userId": "6a4f122013abcfba8ba8507f",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533a5",
+      "userId": "6a4f122013abcfba8ba85080",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533ae",
+      "userId": "6a4f122013abcfba8ba85081",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533b7",
+      "userId": "6a4f122013abcfba8ba85082",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533c0",
+      "userId": "6a4f122013abcfba8ba85083",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533c9",
+      "userId": "6a4f122013abcfba8ba85084",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533d2",
+      "userId": "6a4f16b5d2b28d59a068ec6e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533db",
+      "userId": "6a4f16b5d2b28d59a068ec70",
+      "role": "coach"
+    },
+    {
+      "id": "6a585c1fc9840b74772533e4",
+      "userId": "6a4f16b5d2b28d59a068ec72",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533ed",
+      "userId": "6a4f16b5d2b28d59a068ec74",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533f6",
+      "userId": "6a4f16b5d2b28d59a068ec76",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772533ff",
+      "userId": "6a4f16b5d2b28d59a068ec78",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253408",
+      "userId": "6a4f16b5d2b28d59a068ec7a",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253411",
+      "userId": "6a4f16b5d2b28d59a068ec7c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725341a",
+      "userId": "6a4f16b5d2b28d59a068ec7e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253423",
+      "userId": "6a4f16b5d2b28d59a068ec80",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725342f",
+      "userId": "6a4f16b5d2b28d59a068ec82",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725343b",
+      "userId": "6a4f16b5d2b28d59a068ec84",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253444",
+      "userId": "6a4f16b5d2b28d59a068ec86",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b747725344d",
+      "userId": "6a4f16b5d2b28d59a068ec88",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253456",
+      "userId": "6a4f16b5d2b28d59a068ec8a",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253461",
+      "userId": "6a4f16b5d2b28d59a068ec8c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253475",
+      "userId": "6a4f16b5d2b28d59a068ec8e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253488",
+      "userId": "6a4f16b5d2b28d59a068ec90",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b7477253498",
+      "userId": "6a4f16b5d2b28d59a068ec92",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534a1",
+      "userId": "6a4f16b5d2b28d59a068ec94",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534ac",
+      "userId": "6a4f16b5d2b28d59a068ec96",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534b5",
+      "userId": "6a4f16b5d2b28d59a068ec98",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534be",
+      "userId": "6a4f16b5d2b28d59a068ec9a",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534c8",
+      "userId": "6a4f16b5d2b28d59a068ec9c",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534d1",
+      "userId": "6a4f16b5d2b28d59a068ec9e",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534da",
+      "userId": "6a4f16b5d2b28d59a068eca0",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534e3",
+      "userId": "6a4f16b5d2b28d59a068eca2",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534ec",
+      "userId": "6a4f16b5d2b28d59a068eca4",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534f5",
+      "userId": "6a4f16b5d2b28d59a068eca6",
+      "role": "organizer"
+    },
+    {
+      "id": "6a585c1fc9840b74772534fe",
+      "userId": "6a4f16b5d2b28d59a068eca8",
+      "role": "organizer"
+    },
+    {
+      "id": "6a5dc00aa6d5396ee3657acb",
+      "userId": "6a4f16b5d2b28d59a068ec70",
+      "role": "organizer"
     }
   ]
 }

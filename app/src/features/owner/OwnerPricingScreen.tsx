@@ -3,7 +3,7 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { useOwnerDashboard } from './hooks/useOwnerDashboard';
 import {
   listCourts, listSlotOverrides, listSlotOverridesRange, createSlotOverride, deleteSlotOverride,
-  getHours, putHours, getCourtHours, putCourtHours, getOwnerVenue, updateVenue,
+  getHours, getCourtHours, getOwnerVenue,
   type OwnerCourt, type OwnerHourEntry,
 } from '../../shared/lib/api';
 import type { Navigate } from '../../shared/lib/navigation';
@@ -215,9 +215,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   // not pretend they're covering anything.
   const [weeklyHours, setWeeklyHours] = useState<OwnerHourEntry[]>([]);
   const [weeklyEnabled, setWeeklyEnabled] = useState(false);
-  const [defaultStatus, setDefaultStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [defaultError, setDefaultError] = useState('');
-  const [confirmDefault, setConfirmDefault] = useState(false);
   const [applyStatus, setApplyStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [applyError, setApplyError] = useState('');
   const [applyProgress, setApplyProgress] = useState('');
@@ -712,33 +709,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
    * that happened on one date, not something to repeat every Tuesday forever.
    */
   /**
-   * The week on screen, one weekday at a time, as priced bands.
-   *
-   * Reads the EFFECTIVE grid — painted hours plus whatever a weekly default already
-   * covers — so acting on a week you never touched reproduces what you're looking
-   * at rather than flattening it to "closed". Contiguous hours at the same rate
-   * collapse into one band.
-   */
-  const blocksForDay = (day: string): { openTime: string; closeTime: string; price: number }[] => {
-    const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`;
-    const blocks: { openTime: string; closeTime: string; price: number }[] = [];
-    for (let h = 0; h < 24;) {
-      const hour = HOURS[h];
-      const price = hour ? effectivePrices[cellKey(day, hour)] : undefined;
-      if (price == null) { h++; continue; }
-      let end = h + 1;
-      while (end < 24) {
-        const next = HOURS[end];
-        if (!next || effectivePrices[cellKey(day, next)] !== price) break;
-        end++;
-      }
-      blocks.push({ openTime: hhmm(h), closeTime: hhmm(end), price });
-      h = end;
-    }
-    return blocks;
-  };
-
-  /**
    * Stamp the week on screen onto every date of the month being viewed.
    *
    * Deliberately plain SlotPriceOverride rows — the same artifact Save Schedule
@@ -800,7 +770,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   };
 
   /**
-   * Like `blocksForDay`, but also carries the hours you deliberately SHUT.
+   * The week on screen as bands — priced hours AND the ones you deliberately SHUT.
    *
    * Applying a month has to write closures, not just prices: with a weekly default
    * in play a date with no override inherits, so an all-closed week copied as
@@ -829,49 +799,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
       h = end;
     }
     return out;
-  };
-
-  const saveWeeklyDefault = async () => {
-    if (!venue || defaultStatus === 'saving') return;
-    setConfirmDefault(false);
-    setDefaultStatus('saving');
-    setDefaultError('');
-    try {
-      const entries: OwnerHourEntry[] = [];
-      DAYS.forEach((day, index) => {
-        const dayOfWeek = (index + 1) % 7;   // DAYS is Monday-first; 0=Sunday.
-        const blocks = blocksForDay(day);
-        if (blocks.length === 0) {
-          entries.push({ dayOfWeek, isClosed: true });
-          return;
-        }
-        // A day needs its un-priced "operating hours" row first — the server
-        // validates every priced band against it (a band outside the operating
-        // window is rejected), and the Hours tab renders the day from it.
-        const first = blocks[0];
-        const last = blocks[blocks.length - 1];
-        if (first && last) entries.push({ dayOfWeek, isClosed: false, openTime: first.openTime, closeTime: last.closeTime });
-        for (const block of blocks) {
-          entries.push({ dayOfWeek, isClosed: false, openTime: block.openTime, closeTime: block.closeTime, price: block.price });
-        }
-      });
-      if (selectedCourtId) await putCourtHours(selectedCourtId, entries);
-      else await putHours(venue, entries);
-      // Opt the venue in. Until this flag is set the API keeps ignoring the weekly
-      // rows — deliberately, so imported venues carrying stale hours don't put
-      // unvetted times on sale the moment this feature ships.
-      if (!weeklyEnabled) {
-        await updateVenue(venue, { useWeeklyPricingDefault: true });
-        setWeeklyEnabled(true);
-      }
-      setWeeklyHours(entries);
-      setDefaultStatus('saved');
-      setTimeout(() => setDefaultStatus('idle'), 2500);
-    } catch (err) {
-      setDefaultStatus('error');
-      setDefaultError(err instanceof Error ? err.message : 'Unknown error');
-      setTimeout(() => { setDefaultStatus('idle'); setDefaultError(''); }, 4000);
-    }
   };
 
   const handleSave = async () => {
@@ -1002,22 +929,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               </button>
               <button
                 type="button"
-                onClick={() => setConfirmDefault(true)}
-                disabled={defaultStatus === 'saving' || !venue || !hasVenues}
-                style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
-                className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
-                  defaultStatus === 'error'
-                    ? 'border-[var(--coral)] text-[var(--coral)]'
-                    : 'border-[var(--field-border)] bg-[var(--surface-2)] text-[var(--ink)]'
-                }`}
-              >
-                {defaultStatus === 'saving' ? 'Saving...'
-                  : defaultStatus === 'saved' ? 'Weekly default set ✓'
-                  : defaultStatus === 'error' ? `Failed${defaultError ? ` — ${defaultError}` : ''}`
-                  : 'Save as weekly default'}
-              </button>
-              <button
-                type="button"
                 onClick={handleSave}
                 disabled={saveStatus === 'saving' || !venue || !hasVenues || courts.length === 0}
                 style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
@@ -1081,26 +992,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--hairline)]">
                   <button type="button" onClick={closeForm} className="h-9 px-3 rounded-[4px] border border-[var(--field-border)] text-[12px] font-bold text-[var(--muted)]">Cancel</button>
                   <button type="button" onClick={saveRule} className="h-9 px-4 rounded-[4px] bg-[#f59e0b] text-[#111827] text-[12px] font-extrabold">Save rule</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {confirmDefault && (
-            <div className="fixed inset-0 z-[1400] flex items-end sm:items-center justify-center bg-black/45 px-4 py-6" role="dialog" aria-modal="true" aria-label="Save as weekly default">
-              <div className="w-full max-w-[460px] rounded-t-[18px] sm:rounded-[12px] border border-[var(--hairline)] bg-[var(--surface)] shadow-xl animate-slide-up">
-                <div className="px-4 py-4">
-                  <div className="font-heading font-extrabold text-[15px] text-[var(--ink)]">Repeat this week, every week?</div>
-                  <div className="mt-2 text-[12px] leading-relaxed text-[var(--muted)]">
-                    <span className="font-bold text-[var(--ink)]">{weekDateRange(month, week, year)}</span> becomes the standing schedule for{' '}
-                    {selectedCourtId ? 'this court' : 'the whole venue'}. Every future week inherits these hours and rates — no repainting.
-                    <div className="mt-2">Weeks you've painted individually still win: those stay as they are.</div>
-                    <div className="mt-2">This replaces the opening hours currently set on the Hours tab.</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--hairline)]">
-                  <button type="button" onClick={() => setConfirmDefault(false)} className="h-9 px-3 rounded-[4px] border border-[var(--field-border)] text-[12px] font-bold text-[var(--muted)]">Cancel</button>
-                  <button type="button" onClick={saveWeeklyDefault} className="h-9 px-4 rounded-[4px] bg-[#f59e0b] text-[#111827] text-[12px] font-extrabold">Set as weekly default</button>
                 </div>
               </div>
             </div>

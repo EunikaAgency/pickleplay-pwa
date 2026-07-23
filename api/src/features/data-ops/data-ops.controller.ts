@@ -53,6 +53,10 @@ const truncateSchema = z.object({
 
 const seedSchema = z.object({
   steps: z.array(z.string()).optional(),
+  // Must be sent when the selection includes destructive steps and the DB
+  // already holds data. The client sets it only after the admin ticks an
+  // explicit "this replaces existing data" acknowledgement.
+  acceptDestructive: z.boolean().optional().default(false),
 });
 
 const forbidden = (c: any, message: string) =>
@@ -131,7 +135,7 @@ export async function getDataStatus(c: any) {
         uploadDirsSkipped: UPLOAD_SWEEP_SKIP_DIRS,
       },
       confirmPhrase: CONFIRM_PHRASE,
-      seedSteps: SEED_PIPELINE.map(({ key, label, why, network }) => ({ key, label, why, network: !!network })),
+      seedSteps: SEED_PIPELINE.map(({ key, label, why, network, destructive }) => ({ key, label, why, network: !!network, destructive: !!destructive })),
       job: job ? serializeJob(job, Math.max(0, job.log.length - 50)) : null,
     },
   });
@@ -299,6 +303,25 @@ export async function seedData(c: any) {
   }
   if (!steps.length) {
     return c.json({ error: { code: 'NO_STEPS', message: 'Select at least one seed step' } }, 400);
+  }
+
+  // The hard lesson of 2026-07-23: the import step DROPS the venue directory,
+  // and one unguarded click replaced every court on the live site. Destructive
+  // steps on a database that already holds venues therefore demand the same
+  // deliberateness as a wipe — an explicit acknowledgement, not a default.
+  const destructive = steps.filter((s) => s.destructive);
+  if (destructive.length && !body.acceptDestructive) {
+    const venueCount = await mongoose.connection.db?.collection('venues').countDocuments() ?? 0;
+    if (venueCount > 0) {
+      return c.json({
+        error: {
+          code: 'DESTRUCTIVE_STEPS',
+          message: `Steps ${destructive.map((s) => s.key).join(', ')} replace existing data (the venue directory / demo accounts). ` +
+            'Re-send with acceptDestructive: true, or deselect them.',
+          steps: destructive.map((s) => s.key),
+        },
+      }, 400);
+    }
   }
 
   const caller = c.get('user');

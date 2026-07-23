@@ -23,6 +23,12 @@ export interface SeedStep {
   args?: string[];
   /** Reaches the public internet — will fail on an offline host. */
   network?: boolean;
+  /**
+   * Deletes or replaces existing rows rather than only filling gaps. On a
+   * non-empty database these steps need explicit acknowledgement — running
+   * them casually once wiped every court on the live site (2026-07-23).
+   */
+  destructive?: boolean;
   /** Why the step sits at this position; shown in the admin console. */
   why: string;
 }
@@ -32,14 +38,16 @@ export const SEED_PIPELINE: SeedStep[] = [
     key: 'import',
     label: 'Import real venue + coach data',
     script: 'src/shared/db/import-real-data.ts',
-    why: 'The base directory from real-data/handoff/*.csv — cities, venues, venue hours, courts, coaches, pricing. Everything downstream references these rows.',
+    destructive: true,
+    why: 'DROPS and re-imports the venue directory (cities, venues, venue hours, courts, coaches, pricing) from real-data/handoff/*.csv. Everything downstream references these rows. On a populated database this replaces every court and venue — existing bookings and games keep their old ids and go dangling.',
   },
   {
     key: 'users',
     label: 'Seed dummy users',
     script: 'src/shared/db/seed-dummy-users.ts',
     network: true,
-    why: 'Coach / owner / organizer / player accounts. Needs the Coach + Venue rows from the import, and fetches profiles from randomuser.me.',
+    destructive: true,
+    why: 'DELETES every @example.com demo account and re-creates them with new ids, then links coaches/owners. Needs the Coach + Venue rows from the import, and fetches profiles from randomuser.me.',
   },
   {
     key: 'test-credentials',

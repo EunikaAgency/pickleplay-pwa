@@ -1,0 +1,166 @@
+[
+  {
+    "_id": "6a4f11a748d823aa89f75434",
+    "date": "2026-07-05",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75438",
+    "date": "2026-07-30",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f7543a",
+    "date": "2026-07-21",
+    "cancellationReason": "Removed by owner",
+    "cancelledAt": "2026-07-09T09:24:03.780Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75442",
+    "date": "2026-07-13",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75443",
+    "date": "2026-07-25",
+    "cancellationReason": "Removed by owner",
+    "cancelledAt": "2026-07-09T09:24:06.730Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75445",
+    "date": "2026-08-06",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75446",
+    "date": "2026-07-04",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75449",
+    "date": "2026-07-22",
+    "cancellationReason": "Removed by owner",
+    "cancelledAt": "2026-07-09T09:24:05.361Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f7544a",
+    "date": "2026-06-24",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f7544b",
+    "date": "2026-06-29",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f7544e",
+    "date": "2026-07-26",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f7544f",
+    "date": "2026-06-25",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75451",
+    "date": "2026-08-02",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75452",
+    "date": "2026-08-05",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75455",
+    "date": "2026-07-01",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f7545c",
+    "date": "2026-06-28",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f11a748d823aa89f75462",
+    "date": "2026-07-04",
+    "cancellationReason": "Schedule conflict",
+    "cancelledAt": "2026-07-09T03:12:39.245Z"
+  },
+  {
+    "_id": "6a4f52755f171be1200850c0",
+    "date": "2026-07-09",
+    "cancellationReason": "Removed by owner",
+    "cancelledAt": "2026-07-09T08:10:13.239Z"
+  },
+  {
+    "_id": "6a509aab65c30c22af5e1561",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:09:31.570Z"
+  },
+  {
+    "_id": "6a509aab65c30c22af5e1564",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:09:31.896Z"
+  },
+  {
+    "_id": "6a509aac65c30c22af5e1569",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:09:32.122Z"
+  },
+  {
+    "_id": "6a509b6d65c30c22af5e15ab",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:12:45.122Z"
+  },
+  {
+    "_id": "6a509b6d65c30c22af5e15ae",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:12:45.307Z"
+  },
+  {
+    "_id": "6a509b6d65c30c22af5e15b1",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:12:45.457Z"
+  },
+  {
+    "_id": "6a509b9965c30c22af5e15c5",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:13:29.457Z"
+  },
+  {
+    "_id": "6a509bb565c30c22af5e15d2",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:13:58.111Z"
+  },
+  {
+    "_id": "6a509bb665c30c22af5e15d5",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:13:58.296Z"
+  },
+  {
+    "_id": "6a509bb665c30c22af5e15d8",
+    "date": "2027-03-16",
+    "cancelledAt": "2026-07-10T07:13:58.538Z"
+  },
+  {
+    "_id": "6a55d6bca168d5ce2583dce5",
+    "date": "2026-07-15",
+    "cancellationReason": "Lobby deleted — refund requested",
+    "cancelledAt": "2026-07-15T01:43:16.623Z"
+  }
+]

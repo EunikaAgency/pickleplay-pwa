@@ -1,5 +1,5 @@
 {
-  "takenAt": "2026-07-23T04:33:07.184Z",
+  "takenAt": "2026-07-23T07:00:37.840Z",
   "note": "E2E Games/Bookings deleted and generic Open Play titles rewritten by retitle-open-play-games.ts. Revert with --revert.",
   "deletedGames": [
     {
@@ -1209,152 +1209,152 @@
     {
       "gameId": "6a59eac1282eb5cb9847646f",
       "from": "Intermediate Open Play",
-      "to": "Friday Afternoon Paddle Jam"
+      "to": "Next Step Friday Social"
     },
     {
       "gameId": "6a59eac1282eb5cb98476471",
       "from": "Advanced Open Play",
-      "to": "Friday Mid-Morning Mixer"
+      "to": "Coffee & Dinks"
     },
     {
       "gameId": "6a59eac1282eb5cb98476473",
       "from": "Intermediate Open Play",
-      "to": "3.0–3.5 Mid-Morning Round Robin"
+      "to": "Saturday Drop-In"
     },
     {
       "gameId": "6a59eac1282eb5cb98476475",
       "from": "Advanced Open Play",
-      "to": "Sunday Sunset Dinks"
+      "to": "4.0+ After-Work Kitchen Sessions"
     },
     {
       "gameId": "6a59eac1282eb5cb98476477",
       "from": "Intermediate Open Play",
-      "to": "Friday Prime Time Scramble"
+      "to": "Friday Prime Time Open Play"
     },
     {
       "gameId": "6a59eac1282eb5cb98476479",
       "from": "Advanced Open Play",
-      "to": "Competitive Sunday Drills & Games"
+      "to": "Sunday Funday Doubles"
     },
     {
       "gameId": "6a59eac1282eb5cb9847647b",
       "from": "Intermediate Open Play",
-      "to": "Intermediate Saturday Rotation"
+      "to": "Saturday Mixer"
     },
     {
       "gameId": "6a59eac1282eb5cb9847647d",
       "from": "Intermediate Open Play",
-      "to": "Thursday Sunset Kitchen Sessions"
+      "to": "Thursday After-Work Rally Hour"
     },
     {
       "gameId": "6a59eac1282eb5cb9847647f",
       "from": "Advanced Open Play",
-      "to": "Competitive Thursday Drop-In"
+      "to": "Thursday Sunrise Rotation"
     },
     {
       "gameId": "6a59eac1282eb5cb98476481",
       "from": "Open / All levels Open Play",
-      "to": "Friday Lunch Break Paddle Jam"
+      "to": "Open Midday Open Play"
     },
     {
       "gameId": "6a59eac1282eb5cb98476483",
       "from": "Advanced Open Play",
-      "to": "Sunday Morning Dinks"
+      "to": "Breakfast Club Rally"
     },
     {
       "gameId": "6a59eac1282eb5cb98476485",
       "from": "Intermediate Open Play",
-      "to": "Intermediate Tuesday Rotation"
+      "to": "Intermediate Tuesday Mixer"
     },
     {
       "gameId": "6a59eac1282eb5cb98476487",
       "from": "Intermediate Open Play",
-      "to": "Intermediate Monday Shootout"
+      "to": "Monday Golden Hour Rotation"
     },
     {
       "gameId": "6a59eac1282eb5cb98476489",
       "from": "Advanced Open Play",
-      "to": "Thursday Sunset Doubles"
+      "to": "4.0+ Thursday Scramble"
     },
     {
       "gameId": "6a59eac1282eb5cb9847648b",
       "from": "Open / All levels Open Play",
-      "to": "Open Dawn Mixer"
+      "to": "Open Dawn Social"
     },
     {
       "gameId": "6a59eac1282eb5cb9847648d",
       "from": "Open / All levels Open Play",
-      "to": "Friday Lunch Break Rotation"
+      "to": "High Noon Rotation"
     },
     {
       "gameId": "6a59eac1282eb5cb9847648f",
       "from": "Advanced Open Play",
-      "to": "After-Office Open Play"
+      "to": "4.0+ Sunset Paddle Jam"
     },
     {
       "gameId": "6a59eac1282eb5cb98476491",
       "from": "Beginner Open Play",
-      "to": "Learn-to-Play After-Work Round Robin"
+      "to": "Learn-to-Play Sunset Ladder"
     },
     {
       "gameId": "6a59eac1282eb5cb98476493",
       "from": "Intermediate Open Play",
-      "to": "Saturday After-Work Social"
+      "to": "Next Step Saturday Rally"
     },
     {
       "gameId": "6a59eac1282eb5cb98476495",
       "from": "Advanced Open Play",
-      "to": "Thursday Lunch Break Kitchen Sessions"
+      "to": "4.0+ Thursday Paddle Jam"
     },
     {
       "gameId": "6a59eac1282eb5cb98476497",
       "from": "Intermediate Open Play",
-      "to": "Friday Midday Rally Hour"
+      "to": "Friday Lunch Break Shootout"
     },
     {
       "gameId": "6a59eac1282eb5cb98476499",
       "from": "Advanced Open Play",
-      "to": "Tuesday Rally"
+      "to": "Tuesday Mid-Morning Mixer"
     },
     {
       "gameId": "6a59eac1282eb5cb9847649b",
       "from": "Open / All levels Open Play",
-      "to": "Tuesday Doubles"
+      "to": "Tuesday Evening Social"
     },
     {
       "gameId": "6a59eac1282eb5cb9847649d",
       "from": "Open / All levels Open Play",
-      "to": "Everyone Welcome Thursday Drop-In"
+      "to": "Thursday Paddle Jam"
     },
     {
       "gameId": "6a59eac1282eb5cb9847649f",
       "from": "Advanced Open Play",
-      "to": "Afternoon Paddle Jam"
+      "to": "Wednesday Golden Hour Shootout"
     },
     {
       "gameId": "6a59eac1282eb5cb984764a1",
       "from": "Beginner Open Play",
-      "to": "Learn-to-Play Morning Rally"
+      "to": "Beginner-Friendly Morning Doubles"
     },
     {
       "gameId": "6a59eac1282eb5cb984764a3",
       "from": "Beginner Open Play",
-      "to": "Friday Lunch Break Mixer"
+      "to": "Baby Dinkers Friday Drills & Games"
     },
     {
       "gameId": "6a59eac1282eb5cb984764a5",
       "from": "Intermediate Open Play",
-      "to": "Intermediate Saturday Drills & Games"
+      "to": "Saturday Dawn Rotation"
     },
     {
       "gameId": "6a59eac1282eb5cb984764a7",
       "from": "Advanced Open Play",
-      "to": "Sunday Mid-Morning Rally Hour"
+      "to": "Sunday Mid-Morning Dinks"
     },
     {
       "gameId": "6a59eac1282eb5cb984764a9",
       "from": "Advanced Open Play",
-      "to": "Weeknight Dink Fest"
+      "to": "Friday Night Dinks"
     }
   ]
 }

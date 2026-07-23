@@ -1695,7 +1695,8 @@ export interface DataStatus {
   };
   /** The exact phrase the admin must type to arm a wipe. */
   confirmPhrase: string;
-  seedSteps: { key: string; label: string; why: string; network: boolean }[];
+  /** `destructive` steps replace existing rows (drop + re-import) rather than only filling gaps. */
+  seedSteps: { key: string; label: string; why: string; network: boolean; destructive: boolean }[];
   job: DataJob | null;
 }
 

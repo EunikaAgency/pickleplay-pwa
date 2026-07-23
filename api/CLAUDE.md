@@ -64,6 +64,13 @@ Current features: `admin`, `auth`, `bookings`, `cities`, `coaches` (+ `coach-rev
 4. **Import paths** use the `.js` extension (ESM): cross-feature imports go `'../<other-feature>/<other-feature>.model.js'`; shared infra goes `'../../shared/middleware/auth.js'` etc.
 5. **Typecheck** with `npm run typecheck` before committing.
 6. **Restart PM2** (`npm run pm2:restart`) after deploying to pick up the new routes.
+7. **Seeder + truncate coverage** — if the slice adds a model/collection, give it a
+   seed step in `src/shared/db/pipeline.ts` (usually by extending `seed-dummy-data.ts`
+   or `seed-social-graph.ts`) and decide its wipe disposition: must it survive the
+   admin Data-tools wipe? If yes, register it in
+   `src/features/data-ops/data-ops.policy.ts` (+ the "Never deleted" card in the
+   app's `AdminDataToolsScreen`). Verify with a truncate dry run. Full rule:
+   root `CLAUDE.md` → "EVERY NEW FEATURE = SEEDER + TRUNCATE COVERAGE".
 
 ### Adding routes to an existing feature
 
@@ -83,6 +90,7 @@ Current features: `admin`, `auth`, `bookings`, `cities`, `coaches` (+ `coach-rev
 ## Data model conventions
 
 - Every model with imported data carries an `_importId` field + index so re-imports can be diff'd or rolled back.
+- Every new model needs a seed step (`shared/db/pipeline.ts`) and a deliberate truncate disposition (`features/data-ops/data-ops.policy.ts`) — see the feature checklist's step 7.
 - Schemas have `{ timestamps: true }` by default — `createdAt`/`updatedAt` come for free.
 - IDs come in three flavours: Mongo `_id` (`ObjectId`), human-facing `slug` (kebab-case, unique), and external `<entity>Id` (e.g. `venueId: ph-zone-sports-center-makati`) for cross-system traceability.
 - Boolean *vs* tri-state strings: amenity-style fields (`amenityWifi`, `hasDedicatedLines`, `allowsWalkins`) are typed as **`String`** in the schema because the source data has three states (`true` / `false` / `unknown`). The matching `has*` boolean fields (`hasParking`, `hasShowers`) coerce to plain booleans. Don't change the type without checking both call sites.

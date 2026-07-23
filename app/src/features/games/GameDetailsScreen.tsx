@@ -912,7 +912,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   placeholder="e.g. Friday Night Dinks"
                   onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
               </label>
-              <label className="field">
+              <div className="field">
                 <span className="lbl block">Skill level</span>
                 <Dropdown
                   value={editForm.skillLabel}
@@ -922,7 +922,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   triggerClassName="control"
                   aria-label="Skill level"
                 />
-              </label>
+              </div>
               <label className="field">
                 <span className="lbl block">Players (capacity)</span>
                 <input className="control" type="number" inputMode="numeric"

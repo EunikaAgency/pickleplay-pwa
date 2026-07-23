@@ -57,6 +57,7 @@ export function AdminDataToolsScreen({ onNavigate }: Props) {
   const [job, setJob] = useState<DataJob | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [seedConfirmOpen, setSeedConfirmOpen] = useState(false);
 
   const [wipeOpen, setWipeOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -108,6 +109,7 @@ export function AdminDataToolsScreen({ onNavigate }: Props) {
   }, [job?.log.length]);
 
   async function startSeed() {
+    setSeedConfirmOpen(false);
     setActionError(null);
     setStarting(true);
     try {
@@ -279,12 +281,12 @@ export function AdminDataToolsScreen({ onNavigate }: Props) {
             <button
               type="button"
               disabled={busy || selectedSteps.size === 0}
-              onClick={() => void startSeed()}
+              onClick={() => { setSeedConfirmOpen(true); setActionError(null); }}
               className="mt-4 w-full rounded-2xl bg-[var(--blue)] px-4 py-3 font-bold text-white disabled:opacity-40"
             >
               {job?.status === 'running' && job.kind === 'seed'
                 ? 'Seeding…'
-                : `Run ${selectedSteps.size} of ${status.seedSteps.length} seed steps`}
+                : `Run ${selectedSteps.size} of ${status.seedSteps.length} seed steps…`}
             </button>
           </section>
 
@@ -391,6 +393,43 @@ export function AdminDataToolsScreen({ onNavigate }: Props) {
   return (
     <>
       {header}
+
+      <BottomSheet
+        open={seedConfirmOpen}
+        onClose={() => setSeedConfirmOpen(false)}
+        title="Run the seeder?"
+        subtitle="This writes demo data into the live database."
+        footer={
+          <button
+            type="button"
+            disabled={starting}
+            onClick={() => void startSeed()}
+            className="w-full rounded-2xl bg-[var(--blue)] px-4 py-3 font-bold text-white disabled:opacity-40"
+          >
+            {starting ? 'Starting…' : `Start ${selectedSteps.size} step${selectedSteps.size === 1 ? '' : 's'}`}
+          </button>
+        }
+      >
+        <div className="space-y-3">
+          <p className="t-sm">
+            {selectedSteps.size} of {status?.seedSteps.length ?? 0} steps will run, in pipeline
+            order, and the run stops at the first failure. A full run takes a few minutes —
+            you can watch each step and its log below while it works.
+          </p>
+          {status?.seedSteps.some((s) => s.network && selectedSteps.has(s.key)) && (
+            <p className="t-sm flex items-start gap-2">
+              <Icon name="wifi" size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--amber)' }} />
+              One selected step fetches profiles from the internet (randomuser.me), so the
+              server needs an outbound connection.
+            </p>
+          )}
+          <p className="t-sm flex items-start gap-2">
+            <Icon name="info" size={14} className="mt-0.5 shrink-0" />
+            Seeding is additive and re-runnable — steps that find their data already in place
+            top it up or skip it, and nothing existing is deleted.
+          </p>
+        </div>
+      </BottomSheet>
 
       <BottomSheet
         open={wipeOpen}
