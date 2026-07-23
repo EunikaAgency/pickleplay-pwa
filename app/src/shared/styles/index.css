@@ -1699,6 +1699,7 @@
 .notif .ic.lime,  .push-banner .ic.lime  { background: var(--lime);    color: var(--lime-ink); }
 .notif .ic.blue,  .push-banner .ic.blue  { background: var(--primary); color: #ffffff; }
 .notif .ic.coral, .push-banner .ic.coral { background: var(--coral);   color: #ffffff; }
+.notif .ic.gold,  .push-banner .ic.gold  { background: var(--star);    color: var(--star-ink); }
 .push-banner .ic { width: 40px; height: 40px; }
 /* Read rows recede — same layout, less ink. */
 .notif:not(.unread) .ic { opacity: 0.55; }

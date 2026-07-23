@@ -20,24 +20,34 @@ interface NotificationsScreenProps {
   onBack: () => void;
 }
 
-type IconBg = 'lime' | 'blue' | 'coral';
+type IconBg = 'lime' | 'blue' | 'coral' | 'gold';
 
-/** A colored chip per notification kind, so the feed reads at a glance. */
+/** Colour by OUTCOME, not by feature area — green went well, red needs you,
+ *  gold is someone appreciating you, blue is everything conversational.
+ *
+ *  The old version was a 12-case switch over ~60 server-emitted types, so the
+ *  other ~48 (every `feed_*`, `club_*`, `game_join_*`, `coach_booking_*`,
+ *  `claim_*`, refunds, no-shows) fell through to blue and the whole list came
+ *  out one colour. Matching on suffix/stem instead means new server types get a
+ *  sensible colour without anyone remembering to come back here. */
+const NEGATIVE = /(cancel|reject|declin|deni|remov|expired|kick|no_show$|refund|needs_info)/;
+const POSITIVE = /(approved|confirmed|completed|accepted|joined|full$|no_show_cleared)/;
+const APPRECIATION = /(^like$|_like$|repost)/;
 function bgForType(type?: string | null): IconBg {
-  switch (type) {
-    case 'game_full':                 return 'lime';
-    case 'venue_membership_invite':   return 'lime';
-    case 'venue_membership_removed':  return 'coral';
-    case 'booking_pending_approval':  return 'coral';
-    case 'booking_approved':          return 'lime';
-    case 'booking_request_reminder':  return 'coral';
-    case 'booking_request_expired':   return 'coral';
-    case 'booking_rejected':          return 'coral';
-    case 'booking_cancelled':         return 'coral';
-    case 'friend_request':            return 'lime';
-    case 'message':                   return 'blue';
-    case 'alert':                     return 'coral';
-    default:                          return 'blue';
+  const t = type || '';
+  // Order matters: `booking_no_show_cleared` is positive but contains "no_show",
+  // and `club_request_denied` is negative but contains no positive stem.
+  if (POSITIVE.test(t)) return 'lime';
+  if (NEGATIVE.test(t)) return 'coral';
+  if (APPRECIATION.test(t)) return 'gold';
+  switch (t) {
+    case 'venue_membership_invite': return 'lime';
+    case 'friend_request':          return 'lime';
+    case 'booking_pending_approval':
+    case 'booking_request_reminder':
+    case 'empty_slot':
+    case 'alert':                   return 'coral';
+    default:                        return 'blue';
   }
 }
 
