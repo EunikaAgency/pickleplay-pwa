@@ -159,6 +159,6 @@ Host / Create / Join / Book CTA land on the app login rather than the web downlo
   are central, so the protection applies repo-wide either way.
 - **Totals.** 55 findings resolved · 3 launch-critical · 17 high. Four reported items
   (**W12**, **P7**, **P9**, **P13**) were verified as already safe — no change needed.
-- **Preceding days.** 07-17 and 07-20 went to PickleDen — see the
-  [07-17](2026-07-17-Ivan-report.md) and [07-20](2026-07-20-Ivan-report.md) entries;
-  07-18/07-19 were the weekend.
+- **Preceding days.** 07-17 and 07-20 went to PickleDen (https://pickleden.club/, a
+  separate site on another server) — see the combined
+  [07-17 & 07-20 entry](2026-07-17_20-Ivan-report.md). No work on 07-18/07-19.

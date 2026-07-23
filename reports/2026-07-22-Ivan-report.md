@@ -4,7 +4,7 @@
 - **Date:** 2026-07-22 (Wednesday)
 - **Areas:** Player PWA — Kenneth's `team-split.html` lane C · Admin console (mobile PWA) optimization & design cleanup
 - **Try it:** https://pickleballer-pwa.eunika.xyz · admin console: https://pickleballer-pwa.eunika.xyz/admin
-- **Preceding day:** [2026-07-21 gaps audit update](2026-07-21-Ivan-report.md)
+- **Preceding days:** [2026-07-21 gaps audit update](2026-07-21-Ivan-report.md) · [2026-07-17 & 07-20 — PickleDen](2026-07-17_20-Ivan-report.md)
 
 Two workstreams landed on this date and are reported together:
 
