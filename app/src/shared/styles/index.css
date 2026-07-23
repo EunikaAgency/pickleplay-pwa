@@ -557,7 +557,10 @@
 .chip:active { transform: scale(0.96); }
 .chip.active {
   background: var(--ink);
-  color: white;
+  /* NOT hardcoded white: --ink flips to near-white in dark mode, so a white
+     label on it was invisible on every screen using a v1 chip. --bg is the
+     inverse of --ink in both themes, so it stays legible either way. */
+  color: var(--bg);
   border-color: var(--ink);
 }
 .chip.lime {
