@@ -6,6 +6,7 @@ import { useAuthStore } from '../../lib/authStore';
 import { useMessageStore } from '../../lib/messageStore';
 import { useNotificationStore } from '../../lib/notificationStore';
 import { userHasPermission } from '../../lib/permissions';
+import { isSectionCollapsed, readAdminSectionPrefs, writeAdminSectionPrefs } from '../../lib/adminSectionPrefs';
 import { ROLE_META, displayRole } from '../../lib/roleDisplay';
 
 interface SidebarProps {
@@ -155,23 +156,31 @@ const ADMIN_SECTIONS: AdminSection[] = [
 
 /** The collapsible admin section tree rendered inside the sidebar nav (desktop only). */
 function AdminSections({ onNavigate, activeScreenId }: { onNavigate: (screenId: string) => void; activeScreenId: string }) {
-  // All sections start collapsed — the admin opens only what they need.
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Directory: true, Moderation: true, System: true });
+  // Sections start collapsed — the admin opens only what they need — except the
+  // one holding the active screen, so a reload (or a cold deep-link) lands with
+  // the current tab visible instead of buried. An explicit open/close beats that
+  // default and is persisted, so the tree comes back the way it was left.
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(readAdminSectionPrefs);
 
-  function toggle(label: string) {
-    setCollapsed((c) => ({ ...c, [label]: !c[label] }));
+  function toggle(label: string, isCollapsed: boolean) {
+    setPrefs((p) => {
+      const next = { ...p, [label]: !isCollapsed };
+      writeAdminSectionPrefs(next);
+      return next;
+    });
   }
 
   return (
     <>
       {ADMIN_SECTIONS.map((section) => {
-        const isCollapsed = collapsed[section.label] ?? false;
+        const holdsActive = section.items.some((item) => item.screenId === activeScreenId);
+        const isCollapsed = isSectionCollapsed(prefs, section.label, holdsActive);
         return (
           <div key={section.label} className="admin-section">
             <button
               type="button"
               className="admin-section-header"
-              onClick={() => toggle(section.label)}
+              onClick={() => toggle(section.label, isCollapsed)}
               aria-expanded={!isCollapsed}
             >
               <span className="admin-section-icon">

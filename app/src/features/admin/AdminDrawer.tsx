@@ -3,6 +3,7 @@ import { Icon } from '../../shared/components/ui/Icon';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { getInitials } from '../../shared/lib/initials';
 import type { ScreenId } from '../../shared/lib/navigation';
+import { isSectionCollapsed, readAdminSectionPrefs, writeAdminSectionPrefs } from '../../shared/lib/adminSectionPrefs';
 
 interface AdminDrawerProps {
   open: boolean;
@@ -67,11 +68,17 @@ const ADMIN_SECTIONS: AdminSection[] = [
 export function AdminDrawer({ open, onClose, onOpen, onNavigate, activeScreenId = '', onOpenSocial, onOpenNotifications, onLogout }: AdminDrawerProps) {
   const user = useAuthStore((s) => s.user);
   const name = user?.displayName ?? 'Admin';
-  // Sections start collapsed — matching the desktop sidebar.
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Directory: true, Moderation: true, System: true });
+  // Sections start collapsed except the one holding the active screen, and an
+  // explicit open/close is remembered across reloads — matching (and sharing
+  // its stored preference with) the desktop sidebar.
+  const [prefs, setPrefs] = useState<Record<string, boolean>>(readAdminSectionPrefs);
 
-  function toggle(label: string) {
-    setCollapsed((c) => ({ ...c, [label]: !c[label] }));
+  function toggle(label: string, isCollapsed: boolean) {
+    setPrefs((p) => {
+      const next = { ...p, [label]: !isCollapsed };
+      writeAdminSectionPrefs(next);
+      return next;
+    });
   }
 
   function handleNav(screenId: ScreenId) {
@@ -176,13 +183,14 @@ export function AdminDrawer({ open, onClose, onOpen, onNavigate, activeScreenId 
         {/* Section tree */}
         <nav className="admin-drawer-nav">
           {ADMIN_SECTIONS.map((section) => {
-            const isCollapsed = collapsed[section.label] ?? false;
+            const holdsActive = section.items.some((item) => item.screenId === activeScreenId);
+            const isCollapsed = isSectionCollapsed(prefs, section.label, holdsActive);
             return (
               <div key={section.label} className="ad-section">
                 <button
                   type="button"
                   className="ad-section-header"
-                  onClick={() => toggle(section.label)}
+                  onClick={() => toggle(section.label, isCollapsed)}
                   aria-expanded={!isCollapsed}
                 >
                   <Icon name={section.icon} size={16} />
