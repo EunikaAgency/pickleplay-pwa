@@ -218,6 +218,10 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const [defaultStatus, setDefaultStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [defaultError, setDefaultError] = useState('');
   const [confirmDefault, setConfirmDefault] = useState(false);
+  const [applyStatus, setApplyStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [applyError, setApplyError] = useState('');
+  const [applyProgress, setApplyProgress] = useState('');
+  const [confirmApplyMonth, setConfirmApplyMonth] = useState(false);
   const isPaintingRef = useRef(false);
   const paintToolRef = useRef(activeRuleId);
   const paintedDuringDragRef = useRef<Set<string>>(new Set());
@@ -654,6 +658,93 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
    * Only PRICED blocks become the pattern: Reserved and Maintenance are things
    * that happened on one date, not something to repeat every Tuesday forever.
    */
+  /**
+   * The week on screen, one weekday at a time, as priced bands.
+   *
+   * Reads the EFFECTIVE grid — painted hours plus whatever a weekly default already
+   * covers — so acting on a week you never touched reproduces what you're looking
+   * at rather than flattening it to "closed". Contiguous hours at the same rate
+   * collapse into one band.
+   */
+  const blocksForDay = (day: string): { openTime: string; closeTime: string; price: number }[] => {
+    const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`;
+    const blocks: { openTime: string; closeTime: string; price: number }[] = [];
+    for (let h = 0; h < 24;) {
+      const hour = HOURS[h];
+      const price = hour ? effectivePrices[cellKey(day, hour)] : undefined;
+      if (price == null) { h++; continue; }
+      let end = h + 1;
+      while (end < 24) {
+        const next = HOURS[end];
+        if (!next || effectivePrices[cellKey(day, next)] !== price) break;
+        end++;
+      }
+      blocks.push({ openTime: hhmm(h), closeTime: hhmm(end), price });
+      h = end;
+    }
+    return blocks;
+  };
+
+  /**
+   * Stamp the week on screen onto every date of the month being viewed.
+   *
+   * Deliberately plain SlotPriceOverride rows — the same artifact Save Schedule
+   * writes — so a month is self-contained: setting June cannot touch July, and a
+   * month you never set has no rows at all, which still reads as closed exactly
+   * like it always did. That is the whole reason this exists rather than extending
+   * the recurring weekly pattern, which by definition spans every month.
+   *
+   * Reserved and Maintenance rows are kept: a Reserved marker has a real confirmed
+   * Booking behind it, so wiping it would desync the grid from money already taken.
+   */
+  const applyToMonth = async () => {
+    if (!venue || applyStatus === 'saving') return;
+    setConfirmApplyMonth(false);
+    setApplyStatus('saving');
+    setApplyError('');
+    try {
+      const monthIdx = MONTH_INDEX[month] ?? new Date().getMonth();
+      const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+      const scopeCourtId = selectedCourtId || undefined;
+      const byWeekday = new Map(DAYS.map((day) => [day, blocksForDay(day)]));
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, monthIdx, d);
+        const dateStr = ymd(date);
+        // JS getDay() is Sunday-first; DAYS is Monday-first.
+        const day = DAYS[(date.getDay() + 6) % 7];
+        if (!day) continue;
+        setApplyProgress(`${d}/${daysInMonth}`);
+
+        const existing = await listSlotOverrides(venue, dateStr);
+        const inScope = existing.filter((ov) => (scopeCourtId ? ov.courtId === scopeCourtId : ov.courtId == null));
+        const replaceable = inScope.filter((ov) => ov.note !== 'Reserved' && ov.note !== 'Maintenance');
+        await Promise.all(replaceable.map((ov) => deleteSlotOverride(ov.id)));
+
+        for (const block of byWeekday.get(day) ?? []) {
+          await createSlotOverride(venue, {
+            courtId: scopeCourtId,
+            date: dateStr,
+            startTime: block.openTime,
+            endTime: block.closeTime,
+            price: block.price,
+          });
+        }
+      }
+      // The weeks now on screen are stale — drop the cache so they reload.
+      setCellsByWeek({});
+      setDirtyWeeks({});
+      setApplyProgress('');
+      setApplyStatus('saved');
+      setTimeout(() => setApplyStatus('idle'), 3000);
+    } catch (err) {
+      setApplyProgress('');
+      setApplyStatus('error');
+      setApplyError(err instanceof Error ? err.message : 'Unknown error');
+      setTimeout(() => { setApplyStatus('idle'); setApplyError(''); }, 5000);
+    }
+  };
+
   const saveWeeklyDefault = async () => {
     if (!venue || defaultStatus === 'saving') return;
     setConfirmDefault(false);
@@ -661,27 +752,9 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     setDefaultError('');
     try {
       const entries: OwnerHourEntry[] = [];
-      const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`;
       DAYS.forEach((day, index) => {
         const dayOfWeek = (index + 1) % 7;   // DAYS is Monday-first; 0=Sunday.
-        // Built from the week AS IT READS — painted hours plus the ones the current
-        // default already covers — so re-saving from a week you never touched keeps
-        // the pattern instead of flattening it to "closed all week". Contiguous
-        // hours at the same rate collapse into one band.
-        const blocks: { openTime: string; closeTime: string; price: number }[] = [];
-        for (let h = 0; h < 24;) {
-          const hour = HOURS[h];
-          const price = hour ? effectivePrices[cellKey(day, hour)] : undefined;
-          if (price == null) { h++; continue; }
-          let end = h + 1;
-          while (end < 24) {
-            const next = HOURS[end];
-            if (!next || effectivePrices[cellKey(day, next)] !== price) break;
-            end++;
-          }
-          blocks.push({ openTime: hhmm(h), closeTime: hhmm(end), price });
-          h = end;
-        }
+        const blocks = blocksForDay(day);
         if (blocks.length === 0) {
           entries.push({ dayOfWeek, isClosed: true });
           return;
@@ -825,6 +898,23 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               )}
               <button
                 type="button"
+                onClick={() => setConfirmApplyMonth(true)}
+                disabled={applyStatus === 'saving' || !venue || !hasVenues || paidHours === 0}
+                title={paidHours === 0 ? 'Paint some priced hours first' : `Use this week for every week of ${month}`}
+                style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
+                className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
+                  applyStatus === 'error'
+                    ? 'border-[var(--coral)] text-[var(--coral)]'
+                    : 'border-[var(--field-border)] bg-[var(--surface-2)] text-[var(--ink)]'
+                }`}
+              >
+                {applyStatus === 'saving' ? `Applying${applyProgress ? ` ${applyProgress}` : ''}...`
+                  : applyStatus === 'saved' ? `${month} set ✓`
+                  : applyStatus === 'error' ? `Failed${applyError ? ` — ${applyError}` : ''}`
+                  : `Apply to all of ${month}`}
+              </button>
+              <button
+                type="button"
                 onClick={() => setConfirmDefault(true)}
                 disabled={defaultStatus === 'saving' || !venue || !hasVenues || paidHours === 0}
                 title={paidHours === 0 ? 'Paint some priced hours first' : 'Repeat this week every week'}
@@ -925,6 +1015,26 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--hairline)]">
                   <button type="button" onClick={() => setConfirmDefault(false)} className="h-9 px-3 rounded-[4px] border border-[var(--field-border)] text-[12px] font-bold text-[var(--muted)]">Cancel</button>
                   <button type="button" onClick={saveWeeklyDefault} className="h-9 px-4 rounded-[4px] bg-[#f59e0b] text-[#111827] text-[12px] font-extrabold">Set as weekly default</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {confirmApplyMonth && (
+            <div className="fixed inset-0 z-[1400] flex items-end sm:items-center justify-center bg-black/45 px-4 py-6" role="dialog" aria-modal="true" aria-label={`Apply this week to all of ${month}`}>
+              <div className="w-full max-w-[460px] rounded-t-[18px] sm:rounded-[12px] border border-[var(--hairline)] bg-[var(--surface)] shadow-xl animate-slide-up">
+                <div className="px-4 py-4">
+                  <div className="font-heading font-extrabold text-[15px] text-[var(--ink)]">Use this week for all of {month}?</div>
+                  <div className="mt-2 text-[12px] leading-relaxed text-[var(--muted)]">
+                    Every day in {month} {year} gets the hours and rates you're looking at, for{' '}
+                    {selectedCourtId ? 'this court' : 'the whole venue'} — replacing whatever those days say now.
+                    <div className="mt-2">Other months aren't touched. Existing reservations and maintenance blocks are kept.</div>
+                    <div className="mt-2">This writes each day one at a time, so give it a few seconds.</div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--hairline)]">
+                  <button type="button" onClick={() => setConfirmApplyMonth(false)} className="h-9 px-3 rounded-[4px] border border-[var(--field-border)] text-[12px] font-bold text-[var(--muted)]">Cancel</button>
+                  <button type="button" onClick={applyToMonth} className="h-9 px-4 rounded-[4px] bg-[#f59e0b] text-[#111827] text-[12px] font-extrabold">Apply to {month}</button>
                 </div>
               </div>
             </div>

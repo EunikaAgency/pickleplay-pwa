@@ -401,7 +401,7 @@ function AppInner() {
   // describing the action the guest tried to take ("join this game", …).
   const [authIntent, setAuthIntent] = useState<string | null>(null);
   // Animated launch splash — shown once per browser session on cold start, then
-  // dismissed by the "Let's Play" CTA. The app mounts behind it (so session
+  // auto-dismissed once the intro settles. The app mounts behind it (so session
   // restore etc. run during the intro); the splash just sits on top.
   // Admin sidebar drawer — toggled by the hamburger menu button in the top nav.
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -953,8 +953,8 @@ function AppInner() {
 
       <DemoStateControl />
 
-      {/* Animated launch splash, on top of everything (waits for the CTA tap). */}
-      {showSplash && <SplashScreen onDone={dismissSplash} auto />}
+      {/* Animated launch splash, on top of everything (auto-dismisses). */}
+      {showSplash && <SplashScreen onDone={dismissSplash} />}
 
       {/* Admin sidebar drawer — mobile/tablet navigation for admins (no bottom tab bar). */}
       {isAdmin && (

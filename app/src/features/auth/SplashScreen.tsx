@@ -6,24 +6,19 @@ import './splash.css';
 // standalone `pickleballers-splash.html` mockup into a self-contained React
 // component; all timing/markup mirror the original.
 //
-// `auto` controls how it ends:
-//   • app  (auto=false) — waits for the user to tap "Let's Play".
-//   • web  (auto=true)  — auto-dismisses a beat after the intro settles
-//                         (the CTA still skips ahead if tapped).
-// Either way it runs a circular "wipe" before calling `onDone`, which the host
-// uses to swap the splash out for the real UI.
+// It always auto-dismisses a beat after the intro settles — there's no CTA to
+// tap. Dismissing runs a circular "wipe" before calling `onDone`, which the
+// host uses to swap the splash out for the real UI.
 
 type Props = {
   onDone: () => void;
-  /** Auto-dismiss after the intro instead of waiting for the CTA tap. */
-  auto?: boolean;
   /** Spread the ambient art across the full viewport (web). */
   wide?: boolean;
 };
 
 const WIPE_MS = 850;
 
-export function SplashScreen({ onDone, auto = false, wide = false }: Props) {
+export function SplashScreen({ onDone, wide = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const doneRef = useRef(false);
 
@@ -45,7 +40,6 @@ export function SplashScreen({ onDone, auto = false, wide = false }: Props) {
     const impactBurst = q<HTMLElement>('.impact-burst');
     const logoWrap = q<HTMLElement>('.logo-wrap');
     const footerStack = q<HTMLElement>('.footer-stack');
-    const ctaBtn = q<HTMLButtonElement>('.cta-btn');
     const goOverlay = q<HTMLElement>('.go-overlay');
     const particleField = q<HTMLElement>('.particle-field');
     const wordPickle = q<HTMLElement>('.word-pickle');
@@ -125,7 +119,7 @@ export function SplashScreen({ onDone, auto = false, wide = false }: Props) {
         (l as HTMLElement).style.opacity = '1';
         (l as HTMLElement).style.transform = 'none';
       });
-      if (auto) after(1400, () => dismiss());
+      after(1400, () => dismiss());
       return () => timers.forEach(clearTimeout);
     }
 
@@ -155,36 +149,12 @@ export function SplashScreen({ onDone, auto = false, wide = false }: Props) {
     after(1680, () => logoWrap?.classList.add('reveal'));
     after(2480, () => root.classList.add('bg-reveal'));
     after(2980, () => footerStack?.classList.add('reveal'));
-    after(3680, () => ctaBtn?.classList.add('pulse'));
 
-    // Web: settle on the brand, then wipe through automatically.
-    if (auto) after(4200, () => dismiss());
+    // Settle on the brand, then wipe through into the app.
+    after(4200, () => dismiss());
 
-    // App: the CTA is the way in.
-    const onCta = (e: MouseEvent) => {
-      if (!ctaBtn) return;
-      const rect = ctaBtn.getBoundingClientRect();
-      const r = document.createElement('span');
-      const size = Math.max(rect.width, rect.height) * 1.6;
-      r.className = 'ripple-tap';
-      r.style.width = r.style.height = `${size}px`;
-      r.style.left = `${e.clientX - rect.left - size / 2}px`;
-      r.style.top = `${e.clientY - rect.top - size / 2}px`;
-      ctaBtn.appendChild(r);
-      window.setTimeout(() => r.remove(), 600);
-
-      const pr = root.getBoundingClientRect();
-      const ox = `${(((e.clientX - pr.left) / pr.width) * 100).toFixed(1)}%`;
-      const oy = `${(((e.clientY - pr.top) / pr.height) * 100).toFixed(1)}%`;
-      dismiss(ox, oy);
-    };
-    ctaBtn?.addEventListener('click', onCta);
-
-    return () => {
-      timers.forEach(clearTimeout);
-      ctaBtn?.removeEventListener('click', onCta);
-    };
-  }, [auto, onDone]);
+    return () => timers.forEach(clearTimeout);
+  }, [onDone]);
 
   return (
     <div ref={rootRef} className={`pb-splash${wide ? ' pb-splash--wide' : ''}`} role="presentation">
@@ -290,7 +260,6 @@ export function SplashScreen({ onDone, auto = false, wide = false }: Props) {
 
       <div className="footer-stack">
         <p className="tagline">Find games. Meet players. Play more.</p>
-        <button className="cta-btn" type="button">Let's Play</button>
       </div>
 
       <div className="go-overlay">

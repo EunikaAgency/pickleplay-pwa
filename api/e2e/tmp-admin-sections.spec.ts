@@ -7,7 +7,7 @@ test.use({ viewport: { width: 1440, height: 900 }, isMobile: false, hasTouch: fa
 async function loginAsAdmin(page: Page) {
   const res = await page.request.post('http://localhost:9002/api/v1/auth/login', { data: ADMIN });
   expect(res.ok()).toBeTruthy();
-  const body = await res.json();
+  const body = (await res.json()).data;
   await page.goto('/');
   await page.evaluate(({ a, r }) => {
     localStorage.setItem('pb-access-token', a);
@@ -67,4 +67,21 @@ test('an explicit collapse survives a reload too', async ({ page }) => {
 
   await page.reload();
   await expect(dirHeader(page)).toHaveAttribute('aria-expanded', 'false');
+});
+
+test.describe('mobile drawer', () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test('the drawer remembers the same open section', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.evaluate(() => localStorage.removeItem('pb-admin-sections'));
+
+    await page.goto('/admin/users');
+    const fab = page.locator('.admin-drawer-fab');
+    await expect(fab).toBeVisible();
+    await fab.click();
+    const dir = page.locator('.ad-section-header', { hasText: 'Directory' });
+    await expect(dir).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('.ad-section-header', { hasText: 'System' })).toHaveAttribute('aria-expanded', 'false');
+  });
 });
