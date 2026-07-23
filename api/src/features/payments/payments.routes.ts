@@ -4,7 +4,7 @@ import {
   checkout, createPayment, getPayment, listPayments, updatePayment, verifyPayment,
   listMyReceipts, getReceipt, updateReceipt, listVenueReceipts,
   generateSettlement, listSettlements, updateSettlement,
-  listOwnerSettlements, getOwnerBalance,
+  listOwnerSettlements, getOwnerBalance, listOwnerFinance,
   listPayoutMethods, createPayoutMethod, deletePayoutMethod,
   listPendingRefunds, settleRefund,
 } from './payments.controller.js';
@@ -19,6 +19,9 @@ paymentsRoutes.use('/*', requireAuth);
 paymentsRoutes.get('/receipts/mine', listMyReceipts);
 paymentsRoutes.get('/receipts/:id', getReceipt);
 paymentsRoutes.patch('/receipts/:id', updateReceipt);
+
+// Owner finance — BIR receipts + VAT roll-up across the owner's venues
+paymentsRoutes.get('/owner/finance', listOwnerFinance);
 
 // Owner settlements + payout methods
 paymentsRoutes.get('/owner/settlements/balance', getOwnerBalance);

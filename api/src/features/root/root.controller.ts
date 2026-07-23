@@ -346,6 +346,10 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/payments/refunds/pending', methods: ['GET'], description: 'The refund queue — money owed back that has not left the account yet (status refund_pending), oldest first. Admins see every outstanding refund; an owner sees only refunds against their own venues bookings', auth: 'user' },
         { path: '/api/v1/payments/:id/verify', methods: ['POST'], description: 'Mark a payment as verified', auth: 'user' },
         { path: '/api/v1/payments/:id/refund', methods: ['POST'], description: 'Settle an outstanding refund — { outcome: refunded | failed, reference?, notes? }. `refunded` marks it paid out and notifies the player; `failed` returns it to the queue as still-owed rather than losing it. 409 NO_REFUND_PENDING when nothing is outstanding (admin, or the owner of the booking venue)', auth: 'user' },
+        { path: '/api/v1/payments/receipts/mine', methods: ['GET'], description: 'The signed-in player\'s BIR-compliant official receipts (auto-generated when a booking is paid), newest first', auth: 'user' },
+        { path: '/api/v1/payments/receipts/:id', methods: ['GET', 'PATCH'], description: 'Single official receipt. PATCH sets payor details (name / TIN / address) or moves the receipt to issued | voided (voidReason)', auth: 'user' },
+        { path: '/api/v1/payments/venues/:id/receipts', methods: ['GET'], description: 'Every official receipt for one venue (venue owner, or a holder of owner.bookings.manage)', auth: 'user' },
+        { path: '/api/v1/payments/owner/finance', methods: ['GET'], description: 'Finance & receipts across every venue the owner holds — the receipt rows (payor, category, gross / VAT / net, payment method, paid | pending | voided | refunded) plus a PAID-ONLY roll-up of gross, net, VAT payable and a VAT breakdown by category. Filters: venueId, from, to (YYYY-MM-DD), status, q, limit (≤500). Requires owner.reports.view', auth: 'user' },
       ],
     },
     {

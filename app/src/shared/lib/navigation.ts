@@ -85,6 +85,7 @@ export type Screen =
   | { id: 'owner-notifications' }
   | { id: 'owner-staff' }
   | { id: 'owner-settlements' }
+  | { id: 'owner-finance' }
   | { id: 'owner-shop' }
   | { id: 'owner-subscription-plans'; params: { venueId: string; venueName?: string } }
   | { id: 'organizer-hub' }
@@ -221,6 +222,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'owner-notifications': return '/owner/notifications';
     case 'owner-staff': return '/owner/staff';
     case 'owner-settlements': return '/owner/settlements';
+    case 'owner-finance': return '/owner/finance';
     case 'owner-shop': return '/shop';
     case 'owner-subscription-plans': return `/owner/venues/${screen.params.venueId}/subscription-plans`;
     case 'organizer-hub': return '/organizer';
@@ -387,6 +389,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'notifications') return { id: 'owner-notifications' };
       if (b === 'staff') return { id: 'owner-staff' };
       if (b === 'settlements') return { id: 'owner-settlements' };
+      if (b === 'finance') return { id: 'owner-finance' };
       if (b === 'members') return { id: 'members' };
       return { id: 'home' };
     case 'organizer':
@@ -458,6 +461,7 @@ export function deepLinkParent(id: ScreenId): Screen {
   if (id === 'owner-shop') return { id: 'profile' };
   if (id === 'owner-subscription-plans') return { id: 'owner-venues' };
   if (id === 'owner-settlements') return { id: 'profile' };
+  if (id === 'owner-finance') return { id: 'profile' };
   if (id === 'chat') return { id: 'messages' };
   if (id === 'game-chat') return { id: 'games' };
   if (id === 'organizer-tournament' || id === 'organizer-tournament-new') return { id: 'organizer-tournaments' };

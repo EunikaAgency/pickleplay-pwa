@@ -4699,6 +4699,84 @@ export async function updateReceipt(id: string, body: UpdateReceiptPayload): Pro
   return request<ApiOfficialReceipt>(`/api/v1/payments/receipts/${encodeURIComponent(id)}`, { method: 'PATCH', body, auth: true });
 }
 
+/* ─── Owner finance (BIR receipts + VAT roll-up) ────────────────── */
+
+/** Whether the money actually landed — the receipt's own draft/issued/voided
+ *  lifecycle crossed with its payment. `receiptStatus` keeps the raw one. */
+export type FinanceStatus = 'paid' | 'pending' | 'voided' | 'refunded';
+
+export interface ApiFinanceReceipt {
+  id: string;
+  receiptNumber: string;
+  bookingId: string | null;
+  venueId: string;
+  venueName: string | null;
+  payorName: string;
+  payorTIN: string | null;
+  /** Court / Game / Open play / Walk-in — derived from the linked booking. */
+  category: string;
+  description: string | null;
+  amount: number;
+  vatAmount: number;
+  vatRate: number;
+  netAmount: number;
+  discountAmount: number;
+  discountCategory: 'senior' | 'pwd' | null;
+  vatExempt: boolean;
+  receiptStatus: string;          // draft | issued | voided
+  status: FinanceStatus;
+  method: string | null;          // gcash | maya | card | cash | …
+  bookingDate: string | null;
+  issuedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface ApiFinanceCategory {
+  category: string;
+  gross: number;
+  vat: number;
+  count: number;
+  sharePct: number;
+}
+
+export interface ApiFinanceSummary {
+  gross: number;
+  vat: number;
+  net: number;
+  transactions: number;
+  byCategory: ApiFinanceCategory[];
+}
+
+export interface ApiOwnerFinance {
+  venues: { id: string; name: string }[];
+  receipts: ApiFinanceReceipt[];
+  summary: ApiFinanceSummary;
+  /** True when the page hit its row cap — the totals cover the window only. */
+  truncated: boolean;
+}
+
+export interface OwnerFinanceParams {
+  venueId?: string;
+  from?: string;                  // YYYY-MM-DD
+  to?: string;                    // YYYY-MM-DD
+  status?: FinanceStatus | 'all';
+  q?: string;
+  limit?: number;
+}
+
+/** Finance & receipts across every venue the owner holds. */
+export async function getOwnerFinance(params: OwnerFinanceParams = {}): Promise<ApiOwnerFinance> {
+  const sp = new URLSearchParams();
+  if (params.venueId) sp.set('venueId', params.venueId);
+  if (params.from) sp.set('from', params.from);
+  if (params.to) sp.set('to', params.to);
+  if (params.status && params.status !== 'all') sp.set('status', params.status);
+  if (params.q) sp.set('q', params.q);
+  if (params.limit) sp.set('limit', String(params.limit));
+  const qs = sp.toString();
+  return request<ApiOwnerFinance>(`/api/v1/payments/owner/finance${qs ? `?${qs}` : ''}`, { auth: true });
+}
+
 /* ─── Partners (owner ↔ coach/organizer applications) ───────────── */
 
 export type PartnerKind = 'coach' | 'organizer';

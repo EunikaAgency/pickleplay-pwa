@@ -614,6 +614,166 @@ export async function listVenueReceipts(c: any) {
   });
 }
 
+/* ─── Owner finance (BIR receipts roll-up) ─────────────────────── */
+
+// A receipt's "category". Receipts are generated per booking, so the booking's
+// own type is the only signal the data actually carries — court hire, a hosted
+// game, open play, or a front-desk walk-in. Deliberately NOT the richer
+// rental/coaching/membership/shop taxonomy: those sales don't produce receipts
+// yet, and inventing a category the data can't back would make the VAT
+// breakdown lie.
+const RECEIPT_CATEGORY: Record<string, string> = {
+  court: 'Court',
+  game: 'Game',
+  open_play: 'Open play',
+  manual: 'Walk-in',
+};
+
+/** A receipt's money status, as the owner thinks of it — the receipt's own
+ *  lifecycle (draft/issued/voided) crossed with whether the money actually
+ *  arrived. `voided` wins over everything; a refund beats a completed payment. */
+function financeStatus(receiptStatus: string, paymentStatus?: string | null): 'paid' | 'pending' | 'voided' | 'refunded' {
+  if (receiptStatus === 'voided') return 'voided';
+  if (paymentStatus === 'refunded' || paymentStatus === 'refund_pending') return 'refunded';
+  if (paymentStatus === 'completed' || paymentStatus === 'paid') return 'paid';
+  return 'pending';
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// GET /owner/finance — every receipt across the owner's venues, plus the
+// gross/net/VAT-payable roll-up the Finance screen leads with. Owner-only:
+// this is the business's tax position, not front-desk work (same reasoning as
+// /owner/reports). Staff inherit their owner's portfolio via effectiveOwnerId,
+// but the permission gate keeps them out unless the owner granted reports.
+export async function listOwnerFinance(c: any) {
+  const user = c.get('user');
+  if (!hasPermission(user, 'owner.reports.view')) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Owner reports permission required' } }, 403);
+  }
+  const ownerId = effectiveOwnerId(user);
+  if (!ownerId) return c.json({ error: { code: 'FORBIDDEN', message: 'No owner account' } }, 403);
+
+  const venues = await Venue.find({ ownerUserId: ownerId }).select('_id displayName').lean();
+  const venueList = venues.map((v: any) => ({ id: String(v._id), name: v.displayName ?? 'Venue' }));
+  if (!venueList.length) {
+    return c.json({ data: { venues: [], receipts: [], summary: emptyFinanceSummary(), truncated: false } });
+  }
+
+  const q = c.req.query();
+  const venueFilter = q.venueId && venueList.some((v) => v.id === q.venueId) ? [q.venueId] : venueList.map((v) => v.id);
+  // Cap the page so a busy portfolio can't stream tens of thousands of rows;
+  // the summary is computed over the same window, so say so in `truncated`.
+  const limit = Math.min(Math.max(parseInt(q.limit, 10) || 200, 1), 500);
+
+  const where: any = { venueId: { $in: venueFilter } };
+  if (q.from || q.to) {
+    where.createdAt = {};
+    if (q.from) where.createdAt.$gte = new Date(`${q.from}T00:00:00.000Z`);
+    if (q.to) where.createdAt.$lte = new Date(`${q.to}T23:59:59.999Z`);
+  }
+
+  const rows = await OfficialReceipt.find(where)
+    .sort({ createdAt: -1 })
+    .limit(limit + 1)
+    .populate('userId', 'displayName')
+    .lean();
+  const truncated = rows.length > limit;
+  const page = truncated ? rows.slice(0, limit) : rows;
+
+  // One batched lookup each for the linked bookings (category) and payments
+  // (method + whether the money landed) — a receipt never stores either.
+  const bookingIds = page.map((r: any) => r.bookingId).filter(Boolean);
+  const [bookings, payments] = await Promise.all([
+    bookingIds.length ? Booking.find({ _id: { $in: bookingIds } }).select('_id bookingType date startTime').lean() : [],
+    bookingIds.length ? Payment.find({ bookingId: { $in: bookingIds } }).select('bookingId method status').lean() : [],
+  ]);
+  const bookingById = new Map((bookings as any[]).map((b) => [String(b._id), b]));
+  const paymentByBooking = new Map((payments as any[]).map((p) => [String(p.bookingId), p]));
+  const venueNameById = new Map(venueList.map((v) => [v.id, v.name]));
+
+  const search = (q.q || '').trim().toLowerCase();
+  const statusFilter = q.status && q.status !== 'all' ? q.status : null;
+
+  const receipts = page.map((r: any) => {
+    const booking = bookingById.get(String(r.bookingId));
+    const payment = paymentByBooking.get(String(r.bookingId));
+    const type = booking?.bookingType || 'court';
+    return {
+      id: String(r._id),
+      receiptNumber: r.receiptNumber,
+      bookingId: r.bookingId ? String(r.bookingId) : null,
+      venueId: String(r.venueId),
+      venueName: venueNameById.get(String(r.venueId)) ?? null,
+      payorName: r.payorName || r.userId?.displayName || 'Player',
+      payorTIN: r.payorTIN ?? null,
+      category: RECEIPT_CATEGORY[type] ?? 'Court',
+      description: r.description ?? null,
+      amount: r.amount,
+      vatAmount: r.vatAmount ?? 0,
+      vatRate: r.vatRate ?? 12,
+      netAmount: r.netAmount ?? 0,
+      discountAmount: r.discountAmount ?? 0,
+      discountCategory: r.discountCategory ?? null,
+      vatExempt: !!r.vatExempt,
+      // The receipt's own lifecycle is kept alongside the money status so the
+      // client can still tell a draft OR from an issued one.
+      receiptStatus: r.status,
+      status: financeStatus(r.status, payment?.status),
+      method: payment?.method ?? null,
+      bookingDate: booking?.date ?? null,
+      issuedAt: r.issuedAt ?? null,
+      createdAt: r.createdAt ?? null,
+    };
+  }).filter((row) => {
+    if (statusFilter && row.status !== statusFilter) return false;
+    if (!search) return true;
+    return [row.receiptNumber, row.payorName, row.description, row.venueName]
+      .some((f) => (f || '').toLowerCase().includes(search));
+  });
+
+  // Totals are PAID-only — VAT payable is what the owner actually owes BIR, so
+  // a pending, voided, or refunded receipt must not inflate it.
+  const paid = receipts.filter((r) => r.status === 'paid');
+  const byCategory = new Map<string, { gross: number; vat: number; count: number }>();
+  for (const r of paid) {
+    const row = byCategory.get(r.category) ?? { gross: 0, vat: 0, count: 0 };
+    row.gross += r.amount || 0;
+    row.vat += r.vatAmount || 0;
+    row.count += 1;
+    byCategory.set(r.category, row);
+  }
+  const gross = round2(paid.reduce((t, r) => t + (r.amount || 0), 0));
+  const vat = round2(paid.reduce((t, r) => t + (r.vatAmount || 0), 0));
+
+  return c.json({
+    data: {
+      venues: venueList,
+      receipts,
+      truncated,
+      summary: {
+        gross,
+        vat,
+        net: round2(gross - vat),
+        transactions: paid.length,
+        byCategory: [...byCategory.entries()]
+          .map(([category, v]) => ({
+            category,
+            gross: round2(v.gross),
+            vat: round2(v.vat),
+            count: v.count,
+            sharePct: gross > 0 ? Math.round((v.gross / gross) * 100) : 0,
+          }))
+          .sort((a, b) => b.gross - a.gross),
+      },
+    },
+  });
+}
+
+function emptyFinanceSummary() {
+  return { gross: 0, vat: 0, net: 0, transactions: 0, byCategory: [] as unknown[] };
+}
+
 /* ─── Settlement / payout ledger ────────────────────────────────── */
 
 const generateSettlementSchema = z.object({
