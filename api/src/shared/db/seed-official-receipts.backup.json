@@ -1,0 +1,356 @@
+{
+  "createdAt": "2026-07-23T04:52:09.687Z",
+  "receiptIds": [
+    "6a619df988eb76a94040cc37",
+    "6a619df988eb76a94040cc38",
+    "6a619df988eb76a94040cc39",
+    "6a619df988eb76a94040cc3a",
+    "6a619df988eb76a94040cc3b",
+    "6a619df988eb76a94040cc3c",
+    "6a619df988eb76a94040cc3d",
+    "6a619df988eb76a94040cc3e",
+    "6a619df988eb76a94040cc3f",
+    "6a619df988eb76a94040cc40",
+    "6a619df988eb76a94040cc41",
+    "6a619df988eb76a94040cc42",
+    "6a619df988eb76a94040cc43",
+    "6a619df988eb76a94040cc44",
+    "6a619df988eb76a94040cc45",
+    "6a619df988eb76a94040cc46",
+    "6a619df988eb76a94040cc47",
+    "6a619df988eb76a94040cc48",
+    "6a619df988eb76a94040cc49",
+    "6a619df988eb76a94040cc4a",
+    "6a619df988eb76a94040cc4b",
+    "6a619df988eb76a94040cc4c",
+    "6a619df988eb76a94040cc4d",
+    "6a619df988eb76a94040cc4e",
+    "6a619df988eb76a94040cc4f",
+    "6a619df988eb76a94040cc50",
+    "6a619df988eb76a94040cc51",
+    "6a619df988eb76a94040cc52",
+    "6a619df988eb76a94040cc53",
+    "6a619df988eb76a94040cc54",
+    "6a619df988eb76a94040cc55",
+    "6a619df988eb76a94040cc56",
+    "6a619df988eb76a94040cc57",
+    "6a619df988eb76a94040cc58",
+    "6a619df988eb76a94040cc59",
+    "6a619df988eb76a94040cc5a",
+    "6a619df988eb76a94040cc5b",
+    "6a619df988eb76a94040cc5c",
+    "6a619df988eb76a94040cc5d",
+    "6a619df988eb76a94040cc5e",
+    "6a619df988eb76a94040cc5f",
+    "6a619df988eb76a94040cc60",
+    "6a619df988eb76a94040cc61",
+    "6a619df988eb76a94040cc62",
+    "6a619df988eb76a94040cc63",
+    "6a619df988eb76a94040cc64",
+    "6a619df988eb76a94040cc65",
+    "6a619df988eb76a94040cc66",
+    "6a619df988eb76a94040cc67",
+    "6a619df988eb76a94040cc68",
+    "6a619df988eb76a94040cc69",
+    "6a619df988eb76a94040cc6a",
+    "6a619df988eb76a94040cc6b",
+    "6a619df988eb76a94040cc6c",
+    "6a619df988eb76a94040cc6d",
+    "6a619df988eb76a94040cc6e",
+    "6a619df988eb76a94040cc6f",
+    "6a619df988eb76a94040cc70",
+    "6a619df988eb76a94040cc71",
+    "6a619df988eb76a94040cc72",
+    "6a619df988eb76a94040cc73",
+    "6a619df988eb76a94040cc74",
+    "6a619df988eb76a94040cc75",
+    "6a619df988eb76a94040cc76",
+    "6a619df988eb76a94040cc77",
+    "6a619df988eb76a94040cc78",
+    "6a619df988eb76a94040cc79",
+    "6a619df988eb76a94040cc7a",
+    "6a619df988eb76a94040cc7b",
+    "6a619df988eb76a94040cc7c",
+    "6a619df988eb76a94040cc7d",
+    "6a619df988eb76a94040cc7e",
+    "6a619df988eb76a94040cc7f",
+    "6a619df988eb76a94040cc80",
+    "6a619df988eb76a94040cc81"
+  ],
+  "bookingEdits": [
+    {
+      "id": "6a4f11a748d823aa89f7543a",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a4f11a748d823aa89f75434",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a4f11a748d823aa89f75459",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a4f11a748d823aa89f75430",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a4f11a748d823aa89f75466",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a4f11a748d823aa89f75433",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a55d6bca168d5ce2583dce5",
+      "customerCategory": null,
+      "discountIdNumber": null
+    },
+    {
+      "id": "6a4f11a748d823aa89f7544f",
+      "customerCategory": null,
+      "discountIdNumber": null
+    }
+  ],
+  "counters": [
+    {
+      "venueId": "6a4f11a0a63522a6e14a41e5",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41fe",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4201",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4226",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4229",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4232",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4235",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4240",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4248",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a424a",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a425b",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4263",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4273",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4274",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a427c",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42a1",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42c6",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4211",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a428c",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4294",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42b9",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41df",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41e2",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41e3",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41e4",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41ed",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41f5",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4200",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4209",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4214",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4215",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a421d",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a421f",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4225",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a422a",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4239",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a423d",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4253",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a426b",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a427b",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4284",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4295",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42a0",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42a9",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42be",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42c7",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42c8",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42d0",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42d2",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42d3",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41d4",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41da",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a41de",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a4252",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a429d",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42b1",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42ba",
+      "seq": null
+    },
+    {
+      "venueId": "6a4f11a0a63522a6e14a42d1",
+      "seq": null
+    }
+  ]
+}

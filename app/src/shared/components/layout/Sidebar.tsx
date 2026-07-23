@@ -228,6 +228,10 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
   // Finance is the business's tax position — owner-only, same gate as the
   // /owner/finance screen itself (staff run the courts, not the books).
   const showOwnerFinance = userHasPermission(currentUser, 'owner.reports.view') && onOpenFinance;
+  // Shop and Finance are their own sidebar items, but both screens fall through
+  // to the `profile` tab in tabForScreen — so without excluding them, Profile
+  // lit up at the same time as the item the user actually opened.
+  const profileActive = activeTab === 'profile' && !shopActive && !financeActive;
   const footName = currentUser?.displayName ?? 'Guest';
   // Staff aren't players, so show their role ("Staff") under the name rather
   // than a DUPR rating (which they may still carry on the account).
@@ -394,12 +398,12 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
             sidebar sections above. */}
         {!isAdmin && (
           <button
-            className={`side-tab ${activeTab === 'profile' && !shopActive ? 'active' : ''}`}
+            className={`side-tab ${profileActive ? 'active' : ''}`}
             onClick={() => onTabPress('profile')}
-            aria-current={activeTab === 'profile' && !shopActive ? 'page' : undefined}
+            aria-current={profileActive ? 'page' : undefined}
           >
             <span className="ico">
-              <Icon name={(!isOwner && !isOrganizer) && activeTab === 'profile' && !shopActive ? 'user_fill' : 'user'} size={20} />
+              <Icon name={(!isOwner && !isOrganizer) && profileActive ? 'user_fill' : 'user'} size={20} />
             </span>
             {isLoggedIn ? 'Profile' : 'Login'}
           </button>

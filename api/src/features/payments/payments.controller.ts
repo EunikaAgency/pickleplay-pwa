@@ -462,6 +462,23 @@ export async function settleRefund(c: any) {
 
 /* ─── Official receipts ────────────────────────────────────────── */
 
+/** The OR series prefix for one venue.
+ *
+ *  Four letters of the display name alone is NOT unique — 8 of our venue names
+ *  collide on it ("Makati Pickleball Club" / "Makati Sports Club" both give
+ *  MAKA, and three venues give THEP). Each venue counts from 1 in its own
+ *  ReceiptCounter, so two venues sharing a prefix both mint OR-MAKA-26-00001
+ *  and the second one hits the unique index on `receiptNumber`. Because
+ *  generateReceiptForBooking is fired best-effort (`.catch(() => {})`), that
+ *  throw was swallowed: the second venue's players would silently never get a
+ *  BIR receipt. Four hex characters of the venue id keep each venue in its own
+ *  series, and BIR only requires the series to be unique and sequential per
+ *  place of business — which this now genuinely is. */
+export function venueReceiptCode(venueId: string, displayName?: string | null): string {
+  const name = (displayName || 'VEN').replace(/[^A-Z0-9]/gi, '').slice(0, 4).toUpperCase() || 'VEN';
+  return `${name}${String(venueId).slice(-4).toUpperCase()}`;
+}
+
 async function generateDraftReceipt(bookingId: string): Promise<void> {
   const booking = await Booking.findById(bookingId).select('userId venueId amount serviceFeeAmount discountAmount customerCategory discountIdNumber customerName date startTime').lean();
   if (!booking) return;
@@ -474,7 +491,7 @@ async function generateDraftReceipt(bookingId: string): Promise<void> {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   const venue = await Venue.findById(venueId).select('displayName').lean();
-  const venueCode = ((venue as any)?.displayName || 'VEN').replace(/[^A-Z0-9]/gi, '').slice(0, 4).toUpperCase();
+  const venueCode = venueReceiptCode(venueId, (venue as any)?.displayName);
   const year = new Date().getFullYear().toString().slice(2);
   const seq = String(counter!.seq).padStart(5, '0');
   const receiptNumber = `OR-${venueCode}-${year}-${seq}`;

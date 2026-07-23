@@ -37,6 +37,11 @@ const CLEAR_TOOL_ID = 'closed';
 // an inherited hour: clearing a cell writes nothing, and nothing means "inherit
 // the usual week" — which is open. Stored server-side as note: 'Closed'.
 const CLOSED_MARK_TOOL_ID = 'closed-date';
+// "Use default" — drop whatever this week says about the hour and let the recurring
+// weekly pattern govern it again. Its own tool because the only way back used to be
+// pressing Closed twice (painted → shut → inherited), which nothing advertised.
+// Only offered once the venue actually has a weekly default to fall back to.
+const USE_DEFAULT_TOOL_ID = 'use-default';
 // Hours the recurring weekly default opens are shown in their RULE's colour, just
 // faded — nothing was painted for THIS week, so they're inherited and don't need
 // repainting. This colour is only the fallback for an inherited price that no
@@ -231,9 +236,15 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const baseScopeKey = `${weekKey}|all`;
   const scopeKey = `${weekKey}|${selectedCourtId || 'all'}`;
 
-  const selectedScopeCells = cellsByWeek[scopeKey] || {};
-  const venueWideCells = cellsByWeek[baseScopeKey] || {};
-  const paintedCells = selectedCourtId ? { ...venueWideCells, ...selectedScopeCells } : selectedScopeCells;
+  // A specific court inherits the venue-wide paint and layers its own on top.
+  // Memoised — the derived price maps below key off this, and a fresh object every
+  // render would defeat their memoisation entirely. The `|| {}` fallbacks live
+  // INSIDE the callback for the same reason.
+  const paintedCells = useMemo(() => {
+    const scoped = cellsByWeek[scopeKey] || {};
+    if (!selectedCourtId) return scoped;
+    return { ...(cellsByWeek[baseScopeKey] || {}), ...scoped };
+  }, [cellsByWeek, scopeKey, baseScopeKey, selectedCourtId]);
   const isDirty = !!dirtyWeeks[scopeKey];
   const markDirty = () => setDirtyWeeks((prev) => (prev[scopeKey] ? prev : { ...prev, [scopeKey]: true }));
 
@@ -278,7 +289,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   }, [venue, venues]);
 
   useEffect(() => {
-    const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID]);
+    const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID, USE_DEFAULT_TOOL_ID]);
     if (!SPECIALS.has(activeRuleId) && rules.length > 0 && !rules.some((rule) => rule.id === activeRuleId)) setActiveRuleId(CLEAR_TOOL_ID);
   }, [activeRuleId, rules]);
 
@@ -409,8 +420,18 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
 
   const paintCellKey = (key: string, toolId = activeRuleId) => {
     const sk = scopeKey;
-    const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID]);
+    const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID, USE_DEFAULT_TOOL_ID]);
     if (!SPECIALS.has(toolId) && !rules.some((rule) => rule.id === toolId)) return;
+    // Hand the hour back to the weekly default — drop this week's override entirely.
+    if (toolId === USE_DEFAULT_TOOL_ID) {
+      setCellsByWeek((prev) => {
+        const cur = { ...(prev[sk] || {}) };
+        delete cur[key];
+        return { ...prev, [sk]: cur };
+      });
+      markDirty();
+      return;
+    }
     // Closed. What that means depends on whether a weekly default covers the hour:
     //   inherited  → write an explicit closure, or the cell just falls back to the
     //                default and stays open (the tool would do nothing).
@@ -491,7 +512,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const paintKeys = (keys: string[]) => {
     const sk = scopeKey;
     const allActive = activeRuleId !== CLEAR_TOOL_ID && keys.every((key) => (paintedCells[key] ?? '') === activeRuleId);
-    const shouldClear = activeRuleId === CLEAR_TOOL_ID || allActive;
+    // "Use default" always erases — the whole point is to leave nothing behind.
+    const shouldClear = activeRuleId === CLEAR_TOOL_ID || activeRuleId === USE_DEFAULT_TOOL_ID || allActive;
     // A whole row/column of Closed toggles as one: already all shut → lift back to
     // inherited, otherwise shut every hour a weekly default would have opened.
     const alreadyAllClosed = activeRuleId === CLEAR_TOOL_ID
@@ -518,14 +540,41 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     paintKeys(DAYS.map((day) => cellKey(day, hour)));
   };
 
-  const paintedRuleIds = Object.values(paintedCells).filter(
-    (id) => id !== RESERVED_TOOL_ID && id !== MAINTENANCE_TOOL_ID && id !== CLOSED_MARK_TOOL_ID,
-  );
-  const paidHours = paintedRuleIds.length;
-  const weeklyRevenueEstimate = paintedRuleIds.reduce((sum, ruleId) => {
-    const rule = rules.find((r) => r.id === ruleId);
-    return sum + (Number(rule?.price) || 0);
-  }, 0);
+  /**
+   * cellKey → ₱/hr for every hour this week actually SELLS: what's painted, plus
+   * whatever the weekly default covers where nothing is.
+   *
+   * Counting only painted cells was wrong the moment inheritance shipped. Once a
+   * venue has a standing pattern, a normal week has nothing painted at all — so
+   * "Paid Hours" read 0 on a fully-open week, the revenue estimate read ₱0, and,
+   * worst of all, "Save as weekly default" disabled itself (its guard was
+   * `paidHours === 0`), leaving no way to re-save or amend the default from any
+   * week that was already following it.
+   *
+   * Closure/occupancy markers sell nothing, so they're excluded — and because they
+   * shadow the inherited price, an hour closed for this week correctly drops out.
+   */
+  const effectivePrices = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const day of DAYS) {
+      for (const hour of HOURS) {
+        const key = cellKey(day, hour);
+        const val = paintedCells[key];
+        if (val === RESERVED_TOOL_ID || val === MAINTENANCE_TOOL_ID || val === CLOSED_MARK_TOOL_ID) continue;
+        if (val) {
+          const rule = rules.find((r) => r.id === val);
+          if (rule) out[key] = Number(rule.price) || 0;
+          continue;
+        }
+        const inherited = inheritedCells[key];
+        if (inherited != null) out[key] = inherited;
+      }
+    }
+    return out;
+  }, [paintedCells, inheritedCells, rules]);
+
+  const paidHours = Object.keys(effectivePrices).length;
+  const weeklyRevenueEstimate = Object.values(effectivePrices).reduce((sum, price) => sum + price, 0);
 
   const showCellTooltip = (target: HTMLElement, label: string) => {
     const rect = target.getBoundingClientRect();
@@ -600,9 +649,27 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     setDefaultError('');
     try {
       const entries: OwnerHourEntry[] = [];
+      const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`;
       DAYS.forEach((day, index) => {
         const dayOfWeek = (index + 1) % 7;   // DAYS is Monday-first; 0=Sunday.
-        const blocks = dayBlocks(day, paintedCells, rules).filter((block) => block.ruleId);
+        // Built from the week AS IT READS — painted hours plus the ones the current
+        // default already covers — so re-saving from a week you never touched keeps
+        // the pattern instead of flattening it to "closed all week". Contiguous
+        // hours at the same rate collapse into one band.
+        const blocks: { openTime: string; closeTime: string; price: number }[] = [];
+        for (let h = 0; h < 24;) {
+          const hour = HOURS[h];
+          const price = hour ? effectivePrices[cellKey(day, hour)] : undefined;
+          if (price == null) { h++; continue; }
+          let end = h + 1;
+          while (end < 24) {
+            const next = HOURS[end];
+            if (!next || effectivePrices[cellKey(day, next)] !== price) break;
+            end++;
+          }
+          blocks.push({ openTime: hhmm(h), closeTime: hhmm(end), price });
+          h = end;
+        }
         if (blocks.length === 0) {
           entries.push({ dayOfWeek, isClosed: true });
           return;
@@ -893,6 +960,23 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                   style={{ borderColor: active ? CLOSED_COLOR : 'transparent', color: active ? CLOSED_COLOR : 'var(--muted)' }}
                 >
                   <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: CLOSED_COLOR }} /> Closed
+                </button>
+              );
+            })()}
+            {/* Only meaningful once there's a standing pattern to hand the hour back to. */}
+            {weeklyEnabled && (() => {
+              const active = activeRuleId === USE_DEFAULT_TOOL_ID;
+              const swatch = rules[0]?.color ?? INHERITED_COLOR;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setActiveRuleId(USE_DEFAULT_TOOL_ID)}
+                  aria-pressed={active}
+                  title="Clear this week's override so the hour follows your weekly default again"
+                  className={`h-8 px-3 rounded-[4px] border font-extrabold bg-[var(--surface)] ${active ? '' : 'border-transparent'}`}
+                  style={{ borderColor: active ? swatch : 'transparent', color: active ? swatch : 'var(--muted)' }}
+                >
+                  <span className="inline-block w-2 h-2 rounded-[2px] mr-2" style={{ background: swatch, opacity: INHERITED_OPACITY }} /> Use default
                 </button>
               );
             })()}

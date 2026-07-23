@@ -2,7 +2,7 @@
   "name": "pickleballers-api",
   "version": "0.1.0",
   "private": true,
-  "description": "Pickleballers API — Hono + MongoDB + Mongoose",
+  "description": "Pickleballers API \u2014 Hono + MongoDB + Mongoose",
   "type": "module",
   "scripts": {
     "dev": "TZ=Asia/Manila tsx watch src/index.ts",
@@ -10,6 +10,7 @@
     "db:seed:users": "tsx src/shared/db/seed-dummy-users.ts",
     "db:seed:dummy": "tsx src/shared/db/seed-dummy-data.ts",
     "db:seed:coach-subs": "tsx src/shared/db/seed-coach-subscribers.ts",
+    "db:seed:receipts": "tsx src/shared/db/seed-official-receipts.ts",
     "db:partner-roles": "tsx src/shared/db/partner-roles-to-subscriptions.ts",
     "db:quick-logins": "tsx src/shared/db/align-quick-login-partners.ts",
     "db:import": "tsx src/shared/db/import-real-data.ts",

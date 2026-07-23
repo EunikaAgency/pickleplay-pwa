@@ -382,6 +382,15 @@ src/
                              #     each get 20 NCR/CALABARZON venues, 6-12 courts),
                              #   seed-owner-pricing-overrides.ts (Dink-Lab-style
                              #     SlotPriceOverrides for those owners' 40 venues),
+                             #   seed-official-receipts.ts (npm run db:seed:receipts
+                             #     — backfills the BIR OfficialReceipts that predate
+                             #     generateReceiptForBooking, so the owner Finance
+                             #     screen has data. Mints ONLY from bookings that
+                             #     already carry a Payment, reusing the live VAT math
+                             #     + venueReceiptCode, so status/method/payor/venue
+                             #     are all real; the invented bits are a few senior/
+                             #     PWD marks + voids to exercise those states.
+                             #     --apply / --revert, backup json, idempotent),
                              #   seed-owner-shop-partners.ts (rental inventory +
                              #     coach/organizer applications for those owners),
                              #   open-play-titles.ts (openPlayTitle() — composes a
