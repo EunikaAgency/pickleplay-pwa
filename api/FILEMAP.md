@@ -327,7 +327,11 @@ src/
                              #   recurring VenueHour pattern does (weeklyScheduleFor/
                              #   weeklyWindowsForDate; a union, so a date's override is
                              #   an exception, not a redefinition of the day). Mirrors
-                             #   the surge>timeBlock ladder pricing.ts already applies;
+                             #   the surge>timeBlock ladder pricing.ts already applies.
+                             #   A note:'Closed' override shuts an hour for that date
+                             #   even when the weekly default opens it — the only way
+                             #   to say "shut, this week only" once unpainted means
+                             #   "inherit" (OCCUPANCY_BLOCK_NOTES in pricing.ts);
                              #   auto-generated booking link: getVenue/resolveVenueId
                              #   resolve a venue by custom bookingSlug too, updateVenue
                              #   normalizes+uniqueness-checks it, and GET

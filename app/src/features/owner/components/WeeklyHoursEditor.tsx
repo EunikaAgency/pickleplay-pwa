@@ -29,16 +29,6 @@ const DAYS = [
 
 const hhmm = (t?: string) => (t ? String(t).slice(0, 5) : '');
 
-// "12:03" → "12:04" (one minute later) so a pricing window starts right after the
-// previous one ends. Used for the time inputs' min bound.
-const addMinute = (t: string): string => {
-  if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return '';
-  const total = h * 60 + m + 1;
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-};
-
 // Format a 24h "HH:mm" as "10:00 AM" for the validation notices.
 const to12 = (t: string): string => {
   if (!t) return '';
@@ -81,7 +71,11 @@ function pricingIssue(row: Row, i: number): { message: string | null; openBad: b
   const p = row.pricing[i];
   if (!p) return none;
   const prevClose = i > 0 ? row.pricing[i - 1].closeTime : '';
-  const openMin = i === 0 ? row.openTime : (prevClose ? addMinute(prevClose) : row.openTime);
+  // Windows are half-open [open, close), so a band may start exactly where the
+  // previous one ended — 4–6am then 6am–12am are adjacent, not overlapping.
+  // Demanding a minute's gap made hour-aligned bands unexpressible, and left the
+  // boundary hour with no band covering it (so it billed at the base rate).
+  const openMin = i === 0 ? row.openTime : (prevClose || row.openTime);
   if (p.openTime && openMin && p.openTime < openMin) {
     return {
       message: prevClose
@@ -290,7 +284,9 @@ export function WeeklyHoursEditor({ courtId, hidePricing }: WeeklyHoursEditorPro
                   {hasMultiPricing && row.pricing.slice(1).map((p2, idx) => {
                     const i = idx + 1;
                     const prevClose = row.pricing[i - 1].closeTime;
-                    const openMin = prevClose ? addMinute(prevClose) : row.openTime;
+                    // Half-open windows — a band may open exactly at the previous
+                    // one's close (see pricingIssue).
+                    const openMin = prevClose || row.openTime;
                     const closeMin = p2.openTime || openMin;
                     const pi = pricingIssue(row, i);
                     return (

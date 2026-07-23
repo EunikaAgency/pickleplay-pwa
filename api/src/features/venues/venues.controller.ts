@@ -1126,7 +1126,12 @@ function invalidPricingDay(body: HourEntry[]): number | null {
         (open && close && close <= open) ||
         (opOpen && open && open < opOpen) ||
         (opClose && close && close > opClose) ||
-        (prevClose && open && open <= prevClose);
+        // Windows are half-open [open, close), so one starting exactly where the
+        // last ended does NOT overlap — 04:00–06:00 then 06:00–24:00 is a legal
+        // pair of adjacent price bands. Requiring a gap instead (`<=`) made
+        // hour-aligned bands unexpressible, and any gap left the boundary hour
+        // with no timeBlock rate at all — it fell through to the base rate.
+        (prevClose && open && open < prevClose);
       if (bad) return dow;
       if (close) prevClose = close;
     }
@@ -1974,7 +1979,7 @@ function dayOfWeekFor(date: string): number {
   return new Date(date + 'T00:00:00').getDay();
 }
 
-type WeeklyHourRow = { dayOfWeek: number; openTime?: string | null; closeTime?: string | null; courtId?: any; isClosed?: boolean };
+type WeeklyHourRow = { dayOfWeek: number; openTime?: string | null; closeTime?: string | null; courtId?: any; isClosed?: boolean; price?: number | null };
 /** An open-hour window, shaped like the SlotPriceOverride rows the masks expect. */
 type ScheduleWindow = { startTime: string; endTime: string; courtId?: any; note?: string | null };
 
@@ -1998,7 +2003,7 @@ async function weeklyScheduleFor(venueId: string, enabled?: boolean): Promise<We
     enabled = !!venue?.useWeeklyPricingDefault;
   }
   if (!enabled) return [];
-  return VenueHour.find({ venueId }).select('dayOfWeek openTime closeTime courtId isClosed').lean<WeeklyHourRow[]>();
+  return VenueHour.find({ venueId }).select('dayOfWeek openTime closeTime courtId isClosed price').lean<WeeklyHourRow[]>();
 }
 
 /**
@@ -2015,16 +2020,26 @@ function weeklyWindowsForDate(weekly: WeeklyHourRow[], date: string): ScheduleWi
   if (weekly.length === 0) return [];
   const dow = dayOfWeekFor(date);
   const prevDow = (dow + 6) % 7;
+
+  // A day holds one un-priced "operating hours" row plus any number of priced
+  // bands inside it. When bands exist they ARE the schedule — they can leave gaps
+  // (open 6–8am, shut, open 6–10pm) that the single operating row would paper
+  // over. Venues with only an operating row (every imported one) fall back to it.
+  const rowsFor = (d: number) => {
+    const rows = weekly.filter((h) => h.dayOfWeek === d && !h.isClosed && h.openTime && h.closeTime);
+    const priced = rows.filter((h) => h.price != null);
+    return priced.length > 0 ? priced : rows;
+  };
+  const isOvernight = (h: WeeklyHourRow) => h.closeTime! <= h.openTime!;   // "02:00" <= "07:00"
+
   const windows: ScheduleWindow[] = [];
-  for (const h of weekly) {
-    if (h.isClosed || !h.openTime || !h.closeTime) continue;
-    const overnight = h.closeTime <= h.openTime;   // "02:00" <= "07:00" → wraps midnight
-    if (h.dayOfWeek === dow) {
-      windows.push({ startTime: h.openTime, endTime: overnight ? '24:00' : h.closeTime, courtId: h.courtId ?? null, note: null });
-    } else if (h.dayOfWeek === prevDow && overnight && h.closeTime > '00:00') {
-      // Yesterday ran past midnight into today.
-      windows.push({ startTime: '00:00', endTime: h.closeTime, courtId: h.courtId ?? null, note: null });
-    }
+  for (const h of rowsFor(dow)) {
+    windows.push({ startTime: h.openTime!, endTime: isOvernight(h) ? '24:00' : h.closeTime!, courtId: h.courtId ?? null, note: null });
+  }
+  // Yesterday ran past midnight into today.
+  for (const h of rowsFor(prevDow)) {
+    if (!isOvernight(h) || h.closeTime === '00:00') continue;
+    windows.push({ startTime: '00:00', endTime: h.closeTime!, courtId: h.courtId ?? null, note: null });
   }
   return windows;
 }

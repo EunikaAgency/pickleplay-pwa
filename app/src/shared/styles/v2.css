@@ -1703,19 +1703,24 @@
 .pb-v2.v2-nearby .nv-select-val {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* The absolute box is only the pre-measure state — it gives the panel its real
+   size so AnchoredPanel can read an accurate height; the component then switches
+   it to `position: fixed` with measured coords so it escapes .nearby-sheet's
+   `overflow: hidden` (188px when collapsed). Keep offsets out of this rule: the
+   inline top/left would fight them. z-index clears the sheet (30) and tab bar (45). */
 .pb-v2.v2-nearby .nv-select-menu {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0; right: 0;
-  z-index: 40;
-  max-height: 240px;
-  overflow-y: auto;
-  list-style: none;
+  z-index: 60;
   background: var(--bg-white);
-  border: 1.5px solid var(--nv-edge);
+  border: 2px solid var(--nv-edge);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
   padding: 4px;
+}
+.pb-v2.v2-nearby .nv-select-menu ul {
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
 }
 .pb-v2.v2-nearby .nv-select-item {
   width: 100%;
@@ -1738,11 +1743,10 @@
 /* ── Free-between: a field that opens a two-thumb range slider ── */
 .pb-v2.v2-nearby .nv-time { flex: 1 1 132px; }
 .pb-v2.v2-nearby .nv-time-icon { width: 13px; height: 13px; flex-shrink: 0; opacity: .75; }
+/* Pre-measure state only — see .nv-select-menu above. */
 .pb-v2.v2-nearby .nv-time-pop {
   position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 40;
+  z-index: 60;
   width: 268px;
   max-width: calc(100vw - 40px);
   padding: 12px 14px 10px;
@@ -1856,7 +1860,35 @@
   color: var(--navy);
 }
 .pb-v2.v2-nearby .nv-unchecked-note span { font-weight: 500; color: var(--slate); }
-.pb-v2.v2-nearby .nv-grid-muted .nv-card { opacity: .82; }
+/* Search box inside a long dropdown (the areas list runs to ~90 entries). */
+.pb-v2.v2-nearby .nv-select-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 6px;
+}
+.pb-v2.v2-nearby .nv-select-search svg {
+  width: 14px; height: 14px; flex-shrink: 0; color: var(--muted);
+}
+.pb-v2.v2-nearby .nv-select-search input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1.5px solid var(--nv-edge);
+  border-radius: 8px;
+  background: var(--bg-white);
+  color: var(--navy);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.pb-v2.v2-nearby .nv-select-search input:focus { outline: none; border-color: var(--blue); }
+.pb-v2.v2-nearby .nv-select-search input::placeholder { color: var(--muted); font-weight: 500; }
+.pb-v2.v2-nearby .nv-select-empty {
+  padding: 10px; font-size: 12px; color: var(--muted); text-align: center;
+}
 
 .pb-v2.v2-nearby .nv-filter-spin {
   width: 14px; height: 14px; flex-shrink: 0;

@@ -86,11 +86,16 @@ function timeBlockRate(
  *   `maintenanceBlocksForDate` in bookings.controller.ts, which makes it block).
  * 'Reserved'    — painted alongside a manual reservation, which is a real
  *   confirmed Booking. That Booking is what blocks the slot.
+ * 'Closed'      — the venue simply isn't trading that hour on that date. Needed
+ *   once a venue has a recurring weekly default: leaving an hour unpainted then
+ *   means "inherit the usual week", so there was no longer any way to say "shut,
+ *   this date only". Distinct from 'Maintenance', which claims something is
+ *   broken — this is just not open.
  */
-export const BLOCK_NOTES = new Set(['Maintenance', 'Reserved']);
+export const BLOCK_NOTES = new Set(['Maintenance', 'Reserved', 'Closed']);
 
-/** Only 'Maintenance' has no Booking behind it, so only it joins the occupancy set. */
-export const OCCUPANCY_BLOCK_NOTES = ['Maintenance'];
+/** The notes with no Booking behind them, so they join the occupancy set themselves. */
+export const OCCUPANCY_BLOCK_NOTES = ['Maintenance', 'Closed'];
 
 export const isBlockOverride = (o: { note?: string | null }) => BLOCK_NOTES.has(o.note ?? '');
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { hourLabel } from './nearbyDisplay';
 
 // The Nearby filter row: date · time range · area · court type.
@@ -36,15 +36,110 @@ function useDismiss(open: boolean, close: () => void) {
   return ref;
 }
 
-function FilterSelect({ value, options, onChange, ariaLabel }: {
+/**
+ * A dropdown panel that escapes the Nearby sheet's `overflow: hidden`.
+ *
+ * The sheet is only 188px tall when collapsed, so an in-flow absolute panel is
+ * simply cut off. Going `position: fixed` with measured coordinates escapes the
+ * clip, and the panel flips above its trigger when there isn't room below —
+ * which is the usual case with the map open. Fixed coords resolve against the
+ * transformed `.app` frame rather than the viewport, so the frame's origin is
+ * subtracted. Mirrors the trick `DateTimeFilterBar`'s HourDropdown already uses.
+ *
+ * Mounted only while open, so the measuring effect runs on mount.
+ */
+function AnchoredPanel({ anchorRef, className, minWidth = 0, children, ...rest }: {
+  anchorRef: { current: HTMLElement | null };
+  className: string;
+  minWidth?: number;
+  children: ReactNode;
+  role?: string;
+  'aria-label'?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const panel = ref.current;
+    const anchor = anchorRef.current;
+    if (!panel || !anchor) return;
+
+    const place = () => {
+      const frame = panel.closest('.app')?.getBoundingClientRect();
+      const a = anchor.getBoundingClientRect();
+      const height = panel.offsetHeight;
+      const GAP = 6;
+      const EDGE = 8;
+      // The tab bar is a fixed sibling that paints *over* this panel — the sheet
+      // is a stacking context, so no z-index here can beat it. Treat the tab
+      // bar's top as the floor so the panel flips up instead of hiding under it.
+      // It's `display: none` on desktop, where getBoundingClientRect() reports
+      // all zeros — take the rect only when it has real height, or the floor
+      // collapses to 0 and every panel is forced upward.
+      const tabRect = document.querySelector('.v2c-tabbar')?.getBoundingClientRect();
+      const floor = tabRect && tabRect.height > 0 ? tabRect.top : window.innerHeight;
+      const lowest = floor - EDGE - height;
+      const below = a.bottom + GAP;
+      const above = a.top - GAP - height;
+      // Prefer below; flip above when it doesn't fit; clamp when neither does.
+      const top = below <= lowest ? below
+        : above >= EDGE ? above
+        : Math.max(EDGE, Math.min(below, lowest));
+
+      // Keep the panel inside the frame horizontally, too.
+      const width = Math.max(a.width, minWidth);
+      const frameLeft = frame?.left ?? 0;
+      const frameRight = frame?.right ?? window.innerWidth;
+      const left = Math.max(frameLeft + EDGE, Math.min(a.left, frameRight - EDGE - width));
+
+      setPos({ top: top - (frame?.top ?? 0), left: left - frameLeft, width });
+    };
+
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [anchorRef, minWidth]);
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      // Until measured, the CSS `position: absolute` fallback gives the panel
+      // its natural size so `offsetHeight` above is accurate.
+      style={pos ? { position: 'fixed', top: pos.top, left: pos.left, width: pos.width } : undefined}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
+function FilterSelect({ value, options, onChange, ariaLabel, searchable, searchPlaceholder }: {
   value: string;
   options: FilterOption[];
   onChange: (value: string) => void;
   ariaLabel: string;
+  /** Adds a type-to-filter box — worth it once the list is long enough to scroll. */
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const ref = useDismiss(open, () => setOpen(false));
   const current = options.find((o) => o.value === value) ?? options[0];
+
+  const close = () => { setOpen(false); setQuery(''); };
+
+  const q = query.trim().toLowerCase();
+  // The blank "All …" option is the reset, so it stays reachable while filtering.
+  const shown = q
+    ? options.filter((o) => !o.value || o.label.toLowerCase().includes(q))
+    : options;
+  const hasMatches = shown.some((o) => o.value) || !q;
 
   return (
     <div className="nv-select" ref={ref}>
@@ -54,28 +149,53 @@ function FilterSelect({ value, options, onChange, ariaLabel }: {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`${ariaLabel}: ${current?.label ?? ''}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => { setQuery(''); setOpen((o) => !o); }}
       >
         <span className="nv-select-val">{current?.label}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
       </button>
       {open && (
-        <ul className="nv-select-menu" role="listbox" aria-label={ariaLabel}>
-          {options.map((o) => (
-            <li key={o.value} role="option" aria-selected={o.value === value}>
-              <button
-                type="button"
-                className={`nv-select-item${o.value === value ? ' active' : ''}`}
-                onClick={() => { onChange(o.value); setOpen(false); }}
-              >
-                {o.label}
-                {o.value === value && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <AnchoredPanel anchorRef={ref} className="nv-select-menu" minWidth={190} role="listbox" aria-label={ariaLabel}>
+          {searchable && (
+            <div className="nv-select-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              <input
+                type="text"
+                value={query}
+                autoFocus
+                placeholder={searchPlaceholder ?? 'Search…'}
+                aria-label={`Search ${ariaLabel.toLowerCase()}`}
+                onChange={(e) => setQuery(e.target.value)}
+                // Enter picks the single remaining match — faster than reaching for it.
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  const hits = shown.filter((o) => o.value);
+                  if (hits.length === 1) { onChange(hits[0].value); close(); }
+                }}
+              />
+            </div>
+          )}
+          {hasMatches ? (
+            <ul>
+              {shown.map((o) => (
+                <li key={o.value} role="option" aria-selected={o.value === value}>
+                  <button
+                    type="button"
+                    className={`nv-select-item${o.value === value ? ' active' : ''}`}
+                    onClick={() => { onChange(o.value); close(); }}
+                  >
+                    {o.label}
+                    {o.value === value && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="nv-select-empty">No area matches “{query}”</div>
+          )}
+        </AnchoredPanel>
       )}
     </div>
   );
@@ -127,7 +247,7 @@ function TimeRangeSelect({ startHour, endHour, onChange }: {
       </button>
 
       {open && (
-        <div className="nv-time-pop" role="dialog" aria-label="Free between">
+        <AnchoredPanel anchorRef={ref} className="nv-time-pop" minWidth={268} role="dialog" aria-label="Free between">
           <div className="nv-time-pop-head">
             <span className="nv-timebar-label">Free between</span>
             <span className={`nv-timebar-value${active ? ' active' : ''}`}>{label}</span>
@@ -182,7 +302,7 @@ function TimeRangeSelect({ startHour, endHour, onChange }: {
             </button>
             <button type="button" className="nv-time-done" onClick={() => setOpen(false)}>Done</button>
           </div>
-        </div>
+        </AnchoredPanel>
       )}
     </div>
   );
@@ -233,11 +353,18 @@ export function NearbyFilterRow({
         aria-label="Show availability for this date"
       />
       <TimeRangeSelect startHour={startHour} endHour={endHour} onChange={onTimeChange} />
-      <FilterSelect value={area} options={areaOptions} onChange={onAreaChange} ariaLabel="Filter by area" />
+      <FilterSelect
+        value={area}
+        options={areaOptions}
+        onChange={onAreaChange}
+        ariaLabel="Filter by area"
+        searchable
+        searchPlaceholder="Search area…"
+      />
       <FilterSelect value={type} options={typeOptions} onChange={onTypeChange} ariaLabel="Filter by court type" />
       {loading && <span className="nv-filter-spin" aria-label="Checking availability" role="status" />}
       {!loading && startHour != null && matchCount != null && (
-        <span className="nv-filter-count">{matchCount} confirmed free</span>
+        <span className="nv-filter-count">{matchCount} free</span>
       )}
     </div>
   );

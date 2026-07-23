@@ -425,31 +425,36 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     }
   }, [all, query, effectiveSort, distOf, matchesFilters]);
 
-  const visible = sorted.slice(0, VISIBLE);
-
   /**
    * Split the list against the chosen time window.
    *
-   * Only a venue that has published courts + opening hours produces an
-   * availability row, and today that's a small minority of the directory — so
-   * excluding everything we can't verify would empty the screen and read as a
-   * broken filter. Instead:
-   *   confirmed — has a row AND a court free for every hour of the window
-   *   unchecked — has no row at all; we can't confirm or deny, so it's shown
-   *               below under a divider that says exactly that
-   * A venue that HAS a row but is busy in the window is genuinely dropped.
+   * With a window set the list shows ONLY venues confirmed free for every hour
+   * of it — a filter that leaves unmatched venues on screen isn't a filter.
+   *   confirmed — has an availability row AND a court free across the window
+   *   unchecked — no row at all (no published courts/hours). Counted, so the
+   *               footnote can say how many we couldn't check, but NOT listed.
+   * A venue that has a row but is busy in the window is dropped outright.
+   *
+   * Partitions the WHOLE sorted list, not the visible slice — otherwise
+   * "N confirmed free" would silently mean "N among the nearest 30", and a
+   * venue free at your time sitting at position 40 would never surface.
    */
   const timeGroups = useMemo(() => {
-    if (filterStartHour == null) return { confirmed: visible, unchecked: [] as ApiVenue[] };
+    if (filterStartHour == null) return { confirmed: sorted, unchecked: [] as ApiVenue[] };
     const confirmed: ApiVenue[] = [];
     const unchecked: ApiVenue[] = [];
-    for (const v of visible) {
+    for (const v of sorted) {
       const row = availByVenue?.get(v.id);
       if (!row) unchecked.push(v);
       else if (freeAcrossWindow(row, filterStartHour, filterEndHour)) confirmed.push(v);
     }
     return { confirmed, unchecked };
-  }, [visible, availByVenue, filterStartHour, filterEndHour]);
+  }, [sorted, availByVenue, filterStartHour, filterEndHour]);
+
+  // Only matches are listed; the counts talk about that same set.
+  const matchTotal = timeGroups.confirmed.length;
+  const shownConfirmed = timeGroups.confirmed.slice(0, VISIBLE);
+  const shownTotal = shownConfirmed.length;
 
   // Venues the player has played at, resolved against the directory for photos
   // and current rates.
@@ -506,9 +511,13 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     // list is already sorted, and the live read just refines it in the background.
     : locStatus === 'locating' && !userLoc
       ? 'Finding courts near you…'
-      : sort === 'distance' && userLoc
-        ? `${sorted.length} court${sorted.length === 1 ? '' : 's'} near you`
-        : `${sorted.length} court${sorted.length === 1 ? '' : 's'}`;
+      // With a time window on, the headline count has to be the FILTERED count —
+      // quoting the whole directory next to "1 confirmed free" reads as a bug.
+      : filterStartHour != null
+        ? `${matchTotal} court${matchTotal === 1 ? '' : 's'} free for your time range`
+        : sort === 'distance' && userLoc
+          ? `${sorted.length} court${sorted.length === 1 ? '' : 's'} near you`
+          : `${sorted.length} court${sorted.length === 1 ? '' : 's'}`;
 
   const collapsed = sheet === 'collapsed';
   // We have somewhere to sort from — live fix or the saved home, either counts.
@@ -727,14 +736,15 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                     </div>
                   </div>
 
-                  {visible.length === 0 ? (
+                  {shownTotal === 0 ? (
                     <p className="feat-meta">
-                      No courts found{query ? ` for “${query}”` : ''}
-                      {areaFilter || typeFilter ? ' with these filters' : ''}.
+                      {filterStartHour != null
+                        ? 'No court is free for that whole time range.'
+                        : `No courts found${query ? ` for “${query}”` : ''}${areaFilter || typeFilter ? ' with these filters' : ''}.`}
                     </p>
                   ) : (
                     <div className="nv-grid">
-                      {timeGroups.confirmed.map((v) => (
+                      {shownConfirmed.map((v) => (
                         <VenueGridCard
                           key={v.id}
                           v={v}
@@ -746,33 +756,19 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                     </div>
                   )}
 
-                  {/* Venues whose schedule we couldn't check — shown, but never
-                      passed off as confirmed-free (see `timeGroups`). */}
-                  {timeGroups.unchecked.length > 0 && (
-                    <>
-                      <div className="nv-unchecked-note">
-                        {timeGroups.confirmed.length === 0
-                          ? 'No venue has published a court free at this time'
-                          : `${timeGroups.unchecked.length} more haven't published a schedule`}
-                        <span> — availability below isn't confirmed. Tap through to ask the venue.</span>
-                      </div>
-                      <div className="nv-grid nv-grid-muted">
-                        {timeGroups.unchecked.map((v) => (
-                          <VenueGridCard
-                            key={v.id}
-                            v={v}
-                            distance={distLabel(v)}
-                            slots={null}
-                            onOpen={() => open(v)}
-                          />
-                        ))}
-                      </div>
-                    </>
+                  {/* Venues with no published courts/hours can't be checked either
+                      way, so they're excluded from the results above. Say so —
+                      otherwise a 2-result list looks like the directory shrank. */}
+                  {filterStartHour != null && timeGroups.unchecked.length > 0 && (
+                    <div className="nv-unchecked-note">
+                      {timeGroups.unchecked.length} venue{timeGroups.unchecked.length === 1 ? '' : 's'} hidden
+                      <span> — they haven't published opening hours, so we can't check this time range.</span>
+                    </div>
                   )}
 
-                  {sorted.length > VISIBLE && (
+                  {matchTotal > shownTotal && (
                     <p className="feat-meta" style={{ textAlign: 'center', opacity: 0.7 }}>
-                      Showing {sort === 'distance' && userLoc ? 'nearest' : 'top'} {VISIBLE} of {sorted.length}
+                      Showing {sort === 'distance' && userLoc ? 'nearest' : 'top'} {shownTotal} of {matchTotal}
                     </p>
                   )}
                 </section>

@@ -32,9 +32,17 @@ const COLOR_SWATCHES = ['#f59e0b', '#f97316', '#eab308', '#14b8a6', '#06b6d4', '
 // sold. Painting is what opens an hour; the rule on it is what it costs.
 const CLOSED_COLOR = '#94a3b8';
 const CLEAR_TOOL_ID = 'closed';
-// Hours the recurring weekly default opens, shown dimmed because nothing was
-// painted for THIS week — they're inherited, and repainting isn't needed.
+// A DELIBERATE closure for this week's dates, written as an override so it can
+// beat the recurring weekly default. Without it the Closed tool is toothless on
+// an inherited hour: clearing a cell writes nothing, and nothing means "inherit
+// the usual week" — which is open. Stored server-side as note: 'Closed'.
+const CLOSED_MARK_TOOL_ID = 'closed-date';
+// Hours the recurring weekly default opens are shown in their RULE's colour, just
+// faded — nothing was painted for THIS week, so they're inherited and don't need
+// repainting. This colour is only the fallback for an inherited price that no
+// current rule matches (e.g. a rule the owner has since deleted).
 const INHERITED_COLOR = '#38bdf8';
+const INHERITED_OPACITY = 0.45;
 const RESERVED_COLOR = '#22c55e';
 const RESERVED_TOOL_ID = 'reserved';
 const MAINTENANCE_COLOR = '#d63c43';  // "Maintenance" — blocked slot (calendar counterpart)
@@ -60,12 +68,22 @@ const cellKey = (day: string, hour: string) => `${day}:${hour}`;
 /** Local YYYY-MM-DD — avoids toISOString()'s UTC shift (saves July 7 as July 6 in PH). */
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-function cellLabel(rule: PricingRule | null, isReserved: boolean, isMaintenance: boolean, inheritedPrice?: number | null) {
+function cellLabel(
+  rule: PricingRule | null,
+  isReserved: boolean,
+  isMaintenance: boolean,
+  inheritedPrice?: number | null,
+  inheritedRule?: PricingRule | null,
+) {
   if (isReserved) return 'Reserved';
   if (isMaintenance) return 'Maintenance · Blocked';
   if (rule) return `${rule.shortName} · ₱${rule.price}`;
   // Nothing painted for this week — the recurring weekly default covers it.
-  if (inheritedPrice != null) return `Weekly default · ₱${inheritedPrice}`;
+  if (inheritedPrice != null) {
+    return inheritedRule
+      ? `${inheritedRule.shortName} · ₱${inheritedPrice} · weekly default`
+      : `Weekly default · ₱${inheritedPrice}`;
+  }
   return 'Closed · not bookable';
 }
 
@@ -135,6 +153,15 @@ function dayBlocks(day: string, cells: Record<string, string>, rules: PricingRul
       let endHour = hour + 1;
       while (endHour < 24 && cellVal(endHour) === MAINTENANCE_TOOL_ID) endHour++;
       blocks.push({ openTime: `${String(hour).padStart(2, '0')}:00`, closeTime: `${String(endHour).padStart(2, '0')}:00`, price: 0, note: 'Maintenance' });
+      hour = endHour;
+      continue;
+    }
+    // Shut for these dates only — saved with price 0 + note "Closed", which the
+    // server treats as a closure so it outranks the weekly default.
+    if (val === CLOSED_MARK_TOOL_ID) {
+      let endHour = hour + 1;
+      while (endHour < 24 && cellVal(endHour) === CLOSED_MARK_TOOL_ID) endHour++;
+      blocks.push({ openTime: `${String(hour).padStart(2, '0')}:00`, closeTime: `${String(endHour).padStart(2, '0')}:00`, price: 0, note: 'Closed' });
       hour = endHour;
       continue;
     }
@@ -209,6 +236,31 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   const paintedCells = selectedCourtId ? { ...venueWideCells, ...selectedScopeCells } : selectedScopeCells;
   const isDirty = !!dirtyWeeks[scopeKey];
   const markDirty = () => setDirtyWeeks((prev) => (prev[scopeKey] ? prev : { ...prev, [scopeKey]: true }));
+
+  /**
+   * cellKey → ₱/hr for hours the recurring weekly pattern already opens. Only
+   * consulted where nothing is painted for the week on screen, so a real override
+   * always wins — same precedence the server applies. Declared up here because the
+   * paint handlers below need it to tell "erase this cell" from "shut this hour".
+   */
+  const inheritedCells = useMemo(() => {
+    if (!weeklyEnabled) return {} as Record<string, number>;
+    const map: Record<string, number> = {};
+    for (const entry of weeklyHours) {
+      if (entry.isClosed || !entry.openTime || !entry.closeTime) continue;
+      // DAYS is Monday-first; dayOfWeek is 0=Sunday.
+      const day = DAYS[(entry.dayOfWeek + 6) % 7];
+      if (!day) continue;
+      const start = parseInt(entry.openTime.slice(0, 2), 10);
+      const end = parseInt(entry.closeTime.slice(0, 2), 10);
+      if (isNaN(start) || isNaN(end)) continue;
+      for (let h = start; h < end && h < 24; h++) {
+        const hour = HOURS[h];
+        if (hour) map[cellKey(day, hour)] = Number(entry.price) || 0;
+      }
+    }
+    return map;
+  }, [weeklyHours, weeklyEnabled]);
 
   // When switching months, reset week to first available if current is invalid.
   useEffect(() => {
@@ -316,8 +368,10 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             const endH = parseInt(ov.endTime.slice(0, 2), 10);
             if (isNaN(startH) || isNaN(endH)) continue;
             // Maintenance / Reserved overrides → paint red/green, not pricing rules.
-            if (ov.note === 'Maintenance' || ov.note === 'Reserved') {
-              const toolId = ov.note === 'Reserved' ? RESERVED_TOOL_ID : MAINTENANCE_TOOL_ID;
+            if (ov.note === 'Maintenance' || ov.note === 'Reserved' || ov.note === 'Closed') {
+              const toolId = ov.note === 'Reserved' ? RESERVED_TOOL_ID
+                : ov.note === 'Closed' ? CLOSED_MARK_TOOL_ID
+                : MAINTENANCE_TOOL_ID;
               for (let h = startH; h < endH; h++) allCells[cellKey(dayLabel, HOURS[h])] = toolId;
               continue;
             }
@@ -357,11 +411,17 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     const sk = scopeKey;
     const SPECIALS = new Set([CLEAR_TOOL_ID, MAINTENANCE_TOOL_ID]);
     if (!SPECIALS.has(toolId) && !rules.some((rule) => rule.id === toolId)) return;
-    // Available = clear the cell back to default (no rule, no special marker).
+    // Closed. What that means depends on whether a weekly default covers the hour:
+    //   inherited  → write an explicit closure, or the cell just falls back to the
+    //                default and stays open (the tool would do nothing).
+    //   not covered → plain erase, exactly as before.
+    // Pressing Closed on an already-closed cell lifts it back to inherited, so the
+    // tool stays a toggle either way.
     if (toolId === CLEAR_TOOL_ID) {
       setCellsByWeek((prev) => {
         const cur = { ...(prev[sk] || {}) };
-        delete cur[key];
+        if (cur[key] !== CLOSED_MARK_TOOL_ID && inheritedCells[key] != null) cur[key] = CLOSED_MARK_TOOL_ID;
+        else delete cur[key];
         return { ...prev, [sk]: cur };
       });
       markDirty();
@@ -419,10 +479,17 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     const sk = scopeKey;
     const allActive = activeRuleId !== CLEAR_TOOL_ID && keys.every((key) => (paintedCells[key] ?? '') === activeRuleId);
     const shouldClear = activeRuleId === CLEAR_TOOL_ID || allActive;
+    // A whole row/column of Closed toggles as one: already all shut → lift back to
+    // inherited, otherwise shut every hour a weekly default would have opened.
+    const alreadyAllClosed = activeRuleId === CLEAR_TOOL_ID
+      && keys.every((key) => (paintedCells[key] ?? '') === CLOSED_MARK_TOOL_ID);
     setCellsByWeek((prev) => {
       const cur = { ...(prev[sk] || {}) };
       for (const key of keys) {
-        if (shouldClear) delete cur[key];
+        if (shouldClear) {
+          if (!alreadyAllClosed && activeRuleId === CLEAR_TOOL_ID && inheritedCells[key] != null) cur[key] = CLOSED_MARK_TOOL_ID;
+          else delete cur[key];
+        }
         else cur[key] = activeRuleId;
       }
       return { ...prev, [sk]: cur };
@@ -438,31 +505,9 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     paintKeys(DAYS.map((day) => cellKey(day, hour)));
   };
 
-  /**
-   * cellKey → ₱/hr for hours the recurring weekly pattern already opens. Only
-   * consulted where nothing is painted for the week on screen, so a real override
-   * always wins — same precedence the server applies.
-   */
-  const inheritedCells = useMemo(() => {
-    if (!weeklyEnabled) return {} as Record<string, number>;
-    const map: Record<string, number> = {};
-    for (const entry of weeklyHours) {
-      if (entry.isClosed || !entry.openTime || !entry.closeTime) continue;
-      // DAYS is Monday-first; dayOfWeek is 0=Sunday.
-      const day = DAYS[(entry.dayOfWeek + 6) % 7];
-      if (!day) continue;
-      const start = parseInt(entry.openTime.slice(0, 2), 10);
-      const end = parseInt(entry.closeTime.slice(0, 2), 10);
-      if (isNaN(start) || isNaN(end)) continue;
-      for (let h = start; h < end && h < 24; h++) {
-        const hour = HOURS[h];
-        if (hour) map[cellKey(day, hour)] = Number(entry.price) || 0;
-      }
-    }
-    return map;
-  }, [weeklyHours, weeklyEnabled]);
-
-  const paintedRuleIds = Object.values(paintedCells).filter((id) => id !== RESERVED_TOOL_ID && id !== MAINTENANCE_TOOL_ID);
+  const paintedRuleIds = Object.values(paintedCells).filter(
+    (id) => id !== RESERVED_TOOL_ID && id !== MAINTENANCE_TOOL_ID && id !== CLOSED_MARK_TOOL_ID,
+  );
   const paidHours = paintedRuleIds.length;
   const weeklyRevenueEstimate = paintedRuleIds.reduce((sum, ruleId) => {
     const rule = rules.find((r) => r.id === ruleId);
@@ -549,6 +594,12 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
           entries.push({ dayOfWeek, isClosed: true });
           return;
         }
+        // A day needs its un-priced "operating hours" row first — the server
+        // validates every priced band against it (a band outside the operating
+        // window is rejected), and the Hours tab renders the day from it.
+        const first = blocks[0];
+        const last = blocks[blocks.length - 1];
+        if (first && last) entries.push({ dayOfWeek, isClosed: false, openTime: first.openTime, closeTime: last.closeTime });
         for (const block of blocks) {
           entries.push({ dayOfWeek, isClosed: false, openTime: block.openTime, closeTime: block.closeTime, price: block.price });
         }
@@ -894,14 +945,25 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                     const cellVal = paintedCells[cellKey(day, hour)] ?? '';
                     const isReserved = cellVal === RESERVED_TOOL_ID;
                     const isMaintenance = cellVal === MAINTENANCE_TOOL_ID;
+                    const isClosedMark = cellVal === CLOSED_MARK_TOOL_ID;
                     const rule = ruleForCell(day, hour);
                     // Nothing painted here — the weekly default may still open it.
                     const inheritedPrice = cellVal ? null : (inheritedCells[cellKey(day, hour)] ?? null);
                     const isInherited = inheritedPrice != null;
-                    const label = cellLabel(rule, isReserved, isMaintenance, inheritedPrice);
+                    // Wear the RULE's colour, not a flat "inherited" one — the hour
+                    // costs ₱350 whether it was painted this week or comes from the
+                    // weekly default, so it should read as Peak either way. Fading
+                    // is what says "inherited"; the hue still says what it costs.
+                    const inheritedRule = isInherited
+                      ? rules.find((r) => Number(r.price) === inheritedPrice) ?? null
+                      : null;
+                    const label = isClosedMark
+                      ? 'Closed this week · overrides your weekly default'
+                      : cellLabel(rule, isReserved, isMaintenance, inheritedPrice, inheritedRule);
                     const bg = isReserved ? RESERVED_COLOR
                       : isMaintenance ? MAINTENANCE_COLOR
-                      : rule?.color ?? (isInherited ? INHERITED_COLOR : CLOSED_COLOR);
+                      : isClosedMark ? CLOSED_COLOR
+                      : rule?.color ?? inheritedRule?.color ?? (isInherited ? INHERITED_COLOR : CLOSED_COLOR);
                     return (
                       <button
                         key={`${day}-${hour}`}
@@ -920,7 +982,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                       >
                         {/* Inherited hours read faded — they're covered, but nothing
                             was painted for this week, so there's nothing to save. */}
-                        <span className="block h-4 rounded-[2px]" style={{ background: bg, opacity: isInherited ? 0.45 : 1 }} />
+                        <span className="block h-4 rounded-[2px]" style={{ background: bg, opacity: isInherited ? INHERITED_OPACITY : 1 }} />
                       </button>
                     );
                   })}
@@ -932,7 +994,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-[var(--muted)]">
             {rules.map((rule) => <Legend key={rule.id} color={rule.color} label={`${rule.shortName} - ₱${rule.price}/hr`} />)}
             <Legend color={MAINTENANCE_COLOR} label="Maintenance · Blocked" />
-            {weeklyEnabled && <Legend color={INHERITED_COLOR} label="Weekly default · inherited" />}
+            {weeklyEnabled && <Legend color={rules[0]?.color ?? INHERITED_COLOR} label="Faded = inherited from your weekly default" faded />}
             <Legend color={CLOSED_COLOR} label="Closed · not bookable" />
           </div>
 
@@ -1065,10 +1127,10 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: '
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
+function Legend({ color, label, faded }: { color: string; label: string; faded?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="w-2.5 h-2.5 rounded-[2px]" style={{ background: color }} />
+      <span className="w-2.5 h-2.5 rounded-[2px]" style={{ background: color, opacity: faded ? INHERITED_OPACITY : 1 }} />
       {label}
     </span>
   );
