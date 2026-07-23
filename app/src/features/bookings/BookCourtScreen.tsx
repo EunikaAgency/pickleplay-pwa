@@ -365,8 +365,19 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // otherwise reads as free — fail closed); `checkFailed` lets us fall back to
   // server enforcement rather than trapping the user behind our own outage;
   // `reloadAvailability` re-checks after a server-side slot conflict.
-  const { availability, ready, checkFailed, minBookableHour, endDisabledFor, rangeBlocked, firstFreeHour, isPast, isFull, reload: reloadAvailability } = useVenueAvailability(selected?.id, date, courtId || undefined);
+  const { availability, ready, checkFailed, minBookableHour, endDisabledFor, rangeBlocked, firstFreeHour, isPast, isFull, isClosed, reload: reloadAvailability } = useVenueAvailability(selected?.id, date, courtId || undefined);
   const slotUnavailable = rangeBlocked(startTime, endTime);
+  // Why the range is blocked: any hour the venue doesn't trade makes it *closed*,
+  // not booked. Drives the copy below — and suppresses the waitlist, since no
+  // cancellation can ever free an hour the venue was never open for.
+  const slotClosed = useMemo(() => {
+    if (!slotUnavailable || !startTime || !endTime) return false;
+    const s = Number(startTime.split(':')[0]);
+    const e = Number(endTime.split(':')[0]);
+    for (let h = s; h < e && h < 24; h++) if (isClosed(h)) return true;
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotUnavailable, startTime, endTime, availability]);
   const startInPast = Number(startTime.split(':')[0]) < minBookableHour;
   // A venue+date is chosen but availability hasn't resolved (and didn't error): the
   // greying can't be trusted yet, so hold the user on Step 0 (fail closed).
@@ -430,6 +441,10 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const startHourInfo = (h: number): { hide?: boolean; disabled?: boolean; note?: string } => {
     if (h < operatingWindow.open || h >= operatingWindow.close) return { hide: true };
     if (isPast(h)) return { hide: true };
+    // "Closed" before "Booked": both come through as free <= 0, but an hour the
+    // venue doesn't trade was never booked by anyone — calling it Booked invents
+    // demand and tells the player to try another time when no time would work.
+    if (isClosed(h)) return { disabled: true, note: 'Closed' };
     if (isFull(h)) return { disabled: true, note: 'Booked' };
     return {};
   };
@@ -710,7 +725,12 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
       // Don't advance while the availability check is still loading — it reads as
       // "free" until then, so we'd wave a possibly-taken slot through (fail closed).
       if (availabilityPending) { setError('Checking availability — one moment…'); return; }
-      if (slotUnavailable) { setError('That time is fully booked. Please pick a free slot.'); return; }
+      if (slotUnavailable) {
+        setError(slotClosed
+          ? 'The venue is closed at that time. Please pick another time or date.'
+          : 'That time is fully booked. Please pick a free slot.');
+        return;
+      }
     }
     // Public game requires a format before leaving the details step.
     if (bookingMode === 'public_game' && step === 1 && !pgFormat) {
@@ -1064,8 +1084,12 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             </div>
             {slotUnavailable && (
               <div className="mt-2">
-                <div className="t-sm text-[var(--coral)] font-bold">That time is fully booked — pick a free slot.</div>
-                {waitlistJoined ? (
+                <div className="t-sm text-[var(--coral)] font-bold">
+                  {slotClosed
+                    ? 'The venue is closed at that time — pick another time or date.'
+                    : 'That time is fully booked — pick a free slot.'}
+                </div>
+                {slotClosed ? null : waitlistJoined ? (
                   <div className="mt-2 px-3 py-2 rounded-xl bg-[var(--lime)]/15 text-[var(--lime-ink)] text-[12px] font-semibold flex items-center gap-1.5">
                     <Icon name="check" size={14} /> You're on the waitlist — we'll notify you if a spot opens up.
                   </div>

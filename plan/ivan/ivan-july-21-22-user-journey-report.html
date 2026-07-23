@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A non-technical, screenshot-led report of Ivan's PickleBallers work on July 21–22, 2026.">
+  <title>PickleBallers — Ivan's July 21–22 User Journey Report</title>
+  <style>
+    :root {
+      --navy:#0b1f33; --blue:#1463ff; --sky:#eaf2ff; --green:#0e9f6e;
+      --mint:#e7f8f1; --coral:#f26b5b; --warm:#fff8ea; --ink:#172033;
+      --muted:#667085; --line:#e5eaf1; --paper:#fff; --bg:#f5f7fb;
+      --shadow:0 16px 42px rgba(18,35,62,.09); --radius:22px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}
+    button,input{font:inherit}
+    .shell{max-width:1180px;margin:auto;padding:28px 22px 90px}
+    .hero{position:relative;overflow:hidden;background:linear-gradient(125deg,#081c30,#123b65 60%,#1463ff);color:white;border-radius:30px;padding:54px;box-shadow:var(--shadow)}
+    .hero:after{content:"";position:absolute;width:360px;height:360px;border:70px solid rgba(255,255,255,.07);border-radius:50%;right:-105px;top:-155px}
+    .kicker{display:inline-flex;gap:8px;align-items:center;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#a9cbff}
+    .kicker:before{content:"";width:25px;height:3px;border-radius:3px;background:#67e8b8}
+    h1{font-size:clamp(34px,6vw,68px);line-height:.99;letter-spacing:-.055em;max-width:790px;margin:18px 0}
+    .hero p{font-size:18px;max-width:720px;color:#dce9fb;margin:0}
+    .hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+    .hero-meta span{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700}
+    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 32px}
+    .metric{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 6px 20px rgba(18,35,62,.04)}
+    .metric b{display:block;font-size:30px;line-height:1;color:var(--navy)}
+    .metric span{display:block;color:var(--muted);font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.06em;margin-top:8px}
+    .intro{display:grid;grid-template-columns:1.25fr .75fr;gap:18px;margin-bottom:34px}
+    .intro-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+    .intro-card h2{margin:0 0 8px;font-size:22px;letter-spacing:-.025em}
+    .intro-card p{margin:0;color:var(--muted)}
+    .legend{display:grid;gap:12px;margin-top:14px}
+    .legend div{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:var(--muted)}
+    .legend i{width:10px;height:10px;border-radius:99px;margin-top:6px;flex:0 0 auto}
+    .toolbar{position:sticky;top:0;z-index:10;background:rgba(245,247,251,.94);backdrop-filter:blur(14px);padding:13px 0;border-bottom:1px solid var(--line);margin-bottom:28px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+    .toolbar button{border:1px solid var(--line);background:white;color:var(--muted);padding:9px 14px;border-radius:999px;cursor:pointer;font-weight:750;font-size:13px}
+    .toolbar button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+    .toolbar .shown{margin-left:auto;color:var(--muted);font-size:12px;font-weight:700}
+    .journey{margin-top:42px;scroll-margin-top:82px}
+    .journey-head{display:flex;gap:18px;align-items:flex-end;margin-bottom:18px}
+    .journey-no{display:grid;place-items:center;width:48px;height:48px;flex:0 0 auto;border-radius:16px;background:var(--navy);color:#fff;font-size:18px;font-weight:850}
+    .journey h2{margin:0;font-size:clamp(25px,4vw,38px);letter-spacing:-.04em;line-height:1.08}
+    .journey-head p{margin:6px 0 0;color:var(--muted)}
+    .task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .task{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 8px 24px rgba(18,35,62,.045)}
+    .shot{position:relative;aspect-ratio:16/10;background:#dfe7f1;overflow:hidden;margin:14px 14px 0;border:2px solid #94a3b8;border-radius:14px}
+    .shot img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block;pointer-events:none;user-select:none}
+    .shot:after{content:"Product screen";position:absolute;left:12px;bottom:12px;background:rgba(9,28,48,.86);color:white;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+    .task-copy{padding:22px}
+    .task-top{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+    .task-id{font-size:11px;font-weight:850;letter-spacing:.06em;color:var(--blue);background:var(--sky);border-radius:7px;padding:4px 7px}
+    .done{margin-left:auto;color:var(--green);font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.05em}
+    .task h3{font-size:19px;line-height:1.25;letter-spacing:-.02em;margin:0 0 15px}
+    .step{display:grid;grid-template-columns:76px 1fr;gap:11px;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+    .step b{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding-top:3px}
+    .step span{color:#424d61}
+    .step.after span{color:#086948;font-weight:650}
+    .benefit{margin:13px 0 0;background:var(--mint);color:#086948;padding:11px 13px;border-radius:12px;font-size:13px;font-weight:700}
+    .task[data-area="backend"] .task-id{color:#9a4c00;background:var(--warm)}
+    .task[data-area="admin"] .task-id{color:#7734b3;background:#f4eafd}
+    .task[data-area="web"] .task-id{color:#0d6b8b;background:#e8f7fb}
+    .footer{margin-top:58px;background:var(--navy);color:#dce9fb;border-radius:24px;padding:28px;display:flex;gap:16px;justify-content:space-between;align-items:center}
+    .footer b{display:block;color:#fff;font-size:18px}.footer small{color:#aebfd2}
+    .backtop{color:#fff;text-decoration:none;font-weight:800;background:rgba(255,255,255,.12);border-radius:999px;padding:9px 13px;white-space:nowrap}
+    .empty{display:none;text-align:center;padding:60px;color:var(--muted)}
+    @media(max-width:800px){.hero{padding:36px 26px}.summary{grid-template-columns:repeat(2,1fr)}.intro,.task-grid{grid-template-columns:1fr}.toolbar{top:0}.toolbar .shown{width:100%;margin-left:4px}.journey-head{align-items:flex-start}.shot{aspect-ratio:16/9}}
+    @media(max-width:460px){.shell{padding:14px 12px 60px}.hero{border-radius:22px;padding:30px 20px}.summary{gap:8px}.metric{padding:15px}.task-copy{padding:18px}.step{grid-template-columns:64px 1fr}.footer{align-items:flex-start;flex-direction:column}}
+    @media print{.toolbar{display:none}.shell{max-width:none}.task{break-inside:avoid}.journey{break-before:page}.hero,.footer{print-color-adjust:exact}.shot img{object-fit:contain;background:white}}
+  </style>
+</head>
+<body id="top">
+  <main class="shell">
+    <header class="hero">
+      <span class="kicker">PickleBallers progress story</span>
+      <h1>From rough edges to a calmer player journey.</h1>
+      <p>A non-technical, screenshot-led walkthrough of Ivan's work across the public website, player app, booking safeguards, and admin console.</p>
+      <div class="hero-meta"><span>Ivan</span><span>July 21–22, 2026</span><span>All listed work included</span><span>Deployed</span></div>
+    </header>
+
+    <section class="summary" aria-label="Report summary">
+      <div class="metric"><b id="totalTasks">75</b><span>task outcomes</span></div>
+      <div class="metric"><b>52</b><span>reliability fixes</span></div>
+      <div class="metric"><b>7 / 7</b><span>Task C complete</span></div>
+      <div class="metric"><b>16</b><span>admin improvements</span></div>
+    </section>
+
+    <section class="intro">
+      <div class="intro-card">
+        <h2>How to read this report</h2>
+        <p>Each card follows the user's experience: what used to get in the way, what the user sees now, and why the change matters. Screenshots are shown directly inside the page—there is no image-preview step.</p>
+      </div>
+      <div class="intro-card">
+        <h2>What changed overall</h2>
+        <div class="legend">
+          <div><i style="background:var(--blue)"></i><span>Shorter, clearer paths to booking and play</span></div>
+          <div><i style="background:var(--green)"></i><span>Visible recovery when something fails</span></div>
+          <div><i style="background:var(--coral)"></i><span>Safer payments, seats, and saved data</span></div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="toolbar" aria-label="Report filter">
+      <button data-filter="all" aria-pressed="true">All journeys</button>
+      <button data-filter="jul21" aria-pressed="false">July 21</button>
+      <button data-filter="jul22" aria-pressed="false">July 22</button>
+      <button data-filter="player" aria-pressed="false">Player</button>
+      <button data-filter="admin" aria-pressed="false">Admin</button>
+      <button data-filter="backend" aria-pressed="false">Safety</button>
+      <span class="shown" id="shownCount">75 outcomes shown</span>
+    </nav>
+
+    <div id="report"></div>
+    <p class="empty" id="empty">No report items match this view.</p>
+
+    <footer class="footer">
+      <div><b>PickleBallers · Ivan's delivery report</b><small>Based on the July 21 and July 22 source reports. Product images are embedded directly as journey context.</small></div>
+      <a class="backtop" href="#top">Back to top ↑</a>
+    </footer>
+  </main>
+
+  <script>
+    const IMG = {
+      home:"/report-assets/2026-07-21-22-user-journey/home.png",
+      discover:"/report-assets/2026-07-21-22-user-journey/discover.png",
+      filters:"/report-assets/2026-07-21-22-user-journey/filters.png",
+      booking:"/report-assets/2026-07-21-22-user-journey/booking.png",
+      bookings:"/report-assets/2026-07-21-22-user-journey/bookings.png",
+      owner:"/report-assets/2026-07-21-22-user-journey/owner.png",
+      ownerProfile:"/report-assets/2026-07-21-22-user-journey/owner-profile.png",
+      admin:"/report-assets/2026-07-21-22-user-journey/admin.png",
+      adminList:"/report-assets/2026-07-21-22-user-journey/admin-list.png",
+      adminReport:"/report-assets/2026-07-21-22-user-journey/admin-report.png",
+      calendar:"/report-assets/2026-07-21-22-user-journey/calendar.png",
+      openplay:"/report-assets/2026-07-21-22-user-journey/open-play.png",
+      game:"/report-assets/2026-07-21-22-user-journey/game.png",
+      chat:"/report-assets/2026-07-21-22-user-journey/chat.png",
+      clubs:"/report-assets/2026-07-21-22-user-journey/clubs.png",
+      coach:"/report-assets/2026-07-21-22-user-journey/coach.png",
+      coachBook:"/report-assets/2026-07-21-22-user-journey/coach-book.png",
+      tournaments:"/report-assets/2026-07-21-22-user-journey/tournament.png",
+      feed:"/report-assets/2026-07-21-22-user-journey/feed.png",
+      login:"/report-assets/2026-07-21-22-user-journey/login.png",
+      map:"/report-assets/2026-07-21-22-user-journey/map.png"
+    };
+
+    const S = (title, date, area, items) => ({title,date,area,items});
+    const T = (title, before, after, benefit, shot) => ({title,before,after,benefit,shot});
+
+    const sections = [
+      S("A straight path from the website into the app", "jul21", "web", [
+        T("Book a Court now opens the mobile experience", "The website booking page could become a dead end.", "The page and even a directly typed booking link send the player to the app.", "One clear destination for booking.", IMG.booking),
+        T("Login and Register go to the real account home", "Visitors could land on an extra website download page.", "Both actions now go straight to the mobile-app login.", "Fewer steps before sign-in.", IMG.login),
+        T("Every ‘Sign in to…’ button follows the same route", "Join and register buttons could take different detours.", "They now open the same app login destination.", "Predictable navigation everywhere.", IMG.login),
+        T("Venue inquiry became ‘Book a court’", "The call to action sounded indirect and uncertain.", "A clear Book a court button now opens the app.", "The next action is immediately obvious.", IMG.booking),
+        T("Club creation sends guests to the app", "A signed-out visitor could start down the wrong web path.", "Create now leads directly to mobile login.", "No abandoned club-creation journey.", IMG.clubs),
+        T("Create a Game no longer shows a dead form", "The website exposed a form that could not finish the job.", "It now invites the player to continue in the app.", "Players start in the place where creation works.", IMG.game),
+        T("Hire Coach is a clear green action", "Coach profiles did not offer a direct hiring path.", "A visible Hire Coach button now opens the app.", "Discovery can turn into a booking.", IMG.coachBook),
+        T("Open Play details now say ‘Join Game’", "The action label was vague for a player ready to participate.", "The detail page uses a direct Join Game action.", "Clear intent at the decision point.", IMG.openplay),
+        T("Compete now presents five useful choices", "Players could not see all available play formats together.", "Open Play, Leagues, Quick Game, Round Robin, and Mini Tournament now appear in one menu.", "More ways to play are easier to discover.", IMG.discover),
+        T("Host, Create, Join, and Book now behave consistently", "Similar buttons could send users to different places.", "Every major action now lands on the app login when needed.", "A consistent path builds confidence.", IMG.home)
+      ]),
+
+      S("A website that recovers instead of stopping", "jul21", "web", [
+        T("Broken pages show a friendly recovery card", "One page error could take down the whole website.", "The affected page now explains the problem and offers recovery.", "The rest of the experience stays usable.", IMG.home),
+        T("Incomplete venue stats no longer crash the owner home", "One venue with missing numbers could blank the dashboard.", "The dashboard safely continues with the data it has.", "Owners can still run the day.", IMG.owner),
+        T("Console tabs no longer flash a full Loading screen", "Every owner or admin tab change briefly replaced the whole screen.", "Navigation stays in place while the next view loads.", "The console feels faster and calmer.", IMG.admin),
+        T("Mistyped console links show a real Not Found page", "A wrong owner/admin/coach URL could leave an empty panel.", "The console now explains that the page was not found.", "Users know how to recover.", IMG.admin),
+        T("Chat failures show an error and Retry", "A failed message could simply disappear.", "The typed message stays available and can be retried.", "Conversations do not fail silently.", IMG.chat),
+        T("Prices use pesos everywhere", "The same journey could mix dollar and peso symbols.", "Booking and refund values now use one peso format.", "Players see trustworthy totals.", IMG.booking),
+        T("Deleted conversations stay deleted", "Two overlapping actions could bring a removed thread back.", "Only the failed action is restored; successful deletes remain gone.", "The inbox reflects what the user actually did.", IMG.chat)
+      ]),
+
+      S("Player screens that explain errors and offer a next step", "jul21", "player", [
+        T("A screen error no longer whitescreens the app", "One screen failure could blank the entire application.", "A friendly card appears with a Reload action.", "Players are never stranded on a white screen.", IMG.home),
+        T("Owner lists distinguish empty from failed", "A loading problem could look like zero bookings, games, or reviews.", "Each list now says whether it is truly empty or needs a retry.", "Owners do not mistake missing data for no business.", IMG.owner),
+        T("Edit Club Retry works", "The retry action could remain stuck forever.", "Retry starts a fresh load and returns the user to editing.", "Club managers can continue without restarting.", IMG.clubs),
+        T("The feed no longer invents ‘No posts yet’", "A network error looked like an empty community.", "The feed explains the failure and offers Retry.", "Users can tell quiet from unavailable.", IMG.feed),
+        T("Tournament scores reset between matches", "Scores from one match could carry into the next sheet.", "Every match now opens with its own clean score state.", "Results remain accurate.", IMG.tournaments),
+        T("Map pins work without the external icon service", "Offline or blocked access could make venue markers disappear.", "Markers are bundled with the app and remain visible.", "Nearby discovery is more dependable.", IMG.map),
+        T("Clubs directory shows Retry on load failure", "A failed request looked like no clubs existed.", "The directory shows a clear load error and Retry.", "Players do not abandon a healthy community.", IMG.clubs),
+        T("Hidden or deleted posts return when saving fails", "A post could vanish locally even though the action failed.", "The post is restored and an error is shown.", "The screen stays honest about what was saved.", IMG.feed),
+        T("Failed chat loads can be retried", "A conversation error was a dead end.", "The chat screen now provides a Retry action.", "Players can recover without navigating away.", IMG.chat),
+        T("Organizer actions no longer fail silently", "Approve, check-in, cancel, or remove could appear to do nothing.", "The organizer sees feedback and the list refreshes to the real state.", "Event operations are easier to trust.", IMG.openplay),
+        T("Venue overview warns about missing data", "Unavailable figures could appear as believable zeroes.", "The screen labels any section that could not load.", "Owners do not make decisions from fake zeroes.", IMG.owner),
+        T("Owner profile has loading and error states", "A failed load could show ‘0 venues, 0 courts’.", "The profile now shows progress, errors, and Retry.", "Account health is represented accurately.", IMG.ownerProfile),
+        T("Venue save reports a failed refresh", "After saving, stale details could remain with no explanation.", "A refresh failure now appears as an error message.", "Owners know when to retry.", IMG.adminList),
+        T("Membership success waits for confirmation", "The app could say ‘You’re in’ before the server agreed.", "Success appears only after confirmation; failures roll back.", "Membership status is reliable.", IMG.clubs),
+        T("Booking cancellation explains failures", "A booking could reappear without saying why cancellation failed.", "The player now sees a clear failure reason.", "Time-sensitive booking changes are understandable.", IMG.bookings),
+        T("Waitlist claims report failure", "A player could not tell whether the slot was secured.", "A failed claim now shows an immediate message.", "Players can act before the payment window closes.", IMG.bookings),
+        T("Broken booking links stop spinning", "If a venue failed to load, the booking screen could wait forever.", "It now shows an error and Retry.", "Every booking link has an exit path.", IMG.booking),
+        T("Court-list failures no longer say ‘No courts’", "A network problem could make a venue appear to have none.", "The app says it could not load courts and offers Retry.", "Venue inventory is not misrepresented.", IMG.booking),
+        T("Map availability warns when checks fail", "Every court could look free after an availability error.", "The map warns that displayed times may not be accurate.", "Players avoid booking on false availability.", IMG.map),
+        T("Message Venue and Apply as Coach show errors", "A failed request only re-enabled the button.", "An error message now confirms the request did not land.", "No more uncertainty after important submissions.", IMG.coach),
+        T("Open Play detail separates errors from removal", "Any load error claimed the session may have been deleted.", "Real errors now show Retry; actual missing sessions stay distinct.", "Players receive the right explanation.", IMG.openplay),
+        T("Create Game cannot charge twice on retry", "A final-step failure could charge the card again.", "The flow remembers completed steps and resumes safely.", "A retry never repeats a successful charge.", IMG.game)
+      ]),
+
+      S("Behind-the-scenes safeguards players can feel", "jul21", "backend", [
+        T("Only one person gets the last court", "Two near-simultaneous bookings could both be confirmed.", "The first confirmation wins; the second receives a clear ‘just taken’ response.", "No double-booked court slots.", IMG.booking),
+        T("Coach sessions cannot double-book", "The same coach time could be sold twice.", "Each coach and time slot accepts only one confirmed booking.", "Coach calendars stay realistic.", IMG.coachBook),
+        T("Invalid booking times are rejected", "Malformed times could slip past the price check.", "Bad time formats stop before payment or confirmation.", "Price and schedule checks cannot be bypassed.", IMG.booking),
+        T("Search handles unusual characters safely", "Certain symbols could crash or freeze a search.", "Search now treats user input as ordinary text.", "Every query returns safely.", IMG.discover),
+        T("Only verified coaches appear publicly", "An unverified coach could publish immediately.", "Public listing now requires verification.", "Players browse a moderated directory.", IMG.coach),
+        T("Game joins respect capacity", "Two players could take the final seat or a double-tap could join twice.", "Joining is now a single protected action with no duplicates.", "The roster never exceeds its real capacity.", IMG.game),
+        T("Roster changes no longer overwrite each other", "Simultaneous add and remove actions could lose a change.", "Each roster update is applied independently.", "Organizer lists stay accurate during busy moments.", IMG.openplay),
+        T("Waitlist claims create a paid hold", "A claimed slot could become a free confirmed booking indefinitely.", "The claim creates an unpaid hold with a payment deadline.", "Courts are held fairly and released automatically.", IMG.bookings),
+        T("Broken request data gets a clean response", "An empty or malformed request could cause a server error.", "The app receives a clear validation response across the platform.", "Users see actionable errors instead of crashes.", IMG.home),
+        T("Bad or stale links fail cleanly", "A mistyped item ID could produce a server failure.", "Invalid links now return a controlled not-found style response.", "Shared links degrade gracefully.", IMG.home),
+        T("Deleted accounts do not break check-in", "An old check-in tied to a deleted user could crash the venue list.", "Deleted-user entries are safely skipped.", "Everyone else remains visible at the venue.", IMG.adminList),
+        T("‘Already exists’ conflicts are understandable", "A duplicate request could look like a mysterious server error.", "The user receives a clear already-exists or just-taken message.", "Expected competition is explained, not hidden.", IMG.booking),
+        T("Venue deletion preserves history", "Hard deletion could remove past bookings, analytics, and reports.", "Venues are archived, and deletion is blocked while upcoming bookings exist.", "Business records remain intact.", IMG.owner)
+      ]),
+
+      S("Task C: seven player-experience improvements", "jul22", "player", [
+        T("Map clustering, labels, recenter, and fullscreen", "Crowded markers overlapped, names were hidden, and map controls were inconsistent.", "Nearby now groups close venues, labels pins, recenters reliably, and expands fullscreen.", "Finding a court is faster at any zoom level.", IMG.map),
+        T("Book Court opens one canonical booking screen", "A Book Court tap first sent the player back to Nearby.", "Home and Play entry points now open the booking flow directly.", "Several unnecessary screens disappear.", IMG.booking),
+        T("Club join and onboarding failures are visible", "Important saves could fail with no feedback.", "Error toasts, Try again, and Continue anyway give the player control.", "No silent loss of membership or preferences.", IMG.clubs),
+        T("Broken Open Play invite was removed", "The Invite action called the wrong kind of game and could never work.", "The dead action is gone; working link sharing remains.", "Every visible action now has a real outcome.", IMG.openplay),
+        T("Player games no longer show misleading court cost", "A free game could display the host's venue cost as though the joiner paid it.", "Only a real entry fee appears for a player-hosted game.", "The price shown matches what the player owes.", IMG.game),
+        T("Filters persist across Open Play and Events", "Changing tabs reset every chosen filter.", "The same filters remain active while moving between sections.", "Players can compare options without rebuilding a search.", IMG.filters),
+        T("Email verification flow is complete", "Account verification needed a dependable start-to-finish path.", "The existing verification journey was completed and confirmed in prior work.", "Accounts can reach a trusted verified state.", IMG.login)
+      ]),
+
+      S("Admin console: less clutter, clearer decisions", "jul22", "admin", [
+        T("Broken Analytics page removed", "Near-zero figures repeated dashboard totals and could mislead admins.", "The duplicate page is gone; live totals remain on Home.", "One trustworthy source for key numbers.", IMG.owner),
+        T("Games rows stay inside Admin", "Tapping a game could drop an admin into the player lobby with no return path.", "Rows are now read-only in the directory.", "Admins keep their working context.", IMG.adminList),
+        T("Post Reports stay inside moderation", "View post could send an admin into the player feed.", "Reported content now appears directly inside its report card.", "Review happens without a navigation dead end.", IMG.adminReport),
+        T("Search boxes are visible and usable", "Players, Venues, Owners, and Coaches had broken-looking search fields.", "Styled search inputs now include a clear magnifier icon.", "Large directories are easier to scan.", IMG.adminList),
+        T("Every admin screen explains its purpose", "Many pages opened with only a count and no context.", "Short subtitles describe what the page is for.", "New and returning admins orient themselves quickly.", IMG.admin),
+        T("Mobile moderation label matches desktop", "The drawer called the same destination by a different name.", "The mobile label now reads All queues.", "Navigation language stays consistent.", IMG.admin),
+        T("Post-report cards look more focused", "Excessively rounded cards made dense moderation content feel loose.", "A tighter radius improves structure.", "Reports are easier to read at a glance.", IMG.adminReport),
+        T("Duplicate All queues entry removed", "The same moderation queues appeared twice in the menu.", "Only the direct queue links remain.", "Less menu clutter and fewer choices to decode.", IMG.admin),
+        T("Feature Flags has fewer duplicate entry points", "The same tool appeared in three places.", "The redundant dashboard-home card was removed.", "Admin Home stays focused on daily work.", IMG.admin),
+        T("Sidebar groups start collapsed", "A long expanded menu made the full console hard to scan.", "Directory, Moderation, and System open only when needed.", "The whole information architecture fits at a glance.", IMG.admin),
+        T("Sidebar items keep their proper height", "Expanded groups could squeeze important actions.", "The menu scrolls instead of compressing its rows.", "Targets remain readable and easy to tap.", IMG.admin),
+        T("Mobile drawer matches the desktop sidebar", "Social, Notifications, and Log out were missing or placed differently.", "The same destinations and collapsed groups now appear on both.", "Admins can switch devices without relearning navigation.", IMG.admin),
+        T("Players list contains real account roles", "Coach and Organizer filters were empty because they are memberships, not account types.", "The list focuses on players with name and email search.", "No misleading empty filters.", IMG.adminList),
+        T("Players and venues support drill-down", "Directory rows were informational dead ends.", "A player opens their profile and a venue opens its page.", "Admins can move from discovery to action.", IMG.adminList),
+        T("Moderation errors appear on the affected row", "Failures interrupted work with a browser alert.", "Four moderation screens now show the message inline.", "The error stays beside the action that caused it.", IMG.adminReport),
+        T("Suggested edits show more readable context", "A short, dense preview hid useful details.", "The preview now shows up to 500 formatted characters.", "Admins can decide with fewer extra steps.", IMG.adminReport)
+      ])
+    ];
+
+    const report = document.getElementById("report");
+    let taskNumber = 0;
+    sections.forEach((section, sectionIndex) => {
+      const wrap = document.createElement("section");
+      wrap.className = "journey";
+      wrap.dataset.date = section.date;
+      wrap.dataset.area = section.area;
+      wrap.innerHTML = `<div class="journey-head"><span class="journey-no">${sectionIndex + 1}</span><div><h2>${section.title}</h2><p>${section.date === "jul21" ? "July 21" : "July 22"} · ${section.items.length} completed outcomes</p></div></div><div class="task-grid"></div>`;
+      const grid = wrap.querySelector(".task-grid");
+      section.items.forEach(item => {
+        taskNumber += 1;
+        const card = document.createElement("article");
+        card.className = "task";
+        card.dataset.area = section.area;
+        card.innerHTML = `<div class="shot"><img src="${item.shot}" alt="Product screen related to ${item.title}" loading="lazy" decoding="async"></div><div class="task-copy"><div class="task-top"><span class="task-id">TASK ${String(taskNumber).padStart(2,"0")}</span><span class="done">✓ complete</span></div><h3>${item.title}</h3><div class="step"><b>Before</b><span>${item.before}</span></div><div class="step after"><b>Now</b><span>${item.after}</span></div><p class="benefit">User benefit · ${item.benefit}</p></div>`;
+        grid.appendChild(card);
+      });
+      report.appendChild(wrap);
+    });
+
+    document.getElementById("totalTasks").textContent = taskNumber;
+    const buttons = [...document.querySelectorAll("[data-filter]")];
+    const journeys = [...document.querySelectorAll(".journey")];
+    const empty = document.getElementById("empty");
+    const shown = document.getElementById("shownCount");
+    buttons.forEach(button => button.addEventListener("click", () => {
+      const filter = button.dataset.filter;
+      buttons.forEach(b => b.setAttribute("aria-pressed", String(b === button)));
+      let visibleTasks = 0;
+      journeys.forEach(journey => {
+        const match = filter === "all" || journey.dataset.date === filter || journey.dataset.area === filter || (filter === "player" && journey.dataset.area === "web");
+        journey.hidden = !match;
+        if (match) visibleTasks += journey.querySelectorAll(".task").length;
+      });
+      shown.textContent = `${visibleTasks} outcome${visibleTasks === 1 ? "" : "s"} shown`;
+      empty.style.display = visibleTasks ? "none" : "block";
+    }));
+  </script>
+</body>
+</html>

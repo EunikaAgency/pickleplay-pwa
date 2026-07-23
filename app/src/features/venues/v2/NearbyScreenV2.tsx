@@ -6,8 +6,11 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { V2Skeleton } from '../../../shared/components/ui/V2Skeleton';
-import { DateTimeFilterBar } from './DateTimeFilterBar';
-import { listAllVenues, batchVenueAvailability, type ApiVenue } from '../../../shared/lib/api';
+import { NearbyFilterRow } from './NearbyFilterRow';
+import { RecentVenuesSection } from './RecentVenuesSection';
+import { VenueGridCard } from './VenueGridCard';
+import { openSlotCount, venueArea, localToday, deriveRecentVenues } from './nearbyDisplay';
+import { listAllVenues, batchVenueAvailability, listBookings, type ApiBooking, type ApiVenue } from '../../../shared/lib/api';
 import { venueImage, priceLabel, locationLine, indoorLabel, venueCoords } from '../../../shared/lib/venueDisplay';
 import { haversineKm, formatDistance, getCurrentLocation, homeCoords, type LatLng } from '../../../shared/lib/geo';
 import { useAuthStore } from '../../../shared/lib/authStore';
@@ -15,12 +18,14 @@ import { userHasPermission } from '../../../shared/lib/permissions';
 
 type SortKey = 'distance' | 'rating' | 'courts' | 'reviews' | 'name';
 
+// Phrased as the ordering the player gets, not the field we sort on — the
+// control doubles as the list's "Nearest first" caption.
 const SORT_LABELS: Record<SortKey, string> = {
-  distance: 'Distance',
-  rating: 'Rating',
-  courts: 'Most Courts',
-  reviews: 'Most Reviews',
-  name: 'Name (A–Z)',
+  distance: 'Nearest first',
+  rating: 'Top rated',
+  courts: 'Most courts',
+  reviews: 'Most reviewed',
+  name: 'A–Z',
 };
 
 // Keep the rendered list bounded (each card loads an image); "nearby" only needs
@@ -72,7 +77,6 @@ function thumbStyle(v: ApiVenue, fallback: string): CSSProperties {
     backgroundPosition: 'center',
   };
 }
-const FEAT_GRADIENT = 'linear-gradient(160deg,#1a3a8f,#2a7fd4)';
 const CARD_GRADIENT = 'linear-gradient(135deg,#E1E8FF,#E9EDFF)';
 
 // A venue resolved to a map point (coords + its distance from the user, if known).
@@ -248,43 +252,20 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
 
-  // Date/time availability filter
-  const [filterDate, setFilterDate] = useState<string | null>(null);
-  const [filterStartHour, setFilterStartHour] = useState<number | null>(null);
-  const [filterEndHour, setFilterEndHour] = useState<number | null>(null);
-  const [availByVenue, setAvailByVenue] = useState<Map<string, number[]> | null>(null);
-  const [availLoading, setAvailLoading] = useState(false);
-  const [availError, setAvailError] = useState(false);
+  // Filters: which date's availability the cards report, plus area / court type.
+  const today = localToday();
+  const [filterDate, setFilterDate] = useState<string>(today);
+  const [areaFilter, setAreaFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  // Per-venue free-court counts, powering each card's "N slots open" badge, kept
+  // with the date + venue set they were fetched for (see `availKey` below). A
+  // card hides the badge rather than claim a venue we never actually checked is
+  // fully booked.
+  const [avail, setAvail] = useState<{ key: string; map: Map<string, number[]> | null; error: boolean } | null>(null);
 
-  const applyFilter = async (date: string, startHour: number, endHour?: number) => {
-    setFilterDate(date);
-    setFilterStartHour(startHour);
-    setFilterEndHour(endHour ?? null);
-    if (all.length === 0) return;
-    setAvailLoading(true);
-    setAvailError(false);
-    try {
-      const ids = all.map((v) => v.id);
-      const result = await batchVenueAvailability(ids, date);
-      const map = new Map<string, number[]>();
-      for (const v of result.venues) map.set(v.venueId, v.freeByHour);
-      setAvailByVenue(map);
-    } catch {
-      // V3: the availability check failed. Flag it so the list doesn't silently
-      // present every court as "free at your time" (the predicate falls open on null).
-      setAvailByVenue(null);
-      setAvailError(true);
-    } finally {
-      setAvailLoading(false);
-    }
-  };
-
-  const clearFilter = () => {
-    setFilterDate(null);
-    setFilterStartHour(null);
-    setFilterEndHour(null);
-    setAvailByVenue(null);
-  };
+  // The signed-in player's bookings — rolled up into the "played at recently"
+  // rail once the venue directory lands (guests never fetch them).
+  const [bookings, setBookings] = useState<ApiBooking[]>([]);
 
   // Load the full venue set once (distance ranking needs every venue, not one page).
   useEffect(() => {
@@ -297,6 +278,17 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [reloadKey]);
+
+  // The player's own booking history feeds the "played at recently" rail. Guests
+  // have none, and a failure just hides the rail — it's a shortcut, not the page.
+  useEffect(() => {
+    if (!currentUser) return;
+    let alive = true;
+    listBookings()
+      .then((items) => { if (alive) setBookings(items); })
+      .catch(() => { if (alive) setBookings([]); });
+    return () => { alive = false; };
+  }, [currentUser]);
 
   // "Near me": drop the list to focus the map, then zoom/centre on the user and
   // surface the nearest court (the framing + popup happen in FrameMap, keyed off
@@ -357,22 +349,28 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
   // so the list isn't arbitrary while the permission prompt is pending/denied.
   const effectiveSort: SortKey = sort === 'distance' && !userLoc ? 'rating' : sort;
 
-  const venueMatchesAvailabilityFilter = useCallback((v: ApiVenue): boolean => {
-    if (!availByVenue || filterStartHour == null) return true;
-    const fb = availByVenue.get(v.id);
-    if (!fb) return false;
-    const endH = Math.min(filterEndHour ?? filterStartHour + 1, 24);
-    for (let h = filterStartHour; h < endH; h++) {
-      if ((fb[h] ?? 0) <= 0) return false;
-    }
+  // Area + court-type filters from the filter row. Availability is *reported* on
+  // each card rather than filtered on, so a venue never silently disappears
+  // because we couldn't check its calendar.
+  const matchesFilters = useCallback((v: ApiVenue): boolean => {
+    if (areaFilter && venueArea(v) !== areaFilter) return false;
+    if (typeFilter && (v.indoorOutdoor || '').toLowerCase() !== typeFilter) return false;
     return true;
-  }, [availByVenue, filterStartHour, filterEndHour]);
+  }, [areaFilter, typeFilter]);
+
+  // Every area present in the directory, for the "All areas" picker.
+  const areas = useMemo(() => {
+    const set = new Set<string>();
+    for (const v of all) { const a = venueArea(v); if (a) set.add(a); }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [all]);
 
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let base = q ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q)) : all;
-    // When the date/time filter is active, keep only venues with free courts across the chosen window.
-    if (availByVenue && filterStartHour != null) base = base.filter(venueMatchesAvailabilityFilter);
+    const base = (q
+      ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q))
+      : all
+    ).filter(matchesFilters);
     const copy = [...base];
     switch (effectiveSort) {
       case 'distance':
@@ -390,19 +388,55 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
       case 'rating':
       default: return copy.sort((a, b) => (b.googleRating ?? 0) - (a.googleRating ?? 0));
     }
-  }, [all, query, effectiveSort, distOf, availByVenue, filterStartHour, venueMatchesAvailabilityFilter]);
+  }, [all, query, effectiveSort, distOf, matchesFilters]);
 
   const visible = sorted.slice(0, VISIBLE);
-  const featured = visible[0] ?? null;
-  const rest = visible.slice(1);
+
+  // Availability for exactly the venues on screen, on the chosen date — that's
+  // what the "N slots open" badges report. Refetched when the date or the
+  // visible set changes; the id list is joined so the effect keys off contents.
+  const visibleIdKey = visible.map((v) => v.id).join(',');
+  const availKey = `${filterDate}|${visibleIdKey}`;
+  useEffect(() => {
+    // Nothing on screen to check — leave the last result alone; no card reads it.
+    if (!visibleIdKey) return;
+    let alive = true;
+    batchVenueAvailability(visibleIdKey.split(','), filterDate)
+      .then((result) => {
+        if (!alive) return;
+        const map = new Map<string, number[]>();
+        for (const v of result.venues) map.set(v.venueId, v.freeByHour);
+        setAvail({ key: availKey, map, error: false });
+      })
+      // Leave the badges off rather than reporting a slot count we don't have.
+      .catch(() => { if (alive) setAvail({ key: availKey, map: null, error: true }); });
+    return () => { alive = false; };
+  }, [visibleIdKey, filterDate, availKey]);
+
+  // Stamping the result with the key it was fetched for means a superseded
+  // request can't paint yesterday's slot counts onto today's cards — and it
+  // gives us "loading" for free, without setting state inside the effect.
+  const availFresh = avail?.key === availKey ? avail : null;
+  const availByVenue = availFresh?.map ?? null;
+  const availError = !!availFresh?.error;
+  const availLoading = !!visibleIdKey && !availFresh;
+
+  // Venues the player has played at, resolved against the directory for photos
+  // and current rates.
+  const venuesById = useMemo(() => new Map(all.map((v) => [v.id, v])), [all]);
+  // Guarded on the user as well as the data: bookings aren't cleared on logout,
+  // so this is what stops a signed-out view showing the last player's venues.
+  const recentVenues = useMemo(
+    () => (currentUser && bookings.length ? deriveRecentVenues(bookings, venuesById) : []),
+    [currentUser, bookings, venuesById],
+  );
+
   // In lobby mode, carry the intent into the court detail so the booking flow can
   // hand back to create-game once a court is reserved.
   const open = (v: ApiVenue) => onNavigate('court-details', {
     id: v.slug || v.id,
     intent,
-    filterDate: filterDate ?? undefined,
-    filterStartHour: filterStartHour != null ? filterStartHour : undefined,
-    filterEndHour: filterEndHour ?? undefined,
+    filterDate,
   });
 
   const distLabel = (v: ApiVenue) => {
@@ -410,16 +444,16 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
     return d != null ? formatDistance(d) : null;
   };
 
-  // Map pins: every search/date-time-matched venue that resolves to coordinates.
+  // Map pins: every search/filter-matched venue that resolves to coordinates.
   // Tagged with distance from the user when located, so popups can show it.
   const pins = useMemo<MapPin[]>(() => {
     const q = query.trim().toLowerCase();
     const base = q ? all.filter((v) => v.displayName.toLowerCase().includes(q) || locationLine(v).toLowerCase().includes(q)) : all;
-    return base.filter(venueMatchesAvailabilityFilter).flatMap((v) => {
+    return base.filter(matchesFilters).flatMap((v) => {
       const c = venueCoords(v);
       return c ? [{ v, lat: c[0], lng: c[1], distanceKm: userLoc ? haversineKm(userLoc, c) : null }] : [];
     });
-  }, [all, query, userLoc, venueMatchesAvailabilityFilter]);
+  }, [all, query, userLoc, matchesFilters]);
 
   const mapPoints = useMemo<[number, number][]>(() => pins.map((p) => [p.lat, p.lng]), [pins]);
   const mapCenter: [number, number] = userLoc ?? (pins[0] ? [pins[0].lat, pins[0].lng] : MAP_FALLBACK_CENTER);
@@ -563,7 +597,7 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             aria-label={collapsed ? 'Show court list' : 'Show map'}
           >
             <span className="sheet-grip" aria-hidden="true" />
-            <span className="sheet-handle-label">{collapsed ? 'Show list' : 'Show map'}</span>
+            <span className="sheet-handle-label">{collapsed ? 'Pull up for courts' : 'Pull down for map'}</span>
           </button>
 
           {/* Lobby mode: the user came to book a court so they can host a lobby. */}
@@ -574,54 +608,17 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
             </div>
           )}
 
-          <DateTimeFilterBar
-            filterDate={filterDate}
-            filterStartHour={filterStartHour}
-            filterEndHour={filterEndHour}
-            onApply={applyFilter}
-            onClear={clearFilter}
-            matchCount={availByVenue && filterStartHour != null ? sorted.length : null}
+          <NearbyFilterRow
+            date={filterDate}
+            onDateChange={setFilterDate}
+            minDate={today}
+            area={areaFilter}
+            areas={areas}
+            onAreaChange={setAreaFilter}
+            type={typeFilter}
+            onTypeChange={setTypeFilter}
             loading={availLoading}
           />
-
-          <div className="section-head">
-            <div>
-              <div className="section-title">Nearby courts</div>
-              <div className="section-sub">{subtitle}</div>
-            </div>
-            <div className="sort-row" ref={sortRef}>
-              <span className="sort-label">Sort:</span>
-              <button
-                type="button"
-                className="sort-btn"
-                aria-haspopup="listbox"
-                aria-expanded={sortOpen}
-                aria-label={`Sort courts: ${SORT_LABELS[sort]}`}
-                onClick={() => setSortOpen((o) => !o)}
-              >
-                {SORT_LABELS[sort]}
-                <svg className="sort-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
-              </button>
-              {sortOpen && (
-                <ul className="sort-menu" role="listbox" aria-label="Sort courts">
-                  {sortOptions.map((key) => (
-                    <li key={key} role="option" aria-selected={sort === key}>
-                      <button
-                        type="button"
-                        className={`sort-menu-item${sort === key ? ' active' : ''}`}
-                        onClick={() => { setSort(key); setSortOpen(false); }}
-                      >
-                        {SORT_LABELS[key]}
-                        {sort === key && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
 
           <div className="sheet-list">
             {/* Nowhere to rank from → let the user retry. Gated on `userLoc`, not
@@ -633,9 +630,9 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
               </button>
             )}
 
-            {filterDate && availError && (
+            {availError && (
               <div className="feat-meta" style={{ color: 'var(--coral)', fontWeight: 600, padding: '0 0 8px' }}>
-                Couldn't check availability — times shown may not be accurate.
+                Couldn't check availability — open-slot counts are hidden.
               </div>
             )}
             {loading ? (
@@ -645,81 +642,78 @@ export function NearbyScreenV2({ intent, ...chrome }: V2ScreenChrome & { intent?
                 Couldn't load courts.{' '}
                 <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' }}>Try again</button>
               </div>
-            ) : visible.length === 0 ? (
-              <p className="feat-meta">No courts found{query ? ` for “${query}”` : ''}.</p>
             ) : (
               <>
-                {/* Featured (top pick) */}
-                {featured && (
-                  <div className="featured-card" role="button" onClick={() => open(featured)}>
-                    <div className="feat-photo-wrap">
-                      <div style={{ width: '100%', height: 160, ...thumbStyle(featured, FEAT_GRADIENT) }} />
-                      <div className="feat-badge-row">
-                        <span className="feat-badge featured">⭐ Top Pick</span>
-                        {featured.courtCount ? <span className="feat-badge courts">{featured.courtCount} Courts</span> : null}
-                      </div>
-                    </div>
-                    <div className="feat-body">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div className="feat-name">{featured.displayName}</div>
-                        {featured.googleRating != null && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy)' }}>{featured.googleRating.toFixed(1)}</span>
-                            {featured.googleReviewCount ? <span style={{ fontSize: 11, color: 'var(--muted)' }}>({featured.googleReviewCount})</span> : null}
-                          </div>
-                        )}
-                      </div>
-                      <div className="feat-meta">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                        {distLabel(featured) ? <><strong style={{ color: 'var(--blue)' }}>{distLabel(featured)}</strong><span className="dot-sep">•</span></> : null}
-                        {locationLine(featured)}
-                        {indoorLabel(featured) ? <><span className="dot-sep">•</span><span style={{ color: '#166534', fontWeight: 600 }}>{indoorLabel(featured)}</span></> : null}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <RecentVenuesSection
+                  items={recentVenues}
+                  onOpen={(target) => onNavigate('court-details', { id: target, intent, filterDate })}
+                />
 
-                {rest.length > 0 && <div className="divider-label"><span>More nearby</span></div>}
-
-                {rest.map((v) => (
-                  <div key={v.id} className="court-card" role="button" onClick={() => open(v)}>
-                    <div className="card-inner">
-                      <div className="card-thumb">
-                        <div style={{ position: 'absolute', inset: 0, ...thumbStyle(v, CARD_GRADIENT) }} />
-                        {priceLabel(v) ? <span className="thumb-badge fee">{priceLabel(v)}</span> : null}
-                      </div>
-                      <div className="card-body">
-                        <div className="card-top">
-                          <div className="court-name">{v.displayName}</div>
-                          <div className="court-meta">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                            {distLabel(v) ? <><strong style={{ color: 'var(--blue)' }}>{distLabel(v)}</strong> <span className="dot-sep">•</span> </> : null}
-                            {locationLine(v)}
-                          </div>
-                          {v.googleRating != null && (
-                            <div className="rating-row">
-                              <svg className="star-icon" width="12" height="12" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                              <span className="rating-num">{v.googleRating.toFixed(1)}</span>
-                              {v.googleReviewCount ? <span className="rating-count">({v.googleReviewCount})</span> : null}
-                            </div>
-                          )}
-                        </div>
-                        <div className="attr-row">
-                          {v.courtCount ? <span className="courts-badge">{v.courtCount} Court{v.courtCount === 1 ? '' : 's'}</span> : null}
-                          {indoorLabel(v) ? <span className="attr-pill">{indoorLabel(v)}</span> : null}
-                          {v.surfaceType ? <span className="attr-pill">{v.surfaceType}</span> : null}
-                        </div>
-                      </div>
+                <section className="nv-section">
+                  <div className="section-head nv-section-head">
+                    <div>
+                      <div className="section-title">Nearby courts</div>
+                      <div className="section-sub">{subtitle}</div>
+                    </div>
+                    <div className="nv-sort" ref={sortRef}>
+                      <button
+                        type="button"
+                        className="sort-btn"
+                        aria-haspopup="listbox"
+                        aria-expanded={sortOpen}
+                        aria-label={`Sort courts: ${SORT_LABELS[sort]}`}
+                        onClick={() => setSortOpen((o) => !o)}
+                      >
+                        {SORT_LABELS[sort]}
+                        <svg className="sort-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg>
+                      </button>
+                      <span className="nv-sort-hint">tap a venue for courts</span>
+                      {sortOpen && (
+                        <ul className="sort-menu" role="listbox" aria-label="Sort courts">
+                          {sortOptions.map((key) => (
+                            <li key={key} role="option" aria-selected={sort === key}>
+                              <button
+                                type="button"
+                                className={`sort-menu-item${sort === key ? ' active' : ''}`}
+                                onClick={() => { setSort(key); setSortOpen(false); }}
+                              >
+                                {SORT_LABELS[key]}
+                                {sort === key && (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+                                )}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </div>
-                ))}
 
-                {sorted.length > VISIBLE && (
-                  <p className="feat-meta" style={{ textAlign: 'center', opacity: 0.7 }}>
-                    Showing {sort === 'distance' && userLoc ? 'nearest' : 'top'} {VISIBLE} of {sorted.length}
-                  </p>
-                )}
+                  {visible.length === 0 ? (
+                    <p className="feat-meta">
+                      No courts found{query ? ` for “${query}”` : ''}
+                      {areaFilter || typeFilter ? ' with these filters' : ''}.
+                    </p>
+                  ) : (
+                    <div className="nv-grid">
+                      {visible.map((v) => (
+                        <VenueGridCard
+                          key={v.id}
+                          v={v}
+                          distance={distLabel(v)}
+                          slots={openSlotCount(availByVenue?.get(v.id))}
+                          onOpen={() => open(v)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {sorted.length > VISIBLE && (
+                    <p className="feat-meta" style={{ textAlign: 'center', opacity: 0.7 }}>
+                      Showing {sort === 'distance' && userLoc ? 'nearest' : 'top'} {VISIBLE} of {sorted.length}
+                    </p>
+                  )}
+                </section>
               </>
             )}
           </div>

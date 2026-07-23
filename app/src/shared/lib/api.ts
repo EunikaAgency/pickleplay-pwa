@@ -774,8 +774,13 @@ export interface VenueAvailability {
   courtId?: string;
   /** Whether the scoped court is splittable (sub-unit slots rather than one). */
   isSplittable?: boolean;
-  /** Free-court count per clock-hour 0–23; a booking can start at `hour` when `free > 0`. */
-  hours: { hour: number; free: number }[];
+  /** True when the venue isn't open at all on this date — every hour is `open: false`.
+   *  Distinct from "fully booked", where the venue IS open but no court is left. */
+  closed?: boolean;
+  /** Free-court count per clock-hour 0–23; a booking can start at `hour` when `free > 0`.
+   *  `open` says whether the venue trades that hour at all: `free: 0` means *booked*
+   *  when `open`, and *closed* when not — the picker labels them differently. */
+  hours: { hour: number; free: number; open?: boolean }[];
 }
 
 /**

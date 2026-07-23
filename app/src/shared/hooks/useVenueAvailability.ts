@@ -42,8 +42,12 @@ export interface VenueAvailabilityState {
   startDisabled: (hour: number) => boolean;
   /** True for a start hour that's already begun today (the reason it's unpickable). */
   isPast: (hour: number) => boolean;
-  /** True for a start hour with no free court (booked out) — distinct from `isPast`. */
+  /** True for a start hour with no free court (booked out) — distinct from `isPast`
+   *  and from `isClosed`: the venue IS open then, someone just took the court. */
   isFull: (hour: number) => boolean;
+  /** True for an hour the venue doesn't trade at all (outside its schedule, or a
+   *  maintenance block). Nothing was booked — there's simply nothing to book. */
+  isClosed: (hour: number) => boolean;
   /** Given a chosen start, returns a predicate that's true for an end hour whose window hits a full (or past) hour. */
   endDisabledFor: (start: string) => (endHour: number) => boolean;
   /** Whether the chosen [start,end) window overlaps any full hour. */
@@ -110,6 +114,17 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
 
   const isFull = (h: number) => (freeByHour.get(h) ?? 0) <= 0;
 
+  // Hours the venue doesn't trade. `open` is optional on the payload, so a server
+  // that hasn't shipped the flag reads as open — the hour then falls through to the
+  // old "Booked" labelling rather than silently claiming the venue is shut.
+  const openByHour = useMemo(() => {
+    const m = new Map<number, boolean>();
+    availability?.hours.forEach((h) => m.set(h.hour, h.open ?? true));
+    return m;
+  }, [availability]);
+
+  const isClosedHour = (h: number) => availability != null && !(openByHour.get(h) ?? true);
+
   const firstFreeHour = useCallback((from: number): number | null => {
     if (!availability) return null;
     const free = (h: number) => (freeByHour.get(h) ?? 0) > 0 && h >= minBookableHour;
@@ -127,6 +142,7 @@ export function useVenueAvailability(venueId: string | undefined, date: string, 
     isPast: isPastHour,
     // Only meaningful once availability has loaded; before that, nothing is "full".
     isFull: (h) => availability != null && isFull(h),
+    isClosed: isClosedHour,
     startDisabled: (h) => isPastHour(h) || (availability != null && isFull(h)),
     endDisabledFor: (start) => (endHour) =>
       (isToday && endHour <= minBookableHour) ||

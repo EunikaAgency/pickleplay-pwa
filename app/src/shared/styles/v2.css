@@ -1529,7 +1529,10 @@
   overflow: hidden;
   transition: height 300ms var(--ease-out);
 }
-.pb-v2.v2-nearby .nearby-sheet.expanded { height: min(58vh, 540px); }
+/* The venue cards are much taller than the old rows, so the expanded sheet takes
+   more of the frame — the list is the primary surface and the map is a pull-down
+   (58vh showed barely one card). */
+.pb-v2.v2-nearby .nearby-sheet.expanded { height: min(74vh, 860px); }
 .pb-v2.v2-nearby .nearby-sheet.collapsed { height: 188px; }
 .pb-v2.v2-nearby .sheet-handle {
   flex-shrink: 0;
@@ -1630,6 +1633,345 @@
 }
 .pb-v2.v2-nearby .np-price { font-size: 12px; font-weight: 700; color: var(--navy); }
 .pb-v2.v2-nearby .np-cta { font-size: 12px; font-weight: 700; color: var(--blue); }
+
+/* ============================================================================
+   Nearby venue grid (NearbyFilterRow / RecentVenuesSection / VenueGridCard)
+   ----------------------------------------------------------------------------
+   Layout follows the venue-first redesign; colours deliberately stay on this
+   screen's existing tokens (blue/lime/navy) so the sheet still themes in dark
+   mode. Badges that sit ON a photo use fixed colours — the photo is their
+   ground, not the themed surface, so they must not flip with the theme.
+   ========================================================================== */
+
+/* Card borders on this screen sit on a white surface inside a white sheet, so
+   they carry the whole card edge — a --border-sub hairline visually vanishes in
+   Chrome on macOS. These are deliberately a step stronger than the shared token. */
+.pb-v2.v2-nearby { --nv-edge: #AEBCD0; }
+[data-theme="dark"] .pb-v2.v2-nearby { --nv-edge: rgba(255,255,255,0.26); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pb-v2.v2-nearby { --nv-edge: rgba(255,255,255,0.26); }
+}
+
+/* ── Filter row: date · area · type ── */
+.pb-v2.v2-nearby .nv-filter-row {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Generous top gap so the controls don't crowd the "pull down for map" grip. */
+  padding: 14px 16px 16px;
+}
+.pb-v2.v2-nearby .nv-date,
+.pb-v2.v2-nearby .nv-select-btn {
+  height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid var(--nv-edge);
+  border-radius: var(--r-sm);
+  background: var(--bg-white);
+  color: var(--navy);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-date { flex-shrink: 0; min-width: 0; }
+.pb-v2.v2-nearby .nv-date:focus,
+.pb-v2.v2-nearby .nv-select-btn:focus-visible { outline: none; border-color: var(--blue); }
+.pb-v2.v2-nearby .nv-select { position: relative; flex: 1; min-width: 0; }
+.pb-v2.v2-nearby .nv-select-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.pb-v2.v2-nearby .nv-select-btn.active { border-color: var(--blue); color: var(--blue); }
+.pb-v2.v2-nearby .nv-select-btn svg { width: 13px; height: 13px; flex-shrink: 0; opacity: .7; }
+.pb-v2.v2-nearby .nv-select-val {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pb-v2.v2-nearby .nv-select-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  z-index: 40;
+  max-height: 240px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg-white);
+  border: 1.5px solid var(--nv-edge);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+}
+.pb-v2.v2-nearby .nv-select-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: none;
+  color: var(--navy);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-select-item:hover { background: var(--bg-wash); }
+.pb-v2.v2-nearby .nv-select-item.active { color: var(--blue); }
+.pb-v2.v2-nearby .nv-filter-spin {
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid var(--border-sub);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: v2spin 0.9s linear infinite;
+}
+
+/* ── Section scaffolding inside the scrolling sheet ── */
+.pb-v2.v2-nearby .nv-section { display: flex; flex-direction: column; gap: 12px; }
+.pb-v2.v2-nearby .nv-section-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+}
+/* The head is inside .sheet-list now, which already owns the 16px gutter. */
+.pb-v2.v2-nearby .nearby-sheet .sheet-list .section-head.nv-section-head {
+  padding: 0;
+  align-items: flex-start;
+}
+.pb-v2.v2-nearby .nv-sort {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.pb-v2.v2-nearby .nv-sort-hint { font-size: 10.5px; color: var(--muted); }
+
+/* ── "Venues you've played at recently" ── */
+.pb-v2.v2-nearby .nv-recent-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.pb-v2.v2-nearby .nv-recent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--bg-white);
+  border: 2px solid var(--nv-edge);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-sm);
+}
+.pb-v2.v2-nearby .nv-recent-img {
+  width: 56px; height: 48px; flex-shrink: 0;
+  border-radius: 10px;
+}
+.pb-v2.v2-nearby .nv-recent-body { flex: 1; min-width: 0; }
+.pb-v2.v2-nearby .nv-recent-name {
+  font-size: 13.5px; font-weight: 700; color: var(--navy);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pb-v2.v2-nearby .nv-recent-meta {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); margin-top: 2px;
+}
+.pb-v2.v2-nearby .nv-recent-rate {
+  font-size: 12px; font-weight: 700; color: var(--blue); margin-top: 3px;
+}
+.pb-v2.v2-nearby .nv-recent-cta {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+  height: 30px; padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: var(--blue);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 12px; font-weight: 700;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-recent-cta:hover { background: var(--blue-dark); }
+.pb-v2.v2-nearby .nv-recent-cta svg { width: 12px; height: 12px; }
+
+/* ── Venue cards ── */
+.pb-v2.v2-nearby .nv-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.pb-v2.v2-nearby .nv-card {
+  background: var(--bg-white);
+  /* 2px, not 1.5: Chrome rounds a 1.5px border down to 1 device pixel at DPR 1,
+     which is what made these edges near-invisible on a non-retina display. */
+  border: 2px solid var(--nv-edge);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.pb-v2.v2-nearby .nv-card:hover { border-color: var(--blue); box-shadow: var(--shadow-lg); }
+/* The photo butts against the card's top border — give it its own separator so
+   the card reads as two distinct blocks rather than one bleeding image. */
+.pb-v2.v2-nearby .nv-card .nv-body { border-top: 2px solid var(--nv-edge); }
+
+.pb-v2.v2-nearby .nv-photo {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 150px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-photo-img { position: absolute; inset: 0; display: block; }
+/* Stand-in for the many venues with no photo on file. */
+.pb-v2.v2-nearby .nv-photo-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--blue);
+  opacity: .42;
+}
+.pb-v2.v2-nearby .nv-photo-fallback svg { width: 40px; height: 40px; }
+.pb-v2.v2-nearby .nv-photo-fallback-text {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+
+/* Badges over the photo — fixed colours (see block header). */
+.pb-v2.v2-nearby .nv-tag,
+.pb-v2.v2-nearby .nv-book,
+.pb-v2.v2-nearby .nv-slots {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.22);
+}
+.pb-v2.v2-nearby .nv-tag { top: 10px; left: 10px; }
+.pb-v2.v2-nearby .nv-tag-indoor { background: rgba(26,33,56,0.88); color: #FFFFFF; }
+.pb-v2.v2-nearby .nv-tag-outdoor { background: #22C55E; color: #FFFFFF; }
+.pb-v2.v2-nearby .nv-book { top: 10px; right: 10px; }
+/* Instant book is the screen's accent moment — lime, with permanently dark text
+   (--navy flips light in dark mode, so it can't be used on a lime fill). */
+.pb-v2.v2-nearby .nv-book.instant { background: #CCFF33; color: #1A2138; }
+.pb-v2.v2-nearby .nv-book.request { background: rgba(255,255,255,0.94); color: #1A2138; }
+.pb-v2.v2-nearby .nv-book svg { width: 11px; height: 11px; }
+.pb-v2.v2-nearby .nv-slots { bottom: 10px; right: 10px; background: #22C55E; color: #FFFFFF; }
+.pb-v2.v2-nearby .nv-slots svg { width: 11px; height: 11px; }
+
+.pb-v2.v2-nearby .nv-body {
+  /* Grid stretches side-by-side cards to equal height; growing the body and
+     pushing the CTA down keeps the buttons on one line across a row even when
+     one venue has amenity chips and its neighbour doesn't. */
+  flex: 1;
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pb-v2.v2-nearby .nv-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pb-v2.v2-nearby .nv-head-main { min-width: 0; flex: 1 1 60%; }
+.pb-v2.v2-nearby .nv-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.25;
+}
+.pb-v2.v2-nearby .nv-loc {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--slate);
+}
+.pb-v2.v2-nearby .nv-loc svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+.pb-v2.v2-nearby .nv-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.pb-v2.v2-nearby .nv-rate { display: flex; align-items: center; gap: 6px; }
+.pb-v2.v2-nearby .nv-rate-tag {
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.pb-v2.v2-nearby .nv-rate-tag.member { background: #DCFCE7; color: #166534; }
+.pb-v2.v2-nearby .nv-rate-tag.guest { background: var(--bg-wash); color: var(--slate); }
+.pb-v2.v2-nearby .nv-rate-val { font-size: 13px; font-weight: 700; color: var(--navy); }
+.pb-v2.v2-nearby .nv-rate-val.soft { font-size: 12px; font-weight: 600; color: var(--slate); }
+.pb-v2.v2-nearby .nv-rating { display: flex; align-items: center; gap: 3px; margin-top: 1px; }
+.pb-v2.v2-nearby .nv-rating-num { font-size: 12px; font-weight: 700; color: var(--navy); }
+.pb-v2.v2-nearby .nv-rating-count { font-size: 10.5px; color: var(--muted); }
+
+.pb-v2.v2-nearby .nv-amenities { display: flex; flex-wrap: wrap; gap: 6px; }
+.pb-v2.v2-nearby .nv-amenity {
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  background: var(--bg-wash);
+  color: var(--slate);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.pb-v2.v2-nearby .nv-cta {
+  margin-top: auto;
+  width: 100%;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 10px;
+  background: var(--blue);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pb-v2.v2-nearby .nv-cta:hover { background: var(--blue-dark); }
+.pb-v2.v2-nearby .nv-cta:active { transform: scale(0.99); }
+.pb-v2.v2-nearby .nv-cta svg { width: 15px; height: 15px; }
+
+/* Two-up once the frame is wide enough (tablet + the widened desktop frame).
+   Keyed off @container app like the rest of the frame-capped responsive rules —
+   the frame's width, not the viewport's, is what the grid actually sits in. */
+@container app (min-width: 640px) {
+  .pb-v2.v2-nearby .nv-grid,
+  .pb-v2.v2-nearby .nv-recent-grid { grid-template-columns: 1fr 1fr; }
+  /* Wider cards carry a taller photo without hurting how many fit on screen. */
+  .pb-v2.v2-nearby .nv-photo { height: 168px; }
+}
 
 /* ── Date/time filter bar (DateTimeFilterBar.tsx) ── */
 .pb-v2.v2-nearby .dt-filter-bar {

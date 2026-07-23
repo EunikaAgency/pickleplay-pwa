@@ -1962,9 +1962,12 @@ export async function getVenueAvailability(c: any) {
   const overrides = await SlotPriceOverride.find({ venueId, date })
     .lean<{ startTime: string; endTime: string; courtId?: any }[]>();
   if (overrides.length === 0) {
-    // Closed — no overrides on this date at all.
-    const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, free: 0 }));
-    return c.json({ data: { date, capacity: 0, hours } });
+    // Closed — no overrides on this date at all. `open: false` distinguishes this
+    // from "open but every court is taken": both have `free: 0`, but only the
+    // latter is genuinely booked. Without the flag the picker labels a closed
+    // hour "Booked", which reads as demand that doesn't exist.
+    const hours = Array.from({ length: 24 }, (_, hour) => ({ hour, free: 0, open: false }));
+    return c.json({ data: { date, capacity: 0, hours, closed: true } });
   }
 
   // Build the open-hour mask from override windows.
@@ -1981,6 +1984,10 @@ export async function getVenueAvailability(c: any) {
   // (activeBookingsForDate), so they only cost the court they name.
   const closed = await venueWideClosedHours(venueId, date);
   for (let h = 0; h < 24; h++) if (closed[h]) slotOpen[h] = false;
+
+  // Maintenance can shut every open hour, so the day reads closed even though it
+  // had overrides. Computed once here and echoed by all three return paths below.
+  const dayClosed = !slotOpen.some(Boolean);
 
   // Per-court view: a court is free for an hour only when it isn't itself booked
   // AND the venue pool still has a court to spare — court-less (venue-level)
@@ -2015,9 +2022,10 @@ export async function getVenueAvailability(c: any) {
       const capacity = await resolveVenueCapacity(venueId);
       const poolFree = freeCourtsByHour(all, capacity);
       let hours = freeByHour.map((fc, hour) => ({ hour, free: Math.min(fc, (poolFree[hour] ?? 0) > 0 ? fc : 0) }));
-      // Zero out hours outside override windows.
-      hours = hours.map((h) => ({ ...h, free: slotOpen[h.hour] ? h.free : 0 }));
-      return c.json({ data: { date, capacity: subCount, courtId, hours, isSplittable: true } });
+      // Zero out hours outside override windows, and mark them closed rather than
+      // full so the picker can tell the two apart.
+      hours = hours.map((h) => ({ ...h, free: slotOpen[h.hour] ? h.free : 0, open: slotOpen[h.hour] }));
+      return c.json({ data: { date, capacity: subCount, courtId, hours, isSplittable: true, closed: dayClosed } });
     }
 
     const capacity = await resolveVenueCapacity(venueId);
@@ -2026,18 +2034,18 @@ export async function getVenueAvailability(c: any) {
     // booking), so the picker greys the same too-close hours the create guard rejects.
     const courtFree = courtFreeHoursWithTurnover(all.filter((b) => String(b.courtId) === courtId), court?.turnoverMinutes ?? 0);
     let hours = poolFree.map((pf, hour) => ({ hour, free: (courtFree[hour] && pf > 0 ? 1 : 0) }));
-    // Zero out hours outside override windows.
-    hours = hours.map((h) => ({ ...h, free: slotOpen[h.hour] ? h.free : 0 }));
-    return c.json({ data: { date, capacity: 1, courtId, hours } });
+    // Zero out hours outside override windows, and mark them closed rather than full.
+    hours = hours.map((h) => ({ ...h, free: slotOpen[h.hour] ? h.free : 0, open: slotOpen[h.hour] }));
+    return c.json({ data: { date, capacity: 1, courtId, hours, closed: dayClosed } });
   }
 
   const capacity = await resolveVenueCapacity(venueId);
   const free = freeCourtsByHour(await activeBookingsForDate(venueId, date), capacity);
   // hours[h].free = courts free for the slot starting at hour h (a booking can
-  // start there when free > 0). The client greys hours where free <= 0.
-  // Zero out hours outside override windows.
-  const hours = free.map((freeCourts, hour) => ({ hour, free: slotOpen[hour] ? freeCourts : 0 }));
-  return c.json({ data: { date, capacity, hours } });
+  // start there when free > 0). The client greys hours where free <= 0, and uses
+  // `open` to say *why*: closed (not open that hour) vs booked (open, none left).
+  const hours = free.map((freeCourts, hour) => ({ hour, free: slotOpen[hour] ? freeCourts : 0, open: slotOpen[hour] }));
+  return c.json({ data: { date, capacity, hours, closed: dayClosed } });
 }
 
 // Per-DAY availability across a date range — powers the booking calendar's
