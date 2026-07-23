@@ -62,9 +62,13 @@ function toYMD(d: Date): string {
 // for remittance. Read-only: receipts are auto-generated when a booking is
 // paid, so this reports on them rather than creating them.
 export function OwnerFinanceScreen({ onBack }: OwnerFinanceScreenProps) {
-  const [data, setData] = useState<ApiOwnerFinance | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // One state cell keyed by the request that produced it, so "loading" is
+  // DERIVED (result.key !== requestKey) rather than set from inside the effect.
+  // Changing the venue scope therefore shows the skeleton again instead of
+  // leaving the previous venue's numbers on screen while the next load lands.
+  const [result, setResult] = useState<{ key: string; data: ApiOwnerFinance | null; error: string | null }>(
+    { key: '', data: null, error: null },
+  );
   const [reloadKey, setReloadKey] = useState(0);
 
   const [venueId, setVenueId] = useState('');            // '' = all venues
@@ -73,20 +77,24 @@ export function OwnerFinanceScreen({ onBack }: OwnerFinanceScreenProps) {
   const [search, setSearch] = useState('');
   const [detail, setDetail] = useState<ApiFinanceReceipt | null>(null);
 
-  // Venue + date scope go to the server; status/search stay client-side so
+  // Venue scope goes to the server; status/category/search stay client-side so
   // typing doesn't refetch on every keystroke.
+  const requestKey = `${venueId}|${reloadKey}`;
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setError(null);
     getOwnerFinance({ venueId: venueId || undefined })
-      .then((d) => { if (alive) setData(d); })
-      .catch((e) => { if (alive) setError(e instanceof Error ? e.message : 'Could not load finance records.'); })
-      .finally(() => { if (alive) setLoading(false); });
+      .then((d) => { if (alive) setResult({ key: requestKey, data: d, error: null }); })
+      .catch((e) => {
+        if (alive) setResult({ key: requestKey, data: null, error: e instanceof Error ? e.message : 'Could not load finance records.' });
+      });
     return () => { alive = false; };
-  }, [venueId, reloadKey]);
+  }, [requestKey, venueId]);
 
-  const receipts = data?.receipts ?? [];
+  const loading = result.key !== requestKey;
+  const data = loading ? null : result.data;
+  const error = loading ? null : result.error;
+
+  const receipts = useMemo(() => data?.receipts ?? [], [data]);
 
   const categories = useMemo(
     () => [...new Set(receipts.map((r) => r.category))].sort(),

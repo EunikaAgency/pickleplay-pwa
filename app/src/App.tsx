@@ -43,6 +43,7 @@ import { OwnerHomeScreen } from './features/owner/OwnerHomeScreen';
 import { OwnerProfileScreen } from './features/owner/OwnerProfileScreen';
 import { OwnerStaffScreen } from './features/owner/OwnerStaffScreen';
 import { OwnerSettlementsScreen } from './features/owner/OwnerSettlementsScreen';
+import { OwnerFinanceScreen } from './features/owner/OwnerFinanceScreen';
 import { SubscriptionPlansScreen } from './features/owner/SubscriptionPlansScreen';
 import { OwnerBookingsScreen } from './features/owner/OwnerBookingsScreen';
 import { OwnerFrontDeskScreen } from './features/owner/OwnerFrontDeskScreen';
@@ -186,6 +187,9 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'owner-notifications': 'user.notifications.manage',
   'owner-staff': 'owner.staff.manage',
   'owner-settlements': 'owner.access',
+  // /owner/finance — the BIR receipt ledger and the VAT the business owes.
+  // Owner-only for the same reason as /owner/reports and /owner/pricing.
+  'owner-finance': 'owner.reports.view',
   'owner-subscription-plans': 'owner.bookings.manage',
   'organizer-hub': 'organizer.access',
   'organizer-tournaments': 'organizer.tournaments.manage',
@@ -265,6 +269,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-insights': 'see your insights',
   'owner-staff': 'manage your staff',
   'owner-settlements': 'see your settlements',
+  'owner-finance': 'see your finance records',
   'owner-subscription-plans': 'manage subscription plans',
   'admin-hub': 'open the admin console',
   'admin-claims': 'review venue claims',
@@ -826,6 +831,8 @@ function AppInner() {
         return <OwnerStaffScreen onNavigate={navigate} onBack={goBack} />;
       case 'owner-settlements':
         return <OwnerSettlementsScreen onNavigate={navigate} onBack={goBack} />;
+      case 'owner-finance':
+        return <OwnerFinanceScreen onBack={goBack} />;
       case 'owner-subscription-plans':
         return (
           <SubscriptionPlansScreen
@@ -923,7 +930,7 @@ function AppInner() {
       </div>
 
       {showSidebar && (
-        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} adminActive={screen.id.startsWith('admin-')} onAdminNavigate={isAdmin ? (screenId: string) => { (navigate as (id: string) => void)(screenId); } : undefined} adminScreenId={screen.id.startsWith('admin-') ? screen.id : undefined} onOpenNotifications={isLoggedIn ? () => navigate('notifications') : undefined} notificationsActive={screen.id === 'notifications'} onLogout={isAdmin ? handleLogout : undefined} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
+        <Sidebar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} showCreate={!isStaff && !isAdmin} isLoggedIn={isLoggedIn} onBack={goBack} canGoBack={canGoBack} onOpenMessages={() => navigate('messages')} onOpenPricing={() => navigate('owner-pricing')} pricingActive={screen.id === 'owner-pricing'} onOpenManualReservation={isOwner ? () => navigate('owner-manual-reservation', {}) : undefined} manualReservationActive={screen.id === 'owner-manual-reservation'} onOpenCalendar={isOwner ? () => navigate('owner-calendar') : undefined} calendarActive={screen.id === 'owner-calendar'} onOpenPartners={isOwner ? () => navigate('owner-partners') : undefined} partnersActive={screen.id === 'owner-partners'} onOpenShop={isOwner ? () => navigate('owner-shop') : undefined} shopActive={screen.id === 'owner-shop'} onOpenFinance={isOwner ? () => navigate('owner-finance') : undefined} financeActive={screen.id === 'owner-finance'} adminActive={screen.id.startsWith('admin-')} onAdminNavigate={isAdmin ? (screenId: string) => { (navigate as (id: string) => void)(screenId); } : undefined} adminScreenId={screen.id.startsWith('admin-') ? screen.id : undefined} onOpenNotifications={isLoggedIn ? () => navigate('notifications') : undefined} notificationsActive={screen.id === 'notifications'} onLogout={isAdmin ? handleLogout : undefined} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isOwner={isOwner} isOrganizer={isOrganizer} isAdmin={isAdmin} />
       )}
 
       <main className="app-main">

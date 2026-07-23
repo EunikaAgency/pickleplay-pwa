@@ -277,7 +277,16 @@ src/
                              #   is the queue read (admin = all, owner = own venues only);
                              #   settleRefund pays one out and notifies, or records a FAILED
                              #   payout by returning it to 'completed' so it stays owed and
-                             #   retryable instead of being silently lost
+                             #   retryable instead of being silently lost.
+                             #   OFFICIAL RECEIPTS (BIR): OfficialReceipt + ReceiptCounter —
+                             #   generateReceiptForBooking mints a per-venue sequential OR with
+                             #   the 12% VAT split (senior/PWD = vatExempt) when a booking is
+                             #   paid. listOwnerFinance (GET /owner/finance) is the owner-facing
+                             #   roll-up: receipts across every owned venue joined to their
+                             #   booking (category) + payment (method, whether the money landed),
+                             #   plus a PAID-ONLY gross/net/VAT-payable summary and VAT by
+                             #   category. Gated by owner.reports.view — this is the business's
+                             #   tax position, not front-desk work
     rental-inventory/        # owner-only equipment rental inventory (Shop):
                              #   RentalInventoryItem model (venueId?/ownerId/name/
                              #   brand/sku/category/rentalPricePerHour/stock counts/
@@ -375,6 +384,18 @@ src/
                              #     SlotPriceOverrides for those owners' 40 venues),
                              #   seed-owner-shop-partners.ts (rental inventory +
                              #     coach/organizer applications for those owners),
+                             #   open-play-titles.ts (openPlayTitle() — composes a
+                             #     realistic session name from the row's own day,
+                             #     start hour, level, and gameType; shared by the
+                             #     seeders and the retitle backfill),
+                             #   seed-realistic-games.ts (GAMES_N=45 Games on the
+                             #     live Game model — real host, court Booking, and
+                             #     partial roster; randomised venue/time/capacity/
+                             #     fee. --apply / --revert),
+                             #   retitle-open-play-games.ts (one-off: rewrites the
+                             #     seed's "${level} Open Play" titles and deletes the
+                             #     E2E Games the retire migration resurrected.
+                             #     --apply / --revert),
                              #   backfill-user-location-avatars.ts (player lat/lng
                              #     in Cavite→Manila box + randomuser.me avatars),
                              #   fix-avatar-gender.ts (match avatar gender to name),

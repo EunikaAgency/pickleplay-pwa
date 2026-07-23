@@ -43,6 +43,10 @@ interface SidebarProps {
   onOpenShop?: () => void;
   /** Whether the shop screen is active. */
   shopActive?: boolean;
+  /** Open the Finance & Receipts screen (BIR ledger + VAT roll-up). */
+  onOpenFinance?: () => void;
+  /** Whether the finance screen is active. */
+  financeActive?: boolean;
   /** The Tournament tab is a player surface — owners/admins don't get it. */
   showTournaments?: boolean;
   /** Whether the Social (Clubs + Friends) tab is offered. Hidden from staff —
@@ -204,7 +208,7 @@ function AdminSections({ onNavigate, activeScreenId }: { onNavigate: (screenId: 
   );
 }
 
-export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, adminActive = false, onAdminNavigate, adminScreenId, onOpenNotifications, notificationsActive = false, onLogout }: SidebarProps) {
+export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate = true, isLoggedIn, onBack, canGoBack, onOpenMessages, onOpenCalendar, calendarActive = false, onOpenPricing, pricingActive = false, onOpenManualReservation, manualReservationActive = false, onOpenPartners, partnersActive = false, onOpenShop, shopActive = false, onOpenFinance, financeActive = false, showTournaments = true, showSocial = true, isOwner = false, isOrganizer = false, isAdmin = false, adminActive = false, onAdminNavigate, adminScreenId, onOpenNotifications, notificationsActive = false, onLogout }: SidebarProps) {
   const currentUser = useAuthStore((s) => s.user);
   const unreadMessages = useMessageStore((s) => s.unread);
   const unreadNotifs = useNotificationStore((s) => s.unread);
@@ -221,6 +225,9 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
   const showOwnerPricing = userHasPermission(currentUser, 'owner.pricing.manage') && onOpenPricing;
   const showOwnerManualReservation = userHasPermission(currentUser, 'owner.bookings.manage') && onOpenManualReservation;
   const showOwnerPartners = userHasPermission(currentUser, 'owner.access') && onOpenPartners;
+  // Finance is the business's tax position — owner-only, same gate as the
+  // /owner/finance screen itself (staff run the courts, not the books).
+  const showOwnerFinance = userHasPermission(currentUser, 'owner.reports.view') && onOpenFinance;
   const footName = currentUser?.displayName ?? 'Guest';
   // Staff aren't players, so show their role ("Staff") under the name rather
   // than a DUPR rating (which they may still carry on the account).
@@ -366,6 +373,19 @@ export function Sidebar({ activeTab, onTabPress, onCreate, canCreate, showCreate
               <Icon name="storefront" size={20} />
             </span>
             Shop/Rental
+          </button>
+        )}
+        {/* Finance & Receipts — owner only (BIR ledger + VAT payable) */}
+        {isOwner && !isAdmin && showOwnerFinance && (
+          <button
+            className={`side-tab ${financeActive ? 'active' : ''}`}
+            onClick={onOpenFinance}
+            aria-current={financeActive ? 'page' : undefined}
+          >
+            <span className="ico">
+              <Icon name="payments" size={20} />
+            </span>
+            Finance
           </button>
         )}
         {/* ── Admin console — collapsible sections with header labels ── */}
