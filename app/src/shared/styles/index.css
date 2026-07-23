@@ -38,6 +38,10 @@
   --muted:          #6b7280;
   --hairline:       rgba(15, 23, 42, 0.08);
   --field-border:   #cbd2dc; /* card & field border (slate) */
+  /* Leading accent rail on "needs attention" cards. Must stay legible
+     against the card fill in both themes, so it flips with the theme
+     (--primary is too dark to read on the dark surface). */
+  --accent-rail:    var(--primary);
 
   /* Type scale */
   --font-heading: 'Fredoka', system-ui, sans-serif;
@@ -68,6 +72,7 @@
   --hairline:  rgba(255,255,255,0.08);
   --field-border: rgba(255,255,255,0.16);
   --primary-tint: rgba(184, 195, 255, 0.14);
+  --accent-rail: #93a9ff;
   --star:      #fbbf24;
   --star-soft: rgba(245, 165, 36, 0.16);
   --star-ink:  #fcd34d;
@@ -86,6 +91,7 @@
     --muted:     #9ca3af;
     --hairline:  rgba(255,255,255,0.08);
     --primary-tint: rgba(184, 195, 255, 0.14);
+    --accent-rail: #93a9ff;
     --star:      #fbbf24;
     --star-soft: rgba(245, 165, 36, 0.16);
     --star-ink:  #fcd34d;
@@ -1643,33 +1649,96 @@
   padding-right: 4px;
 }
 
-/* Notifications list */
-.notif {
-  display: flex; gap: 12px; padding: 14px 20px;
-  border-bottom: 0.5px solid var(--hairline);
+/* ── Notifications list ──────────────────────────────────────
+   Cards in day-bucketed groups, not an edge-to-edge divider list:
+   a 15-row inbox needs scan anchors. Unread is carried by a tinted
+   fill + a leading rail (not a dot on the icon) so the state is
+   legible from the card edge while skimming. */
+.notif-list { display: flex; flex-direction: column; padding: 0 8px 8px; }
+
+/* A real section heading, not a tiny uppercase eyebrow — it has to hold
+   its own against 15 rows of body copy. */
+.notif-group {
+  font-family: var(--font-heading);
+  font-size: 17px; font-weight: 700; color: var(--ink);
+  padding: 18px 12px 4px;
 }
-.notif .ic {
-  width: 40px; height: 40px;
-  border-radius: 12px;
+.notif-group:first-child { padding-top: 4px; }
+
+/* Rows, not cards: 15 stacked cards is 15 competing shadows. The row is a
+   flat hit target that lights up on press, and unread is carried by a tint
+   plus a trailing dot (the shape social inboxes have trained everyone on). */
+.notif {
+  position: relative;
+  /* flex-start, not center: invite/friend rows carry action buttons and grow
+     tall — a centred avatar would float in the middle of them. */
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 8px 12px 12px;
+  border-radius: 14px;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+.notif:hover  { background: var(--surface-2); }
+.notif:active { background: var(--surface-3); }
+/* Deliberately NO unread fill. With a full inbox every row is unread, and a
+   tint on all of them turns the list into one blue slab with scalloped gaps
+   where the radii meet — the tint stops meaning anything. Unread is carried by
+   the trailing dot, the heavier text and the full-strength icon instead. */
+
+/* One saturated disc carrying a white glyph. The old 12px-radius pastel
+   square is the single biggest "template" tell — a circle at avatar size
+   reads as an identity, which is what a notification is about. */
+.notif .ic,
+.push-banner .ic {
+  width: 46px; height: 46px;
+  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   position: relative;
 }
-.notif .ic.lime  { background: var(--lime); color: var(--lime-ink); }
-.notif .ic.blue  { background: var(--primary-soft); color: var(--primary-deep); }
-.notif .ic.coral { background: var(--coral-soft); color: var(--coral); }
+.notif .ic.lime,  .push-banner .ic.lime  { background: var(--lime);    color: var(--lime-ink); }
+.notif .ic.blue,  .push-banner .ic.blue  { background: var(--primary); color: #ffffff; }
+.notif .ic.coral, .push-banner .ic.coral { background: var(--coral);   color: #ffffff; }
+.push-banner .ic { width: 40px; height: 40px; }
+/* Read rows recede — same layout, less ink. */
+.notif:not(.unread) .ic { opacity: 0.55; }
+
 .notif .body { flex: 1; min-width: 0; }
-.notif .body .head { font-family: var(--font-body); font-size: 14px; line-height: 1.45; color: var(--ink); }
-.notif .body .head strong { font-weight: 700; }
-.notif .body .time { font-family: var(--font-body); font-size: 11px; color: var(--muted); margin-top: 4px; }
-.notif.unread .ic::after {
-  content: '';
-  position: absolute; top: 0; right: 0;
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--coral);
-  border: 2px solid var(--bg);
+/* The sentence IS the notification. It gets the size and the line budget;
+   everything else is metadata. */
+.notif .body .head {
+  font-family: var(--font-body);
+  font-size: 15px; font-weight: 600; line-height: 1.38; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
 }
+.notif .body .head strong { font-weight: 800; }
+/* Read rows drop a weight step and a shade — the whole unread signal. */
+.notif:not(.unread) .body .head { font-weight: 500; color: var(--muted); }
+.notif .body .meta {
+  font-family: var(--font-body);
+  font-size: 12.5px; font-weight: 700; color: var(--accent-rail);
+  margin-top: 3px;
+}
+.notif:not(.unread) .body .meta { color: var(--muted); }
+
+.notif-right {
+  flex-shrink: 0; align-self: center;
+  display: flex; align-items: center; gap: 2px;
+}
+.notif-dot-unread {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--accent-rail); flex-shrink: 0;
+}
+.notif-x {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); opacity: 0.45;
+  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+.notif-x:hover { opacity: 1; background: var(--surface-3); color: var(--coral); }
 
 /* Chat bubbles */
 .chat-list { display: flex; flex-direction: column; gap: 12px; }

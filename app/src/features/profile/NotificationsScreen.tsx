@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Icon } from '../../shared/components/ui/Icon';
 import { Chip } from '../../shared/components/ui/Chip';
 import { EmptyState } from '../../shared/components/ui/EmptyState';
@@ -129,6 +129,69 @@ function navigateFromLink(linkUrl: string | null | undefined, onNavigate: Naviga
   // tapping one silently did nothing.
   if (/^\/my-bookings/.test(linkUrl)) { onNavigate('my-bookings'); return true; }
   return false;
+}
+
+/** The server writes dates long-hand ("Friday, July 24, 2026 at 4:00 AM",
+ *  see api `fmtDate`). At 15px in a 3-line clamp that one phrase eats the
+ *  whole row, so compress it for display only — the year is dropped when it's
+ *  the current one, exactly like a chat timestamp. */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const LONG_DATE = /\b(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, (January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4})\b/g;
+function compactDates(text: string): string {
+  const thisYear = String(new Date().getFullYear());
+  return text
+    .replace(LONG_DATE, (_m, dayStem: string, month: string, day: string, year: string) => {
+      const mon = MONTHS.indexOf(month) >= 0 ? month.slice(0, 3) : month;
+      const base = `${dayStem.slice(0, 3)} ${mon} ${day}`;
+      return year === thisYear ? base : `${base}, ${year}`;
+    })
+    .replace(/\s+at\s+/g, ' · ');
+}
+
+/** The sentence to lead with. Titles are system labels ("Payment received —
+ *  booking confirmed") that the body then restates in full; showing both is
+ *  what made the old list read as a wall. The body is the human sentence, so
+ *  it leads, and the title only stands in when there's no body. */
+function primaryText(n: ApiNotification): string {
+  return compactDates(n.body?.trim() || cleanTitle(n.title));
+}
+
+/** Short category for the meta line — the slot Facebook fills with the source
+ *  page. Derived from `type`, so two notifications about one booking stay
+ *  distinguishable even when their bodies match. */
+const CATEGORY: Record<string, string> = {
+  game_full: 'Games',
+  venue_membership_invite: 'Membership',
+  venue_membership_removed: 'Membership',
+  booking_pending_approval: 'Bookings',
+  booking_approved: 'Bookings',
+  booking_request_reminder: 'Bookings',
+  booking_request_expired: 'Bookings',
+  booking_rejected: 'Bookings',
+  booking_cancelled: 'Bookings',
+  friend_request: 'Friends',
+  message: 'Messages',
+  tournament_message: 'Tournaments',
+  alert: 'Alerts',
+};
+function metaLine(n: ApiNotification): string {
+  const when = relativeTime(n.createdAt);
+  const cat = CATEGORY[n.type || ''];
+  return cat ? `${when} · ${cat}` : when;
+}
+
+/** Day bucket for the list's section headers. Calendar-day based (not
+ *  elapsed hours), so a 2am notification still reads as "Today". */
+function dayBucket(iso?: string): string {
+  if (!iso) return 'Earlier';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Earlier';
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return 'Earlier this week';
+  return 'Earlier';
 }
 
 const FILTERS = ['All', 'Unread', 'Friend Request'] as const;
@@ -308,7 +371,12 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
           className="pb-2!"
           action={
             unread > 0 ? (
-              <button onClick={markAll} className="rounded-xl bg-[var(--ink)] text-white text-[13px] font-bold px-3.5 py-1.5">
+              // A quiet tinted pill, not a solid black slab — this is a
+              // secondary action sitting next to the screen title.
+              <button
+                onClick={markAll}
+                className="rounded-full bg-[var(--primary-tint)] text-[var(--accent-rail)] text-[13px] font-extrabold px-3.5 py-2"
+              >
                 Mark all read
               </button>
             ) : undefined
@@ -316,16 +384,25 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
         />
 
         <div className="scroll-x px-5 pt-1 pb-2 flex gap-2">
-          {FILTERS.map((c) => (
-            <Chip key={c} selected={filter === c} onClick={() => setFilter(c)}>
-              {c}
-            </Chip>
-          ))}
+          {FILTERS.map((c) => {
+            // A count on the chip answers "is there anything in there?"
+            // without making the user tap it. 'All' needs none.
+            const n = c === 'Unread' ? unread
+              : c === 'Friend Request' ? items.filter((x) => x.type === 'friend_request').length
+              : 0;
+            return (
+              <Chip key={c} selected={filter === c} onClick={() => setFilter(c)}>
+                {c}{n > 0 ? ` · ${n}` : ''}
+              </Chip>
+            );
+          })}
         </div>
 
         {showPushBanner && (
           <div className="px-5 pb-2">
-            <div className="rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3.5 flex items-center gap-3">
+            <div className="push-banner rounded-2xl bg-[var(--surface)] border-[0.5px] border-[var(--hairline)] p-3.5 flex items-center gap-3">
+              {/* `.ic` was only ever styled under `.notif`, so this rendered as a
+                  bare glyph. It gets the same disc as a notification row. */}
               <div className="ic blue"><Icon name="bell" size={18} /></div>
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] font-bold text-[var(--ink)]">Turn on push notifications</div>
@@ -339,7 +416,7 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                 <button
                   onClick={enable}
                   disabled={pushState === 'enabling'}
-                  className="shrink-0 rounded-xl bg-[var(--ink)] text-white text-[13px] font-bold px-3.5 py-2 disabled:opacity-60"
+                  className="shrink-0 rounded-full bg-[var(--primary)] text-white text-[13px] font-extrabold px-4 py-2 disabled:opacity-60"
                 >
                   {pushState === 'enabling' ? 'Enabling…' : 'Enable'}
                 </button>
@@ -399,7 +476,9 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
             }
           />
         ) : (
-          visible.map((n) => {
+          <div className="notif-list">
+          {(() => {
+          const rowFor = (n: ApiNotification) => {
             // Membership invites: only show Accept/Decline while the notification is
             // still unread (player hasn't responded yet). Once read, render as a
             // regular notification — tapping navigates to the venue. This prevents
@@ -416,11 +495,8 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                       <Icon name={iconFor(n)} size={18} />
                     </div>
                     <div className="body">
-                      <div className="head">
-                        <strong>{cleanTitle(n.title)}</strong>
-                        {n.body ? <> — {n.body}</> : null}
-                      </div>
-                      <div className="time">{relativeTime(n.createdAt)}</div>
+                      <div className="head">{primaryText(n)}</div>
+                      <div className="meta">{metaLine(n)}</div>
                       {resolved ? (
                         <div className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--muted)]">
                           <Icon name={st === 'accepted' ? 'check_circle' : 'cancel'} size={14} />
@@ -436,7 +512,7 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                             type="button"
                             onClick={() => respondInvite(n, true)}
                             disabled={!!st}
-                            className="rounded-xl bg-[var(--ink)] text-white text-[13px] font-bold px-3.5 py-1.5 disabled:opacity-60"
+                            className="rounded-full bg-[var(--primary)] text-white text-[13px] font-extrabold px-4 py-2 disabled:opacity-60"
                           >
                             {st === 'accepting' ? 'Checking…' : 'Accept'}
                           </button>
@@ -444,12 +520,15 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                             type="button"
                             onClick={() => respondInvite(n, false)}
                             disabled={!!st}
-                            className="rounded-xl bg-[var(--surface-2)] text-[var(--ink)] text-[13px] font-bold px-3.5 py-1.5 disabled:opacity-60"
+                            className="rounded-full bg-[var(--surface-3)] text-[var(--ink)] text-[13px] font-extrabold px-4 py-2 disabled:opacity-60"
                           >
                             {st === 'declining' ? 'Declining…' : 'Decline'}
                           </button>
                         </div>
                       )}
+                    </div>
+                    <div className="notif-right">
+                      {!n.isRead && <span className="notif-dot-unread" aria-label="Unread" />}
                     </div>
                   </div>
                 );
@@ -470,11 +549,8 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                       <Icon name={iconFor(n)} size={18} />
                     </div>
                     <div className="body">
-                      <div className="head">
-                        <strong>{cleanTitle(n.title)}</strong>
-                        {n.body ? <> — {n.body}</> : null}
-                      </div>
-                      <div className="time">{relativeTime(n.createdAt)}</div>
+                      <div className="head">{primaryText(n)}</div>
+                      <div className="meta">{metaLine(n)}</div>
                       {resolved ? (
                         <div className="mt-2 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--muted)]">
                           <Icon name={st === 'accepted' ? 'check_circle' : 'cancel'} size={14} />
@@ -500,7 +576,7 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                               }
                             }}
                             disabled={!!st}
-                            className="rounded-xl bg-[var(--ink)] text-white text-[13px] font-bold px-3.5 py-1.5 disabled:opacity-60"
+                            className="rounded-full bg-[var(--primary)] text-white text-[13px] font-extrabold px-4 py-2 disabled:opacity-60"
                           >
                             {st === 'accepting' ? '…' : 'Confirm'}
                           </button>
@@ -522,12 +598,15 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                               }
                             }}
                             disabled={!!st}
-                            className="rounded-xl bg-[var(--surface-2)] text-[var(--ink)] text-[13px] font-bold px-3.5 py-1.5 disabled:opacity-60"
+                            className="rounded-full bg-[var(--surface-3)] text-[var(--ink)] text-[13px] font-extrabold px-4 py-2 disabled:opacity-60"
                           >
                             {st === 'declining' ? '…' : 'Reject'}
                           </button>
                         </div>
                       )}
+                    </div>
+                    <div className="notif-right">
+                      {!n.isRead && <span className="notif-dot-unread" aria-label="Unread" />}
                     </div>
                   </div>
                 );
@@ -550,25 +629,40 @@ export function NotificationsScreen({ onNavigate, onBack }: NotificationsScreenP
                       <Icon name={iconFor(n)} size={18} />
                     </div>
                     <div className="body">
-                      <div className="head">
-                        <strong>{cleanTitle(n.title)}</strong>
-                        {n.body ? <> — {n.body}</> : null}
-                      </div>
-                      <div className="time">{relativeTime(n.createdAt)}</div>
+                      <div className="head">{primaryText(n)}</div>
+                      <div className="meta">{metaLine(n)}</div>
                     </div>
                   </div>
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); remove(n.id); }}
-                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--coral)] mt-1"
-                  aria-label="Delete notification"
-                >
-                  <Icon name="close" size={14} />
-                </button>
+                <div className="notif-right">
+                  {!n.isRead && <span className="notif-dot-unread" aria-label="Unread" />}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); remove(n.id); }}
+                    className="notif-x"
+                    aria-label="Delete notification"
+                  >
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
               </div>
             );
-          })
+          };
+          // Day headers give a 15-row inbox somewhere to anchor the eye.
+          let lastBucket = '';
+          return visible.map((n) => {
+            const bucket = dayBucket(n.createdAt);
+            const header = bucket === lastBucket ? null : bucket;
+            lastBucket = bucket;
+            return (
+              <Fragment key={n.id}>
+                {header && <div className="notif-group">{header}</div>}
+                {rowFor(n)}
+              </Fragment>
+            );
+          });
+          })()}
+          </div>
         )}
       </DemoBranch>
 
