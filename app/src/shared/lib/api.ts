@@ -5056,9 +5056,18 @@ export async function subscribeToPartnerPlan(
   plan: PartnerPlan,
   opts?: { autoRenew?: boolean; tierKey?: string; card?: CheckoutCard },
 ): Promise<PartnerSubscription> {
-  return request<PartnerSubscription>('/api/v1/partner-subscriptions', {
+  const data = await request<PartnerSubscription & Partial<AuthTokens>>('/api/v1/partner-subscriptions', {
     method: 'POST', body: { plan, autoRenew: opts?.autoRenew, tierKey: opts?.tierKey, card: opts?.card }, auth: true,
   });
+  // The live term is what carries `coach.*` / `organizer.*`, and those ride in
+  // the JWT's `permissions` claim — which was minted BEFORE this purchase. The
+  // server hands back a re-signed pair for exactly this reason; storing it is
+  // what makes the new capability real for the next request. Re-reading /me
+  // alone only refreshes the client-side gates, so without this the UI opens
+  // e.g. Coach Information and the PATCH still 403s until the 15-minute access
+  // token happens to expire and refresh.
+  if (data.accessToken && data.refreshToken) setTokens(data.accessToken, data.refreshToken);
+  return data;
 }
 
 /** Schedule cancellation for the END of the paid term. Access and the coach role
