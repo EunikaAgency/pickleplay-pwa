@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countdownLabel, deadlineLabel, deadlineUrgency, estimateApprovalDeadline, isSeniorOnDate } from './bookingDisplay';
+import { automaticStatutoryDiscountCategory, countdownLabel, deadlineLabel, deadlineUrgency, estimateApprovalDeadline, isSeniorOnDate } from './bookingDisplay';
 
 const MIN = 60_000;
 const HOUR = 3_600_000;
@@ -15,6 +15,49 @@ describe('isSeniorOnDate', () => {
     expect(isSeniorOnDate('1950-11-20', '2026-07-22')).toBe(true);
     expect(isSeniorOnDate(undefined, '2026-07-22')).toBe(false);
     expect(isSeniorOnDate('1950-02-31', '2026-07-22')).toBe(false);
+  });
+});
+
+describe('automaticStatutoryDiscountCategory', () => {
+  const seniorProfile = {
+    birthday: '1950-11-20',
+    onDate: '2026-07-23',
+    seniorCitizenIdNumber: 'OSCA-123',
+  };
+
+  it('automatically uses a saved Senior card for an eligible profile', () => {
+    expect(automaticStatutoryDiscountCategory(seniorProfile)).toBe('senior');
+  });
+
+  it('does not claim a Senior discount without both eligibility and a saved card', () => {
+    expect(automaticStatutoryDiscountCategory({ ...seniorProfile, seniorCitizenIdNumber: '' })).toBe('none');
+    expect(automaticStatutoryDiscountCategory({ ...seniorProfile, birthday: '1990-11-20' })).toBe('none');
+  });
+
+  it('automatically uses a saved PWD card without asking in booking', () => {
+    expect(automaticStatutoryDiscountCategory({
+      birthday: '1990-11-20',
+      onDate: '2026-07-23',
+      pwdIdNumber: 'PWD-456',
+    })).toBe('pwd');
+  });
+
+  it('uses the better configured discount when both cards qualify', () => {
+    expect(automaticStatutoryDiscountCategory({
+      ...seniorProfile,
+      pwdIdNumber: 'PWD-456',
+      statutoryDiscounts: [
+        { category: 'senior', percent: 20 },
+        { category: 'pwd', percent: 25 },
+      ],
+    })).toBe('pwd');
+  });
+
+  it('prefers Senior when both saved cards have the same discount', () => {
+    expect(automaticStatutoryDiscountCategory({
+      ...seniorProfile,
+      pwdIdNumber: 'PWD-456',
+    })).toBe('senior');
   });
 });
 

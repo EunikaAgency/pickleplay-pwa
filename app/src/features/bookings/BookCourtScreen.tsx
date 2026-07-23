@@ -22,7 +22,7 @@ import { mapBookingError } from './bookingErrors';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
-import { addHours, deadlineLabel, estimateApprovalDeadline, hoursBetween, isSeniorOnDate, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
+import { addHours, automaticStatutoryDiscountCategory, deadlineLabel, estimateApprovalDeadline, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
 
 interface BookCourtScreenProps {
   venueId?: string;
@@ -198,20 +198,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // Checkout.
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [card, setCard] = useState<CheckoutCard>({ number: '', expiry: '', cvc: '' });
-  const profileIsSenior = isSeniorOnDate(currentUser?.birthday, date);
-  const discountCategoryTouched = useRef(false);
-  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>(() => profileIsSenior ? 'senior' : 'none');
-  const discountIdNumber = customerCategory === 'senior'
-    ? currentUser?.seniorCitizenIdNumber?.trim() ?? ''
-    : customerCategory === 'pwd'
-      ? currentUser?.pwdIdNumber?.trim() ?? ''
-      : '';
-
-  // Cached auth can hydrate after this screen's first render. Select Senior once
-  // the profile arrives, but never undo a category the player chose themselves.
-  useEffect(() => {
-    if (profileIsSenior && !discountCategoryTouched.current) setCustomerCategory('senior');
-  }, [profileIsSenior]);
 
   // Lifecycle.
   const [error, setError] = useState<string | null>(null);
@@ -296,6 +282,21 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   // membership), falling back to the picker's list item until it loads.
   const selected = detail ?? venues.find((v) => v.id === selectedId) ?? null;
   const currency = selected?.pricingCurrency ?? 'PHP';
+  // Statutory discounts are profile-driven: booking never asks for a category or
+  // ID. A Senior card also requires the profile to be age-eligible on play day;
+  // a saved PWD card is sufficient. If both qualify, apply the better venue rate.
+  const customerCategory = automaticStatutoryDiscountCategory({
+    birthday: currentUser?.birthday,
+    onDate: date,
+    seniorCitizenIdNumber: currentUser?.seniorCitizenIdNumber,
+    pwdIdNumber: currentUser?.pwdIdNumber,
+    statutoryDiscounts: selected?.statutoryDiscounts,
+  });
+  const discountIdNumber = customerCategory === 'senior'
+    ? currentUser?.seniorCitizenIdNumber?.trim() ?? ''
+    : customerCategory === 'pwd'
+      ? currentUser?.pwdIdNumber?.trim() ?? ''
+      : '';
   // Price is tied to the chosen court when it has its own rate; otherwise the
   // venue's flat priceFrom applies (and when there are no courts at all).
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
@@ -628,10 +629,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
 
   const submit = async () => {
     if (!selected) { setError('Please choose a court.'); return; }
-    if (customerCategory !== 'none' && !discountIdNumber.trim()) {
-      setError(`Add your ${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number in Edit Profile before booking.`);
-      return;
-    }
     // Test mode uses the pre-filled demo card. Live launch mode is manual GCash,
     // so no card credentials are collected or stored.
     setSubmitting(true);
@@ -712,10 +709,6 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const next = () => {
     if (step === 0) {
       if (!selected) { setError('Please choose a venue.'); return; }
-      if (customerCategory !== 'none' && !discountIdNumber.trim()) {
-        setError(`Add your ${customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number in Edit Profile before booking.`);
-        return;
-      }
       if (courts.length > 0 && !courtId) { setError('Please choose a court.'); return; }
       if (!date) { setError('Please pick a date.'); return; }
       if (!startTime) { setError('Please pick a start time.'); return; }
@@ -1044,32 +1037,16 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
             </div>
           )}
 
-          <div className="field">
-            <div className="lbl">Senior citizen / PWD discount</div>
-            <div className="flex gap-2">
-              {(['none', 'senior', 'pwd'] as const).map((category) => (
-                <Chip key={category} selected={customerCategory === category} onClick={() => {
-                  discountCategoryTouched.current = true;
-                  setCustomerCategory(category);
-                }}>
-                  {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
-                </Chip>
-              ))}
-            </div>
-            {customerCategory !== 'none' && (
-              <div className={`mt-2 rounded-xl px-3 py-2.5 text-[12px] font-semibold ${discountIdNumber ? 'bg-[var(--lime-soft)] text-[var(--lime-ink)]' : 'bg-[var(--coral-soft)] text-[var(--coral)]'}`}>
-                {discountIdNumber ? (
-                  <span><Icon name="check" size={14} className="inline mr-1" /> Using the {customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID saved in your profile.</span>
-                ) : (
-                  <span>
-                    Save your {customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID in{' '}
-                    <button type="button" className="underline font-bold" onClick={() => onNavigate('edit-profile')}>Edit Profile</button>
-                    {' '}to claim this discount.
-                  </span>
-                )}
+          {customerCategory !== 'none' && (
+            <div className="field">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-[var(--lime-soft)] px-4 py-2.5 text-[var(--lime-ink)]">
+                <Icon name="check" size={18} />
+                <span className="text-[13px] font-bold">
+                  {customerCategory === 'senior' ? 'Senior citizen' : 'PWD'} discount automatically applied from your profile
+                </span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="field">
             <div className="grid grid-cols-2 gap-3">
