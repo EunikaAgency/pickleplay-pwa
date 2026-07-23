@@ -4,7 +4,7 @@ const APP = 'http://localhost:9000';
 const WEB = 'http://localhost:9001';
 const SHOT = '/tmp/claude-1000/-var-public-pickleplay/31a34a87-4420-4313-83e9-bda97ee21ba2/scratchpad';
 
-const ADMIN = { email: 'info@eunika.agency', password: 'justinianthegreat!' };
+const ADMIN = { email: 'info@eunika.agency', password: 'password123' };
 
 /** The app sidebar only activates at >=1024px. */
 test('app sidebar shows the brand icon', async ({ page }) => {

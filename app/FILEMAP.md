@@ -422,7 +422,9 @@ src/
                         # friendRequestStore.ts (Zustand: pending friend-request count +
                         #   refresh — drives the Social tab badge; `loaded` gates the
                         #   Social landing rule so a cold load doesn't read 0),
-                        # realtimeBus.ts (tiny in-app pub/sub; useRealtimeStream publishes, screens subscribe)
+                        # realtimeBus.ts (tiny in-app pub/sub; useRealtimeStream publishes, screens subscribe),
+                        # adminSectionPrefs.ts (which admin-console nav sections are open —
+                        #   persisted, shared by the desktop Sidebar + mobile AdminDrawer)
                         # (games formatters live in features/games/gameDisplay.ts, next to the screens)
     styles/index.css    # Tailwind + all design tokens (--primary, --lime, --coral, shadows…)
 ```

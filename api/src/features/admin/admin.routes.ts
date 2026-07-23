@@ -17,6 +17,7 @@ import {
   resolveFeedReport,
   updateUser,
 } from './admin.controller.js';
+import dataOpsRoutes from '../data-ops/data-ops.routes.js';
 
 const adminRoutes = new Hono();
 

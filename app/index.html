@@ -28,6 +28,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="PickleBallers" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!--
+      Declared here, not left to vite-plugin-pwa's build-time injection: prod
+      serves the Vite DEV server (see ecosystem.config.cjs), and in dev the
+      plugin serves /manifest.webmanifest but never injects this tag — so
+      without it the live site had no manifest at all and was not installable.
+      The plugin reuses this tag on build instead of adding a second one.
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="description" content="Find pickleball games near you, meet players at your skill level, and turn your local courts into a community." />
     <meta property="og:title" content="PickleBallers — Find games. Meet players. Play pickleball." />
     <meta property="og:description" content="The easiest way to find a pickleball game near you, meet players at your skill level, and turn your local courts into a community." />

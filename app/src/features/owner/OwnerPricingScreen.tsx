@@ -544,6 +544,26 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     markDirty();
   };
 
+  /**
+   * Wipe the week on screen in one go — the alternative was dragging the Closed
+   * tool across all 168 cells.
+   *
+   * Reserved and Maintenance survive: a Reserved marker has a real confirmed
+   * Booking behind it, and `handleSave` rebuilds each date purely from these
+   * cells, so dropping them here would delete the marker for money already taken.
+   * Nothing reaches the server until Save, so this is walk-away-able.
+   */
+  const clearWeek = () => {
+    setCellsByWeek((prev) => {
+      const kept: Record<string, string> = {};
+      for (const [key, val] of Object.entries(prev[scopeKey] || {})) {
+        if (val === RESERVED_TOOL_ID || val === MAINTENANCE_TOOL_ID) kept[key] = val;
+      }
+      return { ...prev, [scopeKey]: kept };
+    });
+    markDirty();
+  };
+
   const paintDayRow = (day: string) => {
     paintKeys(HOURS.map((hour) => cellKey(day, hour)));
   };
@@ -1109,6 +1129,16 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Schedule window</div>
               <div className="text-[13px] font-extrabold text-[var(--ink)] mt-0.5">{weekDateRange(month, week, year)}</div>
+              {Object.keys(cellsByWeek[scopeKey] || {}).length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearWeek}
+                  title="Empty this week's grid — reservations and maintenance blocks are kept"
+                  className="mt-1 text-[11px] font-bold text-[var(--muted)] underline hover:text-[var(--ink)]"
+                >
+                  Clear this week
+                </button>
+              )}
             </div>
             {isDirty ? (
               <div className="text-[12px] font-bold text-[#f59e0b]">Save before switching weeks</div>

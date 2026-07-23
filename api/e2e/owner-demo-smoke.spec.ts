@@ -10,7 +10,7 @@
  * Run UI mode:         npx playwright test --config=playwright.config.ts --ui
  *
  * Test accounts use seeded @example.com users (password: password123).
- * Admin: info@eunika.agency / Test1234 (reset for local testing).
+ * Admin: info@eunika.agency / password123.
  */
 
 import { test, expect } from '@playwright/test';
@@ -26,7 +26,7 @@ async function resolveUser(role: string): Promise<string> {
   const res = await fetch(`${API}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'info@eunika.agency', password: 'Test1234' }),
+    body: JSON.stringify({ email: 'info@eunika.agency', password: 'password123' }),
   });
   const admin = await res.json() as { data?: { accessToken?: string } };
   const token = admin.data?.accessToken;
@@ -83,7 +83,7 @@ async function getPlayerEmail(): Promise<string> {
     const res = await fetch(`${API}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'info@eunika.agency', password: 'Test1234' }),
+      body: JSON.stringify({ email: 'info@eunika.agency', password: 'password123' }),
     });
     const json = await res.json() as { data?: { accessToken?: string } };
     const token = json.data?.accessToken;

@@ -111,6 +111,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.png'],
       manifest: {
+        id: '/',
         name: 'PickleBallers',
         short_name: 'PickleBallers',
         description: 'Find pickleball games near you, meet players at your skill level, and turn your local courts into a community.',
@@ -119,6 +120,22 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
+        scope: '/',
+        // Ask the OS to route in-scope links straight to the installed app
+        // instead of a browser tab, and to reuse an already-open app window
+        // rather than stacking a new one. This is what makes "tapped a link,
+        // landed in the app" work without any client-side redirect.
+        handle_links: 'preferred',
+        launch_handler: { client_mode: 'navigate-existing' },
+        // Self-reference so `navigator.getInstalledRelatedApps()` can tell a
+        // page running in the browser that this device already has the app
+        // (see shared/lib/appLaunch.ts). Chrome only reports apps listed here,
+        // and matches them by manifest URL — hence one entry per public host.
+        related_applications: [
+          { platform: 'webapp', url: 'https://pickleballer-pwa.eunika.xyz/manifest.webmanifest' },
+          { platform: 'webapp', url: 'https://pickleplay-pwa.eunika.xyz/manifest.webmanifest' },
+        ],
+        prefer_related_applications: false,
         icons: [
           {
             src: '/pwa-192.png',

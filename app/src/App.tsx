@@ -92,6 +92,7 @@ import { VenueRequestsScreen } from './features/organizer/venues/VenueRequestsSc
 import { TabBar } from './shared/components/layout/TabBar';
 import { Sidebar } from './shared/components/layout/Sidebar';
 import { InstallPrompt } from './shared/components/ui/InstallPrompt';
+import { OpenInAppGate } from './shared/components/ui/OpenInAppGate';
 import { OfflineBanner } from './shared/components/ui/OfflineBanner';
 import { AuthPromptSheet } from './shared/components/ui/AuthPromptSheet';
 import { ErrorBoundary } from './shared/components/ui/ErrorBoundary';
@@ -955,6 +956,11 @@ function AppInner() {
 
       {/* Animated launch splash, on top of everything (auto-dismisses). */}
       {showSplash && <SplashScreen onDone={dismissSplash} />}
+
+      {/* Browser visitors who already have the app installed get handed to it;
+          everyone else never sees this. Above the splash — no point animating
+          an intro for a tab we're about to leave. */}
+      <OpenInAppGate />
 
       {/* Admin sidebar drawer — mobile/tablet navigation for admins (no bottom tab bar). */}
       {isAdmin && (
