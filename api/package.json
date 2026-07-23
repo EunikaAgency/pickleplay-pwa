@@ -10,6 +10,7 @@
     "db:seed:all": "tsx src/shared/db/run-pipeline.ts",
     "db:seed:users": "tsx src/shared/db/seed-dummy-users.ts",
     "db:seed:dummy": "tsx src/shared/db/seed-dummy-data.ts",
+    "db:seed:social": "tsx src/shared/db/seed-social-graph.ts",
     "db:seed:coach-subs": "tsx src/shared/db/seed-coach-subscribers.ts",
     "db:seed:receipts": "tsx src/shared/db/seed-official-receipts.ts",
     "db:partner-roles": "tsx src/shared/db/partner-roles-to-subscriptions.ts",

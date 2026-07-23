@@ -1286,6 +1286,14 @@ export async function listSlotOverrides(venueId: string, date?: string): Promise
   return res ?? [];
 }
 
+/** Every override between two dates (inclusive) in ONE request — the pricing grid
+ *  pulls a whole month this way instead of a call per day. Owner/staff only. */
+export async function listSlotOverridesRange(venueId: string, from: string, to: string): Promise<SlotPriceOverride[]> {
+  const qs = `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const res = await request<SlotPriceOverride[]>(`${VENUES_PREFIX}/${encodeURIComponent(venueId)}/slot-overrides${qs}`, { auth: true });
+  return res ?? [];
+}
+
 /** Set a surge / discount rate for a date+time window (owner/staff). */
 export async function createSlotOverride(
   venueId: string,

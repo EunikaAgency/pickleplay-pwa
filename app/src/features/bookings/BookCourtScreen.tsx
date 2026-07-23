@@ -22,6 +22,7 @@ import { mapBookingError } from './bookingErrors';
 import { useVenueAvailability } from '../../shared/hooks/useVenueAvailability';
 import { useDemandTracking } from '../../shared/hooks/useDemandTracking';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
+import { GAME_SKILL_OPTIONS } from '../../shared/lib/skillTiers';
 import { addHours, automaticStatutoryDiscountCategory, deadlineLabel, estimateApprovalDeadline, hoursBetween, money, prettyDate, snapToHour, to12h, to24h, todayYMD } from './bookingDisplay';
 
 interface BookCourtScreenProps {
@@ -64,8 +65,6 @@ const BOOKING_MODE_OPTIONS: { value: BookingMode; label: string; icon: string; d
 ];
 
 // ── Open-play game details (step 1 when bookingMode === 'open_play') ──
-const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
-
 // ── Public-game details (step 1 when bookingMode === 'public_game') ──
 type GameFormat = 'bracketing' | 'round_robin' | 'mini_tournament';
 const FORMAT_OPTIONS: { v: GameFormat; label: string; icon: string }[] = [
@@ -1178,7 +1177,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 <div className="lbl">Skill level</div>
               </div>
               <div className="time-grid">
-                {SKILLS.map((s) => (
+                {GAME_SKILL_OPTIONS.map((s) => (
                   <button
                     key={s}
                     type="button"
@@ -1387,7 +1386,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
           <div className="field">
             <div className="lbl">Skill level</div>
             <div className="time-grid">
-              {SKILLS.map((s) => (
+              {GAME_SKILL_OPTIONS.map((s) => (
                 <button
                   key={s}
                   type="button"

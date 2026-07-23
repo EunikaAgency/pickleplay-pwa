@@ -501,6 +501,10 @@ export function listEndpoints(c: any) {
         { path: '/api/v1/admin/roles', methods: ['GET'], description: 'List the fixed roles with their permissions and user counts', auth: 'admin' },
         { path: '/api/v1/admin/roles/:key', methods: ['PATCH'], description: 'Update a role\'s permissions and (coach) venue links (roles are a fixed set)', auth: 'admin' },
         { path: '/api/v1/admin/permissions', methods: ['GET'], description: 'Permission catalogue (labels, descriptions, groups)', auth: 'admin' },
+        { path: '/api/v1/admin/data/status', methods: ['GET'], description: 'Database snapshot: every collection + count, what a wipe preserves, and the seed pipeline steps. Requires admin.settings.manage', auth: 'admin' },
+        { path: '/api/v1/admin/data/seed', methods: ['POST'], description: 'Start a seed run — the full pipeline, or a subset via body { steps?: string[] }. Returns 202 + a job to poll. Requires admin.settings.manage', auth: 'admin' },
+        { path: '/api/v1/admin/data/truncate', methods: ['POST'], description: 'Wipe every collection except roles/appsettings and admin accounts. Body { confirm: "DELETE ALL DATA", password, dryRun?, sweepUploads? } — dryRun reports without deleting. Requires admin.settings.manage', auth: 'admin' },
+        { path: '/api/v1/admin/data/jobs/:id', methods: ['GET'], description: 'Poll a seed job: per-step status + streamed log (?logFrom=N for deltas). Requires admin.settings.manage', auth: 'admin' },
       ],
     },
   ];

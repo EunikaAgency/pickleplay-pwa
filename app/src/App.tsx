@@ -946,9 +946,10 @@ function AppInner() {
         <TabBar activeTab={activeTab} onTabPress={handleTabPress} onCreate={handleCreate} canCreate={canShowCreate} isLoggedIn={isLoggedIn} isOwner={isOwner} isOrganizer={isOrganizer} showTournaments={canSeeTournaments} showSocial={canSeeSocial} isAdmin={isAdmin} />
       )}
 
-      {/* Tab screens only: detail/wizard screens carry a sticky bottom CTA the
-          banner would otherwise float over and intercept taps on. */}
-      {showTabBar && <InstallPrompt hasBottomChrome />}
+      {/* Android phones that don't have the app yet get one "install me" popup.
+          It gates itself (platform, install state, prior dismissal), so it's
+          mounted everywhere rather than only on tab screens. */}
+      <InstallPrompt />
 
       <AuthPromptSheet
         open={authIntent !== null}

@@ -97,6 +97,12 @@ export const SEED_PIPELINE: SeedStep[] = [
     why: 'Gives each quick-login button exactly one plan, so a reviewer can open one partner surface at a time. Locked to TEST_ACCOUNTS in the app login screen.',
   },
   {
+    key: 'social-graph',
+    label: 'Seed clubs, friends, feed, chats + brackets',
+    script: 'src/shared/db/seed-social-graph.ts',
+    why: 'The 27 collections seed-dummy-data predates — clubs, friendships, PickleFeed, direct + roster chat, tournament entrants and brackets, coach bookings, demand analytics. Runs after games and tournaments exist so it can hang off real rosters.',
+  },
+  {
     key: 'receipts',
     label: 'Seed official receipts',
     script: 'src/shared/db/seed-official-receipts.ts',

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { V2Shell, type V2ScreenChrome } from '../../../shared/components/layout/V2Chrome';
 import { CompletionScreen } from '../../../shared/components/ui/CompletionScreen';
 import { getBooking, createGame, getSettings, type ApiBooking, type CreateGamePayload } from '../../../shared/lib/api';
+import { GAME_SKILL_OPTIONS } from '../../../shared/lib/skillTiers';
 import { hoursBetween, prettyDate, timeRange, to12h } from '../../bookings/bookingDisplay';
 
 interface Props extends V2ScreenChrome {
@@ -17,8 +18,6 @@ const FORMAT_OPTIONS: { v: GameFormat; label: string; icon: string; hint: string
   { v: 'round_robin', label: 'Round-robin', icon: '🔁', hint: 'Everyone plays everyone; most wins takes it.' },
   { v: 'mini_tournament', label: 'Mini-tournament', icon: '🎯', hint: 'A short, multi-round event wrapped up in one session.' },
 ];
-
-const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
 
 const STEP_TITLES = ['Format', 'Slots', 'Details', 'Review'];
 const STEP_COUNT = STEP_TITLES.length;
@@ -254,7 +253,7 @@ export function CreateGameV2(props: Props) {
               <div className="field-group">
                 <div className="field-label"><span className="field-label-text">Skill level</span></div>
                 <div className="type-grid">
-                  {SKILLS.map((s) => (
+                  {GAME_SKILL_OPTIONS.map((s) => (
                     <button key={s} type="button" className={`type-option ${skill === s ? 'active' : ''}`} aria-pressed={skill === s} onClick={() => setSkill(s)}>
                       {s}
                     </button>

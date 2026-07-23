@@ -15,6 +15,7 @@ import { FeedComposerSheet } from '../social/FeedComposerSheet';
 import { getGame, joinGame, leaveGame, requestLeaveGame, approveLeaveGame, approveJoinGame, rejectJoinGame, cancelJoinGame, updateGame, getSettings, deleteGame, startConversation, ApiError, apiImageUrl, type ApiGame, type CreateGamePayload } from '../../shared/lib/api';
 import { useAuthStore } from '../../shared/lib/authStore';
 import { userHasPermission } from '../../shared/lib/permissions';
+import { GAME_SKILL_OPTIONS } from '../../shared/lib/skillTiers';
 import {
   dayParts, gameTitle, gameTypeLabel, gameFormatLabel, gameVibeLabel, timeLine, gameLocation, spotsLabel,
   isLobbyFull, freeLeaveMsLeft, canLeaveLobby, genderBlockReason, genderPolicyLabel, skillBlockReason,
@@ -167,7 +168,7 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
     setEditForm({
       title: game.title ?? '',
       description: game.description ?? '',
-      skillLabel: game.skillLabel ?? '',
+      skillLabel: game.skillLabel || 'Open',
       capacity: game.capacity ?? 4,
       visibility: (game.visibility as string) ?? 'public',
       requiresApproval: !!game.requiresApproval,
@@ -911,10 +912,16 @@ export function GameDetailsScreen({ gameId, onNavigate, onBack, onRequireAuth }:
                   onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} />
               </label>
               <label className="field">
-                <span className="lbl block">Skill label</span>
-                <input className="control" value={editForm.skillLabel} maxLength={30}
-                  placeholder="e.g. 3.0–3.5 or All levels"
-                  onChange={(e) => setEditForm((f) => ({ ...f, skillLabel: e.target.value }))} />
+                <span className="lbl block">Skill level</span>
+                <select
+                  className="control"
+                  value={editForm.skillLabel}
+                  onChange={(e) => setEditForm((f) => ({ ...f, skillLabel: e.target.value }))}
+                >
+                  {GAME_SKILL_OPTIONS.map((skill) => (
+                    <option key={skill} value={skill}>{skill}</option>
+                  ))}
+                </select>
               </label>
               <label className="field">
                 <span className="lbl block">Players (capacity)</span>

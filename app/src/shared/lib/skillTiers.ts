@@ -6,6 +6,10 @@ export interface SkillTier {
   detail: string;
 }
 
+/** The skill labels hosts can assign to a game or Open Play lobby. Shared by
+ * booking, creation, and editing so those surfaces always offer the same set. */
+export const GAME_SKILL_OPTIONS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'] as const;
+
 export const skillTiers: SkillTier[] = [
   {
     id: 'new',

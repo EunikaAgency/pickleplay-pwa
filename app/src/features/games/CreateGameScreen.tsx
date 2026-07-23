@@ -18,6 +18,7 @@ import {
 } from '../../shared/lib/api';
 import { resolveHourlyRate } from '../../shared/lib/pricing';
 import { useAuthStore } from '../../shared/lib/authStore';
+import { GAME_SKILL_OPTIONS } from '../../shared/lib/skillTiers';
 import { locationLine, priceLabel, venueImage } from '../../shared/lib/venueDisplay';
 import { addHours, hoursBetween, money, prettyDate, to12h, todayYMD } from '../bookings/bookingDisplay';
 
@@ -40,8 +41,6 @@ const MAX_OPEN_SPOTS = 16;
 function fixedSpotsFor(t: GameType): number | null {
   return t === 'singles' ? 2 : t === 'doubles' ? 4 : null;
 }
-
-const SKILLS = ['Beginner', '2.5–3.0', '3.0–3.5', '3.5–4.0', '4.0+', 'Open'];
 
 const TITLE_BY_STEP = ['Court & time', 'Game details', 'Payment'];
 
@@ -576,7 +575,7 @@ function CreateGameWizard({ onNavigate, onBack }: { onNavigate: Navigate; onBack
             <div className="lbl">Skill level (DUPR)</div>
           </div>
           <div className="time-grid">
-            {SKILLS.map((s) => (
+            {GAME_SKILL_OPTIONS.map((s) => (
               <button key={s} className={`time-pick ${skill === s ? 'active' : ''}`} onClick={() => setSkill(s)}>{s}</button>
             ))}
           </div>
@@ -899,7 +898,7 @@ function ManageGameScreen({ gameId, onBack }: { gameId: string; onBack: () => vo
         <div className="lbl">Skill level (DUPR)</div>
       </div>
       <div className="time-grid">
-        {SKILLS.map((s) => (
+        {GAME_SKILL_OPTIONS.map((s) => (
           <button key={s} className={`time-pick ${skill === s ? 'active' : ''}`} onClick={() => setSkill(s)}>{s}</button>
         ))}
       </div>

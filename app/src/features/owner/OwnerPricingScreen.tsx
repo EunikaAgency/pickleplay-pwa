@@ -249,6 +249,11 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
     if (!selectedCourtId) return scoped;
     return { ...(cellsByWeek[baseScopeKey] || {}), ...scoped };
   }, [cellsByWeek, scopeKey, baseScopeKey, selectedCourtId]);
+  // Derived, not state: the loader always writes a key for every scope it fetches
+  // (even an empty one), so an ABSENT key means the week hasn't arrived yet. Without
+  // this the grid renders empty mid-flight and the cells pop in — which reads as
+  // "this week is blank", and is worst right after Apply-to-month drops the cache.
+  const weekLoading = !cellsByWeek[scopeKey];
   const isDirty = !!dirtyWeeks[scopeKey];
   const markDirty = () => setDirtyWeeks((prev) => (prev[scopeKey] ? prev : { ...prev, [scopeKey]: true }));
 
@@ -963,7 +968,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 // No "paint something first" gate: shutting a whole month is a real
                 // thing to want (a closure, a renovation), and both actions confirm.
                 disabled={applyStatus === 'saving' || !venue || !hasVenues}
-                title={`Use this week for every week of ${month}`}
                 style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
                 className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
                   applyStatus === 'error'
@@ -980,7 +984,6 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
                 type="button"
                 onClick={() => setConfirmDefault(true)}
                 disabled={defaultStatus === 'saving' || !venue || !hasVenues}
-                title="Repeat this week every week"
                 style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
                 className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
                   defaultStatus === 'error'
@@ -1208,7 +1211,14 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             )}
           </div>
 
-          <div className="overflow-x-auto rounded-[8px] border border-[var(--field-border)] bg-[var(--surface)] shadow-sm">
+          {/* Dimmed + non-interactive while the week's overrides are in flight, so an
+              empty grid reads as "still loading" rather than "this week is blank". */}
+          <div className={`relative overflow-x-auto rounded-[8px] border border-[var(--field-border)] bg-[var(--surface)] shadow-sm ${weekLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {weekLoading && (
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 rounded-full bg-[#111827] px-3 py-1 text-[11px] font-bold text-white shadow-lg">
+                Loading week…
+              </div>
+            )}
             <div className="min-w-[1414px]">
               <div className="grid grid-cols-[56px_repeat(24,minmax(52px,1fr))] border-b border-[var(--field-border)] text-[11px] text-[var(--muted)]">
                 <div className="sticky left-0 z-20 px-2 py-3 border-r border-[var(--field-border)] bg-[var(--surface)]">Day</div>

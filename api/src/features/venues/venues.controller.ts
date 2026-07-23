@@ -1494,13 +1494,20 @@ export async function getSlotOverrides(c: any) {
   const venueId = await resolveVenueId(rawId);
   if (!venueId) return c.json({ error: { code: 'NOT_FOUND', message: 'Venue not found' } }, 404);
   const date = c.req.query('date');
+  // A date RANGE lets the pricing grid pull a whole month in one request instead of
+  // one per day — 30+ round trips just to render a month of weeks.
+  const from = c.req.query('from');
+  const to = c.req.query('to');
   const filter: Record<string, any> = { venueId };
   if (date) filter.date = date;
+  else if (from || to) filter.date = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };
   // Owner/staff see history; the public booking read only needs today onward.
-  if (!date && !(await requireVenueManager(c, venueId))) {
+  if (!date && !from && !to && !(await requireVenueManager(c, venueId))) {
     filter.date = { $gte: ymd(new Date()) };
   }
-  const rows = await SlotPriceOverride.find(filter).sort({ date: 1, startTime: 1 }).limit(500).lean();
+  // A painted month runs to a few hundred rows, so the single-date cap is too low
+  // for a range; still bounded so a bad range can't stream the whole collection.
+  const rows = await SlotPriceOverride.find(filter).sort({ date: 1, startTime: 1 }).limit(from || to ? 3000 : 500).lean();
   return c.json({ data: rows.map((r: any) => ({ ...r, id: r._id, courtId: r.courtId ? String(r.courtId) : null })) });
 }
 

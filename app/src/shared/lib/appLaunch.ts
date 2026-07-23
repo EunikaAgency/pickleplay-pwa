@@ -164,6 +164,26 @@ export function markHandoffTried() {
 }
 
 /**
+ * Registers the tiny no-op worker that makes `beforeinstallprompt` fire.
+ *
+ * Android only, for now, and only on https — that's where the install popup
+ * ships. Best-effort: a failure just means the popup falls back to telling the
+ * user where the browser's own Install item lives.
+ */
+export function registerInstallWorker() {
+  if (typeof window === 'undefined') return;
+  // Dev builds only — and that IS production here (ecosystem.config.cjs runs
+  // the dev server). A real `npm run build` ships the Workbox worker that
+  // pwaUpdate.ts registers at the same scope; two workers would fight over it.
+  if (!import.meta.env.DEV) return;
+  if (!isAndroid() || window.location.protocol !== 'https:') return;
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/install-sw.js', { scope: '/' }).catch(() => {
+    // Blocked by browser settings or an unsupported context; not fatal.
+  });
+}
+
+/**
  * Keeps the remembered install flag honest for browsers with no
  * `getInstalledRelatedApps`. Returns an unsubscribe.
  */
