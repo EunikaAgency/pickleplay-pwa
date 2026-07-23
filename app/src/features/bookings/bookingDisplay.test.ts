@@ -22,7 +22,7 @@ describe('automaticStatutoryDiscountCategory', () => {
   const seniorProfile = {
     birthday: '1950-11-20',
     onDate: '2026-07-23',
-    seniorCitizenIdNumber: 'OSCA-123',
+    seniorCitizenIdNumber: 'SC-123',
   };
 
   it('automatically uses a saved Senior card for an eligible profile', () => {

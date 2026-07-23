@@ -161,7 +161,7 @@ describe('server-authoritative statutory discount', () => {
       email: 'senior-profile@example.com',
       displayName: 'Senior Profile',
       birthday: '1950-11-20',
-      seniorCitizenIdNumber: 'OSCA-PROFILE-123',
+      seniorCitizenIdNumber: 'SC-PROFILE-123',
     });
     const c = ctx({
       user: { sub: String(player._id), email: player.email },
@@ -180,7 +180,7 @@ describe('server-authoritative statutory discount', () => {
     expect(c._responses[0]?.status).toBe(201);
     expect(await Booking.findById(c._responses[0]?.payload.data.id).lean()).toMatchObject({
       customerCategory: 'senior',
-      discountIdNumber: 'OSCA-PROFILE-123',
+      discountIdNumber: 'SC-PROFILE-123',
       discountAmount: 100,
     });
   });

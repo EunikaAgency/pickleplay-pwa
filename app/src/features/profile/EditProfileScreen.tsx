@@ -341,7 +341,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
               onChange={(e) => form.setField('seniorCitizenIdNumber', e.target.value)}
               onBlur={() => form.setTouched('seniorCitizenIdNumber')}
               error={form.touched.seniorCitizenIdNumber ? form.errors.seniorCitizenIdNumber : undefined}
-              placeholder="OSCA Senior Citizen ID"
+              placeholder="Senior Citizen ID number"
               hint="Saved to your profile and applied automatically when you book."
               required
             />
