@@ -180,15 +180,16 @@ export async function resolveHourlyRate(params: ResolveRateParams): Promise<Rate
   else { baseRate = venueRate; source = 'venue'; }
 
   const memberDiscountPercent = Math.max(0, Math.min(100, Number((venue as any)?.memberDiscountPercent) || 0));
-  const configuredStatutoryPercent = (venue as any)?.statutoryDiscounts
-    ?.find((d: any) => d.category === customerCategory)?.percent;
+  const configuredStatutoryPercent = customerCategory === 'senior'
+    ? (venue as any)?.statutoryDiscounts?.find((d: any) => d.category === customerCategory)?.percent
+    : undefined;
   // Existing venue documents predate this field. The locked launch policy is
   // 20%, so missing configuration must not silently deny the statutory rate.
   // Preserve an explicit 0 if an administrator deliberately stored one.
-  const statutoryDiscountPercent = customerCategory === 'none' ? 0 : Math.max(0, Math.min(100,
+  const statutoryDiscountPercent = customerCategory === 'senior' ? Math.max(0, Math.min(100,
     configuredStatutoryPercent == null ? 20 : Number(configuredStatutoryPercent),
-  ));
-  const statutoryDiscountApplied = customerCategory !== 'none' && statutoryDiscountPercent > 0;
+  )) : 0;
+  const statutoryDiscountApplied = customerCategory === 'senior' && statutoryDiscountPercent > 0;
   const memberApplied = !statutoryDiscountApplied && !!isMember && memberDiscountPercent > 0;
   const appliedPercent = statutoryDiscountApplied ? statutoryDiscountPercent : memberApplied ? memberDiscountPercent : 0;
   const rate = appliedPercent > 0

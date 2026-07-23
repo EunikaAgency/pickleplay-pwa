@@ -356,7 +356,7 @@ export function EditProfileScreen({ onBack }: EditProfileScreenProps) {
             onBlur={() => form.setTouched('pwdIdNumber')}
             error={form.touched.pwdIdNumber ? form.errors.pwdIdNumber : undefined}
             placeholder="PWD ID (optional)"
-            hint="Save this once to use the PWD discount during booking."
+            hint="PWD booking discounts are paused for launch."
           />
         </div>
 

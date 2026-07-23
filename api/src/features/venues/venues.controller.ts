@@ -80,7 +80,7 @@ export const updateVenueSchema = z.object({
   // Member pricing — % discount for venue members (0 clears it).
   memberDiscountPercent: z.coerce.number().min(0).max(100).optional(),
   statutoryDiscounts: z.array(z.object({
-    category: z.enum(['senior', 'pwd']),
+    category: z.enum(['senior']),
     percent: z.coerce.number().min(0).max(100),
   })).max(2).optional(),
   // Per-player surcharge — ₱ per extra player + the headcount included before it applies.
@@ -357,7 +357,7 @@ export const createVenueBookingSchema = z.object({
   customerPhone: z.string().max(40).optional(),
   bookingSource: z.enum(['walk_in', 'phone', 'messenger', 'instagram', 'other']).optional(),
   amount: z.coerce.number().min(0).optional(),
-  customerCategory: z.enum(['none', 'senior', 'pwd']).optional().default('none'),
+  customerCategory: z.enum(['none', 'senior']).optional().default('none'),
   discountIdNumber: z.string().trim().max(80).optional(),
   paymentMethod: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
@@ -365,7 +365,7 @@ export const createVenueBookingSchema = z.object({
   blockReason: z.string().max(200).optional(),
 }).superRefine((body, ctx) => {
   if (body.bookingType === 'manual' && body.customerCategory !== 'none' && !body.discountIdNumber) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior/PWD ID number is required.' });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior Citizen ID number is required.' });
   }
 });
 
@@ -385,13 +385,13 @@ export const createRecurringBookingSchema = z.object({
   customerPhone: z.string().max(40).optional(),
   bookingSource: z.enum(['walk_in', 'phone', 'messenger', 'instagram', 'other']).optional(),
   amount: z.coerce.number().min(0).optional(),
-  customerCategory: z.enum(['none', 'senior', 'pwd']).optional().default('none'),
+  customerCategory: z.enum(['none', 'senior']).optional().default('none'),
   discountIdNumber: z.string().trim().max(80).optional(),
   notes: z.string().max(500).optional(),
   blockReason: z.string().max(200).optional(),
 }).superRefine((body, ctx) => {
   if (body.bookingType === 'manual' && body.customerCategory !== 'none' && !body.discountIdNumber) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior/PWD ID number is required.' });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['discountIdNumber'], message: 'Senior Citizen ID number is required.' });
   }
 });
 

@@ -218,7 +218,7 @@ const venueSchema = new Schema({
       percent: { type: Number, min: 0, max: 100, required: true },
       _id: false,
     }],
-    default: [{ category: 'senior', percent: 20 }, { category: 'pwd', percent: 20 }],
+    default: [{ category: 'senior', percent: 20 }],
   },
   // Per-player surcharge — ₱ per extra player beyond perPlayerFeeThreshold heads.
   perPlayerFee:      { type: Number, default: 0, min: 0 },

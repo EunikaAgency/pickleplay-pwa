@@ -334,7 +334,7 @@ const createSchema = z.object({
   paymentOption: z.enum(['full', 'deposit', 'pay_at_venue']).optional(),
   amountPaid: z.string().or(z.number()).optional(),
   balanceDue: z.string().or(z.number()).optional(),
-  customerCategory: z.enum(['none', 'senior', 'pwd']).optional().default('none'),
+  customerCategory: z.enum(['none', 'senior']).optional().default('none'),
   discountIdNumber: z.string().trim().max(80).optional(),
   // Recurring booking (step 2): repeat this same slot on these weekdays (0=Sun…6=Sat)
   // for the next `weeks`. The primary booking is paid now; each generated occurrence
@@ -752,17 +752,15 @@ export async function createBooking(c: any) {
   let resolvedDiscountIdNumber = body.discountIdNumber?.trim() || null;
   if (body.customerCategory !== 'none') {
     const profile = await User.findById(user.sub)
-      .select('+seniorCitizenIdNumber +pwdIdNumber')
-      .lean<{ seniorCitizenIdNumber?: string; pwdIdNumber?: string }>();
-    const savedId = body.customerCategory === 'senior'
-      ? profile?.seniorCitizenIdNumber
-      : profile?.pwdIdNumber;
+      .select('+seniorCitizenIdNumber')
+      .lean<{ seniorCitizenIdNumber?: string }>();
+    const savedId = profile?.seniorCitizenIdNumber;
     resolvedDiscountIdNumber = savedId?.trim() || resolvedDiscountIdNumber;
     if (!resolvedDiscountIdNumber) {
       return c.json({
         error: {
           code: 'PROFILE_DISCOUNT_ID_REQUIRED',
-          message: `Add your ${body.customerCategory === 'senior' ? 'Senior Citizen' : 'PWD'} ID number in Edit Profile before booking.`,
+          message: 'Add your Senior Citizen ID number in Edit Profile before booking.',
         },
       }, 400);
     }

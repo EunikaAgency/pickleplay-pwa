@@ -359,7 +359,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
   const [blockReason, setBlockReason] = useState('');
   const [amount, setAmount] = useState('');
   const [amountTouched, setAmountTouched] = useState(false);
-  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>('none');
+  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior'>('none');
   const [discountIdNumber, setDiscountIdNumber] = useState('');
   // Recurring (weekly regular / league): repeat the same slot for N weeks.
   const [repeat, setRepeat] = useState(false);
@@ -442,7 +442,7 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
       setError('Enter the amount collected, or use “Block a slot” for a non-paying hold.');
       return;
     }
-    if (!isBlock && customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen/PWD ID number.'); return; }
+    if (!isBlock && customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen ID number.'); return; }
     const weekCount = Math.max(2, Math.min(52, Number(weeks) || 0));
     if (repeat && weekCount < 2) { setError('Repeat for at least 2 weeks.'); return; }
     setBusy(true);
@@ -638,14 +638,14 @@ function FrontDeskBookingSheet({ mode, venue, vref, courts, defaultDate, onClose
                   No rate is set for this slot — type what the customer paid.
                 </div>
               )}
-              <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior/PWD discount.</div>
+              <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior Citizen discount.</div>
             </div>
             <div className="frontdesk-field">
-              <div className="lbl">Senior citizen / PWD</div>
+              <div className="lbl">Senior citizen</div>
               <div className="flex gap-1.5 flex-wrap">
-                {(['none', 'senior', 'pwd'] as const).map((category) => (
+                {(['none', 'senior'] as const).map((category) => (
                   <Chip key={category} selected={customerCategory === category} onClick={() => setCustomerCategory(category)}>
-                    {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
+                    {category === 'none' ? 'None' : 'Senior citizen'}
                   </Chip>
                 ))}
               </div>

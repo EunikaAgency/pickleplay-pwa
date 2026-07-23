@@ -150,14 +150,15 @@ export function resolveHourlyRate(input: ResolveRateInput): RateBreakdown {
   else { baseRate = venueRate; source = 'venue'; }
 
   const memberDiscountPercent = Math.max(0, Math.min(100, Number(venue?.memberDiscountPercent) || 0));
-  const configuredStatutoryPercent = venue?.statutoryDiscounts
-    ?.find((d) => d.category === customerCategory)?.percent;
+  const configuredStatutoryPercent = customerCategory === 'senior'
+    ? venue?.statutoryDiscounts?.find((d) => d.category === customerCategory)?.percent
+    : undefined;
   // Old venue records have no statutoryDiscounts field; launch policy still
   // requires the 20% rate. An explicit stored 0 remains an intentional override.
-  const statutoryDiscountPercent = customerCategory === 'none' ? 0 : Math.max(0, Math.min(100,
+  const statutoryDiscountPercent = customerCategory === 'senior' ? Math.max(0, Math.min(100,
     configuredStatutoryPercent == null ? 20 : Number(configuredStatutoryPercent),
-  ));
-  const statutoryDiscountApplied = customerCategory !== 'none' && statutoryDiscountPercent > 0;
+  )) : 0;
+  const statutoryDiscountApplied = customerCategory === 'senior' && statutoryDiscountPercent > 0;
   const memberApplied = !statutoryDiscountApplied && !!isMember && memberDiscountPercent > 0;
   const appliedPercent = statutoryDiscountApplied ? statutoryDiscountPercent : memberApplied ? memberDiscountPercent : 0;
   const rate = appliedPercent > 0

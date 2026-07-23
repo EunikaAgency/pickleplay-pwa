@@ -154,7 +154,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
   const [payMethod, setPayMethod] = useState('cash');
   const [amountInput, setAmountInput] = useState('');
   const [amountTouched, setAmountTouched] = useState(false);
-  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior' | 'pwd'>('none');
+  const [customerCategory, setCustomerCategory] = useState<'none' | 'senior'>('none');
   const [discountIdNumber, setDiscountIdNumber] = useState('');
 
   const [busy, setBusy] = useState(false);
@@ -308,7 +308,7 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
     if (courtId && fullyBookedCourtIds.has(courtId)) { setError('That court is fully booked on this date. Pick another court or date.'); return; }
     if (hours <= 0) { setError('End time must be after the start time.'); return; }
     if (!customerName.trim()) { setError('Add a customer name.'); return; }
-    if (customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen/PWD ID number.'); return; }
+    if (customerCategory !== 'none' && !discountIdNumber.trim()) { setError('Add the Senior Citizen ID number.'); return; }
     setBusy(true);
     try {
       const blockingOverride = overrides.find((ov) =>
@@ -515,15 +515,15 @@ export function OwnerManualReservationScreen({ venueId, onNavigate, onBack }: Ow
             {!amountTouched && suggested > 0 && (
               <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Suggested {money(suggested, currency)} ({money(rate, currency)}/hr × {hours} hr)</div>
             )}
-            <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior/PWD discount.</div>
+            <div className="text-[11px] font-semibold text-[var(--muted)] mt-1">Enter the original amount before any Senior Citizen discount.</div>
           </div>
 
           <div className="field px-0!">
-            <div className="lbl">Senior citizen / PWD</div>
+            <div className="lbl">Senior citizen</div>
             <div className="flex gap-1.5 flex-wrap">
-              {(['none', 'senior', 'pwd'] as const).map((category) => (
+              {(['none', 'senior'] as const).map((category) => (
                 <Chip key={category} selected={customerCategory === category} onClick={() => setCustomerCategory(category)}>
-                  {category === 'none' ? 'None' : category === 'senior' ? 'Senior citizen' : 'PWD'}
+                  {category === 'none' ? 'None' : 'Senior citizen'}
                 </Chip>
               ))}
             </div>

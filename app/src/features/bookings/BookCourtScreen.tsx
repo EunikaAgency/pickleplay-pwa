@@ -283,20 +283,17 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
   const selected = detail ?? venues.find((v) => v.id === selectedId) ?? null;
   const currency = selected?.pricingCurrency ?? 'PHP';
   // Statutory discounts are profile-driven: booking never asks for a category or
-  // ID. A Senior card also requires the profile to be age-eligible on play day;
-  // a saved PWD card is sufficient. If both qualify, apply the better venue rate.
+  // ID. PWD discounts are paused for launch, so only a saved age-eligible Senior
+  // card can trigger the automatic discount.
   const customerCategory = automaticStatutoryDiscountCategory({
     birthday: currentUser?.birthday,
     onDate: date,
     seniorCitizenIdNumber: currentUser?.seniorCitizenIdNumber,
-    pwdIdNumber: currentUser?.pwdIdNumber,
     statutoryDiscounts: selected?.statutoryDiscounts,
   });
   const discountIdNumber = customerCategory === 'senior'
     ? currentUser?.seniorCitizenIdNumber?.trim() ?? ''
-    : customerCategory === 'pwd'
-      ? currentUser?.pwdIdNumber?.trim() ?? ''
-      : '';
+    : '';
   // Price is tied to the chosen court when it has its own rate; otherwise the
   // venue's flat priceFrom applies (and when there are no courts at all).
   const selectedCourt = useMemo(() => courts.find((c) => c.id === courtId) ?? null, [courts, courtId]);
@@ -1042,7 +1039,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
               <div className="flex items-center gap-2.5 rounded-2xl bg-[var(--lime-soft)] px-4 py-2.5 text-[var(--lime-ink)]">
                 <Icon name="check" size={18} />
                 <span className="text-[13px] font-bold">
-                  {customerCategory === 'senior' ? 'Senior citizen' : 'PWD'} discount automatically applied from your profile
+                  Senior citizen discount automatically applied from your profile
                 </span>
               </div>
             </div>
@@ -1630,7 +1627,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                 sub={[
                   rateInfo.source === 'surge' ? 'Adjusted rate' : rateInfo.source === 'holiday' ? 'Holiday rate' : rateInfo.source === 'weekend' ? 'Weekend rate' : rateInfo.source === 'timeBlock' ? 'Time-block rate' : rateInfo.source === 'subUnit' ? 'Sub-unit rate' : null,
                   rateInfo.memberApplied ? `Member −${rateInfo.memberDiscountPercent}%` : null,
-                  rateInfo.statutoryDiscountApplied ? `${customerCategory === 'senior' ? 'Senior' : 'PWD'} −${rateInfo.statutoryDiscountPercent}%` : null,
+                  rateInfo.statutoryDiscountApplied ? `Senior −${rateInfo.statutoryDiscountPercent}%` : null,
                 ].filter(Boolean).join(' · ') || undefined}
               />
             )}
@@ -1664,7 +1661,7 @@ export function BookCourtScreen({ venueId, date: dateProp, time: timeProp, hours
                   <div className="font-heading font-semibold text-[15px] tabular-nums">{money(preDiscountSubtotal, currency)}</div>
                 </div>
                 <div className="flex items-center justify-between px-4 py-2.5 border-t-[0.5px] border-[var(--hairline)] text-[var(--lime-ink)]">
-                  <div className="text-[13px] font-bold">{customerCategory === 'senior' ? 'Senior citizen' : 'PWD'} discount</div>
+                  <div className="text-[13px] font-bold">Senior citizen discount</div>
                   <div className="font-heading font-bold text-[15px] tabular-nums">−{money(discountAmount, currency)}</div>
                 </div>
               </>

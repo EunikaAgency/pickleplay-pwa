@@ -130,7 +130,7 @@ describe('server-authoritative statutory discount', () => {
     });
   });
 
-  it('honours a configured PWD rate', async () => {
+  it('rejects PWD discounts while that category is paused', async () => {
     const venue = await makeVenue({
       statutoryDiscounts: [
         { category: 'senior', percent: 20 },
@@ -151,16 +151,8 @@ describe('server-authoritative statutory discount', () => {
       },
     });
 
-    await createBooking(c);
-    const booking = await Booking.findById(c._responses[0]?.payload.data.id).lean<any>();
-    expect(booking).toMatchObject({
-      amount: 375,
-      preDiscountSubtotal: 500,
-      discountPercent: 25,
-      discountAmount: 125,
-      serviceFeeAmount: 35,
-      amountPaid: 410,
-    });
+    await expect(createBooking(c)).rejects.toThrow();
+    expect(await Booking.countDocuments({ venueId: venue._id })).toBe(0);
   });
 
   it('uses the statutory ID saved on the signed-in profile', async () => {
@@ -224,7 +216,7 @@ describe('server-authoritative statutory discount', () => {
     expect(await Payment.countDocuments()).toBe(0);
   });
 
-  it('records a discounted VAT-exempt receipt for a staff walk-in', async () => {
+  it('rejects a staff-entered PWD discount while that category is paused', async () => {
     const ownerId = new Types.ObjectId();
     const venue = await makeVenue({ ownerUserId: ownerId });
     const c = ctx({
@@ -243,27 +235,9 @@ describe('server-authoritative statutory discount', () => {
       },
     });
 
-    await createVenueBooking(c);
-    expect(c._responses[0]?.status).toBe(201);
-    const booking = await Booking.findById(c._responses[0]?.payload.data.id).lean<any>();
-    expect(booking).toMatchObject({
-      bookingType: 'manual',
-      amount: 400,
-      preDiscountSubtotal: 500,
-      discountAmount: 100,
-      customerCategory: 'pwd',
-      discountIdNumber: 'PWD-WALKIN-1',
-    });
-    const receipt = await OfficialReceipt.findOne({ bookingId: booking._id }).lean<any>();
-    expect(receipt).toMatchObject({
-      payorName: 'Maria Santos',
-      amount: 400,
-      discountAmount: 100,
-      discountCategory: 'pwd',
-      discountIdNumber: 'PWD-WALKIN-1',
-      vatExempt: true,
-      vatAmount: 0,
-    });
+    await expect(createVenueBooking(c)).rejects.toThrow();
+    expect(await Booking.countDocuments({ venueId: venue._id })).toBe(0);
+    expect(await OfficialReceipt.countDocuments({ venueId: venue._id })).toBe(0);
   });
 
   it('settles discounted revenue with the fee from the original subtotal', async () => {

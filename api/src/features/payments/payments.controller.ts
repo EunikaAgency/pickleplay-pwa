@@ -497,7 +497,7 @@ async function generateDraftReceipt(bookingId: string): Promise<void> {
   const receiptNumber = `OR-${venueCode}-${year}-${seq}`;
 
   const gross = (booking as any).amount + ((booking as any).serviceFeeAmount || 0);
-  const vatExempt = ['senior', 'pwd'].includes((booking as any).customerCategory);
+  const vatExempt = (booking as any).customerCategory === 'senior';
   const vatRate = vatExempt ? 0 : 12;
   const vatAmount = vatExempt ? 0 : Math.round(gross * vatRate / (100 + vatRate) * 100) / 100;
   const netAmount = Math.round((gross - vatAmount) * 100) / 100;
