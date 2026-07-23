@@ -116,12 +116,26 @@ export function isAndroid(): boolean {
 }
 
 /**
+ * Phones and tablets only. The hand-off is deliberately mobile-scoped: on a
+ * desktop the browser tab IS a perfectly good way to use the app, and yanking
+ * someone out of it into a separate window is hostile. A desktop visitor stays
+ * in the browser even when they have the app installed.
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const nav = window.navigator as NavigatorWithRelatedApps & { maxTouchPoints: number };
+  const ua = nav.userAgent || '';
+  const iOS = /iPad|iPhone|iPod/.test(ua) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
+  return isAndroid() || iOS || /Mobile/i.test(ua);
+}
+
+/**
  * The Android intent URL that hands this exact page to the installed WebAPK.
  * `browser_fallback_url` sends us back here if nothing claims the intent, so a
  * miss is a no-op rather than an error page.
  */
 export function androidHandoffUrl(): string | null {
-  if (typeof window === 'undefined' || !isAndroid()) return null;
+  if (typeof window === 'undefined' || !isMobileDevice() || !isAndroid()) return null;
   const { host, pathname, search, hash, href, protocol } = window.location;
   if (protocol !== 'https:') return null; // WebAPKs only claim https links
   const target = `${pathname}${search}${hash}`;

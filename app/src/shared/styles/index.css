@@ -1466,7 +1466,9 @@
   background: var(--surface);
 }
 .edit-lobby-form .field {
+  display: block;
   margin-bottom: 14px;
+  padding-inline: 20px;
 }
 .edit-lobby-form .field .control {
   padding: 11px 14px;

@@ -3,6 +3,7 @@ import {
   androidHandoffUrl,
   detectInstalledApp,
   handoffTried,
+  isMobileDevice,
   isStandalone,
   markAppInstalled,
   markHandoffTried,
@@ -38,6 +39,8 @@ export function OpenInAppGate() {
       return;
     }
     if (stayInBrowser()) return;
+    // Phone/tablet only — a desktop visitor keeps their browser tab.
+    if (!isMobileDevice()) return;
 
     const url = androidHandoffUrl();
     if (!url) return; // No launch path on this platform — stay in the browser.

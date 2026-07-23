@@ -166,13 +166,8 @@ export function OwnerFinanceScreen({ onBack }: OwnerFinanceScreenProps) {
   const data = loading ? null : result.data;
   const error = loading ? null : result.error;
   const receipts = useMemo(() => data?.receipts ?? [], [data]);
-  // Always offer the full owner taxonomy as filter chips (Court / Rental /
-  // Coaching / Membership / Event / Shop — matching the desktop design) so a
-  // category such as Membership is selectable even before any receipt of that
-  // kind exists. Any extra category that turns up in the data (e.g. an auto
-  // receipt's "Game" or "Walk-in") is appended after the canonical set.
   const categories = useMemo(
-    () => [...new Set<string>([...MANUAL_RECEIPT_CATEGORIES, ...receipts.map((receipt) => receipt.category)])],
+    () => [...new Set(receipts.map((receipt) => receipt.category))].sort(),
     [receipts],
   );
 

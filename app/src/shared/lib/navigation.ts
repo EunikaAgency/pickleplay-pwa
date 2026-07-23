@@ -123,6 +123,8 @@ export type Screen =
   | { id: 'admin-email-monitoring' }
   | { id: 'admin-feature-flags' }
   | { id: 'admin-roles' }
+  /** Seed the demo dataset / wipe the database clean for launch. */
+  | { id: 'admin-data-tools' }
   // Open-play (V3): a courtless per-session drop-in booking at a venue.
   | { id: 'open-play-book'; params: { venueId: string } }
   // Public plan-PDF viewer — lists the PDFs in the plan/ dir and previews them
@@ -255,6 +257,7 @@ export function pathFromScreen(screen: Screen): string {
     case 'admin-email-monitoring': return '/admin/email-monitoring';
     case 'admin-feature-flags': return '/admin/feature-flags';
     case 'admin-roles': return '/admin/roles';
+    case 'admin-data-tools': return '/admin/data-tools';
     case 'open-play-book': return `/venues/${screen.params.venueId}/open-play`;
     case 'plan-pdfs': return '/plan-pdfs';
   }
@@ -423,6 +426,7 @@ export function screenFromLocation(pathname: string, search = ''): Screen {
       if (b === 'settings') return { id: 'admin-payments' };
       if (b === 'feature-flags') return { id: 'admin-feature-flags' };
       if (b === 'roles') return { id: 'admin-roles' };
+      if (b === 'data-tools') return { id: 'admin-data-tools' };
       if (b === 'claims') return { id: 'admin-claims' };
       if (b === 'post-reports') return { id: 'admin-post-reports' };
       if (b === 'moderation') {

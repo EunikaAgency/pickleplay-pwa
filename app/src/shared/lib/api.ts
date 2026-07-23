@@ -1664,6 +1664,95 @@ export async function updateAdminRole(key: string, body: { permissions: string[]
   return request<AdminRole>(`/api/v1/admin/roles/${encodeURIComponent(key)}`, { method: 'PATCH', body, auth: true });
 }
 
+/* --- Admin: data tools (seed + truncate) ---------------------------------- */
+
+/** One collection in the database snapshot, and what a wipe would do to it. */
+export interface DataCollection {
+  name: string;
+  count: number;
+  /** `preserved` = untouched; `scoped` = cleared except preserved admins' rows; `wiped` = emptied. */
+  disposition: 'preserved' | 'scoped' | 'wiped';
+}
+
+export interface DataStatus {
+  collections: DataCollection[];
+  totalCollections: number;
+  totalDocuments: number;
+  preserved: {
+    collections: string[];
+    userScopedCollections: string[];
+    users: { id: string; email?: string; displayName?: string }[];
+    smtpTokenFile: { path: string; exists: boolean };
+    uploadDirsSkipped: string[];
+  };
+  /** The exact phrase the admin must type to arm a wipe. */
+  confirmPhrase: string;
+  seedSteps: { key: string; label: string; why: string; network: boolean }[];
+  job: DataJob | null;
+}
+
+export interface DataJobStep {
+  key: string;
+  label: string;
+  status: 'pending' | 'running' | 'done' | 'failed' | 'skipped';
+  exitCode?: number;
+  durationMs?: number;
+  error?: string;
+}
+
+export interface DataJob {
+  id: string;
+  kind: 'seed' | 'truncate';
+  status: 'running' | 'done' | 'failed';
+  startedAt: string;
+  finishedAt?: string;
+  steps: DataJobStep[];
+  error?: string;
+  actor: { id?: string; email?: string };
+  /** Index the returned `log` slice starts at — pass back as `logFrom` to stream deltas. */
+  logFrom: number;
+  logTotal: number;
+  log: string[];
+}
+
+export interface TruncateResult {
+  dryRun: boolean;
+  totalDeleted: number;
+  totalKept: number;
+  collections: { name: string; before: number; deleted: number; kept: number; disposition: string }[];
+  uploads: { scanned: number; swept: number; bytes: number; trashDir: string | null; skippedDirs: string[] };
+  keptUsers: { id: string; email?: string }[];
+}
+
+/** Admin: collection counts + the preserve policy + the seed step list. Gated by `admin.settings.manage`. */
+export async function getDataStatus(): Promise<DataStatus> {
+  return request<DataStatus>('/api/v1/admin/data/status', { auth: true });
+}
+
+/** Admin: start a seed run (all steps, or a subset by key). Returns the job to poll. */
+export async function runDataSeed(steps?: string[]): Promise<DataJob> {
+  return request<DataJob>('/api/v1/admin/data/seed', { method: 'POST', body: { steps }, auth: true });
+}
+
+/**
+ * Admin: wipe the database. Requires the exact confirm phrase from `DataStatus`
+ * plus the caller's own password. Pass `dryRun` to get the same report with
+ * nothing deleted — always rehearse a wipe that way first.
+ */
+export async function runDataTruncate(body: {
+  confirm: string;
+  password: string;
+  dryRun?: boolean;
+  sweepUploads?: boolean;
+}): Promise<TruncateResult> {
+  return request<TruncateResult>('/api/v1/admin/data/truncate', { method: 'POST', body, auth: true });
+}
+
+/** Admin: poll a running job. `logFrom` streams only the lines you don't have yet. */
+export async function getDataJob(id: string, logFrom = 0): Promise<DataJob> {
+  return request<DataJob>(`/api/v1/admin/data/jobs/${encodeURIComponent(id)}${toQuery({ logFrom })}`, { auth: true });
+}
+
 /* --- Create-form helpers -------------------------------------------------- */
 
 export async function fetchCities(): Promise<ApiCity[]> {

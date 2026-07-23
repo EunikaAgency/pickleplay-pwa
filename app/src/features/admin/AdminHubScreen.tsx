@@ -51,6 +51,7 @@ const SECTIONS: { label: string; items: SectionItem[] }[] = [
       { screen: 'admin-partner-subscriptions', icon: 'card_membership', label: 'Partner subscriptions', description: 'Coach & organizer pricing and plan tiers', permission: 'admin.settings.manage' },
       { screen: 'admin-email-monitoring', icon: 'mail', label: 'Email monitoring', description: 'BCC transactional emails', permission: 'admin.settings.manage' },
       { screen: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions', description: 'What each role can do', permission: 'admin.settings.manage' },
+      { screen: 'admin-data-tools', icon: 'database', label: 'Data tools', description: 'Seed the demo data, or wipe clean for launch', permission: 'admin.settings.manage' },
     ],
   },
 ];

@@ -448,6 +448,11 @@ src/
   `Owner*` types, **and
   the games endpoints** (`listGames`/`getGame`/`createGame`/`joinGame`/`leaveGame` → `ApiGame`);
   `features/games/gameDisplay.ts` holds the game formatters (day/time/location/title/spots).
+- **`shared/lib/appLaunch.ts`** — installed-app hand-off: `isStandalone()`, `detectInstalledApp()`
+  (`navigator.getInstalledRelatedApps()`, backed by the manifest's self-referencing
+  `related_applications`; falls back to a remembered `appinstalled` flag), and
+  `androidHandoffUrl()` (the `intent://` URL that opens the installed WebAPK). Driven by
+  `shared/components/ui/OpenInAppGate.tsx`, mounted in `App.tsx`.
 - **`shared/lib/game-link.ts`** — `extractGameUrl(body)` detects game URLs in text
   (`/games/<id>` or full URLs) and extracts the game ID; `apiGameToCardData(game)`
   maps an `ApiGame` → `GameLinkCard` (used by the club chat send wrappers).
@@ -677,6 +682,7 @@ src/
 | Organizer console (tournaments, brackets, open play, rosters, venue requests) | `features/organizer/` (entry "Organize" row in `ProfileScreen.tsx`/`ProfileScreenV2.tsx` → `organizer-hub`); organizer endpoints in `shared/lib/api.ts`; gated by `organizer.*` perms (`SCREEN_PERMISSIONS` in `App.tsx`). Reuses the web `/organizer` API — no API/route changes |
 | Social tab (PickleFeed + Clubs + Friends, the request badge) | `features/social/{SocialScreen,FeedPanel,FeedPostCard,FeedComposerSheet,FeedShareCard,FeedMedia,feedAttachments,FeedPostScreen,RepostQuote,feedTime,ClubsPanel,FriendsPanel}.tsx`; Feed API client in `shared/lib/api.ts` (`FEED_PREFIX`, `uploadFeedMedia`); post photos (per-photo caption) + comment photos/GIFs via `FeedMedia`/`feedAttachments` (GIFs added by pasting from the keyboard/clipboard into the comment field — `onCommentPaste` — or uploading a .gif); per-post ⋯ menu (interested/not-interested/report/hide/notify) via `setFeedSignal`/`hideFeedPost`/`reportFeedPost`/`subscribeFeedPost`; badge = `shared/lib/friendRequestStore.ts` + `shared/hooks/useFriendRequestPolling.ts`, rendered by `V2TabBar` in `shared/components/layout/V2Chrome.tsx`; styles under `.pb-v2.v2-social` in `shared/styles/v2.css`; e2e in `../api/e2e/feed.sh` |
 | Colors / spacing / shared CSS classes | `shared/styles/index.css` |
+| Install / "open in the app instead of the browser" | Manifest lives in `vite.config.ts` (`pwaManifest` — `handle_links: 'preferred'`, `launch_handler`, self-referencing `related_applications`), served in dev by the `devManifestServer()` plugin and linked from `index.html` (prod runs the DEV server, which the PWA plugin does **not** emit a manifest for). Client: `shared/lib/appLaunch.ts` + `shared/components/ui/OpenInAppGate.tsx` (mounted in `App.tsx`) — **phone/tablet only**, and only when the app is actually installed; desktop and non-installed visitors stay in the browser. `shared/components/ui/InstallPrompt.tsx` is the separate "install me" banner |
 | A reusable UI primitive | `shared/components/ui/` (check it exists before building one). `Button` variants: primary/brand/dark/outline/ghost/`destructive` (soft red) / `danger` (solid red, for unmissable destructive actions) |
 | A specific screen's content | `features/<slice>/<Name>Screen.tsx` |
 | Empty/loading/error states | `DemoBranch` + `EmptyState`/`ErrorState`/`LoadingSkeleton` (v1/owner) or `V2Skeleton` (v2.1 player screens) |

@@ -56,6 +56,7 @@ const ADMIN_SECTIONS: AdminSection[] = [
       { screenId: 'admin-email-monitoring', icon: 'mail', label: 'Email monitoring' },
       { screenId: 'admin-feature-flags', icon: 'toggle_on', label: 'Feature flags' },
       { screenId: 'admin-roles', icon: 'shield_person', label: 'Roles & permissions' },
+      { screenId: 'admin-data-tools', icon: 'database', label: 'Data tools' },
     ],
   },
 ];

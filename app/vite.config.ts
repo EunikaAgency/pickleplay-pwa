@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
+import { VitePWA, type ManifestOptions } from 'vite-plugin-pwa'
 import { readdirSync, statSync, existsSync, createReadStream } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { basename, join } from 'node:path'
@@ -101,60 +101,90 @@ function planPdfServer(): Plugin {
   }
 }
 
+// The web app manifest, hoisted out of the VitePWA options so the dev server
+// can serve the exact same document (see devManifestServer below).
+const pwaManifest: Partial<ManifestOptions> = {
+  id: '/',
+  name: 'PickleBallers',
+  short_name: 'PickleBallers',
+  description: 'Find pickleball games near you, meet players at your skill level, and turn your local courts into a community.',
+  theme_color: '#ffffff',
+  background_color: '#ffffff',
+  display: 'standalone',
+  orientation: 'portrait',
+  start_url: '/',
+  scope: '/',
+  // Ask the OS to route in-scope links straight to the installed app instead of
+  // a browser tab, and to reuse an already-open app window rather than stacking
+  // a new one. This is what makes "tapped a link, landed in the app" work
+  // without any client-side redirect.
+  handle_links: 'preferred',
+  launch_handler: { client_mode: 'navigate-existing' },
+  // Self-reference so `navigator.getInstalledRelatedApps()` can tell a page
+  // running in the browser that this device already has the app installed
+  // (see shared/lib/appLaunch.ts). Chrome only reports apps listed here, and
+  // matches them by manifest URL — hence one entry per public host.
+  related_applications: [
+    { platform: 'webapp', url: 'https://pickleballer-pwa.eunika.xyz/manifest.webmanifest' },
+    { platform: 'webapp', url: 'https://pickleplay-pwa.eunika.xyz/manifest.webmanifest' },
+  ],
+  prefer_related_applications: false,
+  icons: [
+    {
+      src: '/pwa-192.png',
+      sizes: '192x192',
+      type: 'image/png',
+    },
+    {
+      src: '/pwa-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+    },
+    {
+      src: '/pwa-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'any maskable',
+    },
+  ],
+}
+
+// Dev-only: serve the manifest ourselves. vite-plugin-pwa only emits
+// `/manifest.webmanifest` at BUILD time, but production here runs the dev
+// server (see ecosystem.config.cjs) — so without this the request fell through
+// to the SPA history fallback and browsers received index.html as the manifest.
+// No manifest means no install, and with nothing installed the "open in the
+// app instead of the browser" hand-off has nothing to hand off to.
+function devManifestServer(): Plugin {
+  const body = JSON.stringify(pwaManifest)
+  return {
+    name: 'dev-manifest-server',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.split('?')[0] === '/manifest.webmanifest') {
+          res.setHeader('Content-Type', 'application/manifest+json')
+          res.setHeader('Cache-Control', 'no-cache')
+          res.end(body)
+          return
+        }
+        next()
+      })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     killStaleServiceWorker(),
+    devManifestServer(),
     planPdfServer(),
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.png'],
-      manifest: {
-        id: '/',
-        name: 'PickleBallers',
-        short_name: 'PickleBallers',
-        description: 'Find pickleball games near you, meet players at your skill level, and turn your local courts into a community.',
-        theme_color: '#ffffff',
-        background_color: '#ffffff',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
-        // Ask the OS to route in-scope links straight to the installed app
-        // instead of a browser tab, and to reuse an already-open app window
-        // rather than stacking a new one. This is what makes "tapped a link,
-        // landed in the app" work without any client-side redirect.
-        handle_links: 'preferred',
-        launch_handler: { client_mode: 'navigate-existing' },
-        // Self-reference so `navigator.getInstalledRelatedApps()` can tell a
-        // page running in the browser that this device already has the app
-        // (see shared/lib/appLaunch.ts). Chrome only reports apps listed here,
-        // and matches them by manifest URL — hence one entry per public host.
-        related_applications: [
-          { platform: 'webapp', url: 'https://pickleballer-pwa.eunika.xyz/manifest.webmanifest' },
-          { platform: 'webapp', url: 'https://pickleplay-pwa.eunika.xyz/manifest.webmanifest' },
-        ],
-        prefer_related_applications: false,
-        icons: [
-          {
-            src: '/pwa-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '/pwa-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-          {
-            src: '/pwa-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
-        ],
-      },
+      manifest: pwaManifest,
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Pulls our Web Push handlers (public/push-sw.js) into the generated SW.

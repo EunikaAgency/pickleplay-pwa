@@ -3,7 +3,7 @@ import { Payment, OfficialReceipt, ReceiptCounter, Settlement, SettlementLineIte
 import { Booking } from '../bookings/bookings.model.js';
 import { isBlocking } from '../bookings/bookingDeadlines.js';
 import { expireOverdueBookings } from '../bookings/bookings.controller.js';
-import { Venue, Court } from '../venues/venues.model.js';
+import { Venue } from '../venues/venues.model.js';
 import { PartnerSubscription } from '../partner-subscriptions/partner-subscriptions.model.js';
 import { getPartnerSubscriptionPricing } from '../settings/settings.controller.js';
 import { effectiveOwnerId, hasPermission } from '../../shared/lib/permissions.js';
@@ -480,7 +480,7 @@ export function venueReceiptCode(venueId: string, displayName?: string | null): 
 }
 
 async function generateDraftReceipt(bookingId: string): Promise<void> {
-  const booking = await Booking.findById(bookingId).select('userId venueId courtId subUnitIndex amount serviceFeeAmount discountAmount customerCategory discountIdNumber customerName date startTime').lean();
+  const booking = await Booking.findById(bookingId).select('userId venueId amount serviceFeeAmount discountAmount customerCategory discountIdNumber customerName date startTime').lean();
   if (!booking) return;
   const venueId = String((booking as any).venueId);
 
@@ -491,16 +491,6 @@ async function generateDraftReceipt(bookingId: string): Promise<void> {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
   const venue = await Venue.findById(venueId).select('displayName').lean();
-  // Resolve the specific court so the receipt says which one ("Court 1", "Court 2A",
-  // etc.) instead of a generic "Court booking". subUnitIndex (0-based) marks a
-  // split-court sub-unit, rendered as a trailing letter (0 → A, 1 → B).
-  const court = (booking as any).courtId
-    ? await Court.findById((booking as any).courtId).select('courtNumber courtName').lean()
-    : null;
-  const subUnitIndex = (booking as any).subUnitIndex;
-  const courtLabel = court
-    ? `Court ${(court as any).courtNumber}${subUnitIndex != null ? String.fromCharCode(65 + subUnitIndex) : ''}${(court as any).courtName ? ` (${(court as any).courtName})` : ''}`
-    : 'Court';
   const venueCode = venueReceiptCode(venueId, (venue as any)?.displayName);
   const year = new Date().getFullYear().toString().slice(2);
   const seq = String(counter!.seq).padStart(5, '0');
@@ -526,7 +516,7 @@ async function generateDraftReceipt(bookingId: string): Promise<void> {
     discountCategory: vatExempt ? (booking as any).customerCategory : undefined,
     discountIdNumber: vatExempt ? (booking as any).discountIdNumber : undefined,
     vatExempt,
-    description: `${courtLabel} booking at ${(venue as any)?.displayName || 'venue'} on ${(booking as any).date || 'a date'}`,
+    description: `Court booking at ${(venue as any)?.displayName || 'venue'} on ${(booking as any).date || 'a date'}`,
     status: 'draft',
   });
 }

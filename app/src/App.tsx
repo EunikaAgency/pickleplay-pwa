@@ -61,6 +61,7 @@ import { OwnerVenuesScreenV2 } from './features/owner/OwnerVenuesScreenV2';
 import { MembersScreen } from './features/profile/MembersScreen';
 import { AdminBookingsScreen } from './features/admin/AdminBookingsScreen';
 import { AdminClaimsScreen } from './features/admin/AdminClaimsScreen';
+import { AdminDataToolsScreen } from './features/admin/AdminDataToolsScreen';
 import { AdminCoachesScreen } from './features/admin/AdminCoachesScreen';
 import { AdminFeatureFlagsScreen } from './features/admin/AdminFeatureFlagsScreen';
 import { AdminGamesScreen } from './features/admin/AdminGamesScreen';
@@ -221,6 +222,7 @@ const SCREEN_PERMISSIONS: Partial<Record<ScreenId, Permission | Permission[]>> =
   'admin-email-monitoring': 'admin.settings.manage',
   'admin-feature-flags': 'admin.settings.manage',
   'admin-roles': 'admin.settings.manage',
+  'admin-data-tools': 'admin.settings.manage',
   'open-play-book': 'player.bookings.create',
   'owner-shop': 'owner.access',
   'owner-venues-v2': 'owner.access',
@@ -272,6 +274,7 @@ const SCREEN_AUTH_INTENT: Partial<Record<ScreenId, string>> = {
   'owner-finance': 'see your finance records',
   'owner-subscription-plans': 'manage subscription plans',
   'admin-hub': 'open the admin console',
+  'admin-data-tools': 'seed or reset the database',
   'admin-claims': 'review venue claims',
   'admin-post-reports': 'review reported posts',
   'open-play-book': 'join open play',
@@ -911,6 +914,8 @@ function AppInner() {
         return <AdminFeatureFlagsScreen onNavigate={navigate} onBack={goBack} />;
       case 'admin-roles':
         return <AdminRolesScreen onNavigate={navigate} onBack={goBack} />;
+      case 'admin-data-tools':
+        return <AdminDataToolsScreen onNavigate={navigate} onBack={goBack} />;
       case 'open-play-book':
         return <OpenPlayBookScreen key={screen.params.venueId} venueId={screen.params.venueId} onNavigate={navigate} onBack={goBack} />;
       case 'plan-pdfs':

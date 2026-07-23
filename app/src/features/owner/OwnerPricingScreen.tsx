@@ -545,8 +545,13 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
   };
 
   /**
-   * Wipe the week on screen in one go — the alternative was dragging the Closed
+   * Empty the week on screen in one go — the alternative was dragging the Closed
    * tool across all 168 cells.
+   *
+   * Erasing alone isn't enough once a weekly default exists: a blank cell means
+   * "inherit", so the hours would come straight back. So every hour the default
+   * would open is explicitly SHUT (the same `note:'Closed'` marker the Closed tool
+   * writes), and the week ends up genuinely empty rather than quietly reverting.
    *
    * Reserved and Maintenance survive: a Reserved marker has a real confirmed
    * Booking behind it, and `handleSave` rebuilds each date purely from these
@@ -555,11 +560,14 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
    */
   const clearWeek = () => {
     setCellsByWeek((prev) => {
-      const kept: Record<string, string> = {};
+      const next: Record<string, string> = {};
       for (const [key, val] of Object.entries(prev[scopeKey] || {})) {
-        if (val === RESERVED_TOOL_ID || val === MAINTENANCE_TOOL_ID) kept[key] = val;
+        if (val === RESERVED_TOOL_ID || val === MAINTENANCE_TOOL_ID) next[key] = val;
       }
-      return { ...prev, [scopeKey]: kept };
+      for (const key of Object.keys(inheritedCells)) {
+        if (!next[key]) next[key] = CLOSED_MARK_TOOL_ID;
+      }
+      return { ...prev, [scopeKey]: next };
     });
     markDirty();
   };
@@ -726,7 +734,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
       const monthIdx = MONTH_INDEX[month] ?? new Date().getMonth();
       const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
       const scopeCourtId = selectedCourtId || undefined;
-      const byWeekday = new Map(DAYS.map((day) => [day, blocksForDay(day)]));
+      const byWeekday = new Map(DAYS.map((day) => [day, daySegments(day)]));
 
       for (let d = 1; d <= daysInMonth; d++) {
         const date = new Date(year, monthIdx, d);
@@ -748,6 +756,7 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             startTime: block.openTime,
             endTime: block.closeTime,
             price: block.price,
+            note: block.note,
           });
         }
       }
@@ -763,6 +772,38 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
       setApplyError(err instanceof Error ? err.message : 'Unknown error');
       setTimeout(() => { setApplyStatus('idle'); setApplyError(''); }, 5000);
     }
+  };
+
+  /**
+   * Like `blocksForDay`, but also carries the hours you deliberately SHUT.
+   *
+   * Applying a month has to write closures, not just prices: with a weekly default
+   * in play a date with no override inherits, so an all-closed week copied as
+   * "nothing" would quietly reopen every day it touched. Only what repeats belongs
+   * here — Reserved and Maintenance are per-date events, never a pattern.
+   */
+  const daySegments = (day: string): { openTime: string; closeTime: string; price: number; note?: string }[] => {
+    const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`;
+    const valueAt = (h: number): string | null => {
+      const hour = HOURS[h];
+      if (!hour) return null;
+      const key = cellKey(day, hour);
+      if (paintedCells[key] === CLOSED_MARK_TOOL_ID) return 'closed';
+      const price = effectivePrices[key];
+      return price == null ? null : `p${price}`;
+    };
+    const out: { openTime: string; closeTime: string; price: number; note?: string }[] = [];
+    for (let h = 0; h < 24;) {
+      const val = valueAt(h);
+      if (val == null) { h++; continue; }
+      let end = h + 1;
+      while (end < 24 && valueAt(end) === val) end++;
+      out.push(val === 'closed'
+        ? { openTime: hhmm(h), closeTime: hhmm(end), price: 0, note: 'Closed' }
+        : { openTime: hhmm(h), closeTime: hhmm(end), price: Number(val.slice(1)) });
+      h = end;
+    }
+    return out;
   };
 
   const saveWeeklyDefault = async () => {
@@ -919,8 +960,10 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               <button
                 type="button"
                 onClick={() => setConfirmApplyMonth(true)}
-                disabled={applyStatus === 'saving' || !venue || !hasVenues || paidHours === 0}
-                title={paidHours === 0 ? 'Paint some priced hours first' : `Use this week for every week of ${month}`}
+                // No "paint something first" gate: shutting a whole month is a real
+                // thing to want (a closure, a renovation), and both actions confirm.
+                disabled={applyStatus === 'saving' || !venue || !hasVenues}
+                title={`Use this week for every week of ${month}`}
                 style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
                 className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
                   applyStatus === 'error'
@@ -936,8 +979,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
               <button
                 type="button"
                 onClick={() => setConfirmDefault(true)}
-                disabled={defaultStatus === 'saving' || !venue || !hasVenues || paidHours === 0}
-                title={paidHours === 0 ? 'Paint some priced hours first' : 'Repeat this week every week'}
+                disabled={defaultStatus === 'saving' || !venue || !hasVenues}
+                title="Repeat this week every week"
                 style={status !== 'loading' && !hasVenues ? { display: 'none' } : undefined}
                 className={`h-9 w-full sm:w-auto px-4 rounded-[4px] border text-[12px] font-extrabold shrink-0 disabled:opacity-60 ${
                   defaultStatus === 'error'
@@ -1129,7 +1172,8 @@ export function OwnerPricingScreen({ onBack, onNavigate }: OwnerPricingScreenPro
             <div>
               <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">Schedule window</div>
               <div className="text-[13px] font-extrabold text-[var(--ink)] mt-0.5">{weekDateRange(month, week, year)}</div>
-              {Object.keys(cellsByWeek[scopeKey] || {}).length > 0 && (
+              {/* Offered whenever there's anything to empty — painted OR inherited. */}
+              {(Object.keys(cellsByWeek[scopeKey] || {}).length > 0 || Object.keys(inheritedCells).length > 0) && (
                 <button
                   type="button"
                   onClick={clearWeek}
